@@ -1,0 +1,4 @@
+^demo.*\.R$
+^\.gitignore$
+^\.Rbuildignore$
+^\.git$

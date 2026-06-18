@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+weightflow_report_*.html
+*.tar.gz
+.DS_Store
+.httr-oauth
+.quarto
