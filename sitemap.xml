@@ -13,10 +13,12 @@
 <url><loc>https://jpferreira33.github.io/weightflow/reference/sample_survey.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_assert.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_calibrate.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_model_calibration.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_nonresponse.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_rescale.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_round.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/step_select_within.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_trim.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_trim_weights.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.html</loc></url>

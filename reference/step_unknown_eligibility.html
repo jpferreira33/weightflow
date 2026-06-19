@@ -41,7 +41,7 @@ known-eligibility cases, within the cells defined by <code>by</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">step_unknown_eligibility</span><span class="op">(</span><span class="va">spec</span>, <span class="va">unknown</span>, by <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">step_unknown_eligibility</span><span class="op">(</span><span class="va">spec</span>, <span class="va">unknown</span>, by <span class="op">=</span> <span class="cn">NULL</span>, cluster <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -61,6 +61,15 @@ on the data.</p></dd>
 <dt id="arg-by">by<a class="anchor" aria-label="anchor" href="#arg-by"></a></dt>
 <dd><p>character. Variables defining the adjustment cells (optional).</p></dd>
 
+
+<dt id="arg-cluster">cluster<a class="anchor" aria-label="anchor" href="#arg-cluster"></a></dt>
+<dd><p>character. Cluster (e.g. household) id column. If given, the
+redistribution is done at the cluster level: each cluster counts once with
+its (uniform) weight, the weight of unknown-eligibility clusters is
+redistributed among the known ones, and the adjusted weight is assigned to
+every member. Use this when unknown-eligibility units have no roster (one
+row per address) while resolved units are expanded by person.</p></dd>
+
 </dl></div>
 
     <div class="section level2">
@@ -73,6 +82,19 @@ on the data.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1. unknown eligibility</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Status  : not estimated</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># household-level redistribution (unknown units without roster)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_unknown_eligibility</span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span>,</span></span>
+<span class="r-in"><span>                           cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 1575 cases</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. unknown eligibility (by household_id)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Status  : not estimated</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>

@@ -20,6 +20,8 @@
   : Assert conditions on the weights at this point of the cascade
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
   : Calibration to population totals
+- [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md)
+  : Drop ineligible (out-of-scope) units
 - [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
   : Model calibration (model-assisted, Wu & Sitter 2001)
 - [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
@@ -28,6 +30,8 @@
   : Rescale (normalize) the weights
 - [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md)
   : Round the final weights
+- [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md)
+  : Within-household selection adjustment
 - [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md)
   : Trim extreme weights
 - [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
