@@ -17,12 +17,21 @@ Start with \code{weighting_spec()}, add \verb{step_*()} adjustments, estimate th
 cascade with \code{prep()}, and extract the weights with \code{collect_weights()}.
 Inspect with \code{summary()}, \code{plot()} and \code{report_weighting()}.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/jpferreira33/weightflow}
+  \item \url{https://jpferreira33.github.io/weightflow/}
+  \item Report bugs at \url{https://github.com/jpferreira33/weightflow/issues}
+}
+
+}
 \author{
-\strong{Maintainer}: Your Name \email{you@example.com}
+\strong{Maintainer}: Juan Pablo Ferreira \email{juanpablo.ferreira@fcea.edu.uy}
 
 Authors:
 \itemize{
-  \item Your Name \email{you@example.com}
+  \item Juan Pablo Ferreira \email{juanpablo.ferreira@fcea.edu.uy}
 }
 
 }
