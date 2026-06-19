@@ -274,6 +274,67 @@ apply_step.step_select_within <- function(step, data, w) {
   list(weights = new_w, diagnostics = diag)
 }
 
+# Household-level nonresponse (whole-household response) --------------------
+.nonresponse_cluster <- function(step, data, w, respondent, eligible) {
+  if (!step$cluster %in% names(data))
+    stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
+  n      <- length(w)
+  new_w  <- w
+  idx_el <- which(eligible)
+  cl     <- as.character(data[[step$cluster]])[idx_el]
+  Wh     <- tapply(w[idx_el], cl, mean)            # one weight per household
+  resp_h <- tapply(respondent[idx_el], cl, all)    # household responded (whole roster)
+  hhn    <- names(Wh)
+  Wh     <- as.numeric(Wh[hhn]); resp_h <- as.logical(resp_h[hhn])
+  factor_h <- rep(NA_real_, length(hhn)); names(factor_h) <- hhn
+
+  if (step$method == "weighting_class") {
+    cells_all <- .make_cells(data, step$by, n)
+    cellh <- tapply(as.character(cells_all[idx_el]), cl, function(z) z[1])[hhn]
+    diag  <- list()
+    for (g in unique(cellh)) {
+      sel    <- which(cellh == g)
+      w_tot  <- sum(Wh[sel]); w_resp <- sum(Wh[sel][resp_h[sel]])
+      f      <- if (w_resp > 0) w_tot / w_resp else NA_real_
+      factor_h[sel] <- ifelse(resp_h[sel], f, 0)
+      diag[[length(diag) + 1]] <- data.frame(
+        cell = g, n_resp_hh = sum(resp_h[sel]), n_nr_hh = sum(!resp_h[sel]),
+        factor = f, stringsAsFactors = FALSE)
+    }
+    diag <- do.call(rbind, diag)
+
+  } else {                                          # propensity, household level
+    if (is.null(step$formula)) stop("method = 'propensity' requires `formula`.")
+    ddh    <- data[idx_el[match(hhn, cl)], , drop = FALSE]   # one row per household
+    ddh$.y <- as.integer(resp_h)
+    p      <- .estimate_propensity(step$engine, step$formula, ddh, Wh)
+    if (is.null(step$num_classes)) {
+      factor_h <- ifelse(resp_h, 1 / p, 0)
+      diag <- data.frame(engine = step$engine, level = "household",
+                         method = "1/p per household",
+                         p_min = min(p), p_max = max(p), stringsAsFactors = FALSE)
+    } else {
+      brks   <- stats::quantile(p, probs = seq(0, 1, length.out = step$num_classes + 1))
+      classh <- cut(p, breaks = unique(brks), include.lowest = TRUE)
+      diag   <- list()
+      for (cls in levels(classh)) {
+        sel    <- which(classh == cls)
+        w_tot  <- sum(Wh[sel]); w_resp <- sum(Wh[sel][resp_h[sel]])
+        f      <- if (w_resp > 0) w_tot / w_resp else NA_real_
+        factor_h[sel] <- ifelse(resp_h[sel], f, 0)
+        diag[[length(diag) + 1]] <- data.frame(
+          propensity_class = cls, n_hh = length(sel),
+          mean_prop = mean(p[sel]), factor = f, stringsAsFactors = FALSE)
+      }
+      diag <- do.call(rbind, diag)
+    }
+    names(factor_h) <- hhn
+  }
+
+  new_w[idx_el] <- w[idx_el] * factor_h[cl]         # assign household factor to members
+  list(weights = new_w, diagnostics = diag)
+}
+
 # --- Drop ineligible (out-of-scope) units ----------------------------------
 apply_step.step_drop_ineligible <- function(step, data, w) {
   active <- w > 0
@@ -295,6 +356,10 @@ apply_step.step_nonresponse <- function(step, data, w) {
   n          <- length(w)
   respondent <- .eval_cond(step$respondent, data)
   eligible   <- w > 0                    # reach this stage alive
+
+  if (!is.null(step$cluster))
+    return(.nonresponse_cluster(step, data, w, respondent, eligible))
+
   new_w      <- w
 
   if (step$method == "weighting_class") {

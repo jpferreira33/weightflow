@@ -163,22 +163,38 @@ step_drop_ineligible <- function(spec, ineligible) {
 #' @param num_classes integer or NULL. Controls how propensities are used:
 #'   an integer forms that many propensity classes (cell adjustment within each
 #'   class); NULL applies the direct factor 1/p to each unit.
+#' @param cluster character or NULL. If given, the adjustment is done at the
+#'   cluster (e.g. household) level for whole-household nonresponse: each
+#'   household counts once with its (uniform) weight; in "weighting_class" the
+#'   redistribution is between responding and nonresponding households within
+#'   the cells, and in "propensity" the model is fitted with one row per
+#'   household (household auxiliaries), predicting the household response. The
+#'   resulting factor is assigned to every member; nonresponding households go to
+#'   zero. As always, only active units (weight > 0) take part, so units already
+#'   dropped (unknown eligibility, ineligible) are excluded automatically.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class",
 #'                    by = "region")
+#'
+#' # household-level nonresponse (whole household responds or not)
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class",
+#'                    by = "region", cluster = "household_id") |>
+#'   prep()
 step_nonresponse <- function(spec, respondent,
                              method = c("weighting_class", "propensity"),
                              by = NULL, formula = NULL,
                              engine = c("logit", "tree", "forest"),
-                             num_classes = 5L) {
+                             num_classes = 5L, cluster = NULL) {
   method <- match.arg(method)
   engine <- match.arg(engine)
   mode   <- if (is.null(num_classes)) "1/p per unit" else
             sprintf("%d classes", num_classes)
+  lvl    <- if (is.null(cluster)) "" else sprintf(", by %s", cluster)
   label  <- if (method == "propensity")
-              sprintf("nonresponse (propensity: %s, %s)", engine, mode)
-            else "nonresponse (weighting class)"
+              sprintf("nonresponse (propensity: %s, %s%s)", engine, mode, lvl)
+            else sprintf("nonresponse (weighting class%s)", lvl)
   step <- structure(
     list(
       label       = label,
@@ -187,7 +203,8 @@ step_nonresponse <- function(spec, respondent,
       by          = by,
       formula     = formula,
       engine      = engine,
-      num_classes = num_classes
+      num_classes = num_classes,
+      cluster     = cluster
     ),
     class = c("step_nonresponse", "weighting_step")
   )

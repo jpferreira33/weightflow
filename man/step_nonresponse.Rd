@@ -11,7 +11,8 @@ step_nonresponse(
   by = NULL,
   formula = NULL,
   engine = c("logit", "tree", "forest"),
-  num_classes = 5L
+  num_classes = 5L,
+  cluster = NULL
 )
 }
 \arguments{
@@ -36,6 +37,16 @@ optional: only needed if you pick that engine.}
 \item{num_classes}{integer or NULL. Controls how propensities are used:
 an integer forms that many propensity classes (cell adjustment within each
 class); NULL applies the direct factor 1/p to each unit.}
+
+\item{cluster}{character or NULL. If given, the adjustment is done at the
+cluster (e.g. household) level for whole-household nonresponse: each
+household counts once with its (uniform) weight; in "weighting_class" the
+redistribution is between responding and nonresponding households within
+the cells, and in "propensity" the model is fitted with one row per
+household (household auxiliaries), predicting the household response. The
+resulting factor is assigned to every member; nonresponding households go to
+zero. As always, only active units (weight > 0) take part, so units already
+dropped (unknown eligibility, ineligible) are excluded automatically.}
 }
 \description{
 Nonresponse adjustment
@@ -44,4 +55,10 @@ Nonresponse adjustment
 weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region")
+
+# household-level nonresponse (whole household responds or not)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region", cluster = "household_id") |>
+  prep()
 }
