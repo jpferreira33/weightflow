@@ -122,6 +122,45 @@
   sprintf("<div class='viz'><div>%s</div><div>%s</div></div>", s1, s2)
 }
 
+# Variables of the dataset a step refers to (captured expressions + by/cluster
+# + calibration margin names).
+.lang_vars <- function(x)
+  if (is.null(x)) character(0) else tryCatch(all.vars(x), error = function(e) character(0))
+
+.step_vars <- function(step) {
+  v <- character(0)
+  for (f in c("unknown", "prob", "n_eligible", "ineligible", "respondent",
+              "formula", "x_formula"))
+    if (!is.null(step[[f]])) v <- c(v, .lang_vars(step[[f]]))
+  for (f in c("by", "cluster"))
+    if (!is.null(step[[f]])) v <- c(v, as.character(step[[f]]))
+  if (!is.null(step[["margins"]])) v <- c(v, names(step[["margins"]]))
+  unique(v[nzchar(v)])
+}
+
+.chips <- function(vars)
+  if (!length(vars)) "" else paste0("<div class='chips'>",
+    paste(sprintf("<span class='chip'>%s</span>", .html_escape(vars)), collapse = ""),
+    "</div>")
+
+# A vertical flow diagram of the pipeline (base -> steps -> final), with the
+# variables each step used shown as chips. Pure HTML/CSS (no graphics device).
+.pipeline_diagram <- function(object) {
+  nodes <- sprintf(
+    "<div class='node node-end'><div class='nl'>Base weights</div><div class='nv'><code>%s</code></div></div>",
+    .html_escape(object$base_weights))
+  for (i in seq_along(object$steps)) {
+    s <- object$steps[[i]]
+    nodes <- c(nodes, sprintf(
+      "<div class='node'><div class='nl'><span class='num'>%d</span>%s</div>%s</div>",
+      i, .html_escape(s$label), .chips(.step_vars(s))))
+  }
+  nodes <- c(nodes,
+    "<div class='node node-end'><div class='nl'>Final weights</div><div class='nv'><code>.weight</code></div></div>")
+  paste0("<div class='flow'>",
+         paste(nodes, collapse = "<div class='arrow'>&darr;</div>"), "</div>")
+}
+
 #' Build a nice HTML report of the weighting recipe
 #'
 #' Writes a self-contained HTML file (no dependencies, no server) showing the
@@ -197,16 +236,22 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
       if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else ""))
   }
 
+  diagram <- .pipeline_diagram(object)
+  allvars <- unique(c(object$base_weights, unlist(lapply(object$steps, .step_vars))))
+  vars_chips <- .chips(allvars)
+
   html <- sprintf("<!DOCTYPE html><html><head><meta charset='utf-8'>
 <title>weightflow report</title>%s</head><body>
 <h1>weightflow &mdash; weighting recipe</h1>
 <p class='muted'>Base weights: <code>%s</code> &nbsp;|&nbsp; %d steps</p>
 <div class='cards'>%s</div>
+<h2>Pipeline</h2>%s
+<p class='muted'>Variables used:</p>%s
 <h2>Per-stage summary</h2>%s
 <h2>Steps</h2>%s
 <p class='foot'>deff = Kish design effect (1 + CV&sup2;). This report shows weights only; for inference use the 'survey' package.</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), cards, .df_to_html(stab), steps_html)
+    length(object$steps), cards, diagram, vars_chips, .df_to_html(stab), steps_html)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
@@ -240,6 +285,15 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 @media(max-width:680px){.cols{grid-template-columns:1fr}}
 .viz{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
 .viz svg{max-width:100%;height:auto}.viz-h{margin-top:14px}
+.flow{display:flex;flex-direction:column;align-items:stretch;margin:14px 0;max-width:560px}
+.node{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff}
+.node-end{background:var(--bg);border-style:dashed}
+.nl{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.nv{margin-top:3px}
+.arrow{text-align:center;color:var(--mut);font-size:18px;line-height:1.2;margin:3px 0}
+.chips{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
+.chip{background:#eef2ff;color:var(--accent);border:1px solid #dbe3ff;border-radius:999px;
+padding:1px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
 @media(max-width:680px){.viz{grid-template-columns:1fr}}
 .foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
 </style>"
