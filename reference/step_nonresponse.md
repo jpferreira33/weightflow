@@ -53,3 +53,19 @@ step_nonresponse(
   integer or NULL. Controls how propensities are used: an integer forms
   that many propensity classes (cell adjustment within each class); NULL
   applies the direct factor 1/p to each unit.
+
+## Examples
+
+``` r
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region")
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (weighting class)
+#> Status  : not estimated
+#> 
+```

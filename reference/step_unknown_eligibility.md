@@ -24,3 +24,18 @@ step_unknown_eligibility(spec, unknown, by = NULL)
 - by:
 
   character. Variables defining the adjustment cells (optional).
+
+## Examples
+
+``` r
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region")
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. unknown eligibility
+#> Status  : not estimated
+#> 
+```

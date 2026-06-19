@@ -38,3 +38,27 @@ step_assert(
 - on_fail:
 
   "error" (stop the cascade) or "warning".
+
+## Examples
+
+``` r
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_assert(max_deff = 5, on_fail = "warning") |> prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. assert (checkpoint)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                stage n_active sum_wts cv_wts deff_kish n_eff
+#>                 base     1575   15182  0.229     1.053  1496
+#>  stage_1_step_assert     1575   15182  0.229     1.053  1496
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+```

@@ -60,3 +60,18 @@ step_trim(
 There is no standard threshold: `max_ratio` is an analyst decision, a
 bias-variance trade-off. Use Kish's design effect (see summary) to judge
 whether trimming is worth it.
+
+## Examples
+
+``` r
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_trim(max_ratio = 3, reference = "base")
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. trimming (base, cap 3)
+#> Status  : not estimated
+#> 
+```

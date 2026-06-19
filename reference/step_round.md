@@ -27,3 +27,27 @@ step_round(spec, digits = 0L, method = c("nearest", "preserve_total"))
   weights). Note: "preserve_total" can break equality of weights within
   a cluster; if you need integer and equal weights per household, use
   "nearest".
+
+## Examples
+
+``` r
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_round(digits = 0) |> prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. rounding (nearest, 0 decimals)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>               stage n_active sum_wts cv_wts deff_kish n_eff
+#>                base     1575   15182  0.229     1.053  1496
+#>  stage_1_step_round     1575   14972  0.206     1.042  1511
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+```

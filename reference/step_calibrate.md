@@ -77,3 +77,34 @@ step_calibrate(
 - maxit, tol:
 
   convergence control for raking and bounded calibration.
+
+## Examples
+
+``` r
+# Raking to population margins
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_calibrate(method = "raking",
+                 margins = list(sex    = c(table(population$sex)),
+                                region = c(table(population$region)))) |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (weighting class)
+#>   2. calibration (raking)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                     stage n_active sum_wts cv_wts deff_kish n_eff
+#>                      base     1575   15182  0.229     1.053  1496
+#>  stage_1_step_nonresponse      927   15183  0.195     1.038   893
+#>    stage_2_step_calibrate      927   14195  0.163     1.026   903
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+```

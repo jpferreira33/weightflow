@@ -25,3 +25,12 @@ plot(x, type = c("all", "factors", "summary"), ...)
 - ...:
 
   ignored.
+
+## Examples
+
+``` r
+fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  prep()
+plot(fitted)
+```

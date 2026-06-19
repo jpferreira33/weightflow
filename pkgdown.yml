@@ -1,8 +1,8 @@
-pandoc: 3.8.3
+pandoc: 3.6.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles: {}
-last_built: 2026-06-19T03:16Z
+last_built: 2026-06-19T03:26Z
 urls:
   reference: https://jpferreira33.github.io/weightflow/reference
   article: https://jpferreira33.github.io/weightflow/articles

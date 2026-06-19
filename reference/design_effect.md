@@ -18,3 +18,21 @@ design_effect(w)
 ## Value
 
 list with deff, n_eff, cv and n.
+
+## Examples
+
+``` r
+design_effect(sample_survey$pw)
+#> $deff
+#> [1] 1.052567
+#> 
+#> $n_eff
+#> [1] 1496.342
+#> 
+#> $cv
+#> [1] 0.2292753
+#> 
+#> $n
+#> [1] 1575
+#> 
+```

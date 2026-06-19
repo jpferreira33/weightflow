@@ -26,3 +26,19 @@ y_model(formula, engine = c("glm", "tree", "forest"), family = NULL)
 ## Value
 
 a model specification list.
+
+## Examples
+
+``` r
+y_model(income ~ age + sex, engine = "glm")
+#> $formula
+#> income ~ age + sex
+#> <environment: 0x7fd90d620>
+#> 
+#> $engine
+#> [1] "glm"
+#> 
+#> $family
+#> NULL
+#> 
+```

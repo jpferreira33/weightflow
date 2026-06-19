@@ -34,3 +34,14 @@ report_weighting(object, file = NULL, open = TRUE, plots = TRUE)
 ## Value
 
 (invisibly) the path to the HTML file.
+
+## Examples
+
+``` r
+fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  prep()
+if (FALSE) { # \dontrun{
+report_weighting(fitted)            # opens an HTML report in the browser
+} # }
+```

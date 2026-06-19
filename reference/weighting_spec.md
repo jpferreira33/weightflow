@@ -22,3 +22,17 @@ weighting_spec(data, base_weights)
 ## Value
 
 an object of class "weighting_spec".
+
+## Examples
+
+``` r
+rec <- weighting_spec(sample_survey, base_weights = pw)
+rec
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   : (none yet)
+#> Status  : not estimated
+#> 
+```
