@@ -120,10 +120,14 @@ add a new adjustment: define a `step_*()` constructor (inert) and its
   : Kish design effect from unequal weighting
 - [`plot(`*`<prepped_weighting_spec>`*`)`](https://jpferreira33.github.io/weightflow/reference/plot.prepped_weighting_spec.md)
   : Diagnostic plots for the weights
+- [`population`](https://jpferreira33.github.io/weightflow/reference/population.md)
+  : Example target population for weightflow
 - [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
   : Estimate the weighting cascade
 - [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
   : Build a nice HTML report of the weighting recipe
+- [`sample_survey`](https://jpferreira33.github.io/weightflow/reference/sample_survey.md)
+  : Example survey sample for weightflow
 - [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
   : Assert conditions on the weights at this point of the cascade
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)

@@ -18,10 +18,20 @@ Inspect with [`summary()`](https://rdrr.io/r/base/summary.html),
 [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
 [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md).
 
+## See also
+
+Useful links:
+
+- <https://github.com/jpferreira33/weightflow>
+
+- <https://jpferreira33.github.io/weightflow/>
+
+- Report bugs at <https://github.com/jpferreira33/weightflow/issues>
+
 ## Author
 
-**Maintainer**: Your Name <you@example.com>
+**Maintainer**: Juan Pablo Ferreira <juanpablo.ferreira@fcea.edu.uy>
 
 Authors:
 
-- Your Name <you@example.com>
+- Juan Pablo Ferreira <juanpablo.ferreira@fcea.edu.uy>
