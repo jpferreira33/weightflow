@@ -26,12 +26,23 @@ adjustments:
 Plus an optional **trimming** step (`step_trim`) insertable anywhere in the
 cascade, even several times; an optional final **rounding** step (`step_round`,
 simple or total-preserving); and the **Kish design effect** (deff = 1 + CV²,
-with effective sample size) reported at every stage. `plot(fitted)` shows a
-diagnostic grid (per-step factor histograms plus a summary panel) and
-`weight_factors(fitted)` returns the per-unit, per-step factors for custom plots. `report_weighting(fitted)` writes a self-contained HTML report (recipe, requested parameters per step, per-stage summary and diagnostics) (with per-step plots — weight before-vs-after scatter and the adjustment-factor histogram, drawn as inline SVG with no graphics device required) and opens it in the browser — no Shiny/server needed.
+with effective sample size) reported at every stage.
 
+`plot(fitted)` shows a diagnostic grid (per-step factor histograms plus a
+summary panel) and `weight_factors(fitted)` returns the per-unit, per-step
+factors for custom plots. `report_weighting(fitted)` writes a self-contained
+HTML report — recipe, requested parameters per step, per-stage summary and
+diagnostics, plus per-step plots (weight before-vs-after scatter and the
+adjustment-factor histogram, drawn as inline SVG with no graphics device
+required). It opens in the browser — no Shiny or server needed.
 
-Optional **bounded calibration** (`calfun = "logit"` or `bounds = c(L, U)` in the linear method) keeps the g-weights within range without a separate trim. Other optional steps: **assertions** (`step_assert`, a checkpoint that errors/warns if deff, weight ratio or effective n cross a threshold), **automatic survey-style trimming** (`step_trim_weights`: no weight below 1, auto upper cap, `strict = TRUE` like `survey::trimWeights`), and **rescaling** (`step_rescale`: normalize weights to the sample size or a target total).
+Optional **bounded calibration** (`calfun = "logit"` or `bounds = c(L, U)` in
+the linear method) keeps the g-weights within range without a separate trim.
+Other optional steps: **assertions** (`step_assert`, a checkpoint that
+errors/warns if deff, weight ratio or effective n cross a threshold),
+**automatic survey-style trimming** (`step_trim_weights`: no weight below 1,
+auto upper cap, `strict = TRUE` like `survey::trimWeights`), and **rescaling**
+(`step_rescale`: normalize weights to the sample size or a target total).
 
 Response and eligibility can be supplied as **0/1 dummy columns** (1 = responded
 / 1 = unknown) or as any logical condition.
@@ -41,6 +52,16 @@ Response and eligibility can be supplied as **0/1 dummy columns** (1 = responded
 > does not estimate variances.** For inference, export the weights and use them
 > with `survey`/`srvyr`.
 
+## Installation
+
+```r
+# install.packages("remotes")
+remotes::install_github("jpferreira33/weightflow")
+```
+
+weightflow is dependency-free (base R, R >= 4.1). `rpart` and `ranger` are
+optional, needed only for the tree/forest nonresponse engines.
+
 ## The design idea
 
 The recipe is **inert**: building it computes nothing. `prep()` walks the steps
@@ -49,7 +70,7 @@ the final weights. Separating *define* from *apply* is what makes it
 reproducible and auditable.
 
 ```r
-recipe <- weighting_spec(survey, base_weights = pw) |>
+recipe <- weighting_spec(dat, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex")) |>
@@ -58,9 +79,9 @@ recipe <- weighting_spec(survey, base_weights = pw) |>
                                 region = c(North = 42000, South = 58000)),
                  method = "raking")
 
-fitted <- prep(recipe)          # estimate the cascade
-summary(fitted)                 # per-stage diagnostics + Kish deff
-plot(fitted)                    # diagnostic plots
+fitted <- prep(recipe)              # estimate the cascade
+summary(fitted)                     # per-stage diagnostics + Kish deff
+plot(fitted)                        # diagnostic plots
 wts    <- collect_weights(fitted)   # data.frame with .weight
 ```
 
@@ -72,6 +93,7 @@ No installation needed (base R, R >= 4.1):
 setwd("path/to/weightflow")
 source("demo.R")          # full household pipeline
 source("demo_model.R")    # model-assisted calibration, tested against a population
+source("demo_new_steps.R")# bounded calibration, assertions, auto-trim, rescale
 ```
 
 ## Adding a new adjustment
@@ -87,3 +109,8 @@ method. Nothing else changes.
 - Potter (1988, 1990); Potter & Zheng (2015); Liu et al. (2004). Weight trimming.
 - Lemaitre & Dufour (1987). Integrative (one weight per household) calibration.
 - Wu & Sitter (2001). Model-calibration / model-assisted estimation.
+- Deville & Särndal (1992). Calibration estimators (bounded / logit distance).
+
+## License
+
+MIT © 2026 Juan Pablo Ferreira
