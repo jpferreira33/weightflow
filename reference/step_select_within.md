@@ -40,7 +40,7 @@ weighting_spec(df, base_weights = pw) |>
   step_select_within(n_eligible = n_elig)
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. within-household selection

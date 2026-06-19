@@ -76,7 +76,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
                    by = "region")
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. nonresponse (weighting class)
@@ -90,7 +90,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
   prep()
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. nonresponse (weighting class, by household_id)
@@ -98,8 +98,8 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> 
 #> Stage summary:
 #>                     stage n_active sum_wts cv_wts deff_kish n_eff
-#>                      base     1575   15182  0.229     1.053  1496
-#>  stage_1_step_nonresponse      373   11622  0.213     1.045   357
+#>                      base      467    4371  0.236     1.056   442
+#>  stage_1_step_nonresponse      111    3047  0.253     1.064   104
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and

@@ -42,7 +42,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region")
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. unknown eligibility
@@ -55,7 +55,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
                            cluster = "household_id")
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. unknown eligibility (by household_id)

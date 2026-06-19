@@ -32,7 +32,7 @@ fitted <- weighting_spec(sample_survey, base_weights = pw) |>
 summary(fitted)
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. nonresponse (weighting class)
@@ -40,8 +40,8 @@ summary(fitted)
 #> 
 #> Stage summary:
 #>                     stage n_active sum_wts cv_wts deff_kish n_eff
-#>                      base     1575   15182  0.229     1.053  1496
-#>  stage_1_step_nonresponse      927   15182  0.195     1.038   893
+#>                      base      467    4371  0.236     1.056   442
+#>  stage_1_step_nonresponse      270    4371  0.144     1.021   265
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
@@ -49,10 +49,10 @@ summary(fitted)
 #> 
 #> --- Step 1: nonresponse (weighting class) ---
 #>   cell n_respondents n_nonresponse   factor
-#>   East           186           114 1.612903
-#>  North           282           187 1.663121
-#>  South           266           168 1.631579
-#>   West           193           179 1.927461
-#> Kish deff: 1.053 -> 1.038   |   n_eff: 1496 -> 893
+#>   East            52            44 1.846154
+#>  North            78            41 1.525641
+#>  South            72            49 1.680556
+#>   West            68            63 1.926471
+#> Kish deff: 1.056 -> 1.021   |   n_eff: 442 -> 265
 #> 
 ```

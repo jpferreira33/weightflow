@@ -40,7 +40,7 @@ weighting_spec(df, base_weights = pw) |>
   prep()
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. drop ineligible
@@ -48,8 +48,8 @@ weighting_spec(df, base_weights = pw) |>
 #> 
 #> Stage summary:
 #>                         stage n_active sum_wts cv_wts deff_kish n_eff
-#>                          base     1575   15182  0.229     1.053  1496
-#>  stage_1_step_drop_ineligible     1572   15162  0.229     1.052  1494
+#>                          base      467    4371  0.236     1.056   442
+#>  stage_1_step_drop_ineligible      466    4364  0.236     1.055   442
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and

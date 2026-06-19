@@ -14,8 +14,10 @@
   : Estimate the weighting cascade
 - [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
   : Build a nice HTML report of the weighting recipe
+- [`sample_one`](https://jpferreira33.github.io/weightflow/reference/sample_one.md)
+  : Example survey sample (select-one-person, multistage)
 - [`sample_survey`](https://jpferreira33.github.io/weightflow/reference/sample_survey.md)
-  : Example survey sample for weightflow
+  : Example survey sample (take-all roster)
 - [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
   : Assert conditions on the weights at this point of the cascade
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)

@@ -68,7 +68,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
   step_trim(max_ratio = 3, reference = "base")
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. trimming (base, cap 3)

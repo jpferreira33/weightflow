@@ -27,11 +27,11 @@ fitted <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
   prep()
 head(weight_factors(fitted))
-#>        base stage_1_step_nonresponse factor_stage_1_step_nonresponse
-#> 1  8.333333                  0.00000                        0.000000
-#> 2  8.333333                 13.44086                        1.612903
-#> 3  8.333333                 13.44086                        1.612903
-#> 4  8.333333                  0.00000                        0.000000
-#> 5 12.500000                 20.78901                        1.663121
-#> 6 12.500000                  0.00000                        0.000000
+#>   base stage_1_step_nonresponse factor_stage_1_step_nonresponse
+#> 1 12.5                 19.07051                        1.525641
+#> 2 12.5                  0.00000                        0.000000
+#> 3 12.5                  0.00000                        0.000000
+#> 4 12.5                  0.00000                        0.000000
+#> 5 12.5                 19.07051                        1.525641
+#> 6 12.5                 19.07051                        1.525641
 ```

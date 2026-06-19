@@ -30,7 +30,7 @@ rec <- weighting_spec(sample_survey, base_weights = pw)
 rec
 #> 
 #> == Weighting specification (weightflow) ==
-#> Data    : 1575 cases
+#> Data    : 467 cases
 #> Base wts: pw
 #> Steps   : (none yet)
 #> Status  : not estimated
