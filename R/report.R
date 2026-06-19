@@ -110,10 +110,13 @@
 
 # Two per-step plots (scatter + factor histogram) as inline SVG
 .step_plots <- function(prev, cur) {
-  a <- which(prev > 0)
-  if (!length(a)) return("")
-  s1 <- tryCatch(.svg_scatter(prev[a], cur[a]), error = function(e) "")
+  # Only units kept active by the step (weight > 0 before AND after): the plots
+  # show how the surviving weights are rescaled. Units the step drops to zero
+  # (nonresponse, ineligible, unknown) are reported in the diagnostics table,
+  # not drawn here, so they don't pile up as a band of zeros.
   keep <- prev > 0 & cur > 0
+  if (!any(keep)) return("")
+  s1 <- tryCatch(.svg_scatter(prev[keep], cur[keep]), error = function(e) "")
   s2 <- tryCatch(.svg_hist((cur / prev)[keep]), error = function(e) "")
   if (s1 == "" && s2 == "") return("")
   sprintf("<div class='viz'><div>%s</div><div>%s</div></div>", s1, s2)
