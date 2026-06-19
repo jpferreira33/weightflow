@@ -48,17 +48,98 @@ weighting_spec <- function(data, base_weights) {
 #'   condition (unquoted) that is TRUE for unknown-eligibility cases. Evaluated
 #'   on the data.
 #' @param by character. Variables defining the adjustment cells (optional).
+#' @param cluster character. Cluster (e.g. household) id column. If given, the
+#'   redistribution is done at the cluster level: each cluster counts once with
+#'   its (uniform) weight, the weight of unknown-eligibility clusters is
+#'   redistributed among the known ones, and the adjusted weight is assigned to
+#'   every member. Use this when unknown-eligibility units have no roster (one
+#'   row per address) while resolved units are expanded by person.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_unknown_eligibility(unknown = unknown_elig, by = "region")
-step_unknown_eligibility <- function(spec, unknown, by = NULL) {
+#'
+#' # household-level redistribution (unknown units without roster)
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_unknown_eligibility(unknown = unknown_elig, by = "region",
+#'                            cluster = "household_id")
+step_unknown_eligibility <- function(spec, unknown, by = NULL, cluster = NULL) {
   step <- structure(
     list(
-      label   = "unknown eligibility",
+      label   = if (is.null(cluster)) "unknown eligibility"
+                else sprintf("unknown eligibility (by %s)", cluster),
       unknown = substitute(unknown),
-      by      = by
+      by      = by,
+      cluster = cluster
     ),
     class = c("step_unknown_eligibility", "weighting_step")
+  )
+  .add_step(spec, step)
+}
+
+# --- Step: within-household (sub)selection ---------------------------------
+
+#' Within-household selection adjustment
+#'
+#' When one (or a subsample) of the eligible persons is selected within each
+#' household, the selected person represents all eligible persons, so the weight
+#' is multiplied by the inverse of the within-household selection probability.
+#' Apply it after the (household-level) eligibility adjustment and before the
+#' nonresponse adjustment.
+#'
+#' @param spec a weighting_spec.
+#' @param prob unquoted column with the within-household selection probability of
+#'   the selected person (need not be 1/n_eligible). The weight is multiplied by
+#'   1/prob.
+#' @param n_eligible unquoted column with the number of eligible persons in the
+#'   household, for simple random selection of one person. The weight is
+#'   multiplied by n_eligible (equivalent to prob = 1/n_eligible).
+#' @examples
+#' # simple random selection of one eligible person per household
+#' df <- transform(sample_survey,
+#'                 n_elig = ave(person_id, household_id, FUN = length))
+#' weighting_spec(df, base_weights = pw) |>
+#'   step_select_within(n_eligible = n_elig)
+step_select_within <- function(spec, prob = NULL, n_eligible = NULL) {
+  p <- substitute(prob)
+  k <- substitute(n_eligible)
+  if (is.null(p) && is.null(k))
+    stop("Provide either `prob` or `n_eligible`.")
+  if (!is.null(p) && !is.null(k))
+    stop("Provide only one of `prob` or `n_eligible`.")
+  step <- structure(
+    list(label = "within-household selection", prob = p, n_eligible = k),
+    class = c("step_select_within", "weighting_step")
+  )
+  .add_step(spec, step)
+}
+
+# --- Step: drop ineligible (out-of-scope) units ----------------------------
+
+#' Drop ineligible (out-of-scope) units
+#'
+#' Sets the weight of known-ineligible units to zero so they leave the cascade
+#' (excluded from every later step and from collect_weights). No redistribution
+#' is done.
+#'
+#' Apply it AFTER step_unknown_eligibility: ineligibles must be present and NOT
+#' flagged as unknown during that step, so they take part in the
+#' known-eligibility group and receive their share of the redistributed unknown
+#' weight. Their weight is then correctly discarded here (it represents the
+#' ineligible share of the unknown units, which are out of scope).
+#'
+#' @param spec a weighting_spec.
+#' @param ineligible a 0/1 dummy column (1 = ineligible) or any logical
+#'   condition (unquoted) that is TRUE for out-of-scope units.
+#' @examples
+#' df <- transform(sample_survey,
+#'                 ineligible = as.integer(region == "West" & age > 90))
+#' weighting_spec(df, base_weights = pw) |>
+#'   step_drop_ineligible(ineligible = ineligible) |>
+#'   prep()
+step_drop_ineligible <- function(spec, ineligible) {
+  step <- structure(
+    list(label = "drop ineligible", ineligible = substitute(ineligible)),
+    class = c("step_drop_ineligible", "weighting_step")
   )
   .add_step(spec, step)
 }

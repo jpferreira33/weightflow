@@ -4,7 +4,7 @@
 \alias{step_unknown_eligibility}
 \title{Unknown-eligibility adjustment}
 \usage{
-step_unknown_eligibility(spec, unknown, by = NULL)
+step_unknown_eligibility(spec, unknown, by = NULL, cluster = NULL)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
@@ -14,6 +14,13 @@ condition (unquoted) that is TRUE for unknown-eligibility cases. Evaluated
 on the data.}
 
 \item{by}{character. Variables defining the adjustment cells (optional).}
+
+\item{cluster}{character. Cluster (e.g. household) id column. If given, the
+redistribution is done at the cluster level: each cluster counts once with
+its (uniform) weight, the weight of unknown-eligibility clusters is
+redistributed among the known ones, and the adjusted weight is assigned to
+every member. Use this when unknown-eligibility units have no roster (one
+row per address) while resolved units are expanded by person.}
 }
 \description{
 Redistributes the weight of unknown-eligibility cases among the
@@ -22,4 +29,9 @@ known-eligibility cases, within the cells defined by \code{by}.
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region")
+
+# household-level redistribution (unknown units without roster)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id")
 }

@@ -197,24 +197,97 @@ apply_step.step_unknown_eligibility <- function(step, data, w) {
   new_w   <- w
   diag    <- list()
 
-  for (g in levels(cells)) {
-    idx     <- which(cells == g & active)
-    if (!length(idx)) next
-    w_tot   <- sum(w[idx])
-    idx_unk <- idx[unknown[idx]]
-    idx_kn  <- idx[!unknown[idx]]
-    w_known <- sum(w[idx_kn])
-    factor  <- if (w_known > 0) w_tot / w_known else NA_real_
-    if (!is.na(factor)) {
-      new_w[idx_kn]  <- w[idx_kn] * factor
-      new_w[idx_unk] <- 0
+  if (is.null(step$cluster)) {
+    # ---- person/row level ----
+    for (g in levels(cells)) {
+      idx     <- which(cells == g & active)
+      if (!length(idx)) next
+      w_tot   <- sum(w[idx])
+      idx_unk <- idx[unknown[idx]]
+      idx_kn  <- idx[!unknown[idx]]
+      w_known <- sum(w[idx_kn])
+      factor  <- if (w_known > 0) w_tot / w_known else NA_real_
+      if (!is.na(factor)) {
+        new_w[idx_kn]  <- w[idx_kn] * factor
+        new_w[idx_unk] <- 0
+      }
+      diag[[length(diag) + 1]] <- data.frame(
+        cell = g, level = "person", n_known = length(idx_kn),
+        n_unknown = length(idx_unk), factor = factor, stringsAsFactors = FALSE
+      )
     }
-    diag[[length(diag) + 1]] <- data.frame(
-      cell = g, n_known = length(idx_kn), n_unknown = length(idx_unk),
-      factor = factor, stringsAsFactors = FALSE
-    )
+  } else {
+    # ---- cluster (household) level ----
+    if (!step$cluster %in% names(data))
+      stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
+    cl <- as.character(data[[step$cluster]])
+    for (g in levels(cells)) {
+      idx <- which(cells == g & active)
+      if (!length(idx)) next
+      clg   <- cl[idx]
+      Wh    <- tapply(w[idx], clg, mean)            # one weight per cluster (uniform assumed)
+      unk_h <- tapply(unknown[idx], clg, any)       # cluster unknown if any member is
+      hh    <- names(Wh)
+      unk_h <- as.logical(unk_h[hh])
+      W_tot   <- sum(Wh)
+      W_known <- sum(Wh[!unk_h])
+      factor  <- if (W_known > 0) W_tot / W_known else NA_real_
+      if (!is.na(factor)) {
+        member_unknown <- clg %in% hh[unk_h]
+        new_w[idx[!member_unknown]] <- w[idx[!member_unknown]] * factor
+        new_w[idx[member_unknown]]  <- 0
+      }
+      diag[[length(diag) + 1]] <- data.frame(
+        cell = g, level = "household", n_known = sum(!unk_h),
+        n_unknown = sum(unk_h), factor = factor, stringsAsFactors = FALSE
+      )
+    }
   }
   list(weights = new_w, diagnostics = do.call(rbind, diag))
+}
+
+# --- Within-household (sub)selection ---------------------------------------
+apply_step.step_select_within <- function(step, data, w) {
+  active <- w > 0
+  new_w  <- w
+  if (!is.null(step$prob)) {
+    p <- as.numeric(eval(step$prob, envir = data, enclos = baseenv()))
+    if (any(is.na(p[active])) || any(p[active] <= 0 | p[active] > 1))
+      stop("`prob` must be a within-household selection probability in (0, 1].")
+    fac <- 1 / p
+    lbl <- "1/prob"
+  } else {
+    k <- as.numeric(eval(step$n_eligible, envir = data, enclos = baseenv()))
+    if (any(is.na(k[active])) || any(k[active] < 1))
+      stop("`n_eligible` must be >= 1.")
+    fac <- k
+    lbl <- "n_eligible"
+  }
+  new_w[active] <- w[active] * fac[active]
+  diag <- data.frame(
+    using       = lbl,
+    mean_factor = round(mean(fac[active]), 3),
+    min_factor  = round(min(fac[active]), 3),
+    max_factor  = round(max(fac[active]), 3),
+    stringsAsFactors = FALSE
+  )
+  list(weights = new_w, diagnostics = diag)
+}
+
+# --- Drop ineligible (out-of-scope) units ----------------------------------
+apply_step.step_drop_ineligible <- function(step, data, w) {
+  active <- w > 0
+  inelig <- .eval_cond(step$ineligible, data)
+  new_w  <- w
+  drop   <- active & inelig
+  new_w[drop] <- 0                       # discarded, NOT redistributed
+  diag <- data.frame(
+    n_dropped      = sum(drop),
+    weight_dropped = round(sum(w[drop]), 2),
+    n_remaining    = sum(new_w > 0),
+    stringsAsFactors = FALSE
+  )
+  list(weights = new_w, diagnostics = diag)
 }
 
 # --- Nonresponse -----------------------------------------------------------
