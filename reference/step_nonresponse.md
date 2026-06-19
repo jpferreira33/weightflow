@@ -12,7 +12,8 @@ step_nonresponse(
   by = NULL,
   formula = NULL,
   engine = c("logit", "tree", "forest"),
-  num_classes = 5L
+  num_classes = 5L,
+  cluster = NULL
 )
 ```
 
@@ -54,6 +55,19 @@ step_nonresponse(
   that many propensity classes (cell adjustment within each class); NULL
   applies the direct factor 1/p to each unit.
 
+- cluster:
+
+  character or NULL. If given, the adjustment is done at the cluster
+  (e.g. household) level for whole-household nonresponse: each household
+  counts once with its (uniform) weight; in "weighting_class" the
+  redistribution is between responding and nonresponding households
+  within the cells, and in "propensity" the model is fitted with one row
+  per household (household auxiliaries), predicting the household
+  response. The resulting factor is assigned to every member;
+  nonresponding households go to zero. As always, only active units
+  (weight \> 0) take part, so units already dropped (unknown
+  eligibility, ineligible) are excluded automatically.
+
 ## Examples
 
 ``` r
@@ -67,5 +81,28 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Steps   :
 #>   1. nonresponse (weighting class)
 #> Status  : not estimated
+#> 
+
+# household-level nonresponse (whole household responds or not)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region", cluster = "household_id") |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 1575 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (weighting class, by household_id)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                     stage n_active sum_wts cv_wts deff_kish n_eff
+#>                      base     1575   15182  0.229     1.053  1496
+#>  stage_1_step_nonresponse      373   11622  0.213     1.045   357
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
 #> 
 ```
