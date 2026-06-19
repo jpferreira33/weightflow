@@ -17,3 +17,9 @@
 \description{
 Detailed per-step diagnostics
 }
+\examples{
+fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  prep()
+summary(fitted)
+}

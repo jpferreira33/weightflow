@@ -20,3 +20,6 @@ a model specification list.
 \description{
 Specify a working model for a study variable y
 }
+\examples{
+y_model(income ~ age + sex, engine = "glm")
+}

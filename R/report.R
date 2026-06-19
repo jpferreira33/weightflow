@@ -132,6 +132,13 @@
 #' @param plots logical; add per-step plots (weight before-vs-after scatter and
 #'   adjustment-factor histogram). Uses ggplot2 if installed, else base graphics.
 #' @return (invisibly) the path to the HTML file.
+#' @examples
+#' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   prep()
+#' \dontrun{
+#' report_weighting(fitted)            # opens an HTML report in the browser
+#' }
 report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first; report_weighting() needs a prepped recipe.")

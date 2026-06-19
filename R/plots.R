@@ -11,6 +11,11 @@
 #'   stage), all in one grid. "factors": only the per-step factor histograms.
 #'   "summary": only the summary panel.
 #' @param ... ignored.
+#' @examples
+#' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   prep()
+#' plot(fitted)
 plot.prepped_weighting_spec <- function(x, type = c("all", "factors", "summary"), ...) {
   type   <- match.arg(type)
   h      <- x$history
@@ -64,6 +69,11 @@ plot.prepped_weighting_spec <- function(x, type = c("all", "factors", "summary")
 #'
 #' @param object a prepped object (output of prep()).
 #' @return data.frame with one weight column per stage and one factor per step.
+#' @examples
+#' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   prep()
+#' head(weight_factors(fitted))
 weight_factors <- function(object) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first.")

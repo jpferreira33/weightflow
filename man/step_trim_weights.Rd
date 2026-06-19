@@ -26,3 +26,8 @@ untrimmed units to preserve the total, mirroring survey::trimWeights().
 By default no weight may fall below 1, and the upper cap is set by an
 automatic empirical rule (Tukey far-out fence: Q3 + 3*IQR).
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_trim_weights(lower = 1, strict = TRUE) |> prep()
+}

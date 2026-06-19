@@ -17,3 +17,7 @@ an object of class "weighting_spec".
 \description{
 Creates an inert recipe object. Nothing is computed until prep() is called.
 }
+\examples{
+rec <- weighting_spec(sample_survey, base_weights = pw)
+rec
+}

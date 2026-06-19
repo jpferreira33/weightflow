@@ -19,3 +19,9 @@ stage), all in one grid. "factors": only the per-step factor histograms.
 \description{
 Diagnostic plots for the weights
 }
+\examples{
+fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  prep()
+plot(fitted)
+}

@@ -29,3 +29,7 @@ A checkpoint that does NOT change the weights; it verifies conditions and
 fails (error) or warns if they are not met. Useful to guard a production
 pipeline (tidymodels-style tests inside the recipe).
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_assert(max_deff = 5, on_fail = "warning") |> prep()
+}

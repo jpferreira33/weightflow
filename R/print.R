@@ -43,6 +43,11 @@ print.prepped_weighting_spec <- function(x, ...) {
 #' @param object a prepped object (output of prep()).
 #' @param ... ignored.
 #' @return (invisibly) the prepped object.
+#' @examples
+#' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   prep()
+#' summary(fitted)
 summary.prepped_weighting_spec <- function(object, ...) {
   print(object)
   h <- object$history                   # base, stage_1, stage_2, ...

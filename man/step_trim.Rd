@@ -46,3 +46,7 @@ There is no standard threshold: \code{max_ratio} is an analyst decision, a
 bias-variance trade-off. Use Kish's design effect (see summary) to judge
 whether trimming is worth it.
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_trim(max_ratio = 3, reference = "base")
+}

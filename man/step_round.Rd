@@ -20,3 +20,7 @@ Optional step, typically the last one (after calibration). Simple rounding
 ("nearest") slightly breaks the calibrated totals; "preserve_total" uses the
 largest-remainder method to keep the exact total.
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_round(digits = 0) |> prep()
+}

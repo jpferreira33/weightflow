@@ -25,3 +25,11 @@ pipeline, the parameters requested at each step, the per-stage summary
 (n, sum, CV, Kish deff, effective n) and per-step diagnostics, and opens it
 in the browser.
 }
+\examples{
+fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  prep()
+\dontrun{
+report_weighting(fitted)            # opens an HTML report in the browser
+}
+}

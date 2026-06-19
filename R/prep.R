@@ -10,6 +10,10 @@
 #'
 #' @param spec a weighting_spec.
 #' @return a "prepped_weighting_spec" object.
+#' @examples
+#' rec <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region")
+#' prep(rec)
 prep <- function(spec) {
   if (!inherits(spec, "weighting_spec"))
     stop("`spec` must be a weighting_spec.")
@@ -47,6 +51,11 @@ prep <- function(spec) {
 #' @param keep_intermediate logical. If TRUE, adds one column per stage.
 #' @param weight_name name of the final weight column. Default ".weight".
 #' @return data.frame.
+#' @examples
+#' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   prep()
+#' head(collect_weights(fitted))
 collect_weights <- function(object, drop_zero = TRUE,
                             keep_intermediate = FALSE, weight_name = ".weight") {
   if (!inherits(object, "prepped_weighting_spec"))

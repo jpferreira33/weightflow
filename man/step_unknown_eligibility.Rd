@@ -19,3 +19,7 @@ on the data.}
 Redistributes the weight of unknown-eligibility cases among the
 known-eligibility cases, within the cells defined by \code{by}.
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region")
+}

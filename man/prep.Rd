@@ -16,3 +16,8 @@ a "prepped_weighting_spec" object.
 Walks the steps in the order they were added, starting from the base
 weights. Each step multiplies the current weight by its adjustment factor.
 }
+\examples{
+rec <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region")
+prep(rec)
+}

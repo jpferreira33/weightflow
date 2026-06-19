@@ -16,3 +16,6 @@ list with deff, n_eff, cv and n.
 deff = 1 + CV^2(w) = m * sum(w^2) / (sum(w))^2, over the active weights.
 The effective sample size is n_eff = m / deff.
 }
+\examples{
+design_effect(sample_survey$pw)
+}

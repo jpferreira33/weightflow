@@ -20,3 +20,7 @@ each group sums to its own active count.}
 \description{
 Rescale (normalize) the weights
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_rescale(to = "n") |> prep()
+}

@@ -42,3 +42,12 @@ Requires COMPLETE auxiliary information: a data.frame \code{population} with the
 \code{x_formula} columns and the model predictors for the whole population (or a
 reference frame/census).
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population = population) |>
+  prep()
+}

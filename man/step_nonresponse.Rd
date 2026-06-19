@@ -40,3 +40,8 @@ class); NULL applies the direct factor 1/p to each unit.}
 \description{
 Nonresponse adjustment
 }
+\examples{
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region")
+}

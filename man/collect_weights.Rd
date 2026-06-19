@@ -27,3 +27,9 @@ data.frame.
 \description{
 Extract the data with the computed weights
 }
+\examples{
+fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  prep()
+head(collect_weights(fitted))
+}

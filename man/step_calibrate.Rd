@@ -58,3 +58,12 @@ trimming step.}
 \description{
 Calibration to population totals
 }
+\examples{
+# Raking to population margins
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_calibrate(method = "raking",
+                 margins = list(sex    = c(table(population$sex)),
+                                region = c(table(population$region)))) |>
+  prep()
+}

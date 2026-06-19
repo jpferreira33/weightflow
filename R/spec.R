@@ -10,6 +10,9 @@
 #' @param data data.frame with the sample units (one row per case).
 #' @param base_weights unquoted name of the design base-weight column.
 #' @return an object of class "weighting_spec".
+#' @examples
+#' rec <- weighting_spec(sample_survey, base_weights = pw)
+#' rec
 weighting_spec <- function(data, base_weights) {
   bw <- deparse(substitute(base_weights))
   if (!is.data.frame(data)) stop("`data` must be a data.frame.")
@@ -45,6 +48,9 @@ weighting_spec <- function(data, base_weights) {
 #'   condition (unquoted) that is TRUE for unknown-eligibility cases. Evaluated
 #'   on the data.
 #' @param by character. Variables defining the adjustment cells (optional).
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_unknown_eligibility(unknown = unknown_elig, by = "region")
 step_unknown_eligibility <- function(spec, unknown, by = NULL) {
   step <- structure(
     list(
@@ -76,6 +82,10 @@ step_unknown_eligibility <- function(spec, unknown, by = NULL) {
 #' @param num_classes integer or NULL. Controls how propensities are used:
 #'   an integer forms that many propensity classes (cell adjustment within each
 #'   class); NULL applies the direct factor 1/p to each unit.
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class",
+#'                    by = "region")
 step_nonresponse <- function(spec, respondent,
                              method = c("weighting_class", "propensity"),
                              by = NULL, formula = NULL,
@@ -133,6 +143,14 @@ step_nonresponse <- function(spec, respondent,
 #'   it is enforced smoothly. Avoids extreme/negative weights without a separate
 #'   trimming step.
 #' @param maxit,tol convergence control for raking and bounded calibration.
+#' @examples
+#' # Raking to population margins
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_calibrate(method = "raking",
+#'                  margins = list(sex    = c(table(population$sex)),
+#'                                 region = c(table(population$region)))) |>
+#'   prep()
 step_calibrate <- function(spec, margins = NULL,
                            method = c("raking", "poststratify", "linear"),
                            formula = NULL, totals = NULL,
@@ -209,6 +227,9 @@ step_calibrate <- function(spec, margins = NULL,
 #'   afterwards you can use FALSE: calibration restores the totals.
 #' @param by character. Groups within which to redistribute (optional).
 #' @param maxit integer. Maximum cap+redistribution iterations.
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_trim(max_ratio = 3, reference = "base")
 step_trim <- function(spec, max_ratio, min_ratio = NULL,
                       reference = c("base", "median", "value"),
                       redistribute = TRUE, by = NULL, maxit = 50L) {
@@ -236,6 +257,8 @@ step_trim <- function(spec, max_ratio, min_ratio = NULL,
 #'
 #' @param w vector of weights (zeros are dropped).
 #' @return list with deff, n_eff, cv and n.
+#' @examples
+#' design_effect(sample_survey$pw)
 design_effect <- function(w) {
   wa <- w[w > 0]
   m  <- length(wa)
@@ -256,6 +279,9 @@ design_effect <- function(w) {
 #' @param method "nearest" (simple rounding) or "preserve_total" (keeps the sum
 #'   of weights). Note: "preserve_total" can break equality of weights within a
 #'   cluster; if you need integer and equal weights per household, use "nearest".
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_round(digits = 0) |> prep()
 step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total")) {
   method <- match.arg(method)
   step <- structure(
@@ -278,6 +304,8 @@ step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total"
 #' @param family for engine = "glm": "gaussian", "binomial" or "poisson".
 #'   For tree/forest, regression vs classification is inferred from y.
 #' @return a model specification list.
+#' @examples
+#' y_model(income ~ age + sex, engine = "glm")
 y_model <- function(formula, engine = c("glm", "tree", "forest"), family = NULL) {
   engine <- match.arg(engine)
   if (!inherits(formula, "formula")) stop("`formula` must be a formula y ~ x.")
@@ -306,6 +334,14 @@ y_model <- function(formula, engine = c("glm", "tree", "forest"), family = NULL)
 #' @param equal_within_cluster logical. If TRUE, integrative calibration: a
 #'   single weight per cluster. Requires `cluster` and that the incoming weight
 #'   be uniform within the cluster.
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_model_calibration(
+#'     x_formula  = ~ sex + region,
+#'     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+#'     population = population) |>
+#'   prep()
 step_model_calibration <- function(spec, x_formula, models, population,
                                    cluster = NULL, equal_within_cluster = FALSE) {
   if (!inherits(spec, "weighting_spec"))
@@ -350,6 +386,9 @@ step_model_calibration <- function(spec, x_formula, models, population,
 #'   ratio (per active unit).
 #' @param min_n_eff numeric or NULL. Minimum acceptable effective sample size.
 #' @param on_fail "error" (stop the cascade) or "warning".
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_assert(max_deff = 5, on_fail = "warning") |> prep()
 step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
                         min_n_eff = NULL, on_fail = c("error", "warning")) {
   on_fail <- match.arg(on_fail)
@@ -383,6 +422,10 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #'   weight is outside `[lower, upper]` (like survey's strict = TRUE). If FALSE, a
 #'   single pass (redistribution may push some weights slightly past the cap).
 #' @param maxit integer. Maximum iterations when strict = TRUE.
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_trim_weights(lower = 1, strict = TRUE) |> prep()
 step_trim_weights <- function(spec, lower = 1, upper = NULL,
                               strict = TRUE, maxit = 50L) {
   step <- structure(
@@ -408,6 +451,9 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #' @param total numeric. Target sum when to = "total".
 #' @param by character. Rescale within these groups (optional). With to = "n",
 #'   each group sums to its own active count.
+#' @examples
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_rescale(to = "n") |> prep()
 step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL) {
   to <- match.arg(to)
   if (to == "total" && is.null(total)) stop("to = 'total' requires `total`.")
