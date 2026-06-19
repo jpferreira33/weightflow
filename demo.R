@@ -1,18 +1,4 @@
-# ===========================================================================
-# weightflow DEMO — run in R (R >= 4.1, no external dependencies)
-#
-#   setwd("path/to/weightflow")   # folder containing R/ and this file
-#   source("demo.R")
-# ===========================================================================
-
-# Load the functions (in a real package this is done by library(weightflow))
-for (f in list.files("R", pattern = "\\.R$", full.names = TRUE)) source(f)
-
-# --- 1. Simulated data with HOUSEHOLD structure ----------------------------
-# HOUSEHOLD attributes (region, design weight, response status) are constant
-# within a household. PERSON attributes (sex, age, income) vary within it.
-# Response and eligibility are coded as 0/1 DUMMY variables, as the user's
-# dataset would have them.
+library(weightflow)
 set.seed(2024)
 H   <- 800                                          # number of households
 sz  <- sample(1:5, H, replace = TRUE, prob = c(.25, .35, .22, .12, .06))
@@ -53,16 +39,10 @@ recipe <- weighting_spec(survey, base_weights = pw) |>
     unknown = unknown_elig,                # 0/1 dummy: 1 = eligibility unknown
     by = c("region")
   ) |>
-  step_nonresponse(
-    respondent = responded,                # 0/1 dummy: 1 = responded
-    method = "weighting_class",
-    by = c("region")                       # household-level cell -> uniform
-  ) |>
-  step_trim(
-    max_ratio    = 4,
-    reference    = "base",
-    redistribute = FALSE                   # FALSE preserves household uniformity
-  ) |>
+  step_nonresponse(respondent = responded, method = "propensity",# 0/1 dummy: 1 = responded
+                   engine = "forest", 
+                   formula = ~ region + sex + age_g,
+                   num_classes = 10) |> 
   step_calibrate(
     method  = "linear",                    # GREG: handles income (continuous)
     formula = ~ sex + income,
@@ -70,7 +50,7 @@ recipe <- weighting_spec(survey, base_weights = pw) |>
     cluster = "household",
     equal_within_cluster = TRUE            # equal weights within household
   ) |>
-  step_round(digits = 0, method = "nearest")   # integers; "nearest" keeps household equality
+  step_round(digits = 0, method = "preserve_total")   # integers; "nearest" keeps household equality
 
 print(recipe)
 
@@ -80,6 +60,9 @@ print(fitted)
 
 # --- 4. Detailed per-step diagnostics --------------------------------------
 summary(fitted)
+
+report_weighting(fitted)   
+
 
 # --- 5. Result and within-household equality check -------------------------
 wts <- collect_weights(fitted, drop_zero = TRUE, keep_intermediate = TRUE)

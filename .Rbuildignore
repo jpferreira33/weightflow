@@ -2,3 +2,7 @@
 ^\.gitignore$
 ^\.Rbuildignore$
 ^\.git$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
