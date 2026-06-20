@@ -55,39 +55,21 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="weightflow">weightflow<a class="anchor" aria-label="anchor" href="#weightflow"></a>
 </h1></div>
-<p>Declarative, pipeable API to build <strong>survey weights</strong> through hierarchical stages, tidymodels-style. It starts from design base weights and chains adjustments:</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>Unknown eligibility</strong> — redistributes the weight of unknown-eligibility cases among the known-eligibility ones.</li>
-<li>
-<strong>Nonresponse</strong> — by weighting classes (cells) or by <strong>propensity</strong> estimated with logistic regression (<code>engine = "logit"</code>), CART trees (<code>engine = "tree"</code>, via <code>rpart</code>) or random forest (<code>engine = "forest"</code>, via <code>ranger</code>). Propensities are used as a direct <code>1/p</code> factor per unit (<code>num_classes = NULL</code>) or grouped into classes (<code>num_classes = k</code>).</li>
-<li>
-<strong>Calibration</strong> — <em>raking</em> (IPF, categorical margins), <em>post-stratification</em> (one categorical variable) or <em>linear / GREG</em> (<code>method = "linear"</code>, with a formula and population totals; handles <strong>continuous</strong> and categorical auxiliaries). Linear calibration also offers <strong>equal weights within a cluster</strong> (<code>equal_within_cluster = TRUE</code> with <code>cluster</code>), via Lemaitre-Dufour
-<ol start="1987" style="list-style-type: decimal">
-<li>integrative calibration — handy so all members of a household share the same weight. Plus <strong>model calibration</strong> (<code>step_model_calibration</code>, Wu &amp; Sitter 2001): predicts several <code>y</code> variables with working models (glm/tree/random forest) and calibrates to their population totals for model-assisted efficiency, on top of calibrating to the <code>X</code> totals for consistency.</li>
-</ol>
-</li>
-</ol>
-<p>Plus an optional <strong>trimming</strong> step (<code>step_trim</code>) insertable anywhere in the cascade, even several times; an optional final <strong>rounding</strong> step (<code>step_round</code>, simple or total-preserving); and the <strong>Kish design effect</strong> (deff = 1 + CV², with effective sample size) reported at every stage.</p>
-<p><code>plot(fitted)</code> shows a diagnostic grid (per-step factor histograms plus a summary panel) and <code>weight_factors(fitted)</code> returns the per-unit, per-step factors for custom plots. <code>report_weighting(fitted)</code> writes a self-contained HTML report — recipe, requested parameters per step, per-stage summary and diagnostics, plus per-step plots (weight before-vs-after scatter and the adjustment-factor histogram, drawn as inline SVG with no graphics device required). It opens in the browser — no Shiny or server needed.</p>
-<p>Optional <strong>bounded calibration</strong> (<code>calfun = "logit"</code> or <code>bounds = c(L, U)</code> in the linear method) keeps the g-weights within range without a separate trim. Other optional steps: <strong>assertions</strong> (<code>step_assert</code>, a checkpoint that errors/warns if deff, weight ratio or effective n cross a threshold), <strong>automatic survey-style trimming</strong> (<code>step_trim_weights</code>: no weight below 1, auto upper cap, <code>strict = TRUE</code> like <code><a href="https://rdrr.io/pkg/survey/man/trimWeights.html" class="external-link">survey::trimWeights</a></code>), and <strong>rescaling</strong> (<code>step_rescale</code>: normalize weights to the sample size or a target total).</p>
-<p>Response and eligibility can be supplied as <strong>0/1 dummy columns</strong> (1 = responded / 1 = unknown) or as any logical condition.</p>
 <blockquote>
-<p>Follows the classic framework of Valliant, Dever &amp; Kreuter (<em>Practical Tools for Designing and Weighting Survey Samples</em>). <strong>It computes weights only; it does not estimate variances.</strong> For inference, export the weights and use them with <code>survey</code>/<code>srvyr</code>.</p>
+<p>Declarative, pipeable survey weighting in base R — from design weights to calibrated, variance-ready weights.</p>
 </blockquote>
+<p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"jpferreira33/weightflow"</span><span class="op">)</span></span></code></pre></div>
-<p>weightflow is dependency-free (base R, R &gt;= 4.1). <code>rpart</code> and <code>ranger</code> are optional, needed only for the tree/forest nonresponse engines.</p>
 </div>
 <div class="section level2">
-<h2 id="the-design-idea">The design idea<a class="anchor" aria-label="anchor" href="#the-design-idea"></a>
+<h2 id="the-idea">The idea<a class="anchor" aria-label="anchor" href="#the-idea"></a>
 </h2>
-<p>The recipe is <strong>inert</strong>: building it computes nothing. <code><a href="reference/prep.html">prep()</a></code> walks the steps <em>in order</em> and estimates the cascade of factors; <code><a href="reference/collect_weights.html">collect_weights()</a></code> extracts the final weights. Separating <em>define</em> from <em>apply</em> is what makes it reproducible and auditable.</p>
-<p>The package ships with two example datasets, <code>sample_survey</code> (a household sample with design weights, an unknown-eligibility flag and a response indicator) and <code>population</code> (the frame, used for calibration targets), so the example below runs as-is:</p>
+<p>A recipe is <strong>inert</strong>: building it computes nothing. <code><a href="reference/prep.html">prep()</a></code> walks the steps <em>in order</em> and estimates the cascade of factors; <code><a href="reference/collect_weights.html">collect_weights()</a></code> extracts the final weights. Separating <em>define</em> from <em>apply</em> makes the whole process reproducible and auditable, and it is exactly what lets the bootstrap re-run the entire cascade per replicate.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jpferreira33/weightflow" class="external-link">weightflow</a></span><span class="op">)</span></span>
 <span></span>
@@ -95,57 +77,130 @@
 <span>  <span class="fu"><a href="reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/step_trim.html">step_trim</a></span><span class="op">(</span>max_ratio <span class="op">=</span> <span class="fl">3</span>, reference <span class="op">=</span> <span class="st">"base"</span>, redistribute <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>,</span>
-<span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sex    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>                                region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                                sex    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="va">recipe</span><span class="op">)</span>              <span class="co"># estimate the cascade</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>                     <span class="co"># per-stage diagnostics + Kish deff</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>                        <span class="co"># diagnostic plots</span></span>
 <span><span class="va">wts</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/collect_weights.html">collect_weights</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>   <span class="co"># data.frame with .weight</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="try-it">Try it<a class="anchor" aria-label="anchor" href="#try-it"></a>
+<h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>
 </h2>
-<p>After installing, the bundled datasets let you run the whole pipeline right away — no data prep needed:</p>
+<p><strong>Adjustment steps</strong>, applied in the order you pipe them:</p>
+<table class="table">
+<colgroup>
+<col width="30%">
+<col width="70%">
+</colgroup>
+<thead><tr>
+<th>Step</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/step_unknown_eligibility.html">step_unknown_eligibility()</a></code></td>
+<td>Redistribute unknown-eligibility cases among the known ones (person- or household-level via <code>cluster</code>).</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_drop_ineligible.html">step_drop_ineligible()</a></code></td>
+<td>Zero out out-of-scope units.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_select_within.html">step_select_within()</a></code></td>
+<td>Within-household selection (unequal <code>prob</code> or equal <code>n_eligible</code>).</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_nonresponse.html">step_nonresponse()</a></code></td>
+<td>Weighting classes or propensity (logit / CART / random forest), person- or household-level.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_calibrate.html">step_calibrate()</a></code></td>
+<td>Raking, post-stratification, linear/GREG; bounded (Deville-Särndal) and integrative (one weight per household) options.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code></td>
+<td>Wu-Sitter model calibration with working models for the outcomes.</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/step_trim.html">step_trim()</a></code>, <code><a href="reference/step_trim_weights.html">step_trim_weights()</a></code>
+</td>
+<td>Manual or automatic survey-style trimming, insertable anywhere.</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/step_round.html">step_round()</a></code>, <code><a href="reference/step_rescale.html">step_rescale()</a></code>
+</td>
+<td>Integer rounding and rescaling to a size or total.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_assert.html">step_assert()</a></code></td>
+<td>Quality checkpoint on deff, weight ratio or effective n.</td>
+</tr>
+</tbody>
+</table>
+<p>Eligibility and response accept <strong>0/1 dummy columns</strong> or any logical condition.</p>
+<p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV²) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors; <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained HTML report — pipeline diagram, variables used, per-stage summaries and per-step visuals — with no graphics device or server required.</p>
+<p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article):</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jpferreira33/weightflow" class="external-link">weightflow</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
-<span>                   by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>,</span>
-<span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sex    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>                                region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/collect_weights.html">collect_weights</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span></span></code></pre></div>
-<p>The <code>data-raw/weightflow_data.R</code> script shows how <code>population</code> and <code>sample_survey</code> are generated, if you want to reproduce or tweak them.</p>
+<code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">recipe</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and CI</span></span>
+<span><span class="fu"><a href="reference/as_svydesign.html">as_svydesign</a></span><span class="op">(</span><span class="va">fitted</span>, ids <span class="op">=</span> <span class="st">"psu"</span>, strata <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span>   <span class="co"># survey linearization</span></span>
+<span><span class="fu"><a href="reference/collect_replicate_weights.html">collect_replicate_weights</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span>     <span class="co"># replicate weights, ready for srvyr</span></span></code></pre></div>
+<p>The bootstrap resamples PSUs within strata (Rao-Wu rescaling bootstrap) and re-applies the recipe on each replicate, so the replicate weights carry the variability of <strong>every</strong> adjustment.</p>
 </div>
 <div class="section level2">
-<h2 id="adding-a-new-adjustment">Adding a new adjustment<a class="anchor" aria-label="anchor" href="#adding-a-new-adjustment"></a>
+<h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a>
 </h2>
-<p><code>apply_step()</code> is the internal S3 generic that computes each step. To add a new adjustment: define a <code>step_*()</code> constructor (inert) and its <code>apply_step.&lt;class&gt;()</code> method. Nothing else changes.</p>
+<p>Three bundled datasets: <code>population</code> (the frame), <code>sample_survey</code> (take-all roster) and <code>sample_one</code> (multistage select-one design), all with stratum, PSU and design weight, so the full pipeline and the variance methods run natively.</p>
+</div>
+<div class="section level2">
+<h2 id="extending">Extending<a class="anchor" aria-label="anchor" href="#extending"></a>
+</h2>
+<p><code>apply_step()</code> is the internal S3 generic behind each step. To add an adjustment, define a <code>step_*()</code> constructor (inert) and its <code>apply_step.&lt;class&gt;()</code> method — nothing else changes.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
+<p><em>General framework</em></p>
 <ul>
-<li>Valliant, Dever &amp; Kreuter. <em>Practical Tools for Designing and Weighting Survey Samples.</em>
-</li>
-<li>Kish (1965, 1990). Design effect from unequal weighting.</li>
-<li>Potter (1988, 1990); Potter &amp; Zheng (2015); Liu et al. (2004). Weight trimming.</li>
-<li>Lemaitre &amp; Dufour (1987). Integrative (one weight per household) calibration.</li>
-<li>Wu &amp; Sitter (2001). Model-calibration / model-assisted estimation.</li>
-<li>Deville &amp; Särndal (1992). Calibration estimators (bounded / logit distance).</li>
+<li>Valliant, R., Dever, J. A., &amp; Kreuter, F. (2018). <em>Practical Tools for Designing and Weighting Survey Samples</em> (2nd ed.). Springer.</li>
+<li>Särndal, C.-E., Swensson, B., &amp; Wretman, J. (1992). <em>Model Assisted Survey Sampling</em>. Springer.</li>
+</ul>
+<p><em>Nonresponse</em></p>
+<ul>
+<li>Särndal, C.-E., &amp; Lundström, S. (2005). <em>Estimation in Surveys with Nonresponse</em>. Wiley.</li>
+<li>Little, R. J. A. (1986). Survey nonresponse adjustments for estimates of means. <em>International Statistical Review</em>, 54(2), 139–157.</li>
+</ul>
+<p><em>Calibration</em></p>
+<ul>
+<li>Deville, J.-C., &amp; Särndal, C.-E. (1992). Calibration estimators in survey sampling. <em>JASA</em>, 87(418), 376–382.</li>
+<li>Deville, J.-C., Särndal, C.-E., &amp; Sautory, O. (1993). Generalized raking procedures in survey sampling. <em>JASA</em>, 88(423), 1013–1020.</li>
+<li>Deming, W. E., &amp; Stephan, F. F. (1940). On a least squares adjustment of a sampled frequency table. <em>Annals of Mathematical Statistics</em>, 11(4), 427–444.</li>
+<li>Lemaître, G., &amp; Dufour, J. (1987). An integrated method for weighting persons and families. <em>Survey Methodology</em>, 13(2), 199–207.</li>
+<li>Wu, C., &amp; Sitter, R. R. (2001). A model-calibration approach to using complete auxiliary information from survey data. <em>JASA</em>, 96(453), 185–193.</li>
+</ul>
+<p><em>Design effect and trimming</em></p>
+<ul>
+<li>Kish, L. (1965). <em>Survey Sampling</em>. Wiley. — and Kish, L. (1992). Weighting for unequal Pi. <em>Journal of Official Statistics</em>, 8(2), 183–200.</li>
+<li>Potter, F. J. (1990). A study of procedures to identify and trim extreme sample weights. <em>Proc. ASA Survey Research Methods Section</em>, 225–230.</li>
+<li>Potter, F., &amp; Zheng, Y. (2015). Methods and issues in trimming extreme weights in sample surveys. <em>Proc. ASA Survey Research Methods Section</em>.</li>
+</ul>
+<p><em>Variance estimation</em></p>
+<ul>
+<li>Rao, J. N. K., &amp; Wu, C. F. J. (1988). Resampling inference with complex survey data. <em>JASA</em>, 83(401), 231–241.</li>
+<li>Rao, J. N. K., Wu, C. F. J., &amp; Yue, K. (1992). Some recent work on resampling methods for complex surveys. <em>Survey Methodology</em>, 18(2), 209–217.</li>
+<li>Preston, J. (2009). Rescaled bootstrap for stratified multistage sampling. <em>Survey Methodology</em>, 35(2), 227–234.</li>
+<li>Wolter, K. M. (2007). <em>Introduction to Variance Estimation</em> (2nd ed.). Springer.</li>
+<li>Lumley, T. (2010). <em>Complex Surveys: A Guide to Analysis Using R</em>. Wiley.</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
-<p>MIT © 2026 Juan Pablo Ferreira</p>
+<p>MIT © Juan Pablo Ferreira</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

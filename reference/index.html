@@ -36,7 +36,7 @@
     </div>
 
     <div class="section level2">
-      <h2 id="all-functions">All functions<a class="anchor" aria-label="anchor" href="#all-functions"></a></h2>
+      <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a></h2>
 
 
 
@@ -47,59 +47,26 @@
 
       <dl><dt>
 
-          <code><a href="as_svydesign.html">as_svydesign()</a></code> <code><a href="as_svydesign.html">as_svrepdesign()</a></code>
+          <code><a href="weightflow-package.html">weightflow</a></code> <code><a href="weightflow-package.html">weightflow-package</a></code>
 
         </dt>
-        <dd>Export weightflow weights to a survey design</dd>
+        <dd>weightflow: declarative survey weighting</dd>
+      </dl></div><div class="section level2">
+      <h2 id="build-and-run-a-recipe">Build and run a recipe<a class="anchor" aria-label="anchor" href="#build-and-run-a-recipe"></a></h2>
 
-        <dt>
+      <div class="section-desc"><p>Define the recipe, estimate it, and pull the weights out.</p></div>
 
-          <code><a href="bootstrap_estimate.html">bootstrap_estimate()</a></code> <code><a href="bootstrap_estimate.html">boot_total()</a></code> <code><a href="bootstrap_estimate.html">boot_mean()</a></code>
+      <dl></dl></div><div class="section level2">
 
-        </dt>
-        <dd>Bootstrap estimate, standard error and confidence interval</dd>
 
-        <dt>
 
-          <code><a href="bootstrap_weights.html">bootstrap_weights()</a></code>
 
-        </dt>
-        <dd>Bootstrap replicate weights that re-apply the recipe</dd>
+      <dl><dt>
 
-        <dt>
-
-          <code><a href="collect_replicate_weights.html">collect_replicate_weights()</a></code>
+          <code><a href="weighting_spec.html">weighting_spec()</a></code>
 
         </dt>
-        <dd>Collect replicate weights into a data frame ready for srvyr</dd>
-
-        <dt>
-
-          <code><a href="collect_weights.html">collect_weights()</a></code>
-
-        </dt>
-        <dd>Extract the data with the computed weights</dd>
-
-        <dt>
-
-          <code><a href="design_effect.html">design_effect()</a></code>
-
-        </dt>
-        <dd>Kish design effect from unequal weighting</dd>
-
-        <dt>
-
-          <code><a href="plot.prepped_weighting_spec.html">plot(<i>&lt;prepped_weighting_spec&gt;</i>)</a></code>
-
-        </dt>
-        <dd>Diagnostic plots for the weights</dd>
-
-        <dt>
-
-          <code><a href="population.html">population</a></code>
-
-        </dt>
-        <dd>Example target population for weightflow</dd>
+        <dd>Start a weighting specification</dd>
 
         <dt>
 
@@ -110,38 +77,33 @@
 
         <dt>
 
-          <code><a href="report_weighting.html">report_weighting()</a></code>
+          <code><a href="collect_weights.html">collect_weights()</a></code>
 
         </dt>
-        <dd>Build a nice HTML report of the weighting recipe</dd>
+        <dd>Extract the data with the computed weights</dd>
 
         <dt>
 
-          <code><a href="sample_one.html">sample_one</a></code>
+          <code><a href="y_model.html">y_model()</a></code>
 
         </dt>
-        <dd>Example survey sample (select-one-person, multistage)</dd>
+        <dd>Specify a working model for a study variable y</dd>
+      </dl></div><div class="section level2">
+      <h2 id="adjustment-steps">Adjustment steps<a class="anchor" aria-label="anchor" href="#adjustment-steps"></a></h2>
 
-        <dt>
+      <div class="section-desc"><p>The staged adjustments, applied in the order you pipe them.</p></div>
 
-          <code><a href="sample_survey.html">sample_survey</a></code>
+      <dl></dl></div><div class="section level2">
 
-        </dt>
-        <dd>Example survey sample (take-all roster)</dd>
 
-        <dt>
 
-          <code><a href="step_assert.html">step_assert()</a></code>
 
-        </dt>
-        <dd>Assert conditions on the weights at this point of the cascade</dd>
+      <dl><dt>
 
-        <dt>
-
-          <code><a href="step_calibrate.html">step_calibrate()</a></code>
+          <code><a href="step_unknown_eligibility.html">step_unknown_eligibility()</a></code>
 
         </dt>
-        <dd>Calibration to population totals</dd>
+        <dd>Unknown-eligibility adjustment</dd>
 
         <dt>
 
@@ -152,10 +114,10 @@
 
         <dt>
 
-          <code><a href="step_model_calibration.html">step_model_calibration()</a></code>
+          <code><a href="step_select_within.html">step_select_within()</a></code>
 
         </dt>
-        <dd>Model calibration (model-assisted, Wu &amp; Sitter 2001)</dd>
+        <dd>Within-household selection adjustment</dd>
 
         <dt>
 
@@ -166,24 +128,17 @@
 
         <dt>
 
-          <code><a href="step_rescale.html">step_rescale()</a></code>
+          <code><a href="step_calibrate.html">step_calibrate()</a></code>
 
         </dt>
-        <dd>Rescale (normalize) the weights</dd>
+        <dd>Calibration to population totals</dd>
 
         <dt>
 
-          <code><a href="step_round.html">step_round()</a></code>
+          <code><a href="step_model_calibration.html">step_model_calibration()</a></code>
 
         </dt>
-        <dd>Round the final weights</dd>
-
-        <dt>
-
-          <code><a href="step_select_within.html">step_select_within()</a></code>
-
-        </dt>
-        <dd>Within-household selection adjustment</dd>
+        <dd>Model calibration (model-assisted, Wu &amp; Sitter 2001)</dd>
 
         <dt>
 
@@ -201,17 +156,47 @@
 
         <dt>
 
-          <code><a href="step_unknown_eligibility.html">step_unknown_eligibility()</a></code>
+          <code><a href="step_round.html">step_round()</a></code>
 
         </dt>
-        <dd>Unknown-eligibility adjustment</dd>
+        <dd>Round the final weights</dd>
 
         <dt>
+
+          <code><a href="step_rescale.html">step_rescale()</a></code>
+
+        </dt>
+        <dd>Rescale (normalize) the weights</dd>
+
+        <dt>
+
+          <code><a href="step_assert.html">step_assert()</a></code>
+
+        </dt>
+        <dd>Assert conditions on the weights at this point of the cascade</dd>
+      </dl></div><div class="section level2">
+      <h2 id="diagnostics-and-reporting">Diagnostics and reporting<a class="anchor" aria-label="anchor" href="#diagnostics-and-reporting"></a></h2>
+
+      <div class="section-desc"><p>Inspect, summarise and report the cascade.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="summary.prepped_weighting_spec.html">summary(<i>&lt;prepped_weighting_spec&gt;</i>)</a></code>
 
         </dt>
         <dd>Detailed per-step diagnostics</dd>
+
+        <dt>
+
+          <code><a href="plot.prepped_weighting_spec.html">plot(<i>&lt;prepped_weighting_spec&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Diagnostic plots for the weights</dd>
 
         <dt>
 
@@ -222,19 +207,87 @@
 
         <dt>
 
-          <code><a href="weighting_spec.html">weighting_spec()</a></code>
+          <code><a href="design_effect.html">design_effect()</a></code>
 
         </dt>
-        <dd>Start a weighting specification</dd>
+        <dd>Kish design effect from unequal weighting</dd>
 
         <dt>
 
-          <code><a href="y_model.html">y_model()</a></code>
+          <code><a href="report_weighting.html">report_weighting()</a></code>
 
         </dt>
-        <dd>Specify a working model for a study variable y</dd>
+        <dd>Build a nice HTML report of the weighting recipe</dd>
+      </dl></div><div class="section level2">
+      <h2 id="variance-estimation">Variance estimation<a class="anchor" aria-label="anchor" href="#variance-estimation"></a></h2>
+
+      <div class="section-desc"><p>Bootstrap that re-applies the recipe, plus survey/srvyr bridges.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="bootstrap_weights.html">bootstrap_weights()</a></code>
+
+        </dt>
+        <dd>Bootstrap replicate weights that re-apply the recipe</dd>
+
+        <dt>
+
+          <code><a href="bootstrap_estimate.html">bootstrap_estimate()</a></code> <code><a href="bootstrap_estimate.html">boot_total()</a></code> <code><a href="bootstrap_estimate.html">boot_mean()</a></code>
+
+        </dt>
+        <dd>Bootstrap estimate, standard error and confidence interval</dd>
+
+        <dt>
+
+          <code><a href="as_svydesign.html">as_svydesign()</a></code> <code><a href="as_svydesign.html">as_svrepdesign()</a></code>
+
+        </dt>
+        <dd>Export weightflow weights to a survey design</dd>
+
+        <dt>
+
+          <code><a href="collect_replicate_weights.html">collect_replicate_weights()</a></code>
+
+        </dt>
+        <dd>Collect replicate weights into a data frame ready for srvyr</dd>
+      </dl></div><div class="section level2">
+      <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a></h2>
+
+
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="population.html">population</a></code>
+
+        </dt>
+        <dd>Example target population for weightflow</dd>
+
+        <dt>
+
+          <code><a href="sample_survey.html">sample_survey</a></code>
+
+        </dt>
+        <dd>Example survey sample (take-all roster)</dd>
+
+        <dt>
+
+          <code><a href="sample_one.html">sample_one</a></code>
+
+        </dt>
+        <dd>Example survey sample (select-one-person, multistage)</dd>
       </dl></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

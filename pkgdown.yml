@@ -3,7 +3,7 @@ pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   variance-estimation: variance-estimation.html
-last_built: 2026-06-20T03:33Z
+last_built: 2026-06-20T03:46Z
 urls:
   reference: https://jpferreira33.github.io/weightflow/reference
   article: https://jpferreira33.github.io/weightflow/articles
