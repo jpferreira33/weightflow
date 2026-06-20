@@ -1,4 +1,4 @@
-pandoc: 3.6.3
+pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
@@ -7,7 +7,7 @@ articles:
   validation-against-survey: validation-against-survey.html
   variance-estimation: variance-estimation.html
   weightflow: weightflow.html
-last_built: 2026-06-20T14:03Z
+last_built: 2026-06-20T14:12Z
 urls:
   reference: https://jpferreira33.github.io/weightflow/reference
   article: https://jpferreira33.github.io/weightflow/articles

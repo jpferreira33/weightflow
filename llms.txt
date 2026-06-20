@@ -12,6 +12,7 @@ has **no hard dependencies** (base R, R \>= 4.1) and bridges to
 ## Installation
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("jpferreira33/weightflow")
 ```
@@ -27,6 +28,7 @@ whole process reproducible and auditable, and it is exactly what lets
 the bootstrap re-run the entire cascade per replicate.
 
 ``` r
+
 library(weightflow)
 
 recipe <- weighting_spec(sample_survey, base_weights = pw) |>
@@ -76,6 +78,7 @@ server required.
 **Variance estimation** (see the *Variance estimation* article):
 
 ``` r
+
 boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu")
 boot_mean(boot, "income")           # estimate, SE and CI
 as_svydesign(fitted, ids = "psu", strata = "region")   # survey linearization

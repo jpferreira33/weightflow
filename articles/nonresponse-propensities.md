@@ -24,6 +24,7 @@ Each respondent’s weight is multiplied by `f_c`; nonrespondents go to
 zero.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region") |>
@@ -61,6 +62,7 @@ lost). So the weighted total per region after the step equals the
 base-weight total before it:
 
 ``` r
+
 before <- tapply(sample_survey$pw,  sample_survey$region, sum)
 after  <- tapply(wf$final_weight,   sample_survey$region, sum)
 round(cbind(before, after, diff = after - before), 6)
@@ -91,6 +93,7 @@ each, which is more robust to a misspecified model.
 ### Logistic regression
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "logit",
@@ -141,6 +144,7 @@ the forest typically yields the largest, the weighting classes the
 smallest.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "tree",
@@ -151,6 +155,7 @@ design_effect(wf$final_weight)$deff
 ```
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "forest",
@@ -169,6 +174,7 @@ counts once with its weight, and the redistribution (or the propensity
 model) is done over households, then assigned to their members.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region", cluster = "household_id") |>
