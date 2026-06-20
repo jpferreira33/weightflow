@@ -47,8 +47,10 @@ range without a separate trim. Other optional steps: **assertions**
 (`step_assert`, a checkpoint that errors/warns if deff, weight ratio or
 effective n cross a threshold), **automatic survey-style trimming**
 (`step_trim_weights`: no weight below 1, auto upper cap, `strict = TRUE`
-like `survey::trimWeights`), and **rescaling** (`step_rescale`:
-normalize weights to the sample size or a target total).
+like
+[`survey::trimWeights`](https://rdrr.io/pkg/survey/man/trimWeights.html)),
+and **rescaling** (`step_rescale`: normalize weights to the sample size
+or a target total).
 
 Response and eligibility can be supplied as **0/1 dummy columns** (1 =
 responded / 1 = unknown) or as any logical condition.

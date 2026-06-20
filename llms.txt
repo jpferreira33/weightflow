@@ -47,8 +47,10 @@ range without a separate trim. Other optional steps: **assertions**
 (`step_assert`, a checkpoint that errors/warns if deff, weight ratio or
 effective n cross a threshold), **automatic survey-style trimming**
 (`step_trim_weights`: no weight below 1, auto upper cap, `strict = TRUE`
-like `survey::trimWeights`), and **rescaling** (`step_rescale`:
-normalize weights to the sample size or a target total).
+like
+[`survey::trimWeights`](https://rdrr.io/pkg/survey/man/trimWeights.html)),
+and **rescaling** (`step_rescale`: normalize weights to the sample size
+or a target total).
 
 Response and eligibility can be supplied as **0/1 dummy columns** (1 =
 responded / 1 = unknown) or as any logical condition.
@@ -153,6 +155,17 @@ MIT © 2026 Juan Pablo Ferreira
 
 ## All functions
 
+- [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  : Export weightflow weights to a survey design
+- [`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  : Bootstrap estimate, standard error and confidence interval
+- [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  : Bootstrap replicate weights that re-apply the recipe
+- [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
+  : Collect replicate weights into a data frame ready for srvyr
 - [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
   : Extract the data with the computed weights
 - [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)

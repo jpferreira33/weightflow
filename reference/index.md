@@ -2,6 +2,17 @@
 
 ## All functions
 
+- [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  : Export weightflow weights to a survey design
+- [`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  : Bootstrap estimate, standard error and confidence interval
+- [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  : Bootstrap replicate weights that re-apply the recipe
+- [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
+  : Collect replicate weights into a data frame ready for srvyr
 - [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
   : Extract the data with the computed weights
 - [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
