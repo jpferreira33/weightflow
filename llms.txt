@@ -213,3 +213,9 @@ MIT © 2026 Juan Pablo Ferreira
 - [`y_model()`](https://jpferreira33.github.io/weightflow/reference/y_model.md)
   : Specify a working model for a study variable y
 
+# Articles
+
+### All vignettes
+
+- [Variance
+  estimation](https://jpferreira33.github.io/weightflow/articles/variance-estimation.md):
