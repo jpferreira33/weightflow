@@ -9,3 +9,6 @@ weightflow_report_*.html
 .httr-oauth
 .quarto
 docs
+inst/doc
+/doc/
+/Meta/
