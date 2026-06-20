@@ -1,10 +1,10 @@
 Package: weightflow
 Title: Declarative API for Staged Survey Weights
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy", role = c("aut", "cre"))
 Description: Builds survey weights from design base weights by applying
     hierarchical adjustments (unknown eligibility, nonresponse and calibration)
-    through a declarative, pipeable, tidymodels-style API. It computes weights
+    through a declarative, pipeable, 'tidymodels'-style API. It computes weights
     only; it does not estimate variances. For inference, export the weights and
     use them with the 'survey' package.
 License: MIT + file LICENSE
