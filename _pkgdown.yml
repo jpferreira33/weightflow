@@ -1,4 +1,50 @@
 url: https://jpferreira33.github.io/weightflow/
+
 template:
   bootstrap: 5
 
+reference:
+- title: Overview
+  contents:
+  - weightflow-package
+- title: Build and run a recipe
+  desc: Define the recipe, estimate it, and pull the weights out.
+  contents:
+  - weighting_spec
+  - prep
+  - collect_weights
+  - y_model
+- title: Adjustment steps
+  desc: The staged adjustments, applied in the order you pipe them.
+  contents:
+  - step_unknown_eligibility
+  - step_drop_ineligible
+  - step_select_within
+  - step_nonresponse
+  - step_calibrate
+  - step_model_calibration
+  - step_trim
+  - step_trim_weights
+  - step_round
+  - step_rescale
+  - step_assert
+- title: Diagnostics and reporting
+  desc: Inspect, summarise and report the cascade.
+  contents:
+  - summary.prepped_weighting_spec
+  - plot.prepped_weighting_spec
+  - weight_factors
+  - design_effect
+  - report_weighting
+- title: Variance estimation
+  desc: Bootstrap that re-applies the recipe, plus survey/srvyr bridges.
+  contents:
+  - bootstrap_weights
+  - bootstrap_estimate
+  - as_svydesign
+  - collect_replicate_weights
+- title: Example data
+  contents:
+  - population
+  - sample_survey
+  - sample_one

@@ -1,56 +1,12 @@
 # weightflow
 
-Declarative, pipeable API to build **survey weights** through hierarchical
-stages, tidymodels-style. It starts from design base weights and chains
-adjustments:
+> Declarative, pipeable survey weighting in base R — from design weights to
+> calibrated, variance-ready weights.
 
-1. **Unknown eligibility** — redistributes the weight of unknown-eligibility
-   cases among the known-eligibility ones.
-2. **Nonresponse** — by weighting classes (cells) or by **propensity** estimated
-   with logistic regression (`engine = "logit"`), CART trees (`engine = "tree"`,
-   via `rpart`) or random forest (`engine = "forest"`, via `ranger`).
-   Propensities are used as a direct `1/p` factor per unit (`num_classes = NULL`)
-   or grouped into classes (`num_classes = k`).
-3. **Calibration** — *raking* (IPF, categorical margins), *post-stratification*
-   (one categorical variable) or *linear / GREG* (`method = "linear"`, with a
-   formula and population totals; handles **continuous** and categorical
-   auxiliaries). Linear calibration also offers **equal weights within a
-   cluster** (`equal_within_cluster = TRUE` with `cluster`), via Lemaitre-Dufour
-   (1987) integrative calibration — handy so all members of a household share
-   the same weight. Plus **model calibration** (`step_model_calibration`,
-   Wu & Sitter 2001): predicts several `y` variables with working models
-   (glm/tree/random forest) and calibrates to their population totals for
-   model-assisted efficiency, on top of calibrating to the `X` totals for
-   consistency.
-
-Plus an optional **trimming** step (`step_trim`) insertable anywhere in the
-cascade, even several times; an optional final **rounding** step (`step_round`,
-simple or total-preserving); and the **Kish design effect** (deff = 1 + CV²,
-with effective sample size) reported at every stage.
-
-`plot(fitted)` shows a diagnostic grid (per-step factor histograms plus a
-summary panel) and `weight_factors(fitted)` returns the per-unit, per-step
-factors for custom plots. `report_weighting(fitted)` writes a self-contained
-HTML report — recipe, requested parameters per step, per-stage summary and
-diagnostics, plus per-step plots (weight before-vs-after scatter and the
-adjustment-factor histogram, drawn as inline SVG with no graphics device
-required). It opens in the browser — no Shiny or server needed.
-
-Optional **bounded calibration** (`calfun = "logit"` or `bounds = c(L, U)` in
-the linear method) keeps the g-weights within range without a separate trim.
-Other optional steps: **assertions** (`step_assert`, a checkpoint that
-errors/warns if deff, weight ratio or effective n cross a threshold),
-**automatic survey-style trimming** (`step_trim_weights`: no weight below 1,
-auto upper cap, `strict = TRUE` like `survey::trimWeights`), and **rescaling**
-(`step_rescale`: normalize weights to the sample size or a target total).
-
-Response and eligibility can be supplied as **0/1 dummy columns** (1 = responded
-/ 1 = unknown) or as any logical condition.
-
-> Follows the classic framework of Valliant, Dever & Kreuter (*Practical Tools
-> for Designing and Weighting Survey Samples*). **It computes weights only; it
-> does not estimate variances.** For inference, export the weights and use them
-> with `survey`/`srvyr`.
+**weightflow** builds survey weights by chaining hierarchical adjustments with a
+`tidymodels`-style API, and estimates their variances with a bootstrap that
+re-applies the whole recipe on each replicate. It has **no hard dependencies**
+(base R, R >= 4.1) and bridges to `survey`/`srvyr` for design-based inference.
 
 ## Installation
 
@@ -59,20 +15,13 @@ Response and eligibility can be supplied as **0/1 dummy columns** (1 = responded
 remotes::install_github("jpferreira33/weightflow")
 ```
 
-weightflow is dependency-free (base R, R >= 4.1). `rpart` and `ranger` are
-optional, needed only for the tree/forest nonresponse engines.
+## The idea
 
-## The design idea
-
-The recipe is **inert**: building it computes nothing. `prep()` walks the steps
-*in order* and estimates the cascade of factors; `collect_weights()` extracts
-the final weights. Separating *define* from *apply* is what makes it
-reproducible and auditable.
-
-The package ships with two example datasets, `sample_survey` (a household sample
-with design weights, an unknown-eligibility flag and a response indicator) and
-`population` (the frame, used for calibration targets), so the example below
-runs as-is:
+A recipe is **inert**: building it computes nothing. `prep()` walks the steps
+*in order* and estimates the cascade of factors; `collect_weights()` extracts the
+final weights. Separating *define* from *apply* makes the whole process
+reproducible and auditable, and it is exactly what lets the bootstrap re-run the
+entire cascade per replicate.
 
 ```r
 library(weightflow)
@@ -81,56 +30,99 @@ recipe <- weighting_spec(sample_survey, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex")) |>
-  step_trim(max_ratio = 3, reference = "base", redistribute = FALSE) |>
   step_calibrate(method = "raking",
-                 margins = list(sex    = c(table(population$sex)),
-                                region = c(table(population$region))))
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex))))
 
 fitted <- prep(recipe)              # estimate the cascade
 summary(fitted)                     # per-stage diagnostics + Kish deff
-plot(fitted)                        # diagnostic plots
 wts    <- collect_weights(fitted)   # data.frame with .weight
 ```
 
-## Try it
+## What it does
 
-After installing, the bundled datasets let you run the whole pipeline right
-away — no data prep needed:
+**Adjustment steps**, applied in the order you pipe them:
+
+| Step | What it does |
+|------|--------------|
+| `step_unknown_eligibility()` | Redistribute unknown-eligibility cases among the known ones (person- or household-level via `cluster`). |
+| `step_drop_ineligible()` | Zero out out-of-scope units. |
+| `step_select_within()` | Within-household selection (unequal `prob` or equal `n_eligible`). |
+| `step_nonresponse()` | Weighting classes or propensity (logit / CART / random forest), person- or household-level. |
+| `step_calibrate()` | Raking, post-stratification, linear/GREG; bounded (Deville-Särndal) and integrative (one weight per household) options. |
+| `step_model_calibration()` | Wu-Sitter model calibration with working models for the outcomes. |
+| `step_trim()`, `step_trim_weights()` | Manual or automatic survey-style trimming, insertable anywhere. |
+| `step_round()`, `step_rescale()` | Integer rounding and rescaling to a size or total. |
+| `step_assert()` | Quality checkpoint on deff, weight ratio or effective n. |
+
+Eligibility and response accept **0/1 dummy columns** or any logical condition.
+
+**Diagnostics and reporting**: `summary()` and `plot()` show the per-stage
+cascade with the **Kish design effect** (deff = 1 + CV²) and effective sample
+size; `weight_factors()` returns the per-unit, per-step factors;
+`report_weighting()` writes a self-contained HTML report — pipeline diagram,
+variables used, per-stage summaries and per-step visuals — with no graphics
+device or server required.
+
+**Variance estimation** (see the *Variance estimation* article):
 
 ```r
-library(weightflow)
-
-fitted <- weighting_spec(sample_survey, base_weights = pw) |>
-  step_nonresponse(respondent = responded, method = "weighting_class",
-                   by = "region") |>
-  step_calibrate(method = "raking",
-                 margins = list(sex    = c(table(population$sex)),
-                                region = c(table(population$region)))) |>
-  prep()
-
-summary(fitted)
-collect_weights(fitted)
+boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu")
+boot_mean(boot, "income")           # estimate, SE and CI
+as_svydesign(fitted, ids = "psu", strata = "region")   # survey linearization
+collect_replicate_weights(boot)     # replicate weights, ready for srvyr
 ```
 
-The `data-raw/weightflow_data.R` script shows how `population` and
-`sample_survey` are generated, if you want to reproduce or tweak them.
+The bootstrap resamples PSUs within strata (Rao-Wu rescaling bootstrap) and
+re-applies the recipe on each replicate, so the replicate weights carry the
+variability of **every** adjustment.
 
-## Adding a new adjustment
+## Example data
 
-`apply_step()` is the internal S3 generic that computes each step. To add a new
-adjustment: define a `step_*()` constructor (inert) and its `apply_step.<class>()`
-method. Nothing else changes.
+Three bundled datasets: `population` (the frame), `sample_survey` (take-all
+roster) and `sample_one` (multistage select-one design), all with stratum, PSU
+and design weight, so the full pipeline and the variance methods run natively.
+
+## Extending
+
+`apply_step()` is the internal S3 generic behind each step. To add an
+adjustment, define a `step_*()` constructor (inert) and its
+`apply_step.<class>()` method — nothing else changes.
 
 ## References
 
-- Valliant, Dever & Kreuter. *Practical Tools for Designing and Weighting Survey Samples.*
-- Kish (1965, 1990). Design effect from unequal weighting.
-- Potter (1988, 1990); Potter & Zheng (2015); Liu et al. (2004). Weight trimming.
-- Lemaitre & Dufour (1987). Integrative (one weight per household) calibration.
-- Wu & Sitter (2001). Model-calibration / model-assisted estimation.
-- Deville & Särndal (1992). Calibration estimators (bounded / logit distance).
+*General framework*
+
+- Valliant, R., Dever, J. A., & Kreuter, F. (2018). *Practical Tools for Designing and Weighting Survey Samples* (2nd ed.). Springer.
+- Särndal, C.-E., Swensson, B., & Wretman, J. (1992). *Model Assisted Survey Sampling*. Springer.
+
+*Nonresponse*
+
+- Särndal, C.-E., & Lundström, S. (2005). *Estimation in Surveys with Nonresponse*. Wiley.
+- Little, R. J. A. (1986). Survey nonresponse adjustments for estimates of means. *International Statistical Review*, 54(2), 139–157.
+
+*Calibration*
+
+- Deville, J.-C., & Särndal, C.-E. (1992). Calibration estimators in survey sampling. *JASA*, 87(418), 376–382.
+- Deville, J.-C., Särndal, C.-E., & Sautory, O. (1993). Generalized raking procedures in survey sampling. *JASA*, 88(423), 1013–1020.
+- Deming, W. E., & Stephan, F. F. (1940). On a least squares adjustment of a sampled frequency table. *Annals of Mathematical Statistics*, 11(4), 427–444.
+- Lemaître, G., & Dufour, J. (1987). An integrated method for weighting persons and families. *Survey Methodology*, 13(2), 199–207.
+- Wu, C., & Sitter, R. R. (2001). A model-calibration approach to using complete auxiliary information from survey data. *JASA*, 96(453), 185–193.
+
+*Design effect and trimming*
+
+- Kish, L. (1965). *Survey Sampling*. Wiley. — and Kish, L. (1992). Weighting for unequal Pi. *Journal of Official Statistics*, 8(2), 183–200.
+- Potter, F. J. (1990). A study of procedures to identify and trim extreme sample weights. *Proc. ASA Survey Research Methods Section*, 225–230.
+- Potter, F., & Zheng, Y. (2015). Methods and issues in trimming extreme weights in sample surveys. *Proc. ASA Survey Research Methods Section*.
+
+*Variance estimation*
+
+- Rao, J. N. K., & Wu, C. F. J. (1988). Resampling inference with complex survey data. *JASA*, 83(401), 231–241.
+- Rao, J. N. K., Wu, C. F. J., & Yue, K. (1992). Some recent work on resampling methods for complex surveys. *Survey Methodology*, 18(2), 209–217.
+- Preston, J. (2009). Rescaled bootstrap for stratified multistage sampling. *Survey Methodology*, 35(2), 227–234.
+- Wolter, K. M. (2007). *Introduction to Variance Estimation* (2nd ed.). Springer.
+- Lumley, T. (2010). *Complex Surveys: A Guide to Analysis Using R*. Wiley.
 
 ## License
 
-MIT © 2026 Juan Pablo Ferreira
-
+MIT © Juan Pablo Ferreira
