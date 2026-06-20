@@ -2,13 +2,15 @@ Package: weightflow
 Title: Declarative API for Staged Survey Weights
 Version: 0.1.0
 Authors@R: person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy", role = c("aut", "cre"))
-Description: Builds survey weights from design base weights by applying
+Description: Builds survey weights from design base weights by chaining
     hierarchical adjustments (unknown eligibility, nonresponse and calibration)
-    through a declarative, pipeable, 'tidymodels'-style API. Variances are
-    obtained with a bootstrap that resamples primary sampling units and
-    re-applies the whole recipe on each replicate, so the replicate weights
-    carry the variability of every adjustment; the weights also bridge to the
-    'survey' and 'srvyr' packages for design-based inference.
+    through a declarative, pipeable, 'tidymodels'-style API. Calibration follows
+    Deville and Sarndal (1992) <doi:10.2307/2290268>. Variances are obtained with
+    a bootstrap that resamples primary sampling units and re-applies the whole
+    recipe on each replicate, following the rescaling bootstrap of Rao and Wu
+    (1988) <doi:10.1080/01621459.1988.10478591>, so the replicate weights carry
+    the variability of every adjustment. The weights also bridge to the 'survey'
+    and 'srvyr' packages for design-based inference.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US
@@ -20,9 +22,9 @@ Suggests:
     testthat (>= 3.0.0),
     survey,
     srvyr,
+    dplyr,
     knitr,
     rmarkdown,
-    dplyr,
     spelling
 Roxygen: list(markdown = TRUE, roclets = c("rd"))
 Config/roxygen2/version: 8.0.0

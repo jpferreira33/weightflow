@@ -1,0 +1,159 @@
+---
+title: "Staged survey weighting: the adjustment logic"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Staged survey weighting: the adjustment logic}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(weightflow)
+```
+
+Survey weighting turns a sample into estimates for a population. It starts from
+the design and then corrects, one stage at a time, for everything that pulls the
+realized sample away from the target population: addresses that could not be
+resolved, units out of scope, subsampling inside households, nonresponse, and
+coverage. weightflow expresses that chain as a pipeline of explicit steps. This
+vignette walks the logic of each stage, why it exists, and why the order
+matters.
+
+## The starting point: design weights
+
+Under a probability design, unit `i` enters the sample with a known inclusion
+probability `pi_i`. The design (base) weight is its inverse,
+
+```
+d_i = 1 / pi_i,
+```
+
+so the Horvitz-Thompson estimator of a total, `sum(d_i * y_i)` over the sample,
+is unbiased for the population total. Every later stage multiplies this weight by
+a correction factor; the recipe is just the product of those factors, applied in
+order. We use the bundled multistage sample:
+
+```{r data}
+dat <- sample_one
+dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
+                   labels = c("18-30", "31-45", "46-60", "60+"))
+```
+
+## The cascade
+
+### Unknown eligibility
+
+Some sampled addresses are never resolved — you cannot tell whether they were
+in scope. Discarding them would lose their share of the population; keeping them
+as if eligible would overstate it. The standard fix redistributes their weight
+over the resolved cases (eligible **and** ineligible) within cells, so the
+resolved units carry the unresolved share. When the unknowns arrive without a
+roster, this is done at the household level (`cluster`).
+
+### Ineligible units
+
+Resolved out-of-scope units (vacant addresses, non-residential) are simply
+removed — their weight goes to zero with no redistribution. They must be present
+during the unknown-eligibility step (so they absorb their share) and only then
+dropped.
+
+### Within-household selection
+
+When one person is selected per household, that person represents all the
+eligible persons there. The weight is multiplied by the inverse of the
+within-household selection probability (`prob`), or by the number of eligibles
+(`n_eligible`) under equal selection.
+
+### Nonresponse
+
+Not everyone responds. Under the assumption that response is ignorable given the
+auxiliaries used (missing at random within cells or given the model), the
+respondents are inflated to represent the nonrespondents — either with weighting
+classes or a response-propensity model, at the person or household level. The
+*Nonresponse* article covers this stage in detail.
+
+### Calibration
+
+Finally, auxiliary totals known for the whole population (here, region and sex
+counts) are used to force the weighted sample to match them. Calibration reduces
+coverage bias and, when the auxiliaries are related to the outcomes, lowers
+variance; it is the weighting counterpart of the generalized regression (GREG)
+estimator. The *Validation* article shows weightflow's calibration reproduces
+the `survey` package.
+
+```{r recipe}
+fitted <- weighting_spec(dat, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_drop_ineligible(ineligible = ineligible) |>
+  step_nonresponse(respondent = hh_responded, method = "weighting_class",
+                   by = "region") |>
+  step_select_within(prob = p_within) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = c("region", "sex", "age_grp")) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex)))) |>
+  prep()
+```
+
+### Trimming, rounding, rescaling
+
+Adjustments can create a few very large weights, which inflate the variance.
+Trimming caps them (and redistributes the excess) to trade a little bias for a
+worthwhile variance reduction; the bias-variance trade-off of trimming is a
+classic topic (Potter). Rounding and rescaling are presentational: integer
+weights, or weights that sum to the sample size (mean one) or to a chosen total.
+
+A caveat on order: trimming after calibration preserves the overall total but
+can perturb the calibrated margins slightly, so a rigorous workflow re-calibrates
+after trimming.
+
+```{r trim}
+trimmed <- weighting_spec(dat, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_drop_ineligible(ineligible = ineligible) |>
+  step_nonresponse(respondent = hh_responded, method = "weighting_class",
+                   by = "region") |>
+  step_select_within(prob = p_within) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = c("region", "sex", "age_grp")) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex)))) |>
+  step_trim_weights() |>
+  prep()
+```
+
+## Reading the cascade: the design effect
+
+The Kish design effect, `deff = 1 + CV^2` (with `CV` the coefficient of
+variation of the weights), measures how much unequal weighting inflates the
+variance; the effective sample size is `n_eff = n_active / deff`. Each
+adjustment tends to *raise* the design effect (it makes the weights more
+unequal) and trimming brings it back down. The per-stage summary shows the whole
+trajectory:
+
+```{r summary}
+summary(fitted)
+```
+
+And the effect of trimming on the final design effect:
+
+```{r deff-compare}
+c(no_trim = design_effect(fitted$final_weight)$deff,
+  trimmed = design_effect(trimmed$final_weight)$deff)
+```
+
+## Why the order matters
+
+The sequence is not arbitrary. Unknown eligibility comes first, so ineligibles
+are still present to absorb their share before being dropped. Household
+nonresponse precedes within-household selection (the household must be reached
+before a person is selected), and person nonresponse follows it. Calibration
+comes last, so it operates on weights that already reflect eligibility,
+selection and response. Trimming and presentational steps close the pipeline.
+weightflow makes this order explicit — it is simply the order in which you pipe
+the steps — and records what each one did, which you can inspect with
+`summary()`, `plot()` and `report_weighting()`. For standard errors that respect
+the whole cascade, see the *Variance estimation* article.

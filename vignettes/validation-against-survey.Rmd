@@ -1,0 +1,133 @@
+---
+title: "Validation against the survey package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Validation against the survey package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(weightflow)
+has_survey <- requireNamespace("survey", quietly = TRUE)
+```
+
+weightflow's calibration is meant to reproduce the established results of the
+`survey` package on the methods they share — raking, post-stratification and
+linear (GREG) calibration — while adding the staged cascade (eligibility,
+nonresponse, selection) and a recipe-aware bootstrap on top. This vignette
+checks that agreement directly: on the same starting weights and the same
+control totals, the two packages return the same weights.
+
+To make every unit comparable one-to-one, the recipes below use **only** the
+calibration step (no dropping or nonresponse), so no rows are removed.
+
+```{r data}
+d <- sample_survey
+N <- nrow(population)
+```
+
+## Post-stratification
+
+Post-stratifying to the population counts of `region`: each region's weights are
+rescaled so the weighted count matches the known total.
+
+```{r poststratify, eval = has_survey}
+library(survey)
+
+# weightflow
+wf <- weighting_spec(d, base_weights = pw) |>
+  step_calibrate(method = "poststratify",
+                 margins = list(region = c(table(population$region)))) |>
+  prep()
+w_wf <- wf$final_weight
+
+# survey
+des    <- svydesign(ids = ~1, weights = ~pw, data = d)
+pr     <- data.frame(region = names(table(population$region)),
+                     Freq = as.numeric(table(population$region)))
+des_ps <- postStratify(des, ~region, pr)
+w_sv   <- weights(des_ps)
+
+c(max_abs_weight_diff = max(abs(w_wf - w_sv)))
+```
+
+## Raking
+
+Raking (iterative proportional fitting) to the `region` and `sex` margins. We
+tighten `survey`'s convergence so both solve the system to the same precision.
+
+```{r raking, eval = has_survey}
+# weightflow
+wf <- weighting_spec(d, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex)))) |>
+  prep()
+w_wf <- wf$final_weight
+
+# survey (tight epsilon so it fully converges, like weightflow)
+des   <- svydesign(ids = ~1, weights = ~pw, data = d)
+ps    <- data.frame(sex = names(table(population$sex)),
+                    Freq = as.numeric(table(population$sex)))
+des_rk <- rake(des, list(~region, ~sex), list(pr, ps),
+               control = list(epsilon = 1e-10, maxit = 100))
+w_sv  <- weights(des_rk)
+
+c(max_abs_weight_diff = max(abs(w_wf - w_sv)))
+```
+
+## Linear (GREG) calibration
+
+Linear calibration to the totals of the design matrix of `~ region + sex`,
+including the intercept (the population size `N`).
+
+```{r greg, eval = has_survey}
+totals <- colSums(model.matrix(~ region + sex, population))
+
+# weightflow
+wf <- weighting_spec(d, base_weights = pw) |>
+  step_calibrate(method = "linear", formula = ~ region + sex, totals = totals) |>
+  prep()
+w_wf <- wf$final_weight
+
+# survey
+des     <- svydesign(ids = ~1, weights = ~pw, data = d)
+des_cal <- calibrate(des, ~ region + sex, population = totals, calfun = "linear")
+w_sv    <- weights(des_cal)
+
+c(max_abs_weight_diff = max(abs(w_wf - w_sv)))
+```
+
+## Same estimates
+
+The agreement carries over to estimates. A calibrated total of a survey outcome
+matches between the two packages:
+
+```{r estimate, eval = has_survey}
+wf <- weighting_spec(d, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex)))) |>
+  prep()
+total_wf <- sum(wf$final_weight * d$employed, na.rm = TRUE)
+
+des    <- svydesign(ids = ~1, weights = ~pw, data = d)
+des_rk <- rake(des, list(~region, ~sex), list(pr, ps),
+               control = list(epsilon = 1e-10, maxit = 100))
+total_sv <- as.numeric(svytotal(~employed, des_rk, na.rm = TRUE))
+
+c(weightflow = total_wf, survey = total_sv, difference = total_wf - total_sv)
+```
+
+## What weightflow adds
+
+The point of agreement is trust: where the methods overlap, weightflow returns
+exactly what `survey` does. On top of that shared core, weightflow contributes
+the **staged cascade** — unknown eligibility, ineligible dropping,
+within-household selection, and person- or household-level nonresponse, each as
+a pipeable step with diagnostics — and a **bootstrap that re-applies the whole
+recipe** on each replicate, so the variance reflects every adjustment (see the
+*Variance estimation* article). For design-based inference you can always export
+the final weights back to `survey`/`srvyr`.

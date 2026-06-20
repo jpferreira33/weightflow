@@ -17,9 +17,11 @@ test_that("bootstrap estimates have positive standard errors", {
                    margins = list(region = c(table(population$region))))
   boot <- bootstrap_weights(spec, replicates = 20, strata = "region",
                             psu = "psu", seed = 11, progress = FALSE)
-  tot <- boot_total(boot, "responded")
-  expect_true(tot$se > 0)
-  expect_true(tot$ci_lower < tot$estimate && tot$estimate < tot$ci_upper)
+  # Use a continuous outcome: its weighted mean is not pinned by the margins,
+  # so it genuinely varies across replicates (unlike a calibration-implied total).
+  est <- boot_mean(boot, "income")
+  expect_true(est$se > 0)
+  expect_true(est$ci_lower < est$estimate && est$estimate < est$ci_upper)
 })
 
 test_that("a single-PSU stratum is handled with a warning, not an error", {
@@ -40,8 +42,8 @@ test_that("collect_replicate_weights returns point + replicate columns", {
   boot <- bootstrap_weights(spec, replicates = 12, strata = "region",
                             psu = "psu", seed = 5, progress = FALSE)
   df <- collect_replicate_weights(boot)
-  expect_true(all(df$.weight > 0))                 # only active units
-  expect_equal(sum(grepl("^rep_", names(df))), 12) # one column per replicate
+  expect_true(all(df$.weight > 0))
+  expect_equal(sum(grepl("^rep_", names(df))), 12)
   expect_equal(attr(df, "R"), 12)
   expect_equal(nrow(df), sum(boot$weights > 0))
 })

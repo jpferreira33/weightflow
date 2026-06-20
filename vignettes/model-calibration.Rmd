@@ -1,0 +1,155 @@
+---
+title: "Model calibration (model-assisted weighting)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Model calibration (model-assisted weighting)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(weightflow)
+has_ranger <- requireNamespace("ranger", quietly = TRUE)
+```
+
+Ordinary calibration forces the weighted sample to match known population totals
+of *auxiliary* variables. Model calibration (Wu and Sitter, 2001) goes further:
+it uses a working model for the *outcome* to build a better calibration variable.
+`step_model_calibration()` implements it, and — less commonly — lets you keep the
+ordinary consistency constraints on the auxiliaries in the **same** step.
+
+## The idea
+
+You do not know the population total of an outcome `y` — estimating it is the
+goal. But you can fit a working model for `y` on auxiliaries `x` known for the
+whole population, and calibrate on the model's **predictions**:
+
+1. Fit `y_hat = m(x)` on the sample (weighted by the current weights).
+2. Predict `y_hat` for every unit, in the **sample** and in the **population**
+   (the predictors `x` are known throughout the frame).
+3. Calibrate so the weighted sample total of the predictions equals their
+   population total:
+
+```
+sum_{i in sample} w_i * y_hat_i  =  sum_{i in population} y_hat_i.
+```
+
+The target is the population total of the *fitted values*, which is computable —
+not the unknown total of `y`. If the model predicts `y` well, the estimator of
+the `y` total is efficient, because its error depends on the residuals
+`y_i - y_hat_i` rather than on `y` itself.
+
+## In weightflow, with a random forest
+
+`step_model_calibration()` takes consistency auxiliaries (`x_formula`, with known
+population totals), a named list of working `models` from `y_model()`, and the
+`population` frame used to compute the prediction totals. Here the working model
+is a **random forest**, which captures nonlinear structure in the predictors
+without specifying it.
+
+```{r recipe, eval = has_ranger}
+spec <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ region + sex,                       # consistency constraints
+    models     = list(income = y_model(income ~ age + sex + region,
+                                       engine = "forest")),
+    population = population)
+fitted <- prep(spec)
+```
+
+The model is fitted on the **active** units only (the respondents, where `income`
+is observed), weighted by the weights entering the step.
+
+## Validation: the constraints are met exactly
+
+Both kinds of constraint hold afterwards: the weighted totals of the consistency
+auxiliaries match their known population totals, and the weighted total of the
+income predictions matches its population total. The step's diagnostics show
+target versus achieved:
+
+```{r check, eval = has_ranger}
+fitted$steps[[2]]$diagnostics
+```
+
+The `X (consistency)` rows are the region and sex totals; the `y (model)` row is
+the population total of the forest predictions. Each `achieved` equals its
+`target`.
+
+## Does it help the estimate?
+
+Because the weights are calibrated on the income predictions, the weighted
+estimate of the income total tracks the true population total:
+
+```{r estimate, eval = has_ranger}
+est_total  <- sum(fitted$final_weight * sample_survey$income, na.rm = TRUE)
+true_total <- sum(population$income)
+c(estimated = est_total, population = true_total,
+  rel_error = (est_total - true_total) / true_total)
+```
+
+The estimator stays design-based (`sum(w_i y_i)`); the model only shapes the
+weights to make it efficient. A poor model does not bias the result — it just
+yields a less efficient one.
+
+## What you need: unit-level auxiliaries
+
+This is the practical catch that sets model calibration apart. Raking,
+post-stratification and GREG need only the population **totals** (or margins) of
+the auxiliaries — numbers such as "1570 people in the North, 2311 women" — which
+official statistics routinely publish. Model calibration needs more: the
+auxiliaries **at the unit level for the whole population**, because step 2
+predicts `y_hat` for every population unit before summing. You cannot get
+`sum(y_hat_i)` from the totals of `x` alone (unless the model is linear, in which
+case you are back to GREG).
+
+That difference is visible in the arguments: `step_calibrate()` takes `margins`
+or `totals` (vectors of totals), whereas `step_model_calibration()` takes
+`population` — a data frame with **one row per population unit** carrying the
+predictors. So model calibration applies when you have a register or frame with
+microdata (a population register, administrative records, a census microdata
+file, a large reference survey) — the "complete auxiliary information" of the
+Wu-Sitter title means *unit-level for the whole population*, not just aggregates.
+When you only have published totals, use raking, post-stratification or GREG.
+The consistency constraints in the hybrid still calibrate to the `x` totals
+(obtained by summing `population`); it is the model term that requires the
+microdata.
+
+## Combining the model with consistency constraints
+
+The distinctive part of the step is the **hybrid**: it calibrates on the model
+predictions *and* on the raw auxiliary totals (`x_formula`) at once. This pairing
+matters precisely when the model is **nonlinear**. With a linear working model
+the predictions lie in the span of `x`, so adding them is redundant and the
+estimator reduces to ordinary linear calibration — the generalized regression
+(GREG) estimator. With a forest (or any nonlinear model), the predictions carry
+information beyond the linear `x` terms, so the two sets of constraints are
+complementary: the `x` totals give **internal consistency / benchmarking** (the
+weights reproduce the published region and sex totals), while the model term adds
+**efficiency** from the nonlinear fit.
+
+## Relationship to the literature
+
+Model calibration was introduced by Wu and Sitter (2001), who showed it handles
+any linear or nonlinear working model and reduces to the Deville-Särndal
+calibration / GREG estimator in the linear case. Wu (2003) proved its optimality
+within a class of calibration estimators, and Montanari and Ranalli (2005)
+extended it to nonparametric models, close in spirit to the forest used here.
+Särndal (2007) reviews the approach within the general calibration framework.
+
+Combining the model term with the ordinary consistency constraints is supported
+by the fact that calibration accommodates an arbitrary number of constraints
+(Deville and Särndal, 1992); the practical motivation — efficiency from the model
+*plus* benchmarking to published totals — is standard. What is uncommon is a
+ready-to-use implementation: the major R survey packages calibrate on auxiliary
+totals (GREG, raking, post-stratification) but do not fit an outcome model and
+calibrate on its predictions, let alone with flexible engines combined with
+consistency constraints. `step_model_calibration()` packages exactly that. It is
+an accessible implementation of an established idea, not a new method.
+
+**References.** Wu & Sitter (2001), *JASA* 96(453), 185–193. Wu (2003),
+*Biometrika* 90(4), 937–951. Montanari & Ranalli (2005), *JASA* 100, 1429–1442.
+Särndal (2007), *Survey Methodology* 33(2), 99–119. Deville & Särndal (1992),
+*JASA* 87(418), 376–382.
