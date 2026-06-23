@@ -72,6 +72,12 @@
 </blockquote>
 <p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
 <div class="section level2">
+<h2 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
+</h2>
+<p>weightflow expresses the whole weighting process as a sequence of explicit steps. The diagram below summarizes the flow and the choices that depend on the design and on the available auxiliary information.</p>
+<p><img src="reference/figures/flow-diagram.png" width="75%" alt="Conceptual flow of the staged weighting process"></p>
+</div>
+<div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -96,12 +102,6 @@
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="va">recipe</span><span class="op">)</span>              <span class="co"># estimate the cascade</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>                     <span class="co"># per-stage diagnostics + Kish deff</span></span>
 <span><span class="va">wts</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/collect_weights.html">collect_weights</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>   <span class="co"># data.frame with .weight</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
-</h2>
-<p>weightflow expresses the whole weighting process as a sequence of explicit steps. The diagram below summarizes the flow and the choices that depend on the design and on the available auxiliary information.</p>
-<p><img src="reference/figures/flow-diagram.png" width="75%" alt="Conceptual flow of the staged weighting process"></p>
 </div>
 <div class="section level2">
 <h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>

@@ -9,6 +9,15 @@ with a bootstrap that re-applies the whole recipe on each replicate. It
 has **no hard dependencies** (base R, R \>= 4.1) and bridges to
 `survey`/`srvyr` for design-based inference.
 
+## How it works
+
+weightflow expresses the whole weighting process as a sequence of
+explicit steps. The diagram below summarizes the flow and the choices
+that depend on the design and on the available auxiliary information.
+
+![Conceptual flow of the staged weighting
+process](reference/figures/flow-diagram.png)
+
 ## Installation
 
 ``` r
@@ -41,15 +50,6 @@ fitted <- prep(recipe)              # estimate the cascade
 summary(fitted)                     # per-stage diagnostics + Kish deff
 wts    <- collect_weights(fitted)   # data.frame with .weight
 ```
-
-## How it works
-
-weightflow expresses the whole weighting process as a sequence of
-explicit steps. The diagram below summarizes the flow and the choices
-that depend on the design and on the available auxiliary information.
-
-![Conceptual flow of the staged weighting
-process](reference/figures/flow-diagram.png)
 
 ## What it does
 
