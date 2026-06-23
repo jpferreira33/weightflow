@@ -36,16 +36,23 @@ whole process reproducible and auditable, and it is exactly what lets
 the bootstrap re-run the entire cascade per replicate.
 
 ``` r
+
 library(weightflow)
 
-recipe <- weighting_spec(sample_survey, base_weights = pw) |>
-  step_drop_ineligible() |> 
+recipe <- weighting_spec(sample_one, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
-  step_nonresponse(respondent = responded, method = "weighting_class",
-                   by = c("region", "sex")) |>
+  step_drop_ineligible(ineligible = ineligible) |>
+  step_nonresponse(respondent = hh_responded, method = "weighting_class",
+                   by = "region") |>
+  step_select_within(prob = p_within) |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   formula = ~ region + sex + age, engine = "logit",
+                   num_classes = 10) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region)),
-                                sex    = c(table(population$sex))))
+                                sex    = c(table(population$sex)))) |>
+  step_trim_weights() |>
+  step_assert(max_deff = 3)
 
 fitted <- prep(recipe)              # estimate the cascade
 summary(fitted)                     # per-stage diagnostics + Kish deff

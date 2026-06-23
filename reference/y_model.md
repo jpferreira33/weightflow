@@ -33,7 +33,7 @@ a model specification list.
 y_model(income ~ age + sex, engine = "glm")
 #> $formula
 #> income ~ age + sex
-#> <environment: 0xaba2e23c0>
+#> <environment: 0xaadf78698>
 #> 
 #> $engine
 #> [1] "glm"
