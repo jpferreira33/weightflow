@@ -39,6 +39,7 @@ the bootstrap re-run the entire cascade per replicate.
 library(weightflow)
 
 recipe <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_drop_ineligible() |> 
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex")) |>
