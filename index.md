@@ -42,6 +42,15 @@ summary(fitted)                     # per-stage diagnostics + Kish deff
 wts    <- collect_weights(fitted)   # data.frame with .weight
 ```
 
+## How it works
+
+weightflow expresses the whole weighting process as a sequence of
+explicit steps. The diagram below summarizes the flow and the choices
+that depend on the design and on the available auxiliary information.
+
+![Conceptual flow of the staged weighting
+process](reference/figures/flow-diagram.png)
+
 ## What it does
 
 **Adjustment steps**, applied in the order you pipe them:
