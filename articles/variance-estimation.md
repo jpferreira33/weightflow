@@ -28,7 +28,6 @@ not call
 first): the bootstrap preps it once per replicate.
 
 ``` r
-
 dat <- sample_one
 dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
@@ -70,7 +69,6 @@ clustering requires.
 The bootstrap variance is `(1 / B) * sum((theta_b - theta_hat)^2)`.
 
 ``` r
-
 boot_mean(boot,  "income")     # mean income
 #>   estimate       se ci_lower ci_upper
 #> 1 21615.21 872.7788 19904.59 23325.82
@@ -86,7 +84,6 @@ For any other statistic, pass a function of the weights and the data to
 [`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md):
 
 ``` r
-
 bootstrap_estimate(boot, function(w, d) {
   ok <- !is.na(d$income) & w > 0
   stats::median(rep(d$income[ok], times = round(w[ok])))   # weighted median (approx.)
@@ -102,7 +99,6 @@ builds an ultimate-cluster linearization design from a prepped recipe.
 It is fast, but treats the calibration as fixed.
 
 ``` r
-
 fitted <- prep(spec)
 des <- as_svydesign(fitted, ids = "psu", strata = "region")
 survey::svymean(~income, des, na.rm = TRUE)
@@ -114,7 +110,6 @@ To keep the recipe’s adjustments in the variance while still using
 survey, feed it the bootstrap replicate weights from method 1:
 
 ``` r
-
 rep_des <- as_svrepdesign(boot)
 survey::svymean(~income, rep_des, na.rm = TRUE)
 #>         mean     SE
@@ -132,7 +127,6 @@ attaches the point weight (`.weight`) and the replicate weights (`rep_1`
 … `rep_B`) to the active respondents, ready for srvyr.
 
 ``` r
-
 df <- collect_replicate_weights(boot)
 d_rep <- srvyr::as_survey_rep(df, weights = .weight,
                               repweights = dplyr::starts_with("rep_"),
