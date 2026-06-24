@@ -31,6 +31,29 @@
 }
 
 # Solve the calibration system; if singular, use the pseudo-inverse ---------
+# Ridge-calibration penalty diagonal (Bardsley-Chambers / Chambers). Each
+# constraint j gets a cost c_j; the calibration system A becomes A + diag(s/c_j),
+# where s = mean(diag(A)) makes the penalty SCALE-FREE: `penalty` is a unitless
+# number that means the same regardless of sample size or weight scale. A large
+# cost keeps the constraint (near) exact, a small cost relaxes it. `penalty` is a
+# positive scalar (same cost for all constraints) or a named vector (cost per
+# constraint, matched to the model.matrix columns `cn`).
+.ridge_diag <- function(penalty, cn, A) {
+  s <- mean(diag(A))                          # scale of the calibration system
+  if (length(penalty) == 1L) {
+    costs <- rep(as.numeric(penalty), length(cn))
+  } else {
+    if (is.null(names(penalty)))
+      stop("A vector `penalty` must be named by calibration constraint.")
+    costs <- penalty[cn]
+    if (anyNA(costs))
+      stop(sprintf("`penalty` is missing costs for: %s",
+                   paste(cn[is.na(costs)], collapse = ", ")))
+    costs <- as.numeric(costs)
+  }
+  diag(s / costs, nrow = length(cn))
+}
+
 .solve_calib <- function(A, rhs) {
   out <- tryCatch(solve(A, rhs), error = function(e) NULL)
   if (!is.null(out)) return(out)
@@ -104,11 +127,77 @@
 }
 
 
+# Fit an xgboost model and return predictions on a list of newdata frames.
+# Handles both regression (objective "reg:squarederror") and binary
+# classification (objective "binary:logistic", returns P(class = 1)).
+# xgboost works on numeric matrices, so the design matrix is built with
+# model.matrix from the same formula, dropping the intercept column.
+.xgb_fit_predict <- function(formula, train, y, w, newdatas, classification,
+                             nrounds = 150L, max_depth = 4L, eta = 0.1) {
+  if (!requireNamespace("xgboost", quietly = TRUE))
+    stop("engine = 'boost' requires the 'xgboost' package (install.packages('xgboost')).")
+  rhs <- stats::reformulate(attr(stats::terms(formula), "term.labels"))
+  mm  <- function(df) {
+    M <- stats::model.matrix(rhs, data = df)
+    M[, colnames(M) != "(Intercept)", drop = FALSE]
+  }
+  Xtr <- mm(train)
+  obj <- if (classification) "binary:logistic" else "reg:squarederror"
+  dtr <- xgboost::xgb.DMatrix(data = Xtr, label = as.numeric(y), weight = w)
+  fit <- xgboost::xgb.train(params = list(objective = obj, max_depth = max_depth,
+                                          eta = eta), data = dtr,
+                            nrounds = nrounds, verbose = 0)
+  cols <- colnames(Xtr)
+  lapply(newdatas, function(nd) {
+    Mn <- mm(nd)
+    miss <- setdiff(cols, colnames(Mn))           # align columns to training
+    for (cc in miss) Mn <- cbind(Mn, stats::setNames(data.frame(0), cc))
+    Mn <- as.matrix(Mn[, cols, drop = FALSE])
+    as.numeric(stats::predict(fit, Mn))
+  })
+}
+
+# Cross-fitting (K-fold out-of-sample prediction) to avoid overfitting when a
+# flexible learner is used to estimate a propensity or an outcome model. For
+# each fold k, the model is trained on the other K-1 folds and used to predict
+# the held-out fold, so each unit's prediction comes from a model that did not
+# see it. Folds are formed by cluster when `cluster_id` is given (so correlated
+# units, e.g. a household, stay together and there is no information leakage).
+# `fit_predict(train_idx, newdata_idx_list)` must fit on rows `train_idx` and
+# return a list of prediction vectors, one per element of `newdata_idx_list`.
+.crossfit_predict <- function(n, K, cluster_id = NULL, seed = NULL, fit_predict) {
+  if (!is.null(seed)) { old <- .Random.seed; on.exit({.Random.seed <<- old});
+                        set.seed(seed) }
+  if (is.null(cluster_id)) {
+    fold <- sample(rep_len(seq_len(K), n))
+  } else {                                   # assign whole clusters to folds
+    uc       <- unique(cluster_id)
+    cf       <- sample(rep_len(seq_len(K), length(uc)))
+    names(cf) <- as.character(uc)
+    fold     <- cf[as.character(cluster_id)]
+  }
+  K <- length(unique(fold))                  # may shrink if few clusters
+  out <- numeric(n)
+  for (k in sort(unique(fold))) {
+    test_idx  <- which(fold == k)
+    train_idx <- which(fold != k)
+    if (!length(train_idx)) next
+    out[test_idx] <- fit_predict(train_idx, list(test_idx))[[1]]
+  }
+  out
+}
+
 # Returns E[y|x] (regression) or P(y = last level | x) (classification).
 .model_predict <- function(m, train, w, newdatas) {
   f     <- m$formula
   yname <- as.character(f[[2]])
   yv    <- train[[yname]]
+  if (anyNA(yv))
+    stop(sprintf(paste0("Model-calibration outcome '%s' has missing values in the ",
+      "training sample. This usually means a nonresponse step is missing before ",
+      "step_model_calibration(): the outcome is only observed for respondents, so ",
+      "adjust for nonresponse first so that nonrespondents are dropped."), yname),
+      call. = FALSE)
   is_class <- isTRUE(m$family == "binomial") || is.factor(yv) || is.character(yv) ||
               (is.numeric(yv) && length(unique(yv[!is.na(yv)])) == 2L)
   train <- as.data.frame(train)
@@ -150,6 +239,15 @@
     fit <- ranger::ranger(f, data = train, case.weights = w)
     return(lapply(newdatas, function(nd) as.numeric(stats::predict(fit, data = nd)$predictions)))
   }
+
+  if (m$engine == "boost") {
+    if (is_class) {
+      ylev <- factor(train[[yname]])
+      y01  <- as.integer(ylev) - 1L            # last level coded as 1
+      return(.xgb_fit_predict(f, train, y01, w, newdatas, classification = TRUE))
+    }
+    return(.xgb_fit_predict(f, train, train[[yname]], w, newdatas, classification = FALSE))
+  }
   stop(sprintf("engine '%s' not recognized.", m$engine))
 }
 
@@ -159,31 +257,47 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
 # Estimate the response propensity P(respond) with the chosen engine.
 # Returns probabilities (bounded away from 0 for 1/p).
 # The engine only changes HOW p is estimated; the class/unit logic is the same.
-.estimate_propensity <- function(engine, formula, dd, weights) {
+# `crossfit` (K) and `cluster_id`/`seed` enable K-fold out-of-sample prediction
+# to avoid overfitting; when NULL, the model is fitted and predicted in-sample.
+.estimate_propensity <- function(engine, formula, dd, weights,
+                                 crossfit = NULL, cluster_id = NULL, seed = NULL) {
   f <- stats::update(formula, .y ~ .)
-  dd$.wts <- weights                    # weights as a column -> avoids glm/rpart scoping
+  dd$.wts <- weights
 
-  if (engine == "logit") {
-    fit <- stats::glm(f, data = dd, family = stats::binomial(), weights = .wts)
-    p   <- stats::predict(fit, type = "response")
+  # fit on rows `tr`, predict on rows `te`; returns P(respond) for `te`
+  fit_pred <- function(tr, te) {
+    dtr <- dd[tr, , drop = FALSE]; dte <- dd[te, , drop = FALSE]
+    wtr <- weights[tr]
+    if (engine == "logit") {
+      fit <- stats::glm(f, data = dtr, family = stats::binomial(), weights = .wts)
+      as.numeric(stats::predict(fit, newdata = dte, type = "response"))
+    } else if (engine == "tree") {
+      if (!requireNamespace("rpart", quietly = TRUE))
+        stop("engine = 'tree' requires the 'rpart' package (install.packages('rpart')).")
+      dtr$.y <- factor(dtr$.y, levels = c(0, 1))
+      fit <- rpart::rpart(f, data = dtr, method = "class", weights = .wts)
+      as.numeric(stats::predict(fit, newdata = dte, type = "prob")[, "1"])
+    } else if (engine == "forest") {
+      if (!requireNamespace("ranger", quietly = TRUE))
+        stop("engine = 'forest' requires the 'ranger' package (install.packages('ranger')).")
+      dtr$.y <- factor(dtr$.y, levels = c(0, 1))
+      fit <- ranger::ranger(f, data = dtr, probability = TRUE, case.weights = wtr)
+      as.numeric(stats::predict(fit, data = dte)$predictions[, "1"])
+    } else if (engine == "boost") {
+      y01 <- as.integer(as.character(dtr$.y) == "1" | dtr$.y == 1)
+      .xgb_fit_predict(f, dtr, y01, wtr, list(dte), classification = TRUE)[[1]]
+    } else {
+      stop(sprintf("engine '%s' not recognized.", engine))
+    }
+  }
 
-  } else if (engine == "tree") {
-    if (!requireNamespace("rpart", quietly = TRUE))
-      stop("engine = 'tree' requires the 'rpart' package (install.packages('rpart')).")
-    dd$.y <- factor(dd$.y, levels = c(0, 1))
-    fit   <- rpart::rpart(f, data = dd, method = "class", weights = .wts)
-    p     <- stats::predict(fit, type = "prob")[, "1"]
-
-  } else if (engine == "forest") {
-    if (!requireNamespace("ranger", quietly = TRUE))
-      stop("engine = 'forest' requires the 'ranger' package (install.packages('ranger')).")
-    dd$.y <- factor(dd$.y, levels = c(0, 1))
-    fit   <- ranger::ranger(f, data = dd, probability = TRUE,
-                            case.weights = weights)
-    p     <- stats::predict(fit, data = dd)$predictions[, "1"]
-
+  n <- nrow(dd)
+  if (is.null(crossfit)) {
+    p <- fit_pred(seq_len(n), seq_len(n))
   } else {
-    stop(sprintf("engine '%s' not recognized.", engine))
+    p <- .crossfit_predict(n, crossfit, cluster_id, seed,
+                           fit_predict = function(tr, te_list)
+                             lapply(te_list, function(te) fit_pred(tr, te)))
   }
   pmax(as.numeric(p), 1e-6)             # avoids division by zero in 1/p
 }
@@ -307,7 +421,8 @@ apply_step.step_select_within <- function(step, data, w) {
     if (is.null(step$formula)) stop("method = 'propensity' requires `formula`.")
     ddh    <- data[idx_el[match(hhn, cl)], , drop = FALSE]   # one row per household
     ddh$.y <- as.integer(resp_h)
-    p      <- .estimate_propensity(step$engine, step$formula, ddh, Wh)
+    p      <- .estimate_propensity(step$engine, step$formula, ddh, Wh,
+                                   crossfit = step$crossfit, seed = step$crossfit_seed)
     if (is.null(step$num_classes)) {
       factor_h <- ifelse(resp_h, 1 / p, 0)
       diag <- data.frame(engine = step$engine, level = "household",
@@ -390,7 +505,10 @@ apply_step.step_nonresponse <- function(step, data, w) {
   if (is.null(step$formula)) stop("method = 'propensity' requires `formula`.")
   dd      <- data[eligible, , drop = FALSE]
   dd$.y   <- as.integer(respondent[eligible])
-  p       <- .estimate_propensity(step$engine, step$formula, dd, w[eligible])
+  cl_cf   <- if (!is.null(step$cluster)) as.character(data[[step$cluster]][eligible]) else NULL
+  p       <- .estimate_propensity(step$engine, step$formula, dd, w[eligible],
+                                  crossfit = step$crossfit, cluster_id = cl_cf,
+                                  seed = step$crossfit_seed)
   idx_el  <- which(eligible)
   resp_el <- respondent[eligible]
 
@@ -470,7 +588,8 @@ apply_step.step_calibrate <- function(step, data, w) {
     if (!step$equal_within_cluster) {
       # --- unit-level ---
       if (!bounded) {
-        A      <- t(X) %*% (d * X)
+        A <- t(X) %*% (d * X)
+        if (!is.null(step$penalty)) A <- A + .ridge_diag(step$penalty, cn, A)
         lambda <- .solve_calib(A, Tvec - colSums(d * X))
         g      <- as.numeric(1 + X %*% lambda)
       } else {
@@ -490,7 +609,8 @@ apply_step.step_calibrate <- function(step, data, w) {
       Wh <- as.numeric(tapply(d, cl, mean)[hh])           # household weight
       Sh <- rowsum(X, group = cl)[hh, , drop = FALSE]     # household aux. sums
       if (!bounded) {
-        A      <- t(Sh) %*% (Wh * Sh)
+        A <- t(Sh) %*% (Wh * Sh)
+        if (!is.null(step$penalty)) A <- A + .ridge_diag(step$penalty, cn, A)
         lambda <- .solve_calib(A, Tvec - colSums(Wh * Sh))
         gh     <- as.numeric(1 + Sh %*% lambda)
       } else {
@@ -502,18 +622,22 @@ apply_step.step_calibrate <- function(step, data, w) {
       note_clust <- sprintf("; one weight per '%s' (integrative)", step$cluster)
     }
 
-    # Achieved totals with the REAL X (must match the targets)
+    # Achieved totals with the REAL X (must match the targets, except under ridge)
     achieved <- colSums(new_w[active] * X)
     diag <- data.frame(variable = cn, target = Tvec,
                        achieved = round(achieved, 2), stringsAsFactors = FALSE)
+    if (!is.null(step$penalty))
+      diag$deviation <- round(achieved - Tvec, 2)
     bnote <- if (bounded)
       sprintf(" [calfun = %s%s]", step$calfun,
               if (!is.null(step$bounds)) sprintf(", bounds (%.2f, %.2f)",
                                                  step$bounds[1], step$bounds[2]) else "")
     else ""
+    rnote <- if (!is.null(step$penalty))
+      sprintf(" [ridge: constraints relaxed, not exact]") else ""
     attr(diag, "note") <- sprintf(
-      "g (calibration factor) in [%.3f, %.3f]%s%s",
-      min(g), max(g), bnote, note_clust)
+      "g (calibration factor) in [%.3f, %.3f]%s%s%s",
+      min(g), max(g), bnote, rnote, note_clust)
     return(list(weights = new_w, diagnostics = diag))
   }
 
@@ -683,9 +807,20 @@ apply_step.step_model_calibration <- function(step, data, w) {
   # Model-assisted block: one prediction column per model y
   mu_cols <- list(); Tmu <- numeric(0)
   for (k in names(step$models)) {
-    preds        <- .model_predict(step$models[[k]], sdata, d, list(sdata, pop))
-    mu_cols[[k]] <- preds[[1]]          # prediction on the sample
-    Tmu[k]       <- sum(preds[[2]])     # population total of the prediction
+    m <- step$models[[k]]
+    if (is.null(step$crossfit)) {
+      preds        <- .model_predict(m, sdata, d, list(sdata, pop))
+      mu_cols[[k]] <- preds[[1]]          # prediction on the sample
+      Tmu[k]       <- sum(preds[[2]])     # population total of the prediction
+    } else {
+      cl_cf <- if (!is.null(step$cluster)) as.character(sdata[[step$cluster]]) else NULL
+      mu_cols[[k]] <- .crossfit_predict(   # out-of-fold predictions on the sample
+        nrow(sdata), step$crossfit, cl_cf, step$crossfit_seed,
+        fit_predict = function(tr, te_list)
+          .model_predict(m, sdata[tr, , drop = FALSE], d[tr],
+                         lapply(te_list, function(te) sdata[te, , drop = FALSE])))
+      Tmu[k] <- sum(.model_predict(m, sdata, d, list(pop))[[1]])  # full model -> pop total
+    }
   }
 
   Z  <- cbind(X, do.call(cbind, mu_cols))
@@ -761,6 +896,25 @@ apply_step.step_assert <- function(step, data, w) {
 }
 
 # --- Automatic weight trimming (survey-style) ------------------------------
+# Potter (1990) MSE-optimal trimming threshold. Over a grid of candidate upper
+# cutoffs, approximate the mean squared error of the (weight) total as
+#   bias(t)^2 + variance(t),
+# where bias(t) is the total weight trimmed above t (the amount the estimator
+# shifts before redistribution) and variance(t) is proportional to the sum of
+# squared weights that remain after capping at t. The cutoff with the smallest
+# estimated MSE is returned. The grid runs over the upper tail of the weights.
+.potter_threshold <- function(wv, ngrid = 100L) {
+  qs   <- stats::quantile(wv, c(0.50, 0.999))
+  grid <- seq(as.numeric(qs[1]), as.numeric(qs[2]), length.out = ngrid)
+  mse  <- vapply(grid, function(t) {
+    capped <- pmin(wv, t)
+    bias   <- sum(wv[wv > t] - t)            # weight removed above the cutoff
+    varc   <- sum(capped^2)                  # dispersion remaining after capping
+    bias^2 + varc
+  }, numeric(1))
+  grid[which.min(mse)]
+}
+
 apply_step.step_trim_weights <- function(step, data, w) {
   active <- w > 0
   new_w  <- w
@@ -768,8 +922,12 @@ apply_step.step_trim_weights <- function(step, data, w) {
 
   upper <- step$upper
   if (is.null(upper)) {
-    q  <- stats::quantile(wv, c(.25, .75))
-    upper <- as.numeric(q[2] + 3 * (q[2] - q[1]))   # Tukey far-out fence
+    if (identical(step$method, "potter")) {
+      upper <- .potter_threshold(wv)                 # MSE-optimal cutoff (Potter)
+    } else {
+      q  <- stats::quantile(wv, c(.25, .75))
+      upper <- as.numeric(q[2] + 3 * (q[2] - q[1]))  # Tukey far-out fence
+    }
   }
   lower <- step$lower
 
@@ -792,6 +950,7 @@ apply_step.step_trim_weights <- function(step, data, w) {
   new_w[active] <- wv
 
   diag <- data.frame(
+    method = if (is.null(step$method)) "tukey" else step$method,
     lower = lower, upper = round(upper, 3), strict = step$strict,
     n_capped = sum(w[active] > upper), n_raised = sum(w[active] < lower),
     sum_before = round(sum(w[active]), 2), sum_after = round(sum(new_w[active]), 2),

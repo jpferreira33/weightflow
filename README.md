@@ -1,4 +1,4 @@
-# weightflow
+# weightflow <img src="man/figures/logo.png" align="right" height="139" alt="weightflow logo" />
 
 > Declarative, pipeable survey weighting in base R — from design weights to
 > calibrated, variance-ready weights.
@@ -8,6 +8,15 @@
 re-applies the whole recipe on each replicate. It has **no hard dependencies**
 (base R, R >= 4.1) and bridges to `survey`/`srvyr` for design-based inference.
 
+## How it works
+
+weightflow expresses the whole weighting process as a sequence of explicit
+steps. The diagram below summarizes the flow and the choices that depend on the
+design and on the available auxiliary information.
+
+<img src="man/figures/flow-diagram.png" width="75%" alt="Conceptual flow of the staged weighting process" />
+
+ 
 ## Installation
 
 ```r
@@ -24,15 +33,23 @@ reproducible and auditable, and it is exactly what lets the bootstrap re-run the
 entire cascade per replicate.
 
 ```r
+
 library(weightflow)
 
-recipe <- weighting_spec(sample_survey, base_weights = pw) |>
+recipe <- weighting_spec(sample_one, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
-  step_nonresponse(respondent = responded, method = "weighting_class",
-                   by = c("region", "sex")) |>
+  step_drop_ineligible(ineligible = ineligible) |>
+  step_nonresponse(respondent = hh_responded, method = "weighting_class",
+                   by = "region") |>
+  step_select_within(prob = p_within) |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   formula = ~ region + sex + age, engine = "logit",
+                   num_classes = 10) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region)),
-                                sex    = c(table(population$sex))))
+                                sex    = c(table(population$sex)))) |>
+  step_trim_weights() |>
+  step_assert(max_deff = 3)
 
 fitted <- prep(recipe)              # estimate the cascade
 summary(fitted)                     # per-stage diagnostics + Kish deff

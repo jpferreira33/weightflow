@@ -4,15 +4,28 @@
 \alias{step_trim_weights}
 \title{Automatic weight trimming (survey-style)}
 \usage{
-step_trim_weights(spec, lower = 1, upper = NULL, strict = TRUE, maxit = 50L)
+step_trim_weights(
+  spec,
+  lower = 1,
+  upper = NULL,
+  method = c("tukey", "potter"),
+  strict = TRUE,
+  maxit = 50L
+)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
 
 \item{lower}{numeric. Lower floor (default 1: no weight below 1).}
 
-\item{upper}{numeric or NULL. Upper cap. If NULL, automatic rule
-Q3 + 3*IQR of the active weights.}
+\item{upper}{numeric or NULL. Upper cap. If NULL, the cap is chosen
+automatically by \code{method}.}
+
+\item{method}{rule for the automatic cap when \code{upper = NULL}: "tukey"
+(default, Q3 + 3*IQR far-out fence) or "potter" (Potter's MSE-optimal cutoff,
+which over a grid of candidate cutoffs minimizes an estimate of bias^2 +
+variance and so balances the bias of trimming against the variance from
+extreme weights). Ignored when \code{upper} is supplied.}
 
 \item{strict}{logical. If TRUE (default), iterate cap+redistribution until no
 weight is outside \verb{[lower, upper]} (like survey's strict = TRUE). If FALSE, a
@@ -23,11 +36,17 @@ single pass (redistribution may push some weights slightly past the cap).}
 \description{
 Caps weights into \verb{[lower, upper]} and redistributes the change among the
 untrimmed units to preserve the total, mirroring survey::trimWeights().
-By default no weight may fall below 1, and the upper cap is set by an
-automatic empirical rule (Tukey far-out fence: Q3 + 3*IQR).
+By default no weight may fall below 1, and the upper cap is chosen by an
+automatic rule: the Tukey far-out fence (Q3 + 3*IQR) or, with
+\code{method = "potter"}, Potter's MSE-optimal cutoff.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
   step_trim_weights(lower = 1, strict = TRUE) |> prep()
+
+# Potter MSE-optimal cutoff chosen from the data
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_trim_weights(method = "potter") |> prep()
 }

@@ -10,7 +10,9 @@ step_model_calibration(
   models,
   population,
   cluster = NULL,
-  equal_within_cluster = FALSE
+  equal_within_cluster = FALSE,
+  crossfit = NULL,
+  crossfit_seed = NULL
 )
 }
 \arguments{
@@ -30,6 +32,15 @@ weights within the cluster.}
 \item{equal_within_cluster}{logical. If TRUE, integrative calibration: a
 single weight per cluster. Requires \code{cluster} and that the incoming weight
 be uniform within the cluster.}
+
+\item{crossfit}{integer or NULL. If given (K >= 2 folds), the outcome models
+are fitted by K-fold cross-fitting: the sample predictions are out-of-fold
+(each unit predicted by a model that did not see it), which avoids
+overfitting with flexible engines; the population total of the predictions
+uses the full model. Folds are formed by \code{cluster} when given. NULL
+(default) fits and predicts in-sample.}
+
+\item{crossfit_seed}{integer or NULL. Seed for reproducible fold assignment.}
 }
 \description{
 Fits a working model for each study variable y, predicts over the population,
@@ -49,5 +60,14 @@ weighting_spec(sample_survey, base_weights = pw) |>
     x_formula  = ~ sex + region,
     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
     population = population) |>
+  prep()
+
+# with cross-fitting (out-of-fold predictions, avoids overfitting)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population = population, crossfit = 5, crossfit_seed = 1) |>
   prep()
 }

@@ -148,6 +148,15 @@ step_drop_ineligible <- function(spec, ineligible) {
 
 #' Nonresponse adjustment
 #'
+#' Inflates the weights of respondents to represent the nonrespondents, under the
+#' assumption that response is ignorable given the information used. The response
+#' propensity can be estimated by weighting classes (cells) or by a model
+#' ("propensity"), with engines ranging from logistic regression to machine
+#' learning (regression tree, random forest, gradient boosting). Optional
+#' K-fold cross-fitting estimates the propensity out-of-sample to avoid the
+#' overfitting that flexible engines can introduce. The adjustment can be applied
+#' at the person or, via `cluster`, the household level.
+#'
 #' @param spec a weighting_spec.
 #' @param respondent a 0/1 dummy column (1 = responded) or any logical condition
 #'   (unquoted) TRUE for respondents. Eligible cases that are not respondents
@@ -157,12 +166,22 @@ step_drop_ineligible <- function(spec, ineligible) {
 #' @param formula predictor formula (right-hand side only), e.g. ~ age + region,
 #'   used when method = "propensity".
 #' @param engine engine to estimate the propensity when method = "propensity":
-#'   "logit" (logistic regression, base R), "tree" (CART via package 'rpart') or
-#'   "forest" (random forest via package 'ranger'). 'rpart' and 'ranger' are
-#'   optional: only needed if you pick that engine.
+#'   "logit" (logistic regression, base R), "tree" (CART via package 'rpart'),
+#'   "forest" (random forest via package 'ranger') or "boost" (gradient boosting
+#'   via package 'xgboost'). 'rpart', 'ranger' and 'xgboost' are optional: only
+#'   needed if you pick that engine.
 #' @param num_classes integer or NULL. Controls how propensities are used:
 #'   an integer forms that many propensity classes (cell adjustment within each
 #'   class); NULL applies the direct factor 1/p to each unit.
+#' @param crossfit integer or NULL. If given (number of folds K >= 2), the
+#'   propensity is estimated by K-fold cross-fitting: for each fold the model is
+#'   trained on the other folds and used to predict the held-out fold, so each
+#'   unit's propensity comes from a model that did not see it. This avoids the
+#'   overfitting that flexible engines (forest, boost) can produce, which would
+#'   otherwise inflate the weights. Folds are formed by `cluster` when given (so
+#'   correlated units stay together). NULL (default) fits and predicts in-sample.
+#' @param crossfit_seed integer or NULL. Seed for reproducible fold assignment
+#'   when `crossfit` is used.
 #' @param cluster character or NULL. If given, the adjustment is done at the
 #'   cluster (e.g. household) level for whole-household nonresponse: each
 #'   household counts once with its (uniform) weight; in "weighting_class" the
@@ -182,13 +201,31 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   step_nonresponse(respondent = responded, method = "weighting_class",
 #'                    by = "region", cluster = "household_id") |>
 #'   prep()
+#' # propensity with cross-fitting (out-of-sample, avoids overfitting)
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "propensity",
+#'                    formula = ~ region + sex, engine = "logit",
+#'                    num_classes = 5, crossfit = 5, crossfit_seed = 1) |>
+#'   prep()
+#'
+#' # gradient boosting engine (requires the 'xgboost' package)
+#' if (requireNamespace("xgboost", quietly = TRUE)) {
+#'   weighting_spec(sample_survey, base_weights = pw) |>
+#'     step_nonresponse(respondent = responded, method = "propensity",
+#'                      formula = ~ region + sex + age, engine = "boost",
+#'                      num_classes = 5, crossfit = 5) |>
+#'     prep()
+#' }
 step_nonresponse <- function(spec, respondent,
                              method = c("weighting_class", "propensity"),
                              by = NULL, formula = NULL,
-                             engine = c("logit", "tree", "forest"),
-                             num_classes = 5L, cluster = NULL) {
+                             engine = c("logit", "tree", "forest", "boost"),
+                             num_classes = 5L, cluster = NULL,
+                             crossfit = NULL, crossfit_seed = NULL) {
   method <- match.arg(method)
   engine <- match.arg(engine)
+  if (!is.null(crossfit) && (!is.numeric(crossfit) || crossfit < 2))
+    stop("`crossfit` must be NULL or an integer >= 2 (number of folds).")
   mode   <- if (is.null(num_classes)) "1/p per unit" else
             sprintf("%d classes", num_classes)
   lvl    <- if (is.null(cluster)) "" else sprintf(", by %s", cluster)
@@ -204,7 +241,9 @@ step_nonresponse <- function(spec, respondent,
       formula     = formula,
       engine      = engine,
       num_classes = num_classes,
-      cluster     = cluster
+      cluster     = cluster,
+      crossfit      = if (is.null(crossfit)) NULL else as.integer(crossfit),
+      crossfit_seed = crossfit_seed
     ),
     class = c("step_nonresponse", "weighting_step")
   )
@@ -214,6 +253,14 @@ step_nonresponse <- function(spec, respondent,
 # --- Step: calibration -----------------------------------------------------
 
 #' Calibration to population totals
+#'
+#' Adjusts the weights so that the weighted sample reproduces known population
+#' totals of auxiliary variables, while staying as close as possible to the input
+#' weights (Deville & Sarndal 1992). Supports raking (IPF on categorical
+#' margins), post-stratification, and linear/GREG calibration, optionally bounded
+#' (a logit distance or explicit bounds on the calibration factor). For linear
+#' calibration, `penalty` enables ridge (penalized) calibration, which relaxes
+#' the targets to control extreme weights when there are many auxiliaries.
 #'
 #' @param spec a weighting_spec.
 #' @param margins named list (for "raking"/"poststratify"). Each element is a
@@ -241,6 +288,13 @@ step_nonresponse <- function(spec, respondent,
 #'   it is enforced smoothly. Avoids extreme/negative weights without a separate
 #'   trimming step.
 #' @param maxit,tol convergence control for raking and bounded calibration.
+#' @param penalty (only "linear", unbounded) NULL or positive cost(s) for ridge
+#'   (penalized) calibration. A positive scalar applies the same cost to every
+#'   constraint; a named vector sets a cost per constraint (matched to the
+#'   model.matrix columns). The cost is scale-free: a large value keeps the
+#'   constraint (near) exact, a small value relaxes it to control extreme weights
+#'   when there are many auxiliaries. Under ridge the achieved totals no longer
+#'   match the targets exactly; the diagnostics report the deviation.
 #' @examples
 #' # Raking to population margins
 #' weighting_spec(sample_survey, base_weights = pw) |>
@@ -249,12 +303,25 @@ step_nonresponse <- function(spec, respondent,
 #'                  margins = list(sex    = c(table(population$sex)),
 #'                                 region = c(table(population$region)))) |>
 #'   prep()
+#'
+#' # ridge (penalized) calibration: relaxes the targets to control extreme
+#' # weights; a smaller penalty relaxes more. Uses only base R.
+#' pop_tot <- c("(Intercept)" = nrow(population),
+#'              regionSouth = sum(population$region == "South"),
+#'              regionEast  = sum(population$region == "East"),
+#'              regionWest  = sum(population$region == "West"),
+#'              sexM        = sum(population$sex == "M"))
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_calibrate(method = "linear", formula = ~ region + sex,
+#'                  totals = pop_tot, penalty = 1) |>
+#'   prep()
 step_calibrate <- function(spec, margins = NULL,
                            method = c("raking", "poststratify", "linear"),
                            formula = NULL, totals = NULL,
                            cluster = NULL, equal_within_cluster = FALSE,
                            calfun = c("linear", "logit"), bounds = NULL,
-                           maxit = 50L, tol = 1e-6) {
+                           maxit = 50L, tol = 1e-6, penalty = NULL) {
   method <- match.arg(method)
   calfun <- match.arg(calfun)
   if (method %in% c("raking", "poststratify")) {
@@ -270,6 +337,14 @@ step_calibrate <- function(spec, margins = NULL,
     if (length(bounds) != 2L || bounds[1] >= 1 || bounds[2] <= 1)
       stop("`bounds` must be c(L, U) with L < 1 < U.")
   }
+  if (!is.null(penalty)) {
+    if (method != "linear")
+      stop("`penalty` (ridge calibration) is only available with method = 'linear'.")
+    if (!is.null(bounds) || calfun == "logit")
+      stop("`penalty` (ridge calibration) cannot be combined with bounded calibration.")
+    if (!is.numeric(penalty) || any(penalty <= 0))
+      stop("`penalty` must be a positive scalar or a positive named vector of costs.")
+  }
   if (equal_within_cluster) {
     if (method != "linear")
       stop("Equal weights within cluster are only available with method = 'linear'.")
@@ -280,6 +355,7 @@ step_calibrate <- function(spec, margins = NULL,
               sprintf("linear, equal weights by %s", cluster) else method
   if (method == "linear" && (calfun == "logit" || !is.null(bounds)))
     detail <- paste0(detail, ", bounded")
+  if (!is.null(penalty)) detail <- paste0(detail, ", ridge")
   step <- structure(
     list(
       label   = sprintf("calibration (%s)", detail),
@@ -292,7 +368,8 @@ step_calibrate <- function(spec, margins = NULL,
       calfun  = calfun,
       bounds  = bounds,
       maxit   = maxit,
-      tol     = tol
+      tol     = tol,
+      penalty = penalty
     ),
     class = c("step_calibrate", "weighting_step")
   )
@@ -360,7 +437,10 @@ step_trim <- function(spec, max_ratio, min_ratio = NULL,
 design_effect <- function(w) {
   wa <- w[w > 0]
   m  <- length(wa)
-  deff <- m * sum(wa^2) / (sum(wa)^2)
+  if (m == 0L) return(list(deff = NA_real_, n_eff = 0, cv = NA_real_, n = 0L))
+  sw   <- sum(wa)
+  deff <- if (sw == 0) NA_real_ else m * sum(wa^2) / (sw^2)
+  deff <- max(deff, 1)                 # guard against floating-point dip below 1
   list(deff = deff, n_eff = m / deff, cv = sqrt(deff - 1), n = m)
 }
 
@@ -398,13 +478,13 @@ step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total"
 #' Specify a working model for a study variable y
 #'
 #' @param formula full formula, e.g. income ~ sex + age_g.
-#' @param engine "glm", "tree" (rpart) or "forest" (ranger).
+#' @param engine "glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost).
 #' @param family for engine = "glm": "gaussian", "binomial" or "poisson".
 #'   For tree/forest, regression vs classification is inferred from y.
 #' @return a model specification list.
 #' @examples
 #' y_model(income ~ age + sex, engine = "glm")
-y_model <- function(formula, engine = c("glm", "tree", "forest"), family = NULL) {
+y_model <- function(formula, engine = c("glm", "tree", "forest", "boost"), family = NULL) {
   engine <- match.arg(engine)
   if (!inherits(formula, "formula")) stop("`formula` must be a formula y ~ x.")
   list(formula = formula, engine = engine, family = family)
@@ -432,6 +512,13 @@ y_model <- function(formula, engine = c("glm", "tree", "forest"), family = NULL)
 #' @param equal_within_cluster logical. If TRUE, integrative calibration: a
 #'   single weight per cluster. Requires `cluster` and that the incoming weight
 #'   be uniform within the cluster.
+#' @param crossfit integer or NULL. If given (K >= 2 folds), the outcome models
+#'   are fitted by K-fold cross-fitting: the sample predictions are out-of-fold
+#'   (each unit predicted by a model that did not see it), which avoids
+#'   overfitting with flexible engines; the population total of the predictions
+#'   uses the full model. Folds are formed by `cluster` when given. NULL
+#'   (default) fits and predicts in-sample.
+#' @param crossfit_seed integer or NULL. Seed for reproducible fold assignment.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
@@ -440,8 +527,18 @@ y_model <- function(formula, engine = c("glm", "tree", "forest"), family = NULL)
 #'     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
 #'     population = population) |>
 #'   prep()
+#'
+#' # with cross-fitting (out-of-fold predictions, avoids overfitting)
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_model_calibration(
+#'     x_formula  = ~ sex + region,
+#'     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+#'     population = population, crossfit = 5, crossfit_seed = 1) |>
+#'   prep()
 step_model_calibration <- function(spec, x_formula, models, population,
-                                   cluster = NULL, equal_within_cluster = FALSE) {
+                                   cluster = NULL, equal_within_cluster = FALSE,
+                                   crossfit = NULL, crossfit_seed = NULL) {
   if (!inherits(spec, "weighting_spec"))
     stop("The first argument must be a weighting_spec.")
   if (missing(x_formula) || missing(models) || missing(population))
@@ -453,6 +550,8 @@ step_model_calibration <- function(spec, x_formula, models, population,
     stop("`population` must be a data.frame with the auxiliaries/predictors for the whole population.")
   if (equal_within_cluster && is.null(cluster))
     stop("equal_within_cluster = TRUE requires `cluster`.")
+  if (!is.null(crossfit) && (!is.numeric(crossfit) || crossfit < 2))
+    stop("`crossfit` must be NULL or an integer >= 2 (number of folds).")
   detail <- if (equal_within_cluster)
               sprintf("%d y variables, equal weights by %s", length(models), cluster)
             else sprintf("%d y variables", length(models))
@@ -463,7 +562,9 @@ step_model_calibration <- function(spec, x_formula, models, population,
       models     = models,
       population = population,
       cluster    = cluster,
-      equal_within_cluster = equal_within_cluster
+      equal_within_cluster = equal_within_cluster,
+      crossfit      = if (is.null(crossfit)) NULL else as.integer(crossfit),
+      crossfit_seed = crossfit_seed
     ),
     class = c("step_model_calibration", "weighting_step")
   )
@@ -509,13 +610,19 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #'
 #' Caps weights into `[lower, upper]` and redistributes the change among the
 #' untrimmed units to preserve the total, mirroring survey::trimWeights().
-#' By default no weight may fall below 1, and the upper cap is set by an
-#' automatic empirical rule (Tukey far-out fence: Q3 + 3*IQR).
+#' By default no weight may fall below 1, and the upper cap is chosen by an
+#' automatic rule: the Tukey far-out fence (Q3 + 3*IQR) or, with
+#' `method = "potter"`, Potter's MSE-optimal cutoff.
 #'
 #' @param spec a weighting_spec.
 #' @param lower numeric. Lower floor (default 1: no weight below 1).
-#' @param upper numeric or NULL. Upper cap. If NULL, automatic rule
-#'   Q3 + 3*IQR of the active weights.
+#' @param upper numeric or NULL. Upper cap. If NULL, the cap is chosen
+#'   automatically by `method`.
+#' @param method rule for the automatic cap when `upper = NULL`: "tukey"
+#'   (default, Q3 + 3*IQR far-out fence) or "potter" (Potter's MSE-optimal cutoff,
+#'   which over a grid of candidate cutoffs minimizes an estimate of bias^2 +
+#'   variance and so balances the bias of trimming against the variance from
+#'   extreme weights). Ignored when `upper` is supplied.
 #' @param strict logical. If TRUE (default), iterate cap+redistribution until no
 #'   weight is outside `[lower, upper]` (like survey's strict = TRUE). If FALSE, a
 #'   single pass (redistribution may push some weights slightly past the cap).
@@ -524,13 +631,22 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
 #'   step_trim_weights(lower = 1, strict = TRUE) |> prep()
+#'
+#' # Potter MSE-optimal cutoff chosen from the data
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_trim_weights(method = "potter") |> prep()
 step_trim_weights <- function(spec, lower = 1, upper = NULL,
+                              method = c("tukey", "potter"),
                               strict = TRUE, maxit = 50L) {
+  method <- match.arg(method)
   step <- structure(
     list(
-      label  = "auto weight trimming",
+      label  = if (method == "potter") "auto weight trimming (Potter MSE)"
+               else "auto weight trimming",
       lower  = lower,
       upper  = upper,
+      method = method,
       strict = strict,
       maxit  = maxit
     ),

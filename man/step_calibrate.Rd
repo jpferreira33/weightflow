@@ -15,7 +15,8 @@ step_calibrate(
   calfun = c("linear", "logit"),
   bounds = NULL,
   maxit = 50L,
-  tol = 1e-06
+  tol = 1e-06,
+  penalty = NULL
 )
 }
 \arguments{
@@ -54,9 +55,23 @@ it is enforced smoothly. Avoids extreme/negative weights without a separate
 trimming step.}
 
 \item{maxit, tol}{convergence control for raking and bounded calibration.}
+
+\item{penalty}{(only "linear", unbounded) NULL or positive cost(s) for ridge
+(penalized) calibration. A positive scalar applies the same cost to every
+constraint; a named vector sets a cost per constraint (matched to the
+model.matrix columns). The cost is scale-free: a large value keeps the
+constraint (near) exact, a small value relaxes it to control extreme weights
+when there are many auxiliaries. Under ridge the achieved totals no longer
+match the targets exactly; the diagnostics report the deviation.}
 }
 \description{
-Calibration to population totals
+Adjusts the weights so that the weighted sample reproduces known population
+totals of auxiliary variables, while staying as close as possible to the input
+weights (Deville & Sarndal 1992). Supports raking (IPF on categorical
+margins), post-stratification, and linear/GREG calibration, optionally bounded
+(a logit distance or explicit bounds on the calibration factor). For linear
+calibration, \code{penalty} enables ridge (penalized) calibration, which relaxes
+the targets to control extreme weights when there are many auxiliaries.
 }
 \examples{
 # Raking to population margins
@@ -65,5 +80,18 @@ weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "raking",
                  margins = list(sex    = c(table(population$sex)),
                                 region = c(table(population$region)))) |>
+  prep()
+
+# ridge (penalized) calibration: relaxes the targets to control extreme
+# weights; a smaller penalty relaxes more. Uses only base R.
+pop_tot <- c("(Intercept)" = nrow(population),
+             regionSouth = sum(population$region == "South"),
+             regionEast  = sum(population$region == "East"),
+             regionWest  = sum(population$region == "West"),
+             sexM        = sum(population$sex == "M"))
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_calibrate(method = "linear", formula = ~ region + sex,
+                 totals = pop_tot, penalty = 1) |>
   prep()
 }
