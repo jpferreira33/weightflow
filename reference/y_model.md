@@ -5,7 +5,7 @@ Specify a working model for a study variable y
 ## Usage
 
 ``` r
-y_model(formula, engine = c("glm", "tree", "forest"), family = NULL)
+y_model(formula, engine = c("glm", "tree", "forest", "boost"), family = NULL)
 ```
 
 ## Arguments
@@ -16,7 +16,7 @@ y_model(formula, engine = c("glm", "tree", "forest"), family = NULL)
 
 - engine:
 
-  "glm", "tree" (rpart) or "forest" (ranger).
+  "glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost).
 
 - family:
 
@@ -33,7 +33,7 @@ a model specification list.
 y_model(income ~ age + sex, engine = "glm")
 #> $formula
 #> income ~ age + sex
-#> <environment: 0xaadf78698>
+#> <environment: 0x55d6ceb583e8>
 #> 
 #> $engine
 #> [1] "glm"

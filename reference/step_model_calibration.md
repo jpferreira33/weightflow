@@ -15,7 +15,9 @@ step_model_calibration(
   models,
   population,
   cluster = NULL,
-  equal_within_cluster = FALSE
+  equal_within_cluster = FALSE,
+  crossfit = NULL,
+  crossfit_seed = NULL
 )
 ```
 
@@ -50,6 +52,19 @@ step_model_calibration(
   cluster. Requires `cluster` and that the incoming weight be uniform
   within the cluster.
 
+- crossfit:
+
+  integer or NULL. If given (K \>= 2 folds), the outcome models are
+  fitted by K-fold cross-fitting: the sample predictions are out-of-fold
+  (each unit predicted by a model that did not see it), which avoids
+  overfitting with flexible engines; the population total of the
+  predictions uses the full model. Folds are formed by `cluster` when
+  given. NULL (default) fits and predicts in-sample.
+
+- crossfit_seed:
+
+  integer or NULL. Seed for reproducible fold assignment.
+
 ## Details
 
 Requires COMPLETE auxiliary information: a data.frame `population` with
@@ -65,6 +80,34 @@ weighting_spec(sample_survey, base_weights = pw) |>
     x_formula  = ~ sex + region,
     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
     population = population) |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (weighting class)
+#>   2. model calibration (1 y variables)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                           stage n_active sum_wts cv_wts deff_kish n_eff
+#>                            base      467    4371  0.236     1.056   442
+#>        stage_1_step_nonresponse      270    4371  0.144     1.021   265
+#>  stage_2_step_model_calibration      270    4495  0.212     1.045   258
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# with cross-fitting (out-of-fold predictions, avoids overfitting)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population = population, crossfit = 5, crossfit_seed = 1) |>
   prep()
 #> 
 #> == Weighting specification (weightflow) ==
