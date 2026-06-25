@@ -13,7 +13,6 @@ the calibration step (no dropping or nonresponse), so no rows are
 removed.
 
 ``` r
-
 d <- sample_survey
 N <- nrow(population)
 ```
@@ -24,7 +23,6 @@ Post-stratifying to the population counts of `region`: each region’s
 weights are rescaled so the weighted count matches the known total.
 
 ``` r
-
 library(survey)
 #> Loading required package: grid
 #> Loading required package: Matrix
@@ -51,7 +49,7 @@ w_sv   <- weights(des_ps)
 
 c(max_abs_weight_diff = max(abs(w_wf - w_sv)))
 #> max_abs_weight_diff 
-#>                   0
+#>        8.881784e-16
 ```
 
 ## Raking
@@ -61,7 +59,6 @@ margins. We tighten `survey`’s convergence so both solve the system to
 the same precision.
 
 ``` r
-
 # weightflow
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "raking",
@@ -80,7 +77,7 @@ w_sv  <- weights(des_rk)
 
 c(max_abs_weight_diff = max(abs(w_wf - w_sv)))
 #> max_abs_weight_diff 
-#>        1.110972e-09
+#>        1.110985e-09
 ```
 
 ## Linear (GREG) calibration
@@ -89,7 +86,6 @@ Linear calibration to the totals of the design matrix of
 `~ region + sex`, including the intercept (the population size `N`).
 
 ``` r
-
 totals <- colSums(model.matrix(~ region + sex, population))
 
 # weightflow
@@ -105,7 +101,7 @@ w_sv    <- weights(des_cal)
 
 c(max_abs_weight_diff = max(abs(w_wf - w_sv)))
 #> max_abs_weight_diff 
-#>        3.552714e-15
+#>        1.776357e-15
 ```
 
 ## Same estimates
@@ -114,7 +110,6 @@ The agreement carries over to estimates. A calibrated total of a survey
 outcome matches between the two packages:
 
 ``` r
-
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region)),
@@ -129,7 +124,7 @@ total_sv <- as.numeric(svytotal(~employed, des_rk, na.rm = TRUE))
 
 c(weightflow = total_wf, survey = total_sv, difference = total_wf - total_sv)
 #>   weightflow       survey   difference 
-#> 1.084772e+03 1.084772e+03 3.450396e-09
+#> 1.084772e+03 1.084772e+03 3.450623e-09
 ```
 
 ## What weightflow adds

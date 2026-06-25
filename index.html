@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="favicon.ico">
 <link rel="manifest" href="site.webmanifest">
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Declarative API for Staged Survey Weights">
 <meta name="description" content="Builds survey weights from design base weights by chaining hierarchical adjustments (unknown eligibility, nonresponse and calibration) through a declarative, pipeable, tidymodels-style API. Calibration follows Deville and Sarndal (1992) &lt;doi:10.2307/2290268&gt;. Variances are obtained with a bootstrap that resamples primary sampling units and re-applies the whole recipe on each replicate, following the rescaling bootstrap of Rao and Wu (1988) &lt;doi:10.1080/01621459.1988.10478591&gt;, so the replicate weights carry the variability of every adjustment. The weights also bridge to the survey and srvyr packages for design-based inference.">
@@ -68,9 +68,30 @@
 </h1>
 </div>
 <blockquote>
-<p>Declarative, pipeable survey weighting in base R — from design weights to calibrated, variance-ready weights.</p>
+<p>Declarative, pipeable survey weighting in base R — from design weights to calibrated, model-assisted, variance-ready weights.</p>
 </blockquote>
 <p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
+<div class="section level2">
+<h2 id="what-makes-weightflow-different">What makes weightflow different<a class="anchor" aria-label="anchor" href="#what-makes-weightflow-different"></a>
+</h2>
+<ul>
+<li>
+<strong>A weighting recipe, not a black box.</strong> The whole process — eligibility, selection, nonresponse, calibration, trimming — is one explicit, auditable, pipeable object that you read top to bottom.</li>
+<li>
+<strong>Flexible engines for nonresponse and outcome models.</strong> Response propensities and model-calibration outcomes can be fitted with logistic regression, CART, random forest or <strong>gradient boosting (xgboost)</strong> — same API, swap one argument.</li>
+<li>
+<strong>Cross-fitting to tame overfitting.</strong> Flexible learners can overfit the propensity and blow up the weights; optional <strong>k-fold cross-fitting</strong> estimates each unit out-of-sample, with folds formed by cluster so there is no leakage.</li>
+<li>
+<strong>Calibration that controls extreme weights.</strong> Beyond raking, post-stratification and GREG, <strong>ridge (penalized) calibration</strong> relaxes the targets to keep weights stable when there are many auxiliaries.</li>
+<li>
+<strong>Principled trimming.</strong> The usual far-out fence, plus <strong>Potter’s MSE-optimal cutoff</strong>, chosen from the data instead of by hand.</li>
+<li>
+<strong>Recipe-aware variance.</strong> The bootstrap re-applies <em>every</em> step on each replicate, so the standard errors carry the variability of the whole cascade.</li>
+</ul>
+<blockquote>
+<p><strong>Note.</strong> Gradient boosting, cross-fitting, ridge calibration and Potter trimming are available in the development version (this repository) and are coming to CRAN in the next release. Install from GitHub to use them today.</p>
+</blockquote>
+</div>
 <div class="section level2">
 <h2 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
 </h2>
@@ -81,16 +102,16 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"jpferreira33/weightflow"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># Development version (includes boosting, cross-fitting, ridge and Potter)</span></span>
+<span><span class="co"># install.packages("remotes")</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"jpferreira33/weightflow"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="the-idea">The idea<a class="anchor" aria-label="anchor" href="#the-idea"></a>
 </h2>
 <p>A recipe is <strong>inert</strong>: building it computes nothing. <code><a href="reference/prep.html">prep()</a></code> walks the steps <em>in order</em> and estimates the cascade of factors; <code><a href="reference/collect_weights.html">collect_weights()</a></code> extracts the final weights. Separating <em>define</em> from <em>apply</em> makes the whole process reproducible and auditable, and it is exactly what lets the bootstrap re-run the entire cascade per replicate.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jpferreira33/weightflow" class="external-link">weightflow</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jpferreira33/weightflow" class="external-link">weightflow</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">recipe</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_one</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -110,6 +131,44 @@
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="va">recipe</span><span class="op">)</span>              <span class="co"># estimate the cascade</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>                     <span class="co"># per-stage diagnostics + Kish deff</span></span>
 <span><span class="va">wts</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/collect_weights.html">collect_weights</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>   <span class="co"># data.frame with .weight</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="highlights">Highlights<a class="anchor" aria-label="anchor" href="#highlights"></a>
+</h2>
+<p>The methods below are what set weightflow apart. Each is opt-in: the defaults reproduce classic survey weighting, and one argument switches the method on.</p>
+<div class="section level3">
+<h3 id="machine-learning-propensities-xgboost">Machine-learning propensities (xgboost)<a class="anchor" aria-label="anchor" href="#machine-learning-propensities-xgboost"></a>
+</h3>
+<p>Estimate the response propensity with gradient boosting instead of logistic regression — useful when nonresponse depends on the covariates in nonlinear or interacting ways. The engine also drives the outcome models in <code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code>.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
+<span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"boost"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="cross-fitting-k-fold">Cross-fitting (k-fold)<a class="anchor" aria-label="anchor" href="#cross-fitting-k-fold"></a>
+</h3>
+<p>A flexible learner that predicts the same units it trained on overfits the propensity, which inflates the weights and the variance. Cross-fitting estimates each unit from a model trained on the <em>other</em> folds; folds are formed by cluster when a <code>cluster</code> is set, so household members never leak across folds.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
+<span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"boost"</span>,</span>
+<span>                 crossfit <span class="op">=</span> <span class="fl">5</span>, crossfit_seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<p>In practice this is the difference between a stable adjustment and one dominated by a few extreme weights: on the bundled data, boosting without cross-fitting drives the design effect to ~2.4, while cross-fitting keeps it near 1.5.</p>
+</div>
+<div class="section level3">
+<h3 id="ridge-penalized-calibration">Ridge (penalized) calibration<a class="anchor" aria-label="anchor" href="#ridge-penalized-calibration"></a>
+</h3>
+<p>When you calibrate to many margins, forcing every constraint exactly can produce extreme weights. Ridge calibration relaxes the targets in a controlled way — a single, scale-free <code>penalty</code> trades a little accuracy on the totals for much steadier weights.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>,</span>
+<span>               totals <span class="op">=</span> <span class="va">pop_totals</span>, penalty <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>   <span class="co"># smaller = more relaxation</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="potter-mse-optimal-trimming">Potter (MSE-optimal) trimming<a class="anchor" aria-label="anchor" href="#potter-mse-optimal-trimming"></a>
+</h3>
+<p>Instead of a hand-picked cutoff, choose the trimming threshold that minimizes an estimate of bias^2 + variance (Potter 1990), balancing the bias of trimming against the variance from extreme weights.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/step_trim_weights.html">step_trim_weights</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"potter"</span><span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>
@@ -139,21 +198,21 @@
 </tr>
 <tr>
 <td><code><a href="reference/step_nonresponse.html">step_nonresponse()</a></code></td>
-<td>Weighting classes or propensity (logit / CART / random forest), person- or household-level.</td>
+<td>Weighting classes or propensity (logit / CART / random forest / <strong>xgboost</strong>), with optional <strong>k-fold cross-fitting</strong>, person- or household-level.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_calibrate.html">step_calibrate()</a></code></td>
-<td>Raking, post-stratification, linear/GREG; bounded (Deville-Särndal) and integrative (one weight per household) options.</td>
+<td>Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (one weight per household), and <strong>ridge (penalized)</strong> options.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code></td>
-<td>Wu-Sitter model calibration with working models for the outcomes.</td>
+<td>Wu-Sitter model calibration with working models for the outcomes (any engine, with cross-fitting).</td>
 </tr>
 <tr>
 <td>
 <code><a href="reference/step_trim.html">step_trim()</a></code>, <code><a href="reference/step_trim_weights.html">step_trim_weights()</a></code>
 </td>
-<td>Manual or automatic survey-style trimming, insertable anywhere.</td>
+<td>Manual or automatic trimming (Tukey fence or <strong>Potter MSE-optimal</strong>), insertable anywhere.</td>
 </tr>
 <tr>
 <td>
@@ -168,9 +227,9 @@
 </tbody>
 </table>
 <p>Eligibility and response accept <strong>0/1 dummy columns</strong> or any logical condition.</p>
-<p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV²) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors; <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained HTML report — pipeline diagram, variables used, per-stage summaries and per-step visuals — with no graphics device or server required.</p>
+<p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV^2) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors; <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained HTML report — pipeline diagram, variables used, per-stage summaries and per-step visuals — with no graphics device or server required.</p>
 <p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article):</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">recipe</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and CI</span></span>
 <span><span class="fu"><a href="reference/as_svydesign.html">as_svydesign</a></span><span class="op">(</span><span class="va">fitted</span>, ids <span class="op">=</span> <span class="st">"psu"</span>, strata <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span>   <span class="co"># survey linearization</span></span>
@@ -193,20 +252,23 @@
 <p><em>General framework</em></p>
 <ul>
 <li>Valliant, R., Dever, J. A., &amp; Kreuter, F. (2018). <em>Practical Tools for Designing and Weighting Survey Samples</em> (2nd ed.). Springer.</li>
-<li>Särndal, C.-E., Swensson, B., &amp; Wretman, J. (1992). <em>Model Assisted Survey Sampling</em>. Springer.</li>
+<li>Sarndal, C.-E., Swensson, B., &amp; Wretman, J. (1992). <em>Model Assisted Survey Sampling</em>. Springer.</li>
 </ul>
-<p><em>Nonresponse</em></p>
+<p><em>Nonresponse and machine-learning propensities</em></p>
 <ul>
-<li>Särndal, C.-E., &amp; Lundström, S. (2005). <em>Estimation in Surveys with Nonresponse</em>. Wiley.</li>
+<li>Sarndal, C.-E., &amp; Lundstrom, S. (2005). <em>Estimation in Surveys with Nonresponse</em>. Wiley.</li>
 <li>Little, R. J. A. (1986). Survey nonresponse adjustments for estimates of means. <em>International Statistical Review</em>, 54(2), 139–157.</li>
+<li>Breidt, F. J., &amp; Opsomer, J. D. (2017). Model-assisted survey estimation with modern prediction techniques. <em>Statistical Science</em>, 32(2), 190–205.</li>
+<li>Chernozhukov, V., et al. (2018). Double/debiased machine learning for treatment and structural parameters. <em>The Econometrics Journal</em>, 21(1), C1–C68. — <em>cross-fitting</em>.</li>
 </ul>
 <p><em>Calibration</em></p>
 <ul>
-<li>Deville, J.-C., &amp; Särndal, C.-E. (1992). Calibration estimators in survey sampling. <em>JASA</em>, 87(418), 376–382.</li>
-<li>Deville, J.-C., Särndal, C.-E., &amp; Sautory, O. (1993). Generalized raking procedures in survey sampling. <em>JASA</em>, 88(423), 1013–1020.</li>
+<li>Deville, J.-C., &amp; Sarndal, C.-E. (1992). Calibration estimators in survey sampling. <em>JASA</em>, 87(418), 376–382.</li>
+<li>Deville, J.-C., Sarndal, C.-E., &amp; Sautory, O. (1993). Generalized raking procedures in survey sampling. <em>JASA</em>, 88(423), 1013–1020.</li>
 <li>Deming, W. E., &amp; Stephan, F. F. (1940). On a least squares adjustment of a sampled frequency table. <em>Annals of Mathematical Statistics</em>, 11(4), 427–444.</li>
-<li>Lemaître, G., &amp; Dufour, J. (1987). An integrated method for weighting persons and families. <em>Survey Methodology</em>, 13(2), 199–207.</li>
+<li>Lemaitre, G., &amp; Dufour, J. (1987). An integrated method for weighting persons and families. <em>Survey Methodology</em>, 13(2), 199–207.</li>
 <li>Wu, C., &amp; Sitter, R. R. (2001). A model-calibration approach to using complete auxiliary information from survey data. <em>JASA</em>, 96(453), 185–193.</li>
+<li>Bardsley, P., &amp; Chambers, R. L. (1984). Multipurpose estimation from unbalanced samples. <em>Applied Statistics</em>, 33(3), 290–299. — <em>ridge calibration</em>.</li>
 </ul>
 <p><em>Design effect and trimming</em></p>
 <ul>

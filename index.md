@@ -1,13 +1,41 @@
 # weightflow
 
 > Declarative, pipeable survey weighting in base R — from design weights
-> to calibrated, variance-ready weights.
+> to calibrated, model-assisted, variance-ready weights.
 
 **weightflow** builds survey weights by chaining hierarchical
 adjustments with a `tidymodels`-style API, and estimates their variances
 with a bootstrap that re-applies the whole recipe on each replicate. It
 has **no hard dependencies** (base R, R \>= 4.1) and bridges to
 `survey`/`srvyr` for design-based inference.
+
+## What makes weightflow different
+
+- **A weighting recipe, not a black box.** The whole process —
+  eligibility, selection, nonresponse, calibration, trimming — is one
+  explicit, auditable, pipeable object that you read top to bottom.
+- **Flexible engines for nonresponse and outcome models.** Response
+  propensities and model-calibration outcomes can be fitted with
+  logistic regression, CART, random forest or **gradient boosting
+  (xgboost)** — same API, swap one argument.
+- **Cross-fitting to tame overfitting.** Flexible learners can overfit
+  the propensity and blow up the weights; optional **k-fold
+  cross-fitting** estimates each unit out-of-sample, with folds formed
+  by cluster so there is no leakage.
+- **Calibration that controls extreme weights.** Beyond raking,
+  post-stratification and GREG, **ridge (penalized) calibration**
+  relaxes the targets to keep weights stable when there are many
+  auxiliaries.
+- **Principled trimming.** The usual far-out fence, plus **Potter’s
+  MSE-optimal cutoff**, chosen from the data instead of by hand.
+- **Recipe-aware variance.** The bootstrap re-applies *every* step on
+  each replicate, so the standard errors carry the variability of the
+  whole cascade.
+
+> **Note.** Gradient boosting, cross-fitting, ridge calibration and
+> Potter trimming are available in the development version (this
+> repository) and are coming to CRAN in the next release. Install from
+> GitHub to use them today.
 
 ## How it works
 
@@ -21,7 +49,7 @@ process](reference/figures/flow-diagram.png)
 ## Installation
 
 ``` r
-
+# Development version (includes boosting, cross-fitting, ridge and Potter)
 # install.packages("remotes")
 remotes::install_github("jpferreira33/weightflow")
 ```
@@ -37,8 +65,6 @@ whole process reproducible and auditable, and it is exactly what lets
 the bootstrap re-run the entire cascade per replicate.
 
 ``` r
-
-
 library(weightflow)
 
 recipe <- weighting_spec(sample_one, base_weights = pw) |>
@@ -61,6 +87,66 @@ summary(fitted)                     # per-stage diagnostics + Kish deff
 wts    <- collect_weights(fitted)   # data.frame with .weight
 ```
 
+## Highlights
+
+The methods below are what set weightflow apart. Each is opt-in: the
+defaults reproduce classic survey weighting, and one argument switches
+the method on.
+
+### Machine-learning propensities (xgboost)
+
+Estimate the response propensity with gradient boosting instead of
+logistic regression — useful when nonresponse depends on the covariates
+in nonlinear or interacting ways. The engine also drives the outcome
+models in
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).
+
+``` r
+step_nonresponse(respondent = responded, method = "propensity",
+                 formula = ~ region + sex + age, engine = "boost")
+```
+
+### Cross-fitting (k-fold)
+
+A flexible learner that predicts the same units it trained on overfits
+the propensity, which inflates the weights and the variance.
+Cross-fitting estimates each unit from a model trained on the *other*
+folds; folds are formed by cluster when a `cluster` is set, so household
+members never leak across folds.
+
+``` r
+step_nonresponse(respondent = responded, method = "propensity",
+                 formula = ~ region + sex + age, engine = "boost",
+                 crossfit = 5, crossfit_seed = 1)
+```
+
+In practice this is the difference between a stable adjustment and one
+dominated by a few extreme weights: on the bundled data, boosting
+without cross-fitting drives the design effect to ~2.4, while
+cross-fitting keeps it near 1.5.
+
+### Ridge (penalized) calibration
+
+When you calibrate to many margins, forcing every constraint exactly can
+produce extreme weights. Ridge calibration relaxes the targets in a
+controlled way — a single, scale-free `penalty` trades a little accuracy
+on the totals for much steadier weights.
+
+``` r
+step_calibrate(method = "linear", formula = ~ region + sex,
+               totals = pop_totals, penalty = 1)   # smaller = more relaxation
+```
+
+### Potter (MSE-optimal) trimming
+
+Instead of a hand-picked cutoff, choose the trimming threshold that
+minimizes an estimate of bias^2 + variance (Potter 1990), balancing the
+bias of trimming against the variance from extreme weights.
+
+``` r
+step_trim_weights(method = "potter")
+```
+
 ## What it does
 
 **Adjustment steps**, applied in the order you pipe them:
@@ -70,10 +156,10 @@ wts    <- collect_weights(fitted)   # data.frame with .weight
 | [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md) | Redistribute unknown-eligibility cases among the known ones (person- or household-level via `cluster`). |
 | [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md) | Zero out out-of-scope units. |
 | [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md) | Within-household selection (unequal `prob` or equal `n_eligible`). |
-| [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md) | Weighting classes or propensity (logit / CART / random forest), person- or household-level. |
-| [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md) | Raking, post-stratification, linear/GREG; bounded (Deville-Särndal) and integrative (one weight per household) options. |
-| [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md) | Wu-Sitter model calibration with working models for the outcomes. |
-| [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md), [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md) | Manual or automatic survey-style trimming, insertable anywhere. |
+| [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md) | Weighting classes or propensity (logit / CART / random forest / **xgboost**), with optional **k-fold cross-fitting**, person- or household-level. |
+| [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md) | Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (one weight per household), and **ridge (penalized)** options. |
+| [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md) | Wu-Sitter model calibration with working models for the outcomes (any engine, with cross-fitting). |
+| [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md), [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md) | Manual or automatic trimming (Tukey fence or **Potter MSE-optimal**), insertable anywhere. |
 | [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md), [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md) | Integer rounding and rescaling to a size or total. |
 | [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md) | Quality checkpoint on deff, weight ratio or effective n. |
 
@@ -83,7 +169,7 @@ condition.
 **Diagnostics and reporting**:
 [`summary()`](https://rdrr.io/r/base/summary.html) and
 [`plot()`](https://rdrr.io/r/graphics/plot.default.html) show the
-per-stage cascade with the **Kish design effect** (deff = 1 + CV²) and
+per-stage cascade with the **Kish design effect** (deff = 1 + CV^2) and
 effective sample size;
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
 returns the per-unit, per-step factors;
@@ -95,7 +181,6 @@ server required.
 **Variance estimation** (see the *Variance estimation* article):
 
 ``` r
-
 boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu")
 boot_mean(boot, "income")           # estimate, SE and CI
 as_svydesign(fitted, ids = "psu", strata = "region")   # survey linearization
@@ -125,30 +210,39 @@ adjustment, define a `step_*()` constructor (inert) and its
 
 - Valliant, R., Dever, J. A., & Kreuter, F. (2018). *Practical Tools for
   Designing and Weighting Survey Samples* (2nd ed.). Springer.
-- Särndal, C.-E., Swensson, B., & Wretman, J. (1992). *Model Assisted
+- Sarndal, C.-E., Swensson, B., & Wretman, J. (1992). *Model Assisted
   Survey Sampling*. Springer.
 
-*Nonresponse*
+*Nonresponse and machine-learning propensities*
 
-- Särndal, C.-E., & Lundström, S. (2005). *Estimation in Surveys with
+- Sarndal, C.-E., & Lundstrom, S. (2005). *Estimation in Surveys with
   Nonresponse*. Wiley.
 - Little, R. J. A. (1986). Survey nonresponse adjustments for estimates
   of means. *International Statistical Review*, 54(2), 139–157.
+- Breidt, F. J., & Opsomer, J. D. (2017). Model-assisted survey
+  estimation with modern prediction techniques. *Statistical Science*,
+  32(2), 190–205.
+- Chernozhukov, V., et al. (2018). Double/debiased machine learning for
+  treatment and structural parameters. *The Econometrics Journal*,
+  21(1), C1–C68. — *cross-fitting*.
 
 *Calibration*
 
-- Deville, J.-C., & Särndal, C.-E. (1992). Calibration estimators in
+- Deville, J.-C., & Sarndal, C.-E. (1992). Calibration estimators in
   survey sampling. *JASA*, 87(418), 376–382.
-- Deville, J.-C., Särndal, C.-E., & Sautory, O. (1993). Generalized
+- Deville, J.-C., Sarndal, C.-E., & Sautory, O. (1993). Generalized
   raking procedures in survey sampling. *JASA*, 88(423), 1013–1020.
 - Deming, W. E., & Stephan, F. F. (1940). On a least squares adjustment
   of a sampled frequency table. *Annals of Mathematical Statistics*,
   11(4), 427–444.
-- Lemaître, G., & Dufour, J. (1987). An integrated method for weighting
+- Lemaitre, G., & Dufour, J. (1987). An integrated method for weighting
   persons and families. *Survey Methodology*, 13(2), 199–207.
 - Wu, C., & Sitter, R. R. (2001). A model-calibration approach to using
   complete auxiliary information from survey data. *JASA*, 96(453),
   185–193.
+- Bardsley, P., & Chambers, R. L. (1984). Multipurpose estimation from
+  unbalanced samples. *Applied Statistics*, 33(3), 290–299. — *ridge
+  calibration*.
 
 *Design effect and trimming*
 
