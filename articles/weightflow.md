@@ -22,6 +22,7 @@ product of those factors, applied in order. We use the bundled
 multistage sample:
 
 ``` r
+
 dat <- sample_one
 dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
@@ -72,6 +73,7 @@ generalized regression (GREG) estimator. The *Validation* article shows
 weightflow’s calibration reproduces the `survey` package.
 
 ``` r
+
 fitted <- weighting_spec(dat, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_drop_ineligible(ineligible = ineligible) |>
@@ -100,6 +102,7 @@ total but can perturb the calibrated margins slightly, so a rigorous
 workflow re-calibrates after trimming.
 
 ``` r
+
 trimmed <- weighting_spec(dat, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_drop_ineligible(ineligible = ineligible) |>
@@ -125,6 +128,7 @@ more unequal) and trimming brings it back down. The per-stage summary
 shows the whole trajectory:
 
 ``` r
+
 summary(fitted)
 #> 
 #> == Weighting specification (weightflow) ==
@@ -230,6 +234,7 @@ summary(fitted)
 And the effect of trimming on the final design effect:
 
 ``` r
+
 c(no_trim = design_effect(fitted$final_weight)$deff,
   trimmed = design_effect(trimmed$final_weight)$deff)
 #>  no_trim  trimmed 

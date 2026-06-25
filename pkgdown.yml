@@ -1,13 +1,14 @@
-pandoc: 3.6.3
+pandoc: 3.8.3
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
+  advanced-methods: advanced-methods.html
   model-calibration: model-calibration.html
   nonresponse-propensities: nonresponse-propensities.html
   validation-against-survey: validation-against-survey.html
   variance-estimation: variance-estimation.html
   weightflow: weightflow.html
-last_built: 2026-06-25T00:22Z
+last_built: 2026-06-25T03:00Z
 urls:
   reference: https://jpferreira33.github.io/weightflow/reference
   article: https://jpferreira33.github.io/weightflow/articles

@@ -2,6 +2,8 @@
 
 ### All vignettes
 
+- [Machine learning, cross-fitting and robust
+  calibration](https://jpferreira33.github.io/weightflow/articles/advanced-methods.md):
 - [Model calibration (model-assisted
   weighting)](https://jpferreira33.github.io/weightflow/articles/model-calibration.md):
 - [Nonresponse: weighting classes and

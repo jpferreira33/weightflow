@@ -41,6 +41,7 @@ the working model is a **random forest**, which captures nonlinear
 structure in the predictors without specifying it.
 
 ``` r
+
 spec <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region") |>
@@ -63,6 +64,7 @@ weighted total of the income predictions matches its population total.
 The step’s diagnostics show target versus achieved:
 
 ``` r
+
 fitted$steps[[2]]$diagnostics
 #>              constraint            type   target achieved
 #> (Intercept) (Intercept) X (consistency)     4495     4495
@@ -83,6 +85,7 @@ Because the weights are calibrated on the income predictions, the
 weighted estimate of the income total tracks the true population total:
 
 ``` r
+
 est_total  <- sum(fitted$final_weight * sample_survey$income, na.rm = TRUE)
 true_total <- sum(population$income)
 c(estimated = est_total, population = true_total,
