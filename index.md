@@ -49,7 +49,6 @@ process](reference/figures/flow-diagram.png)
 ## Installation
 
 ``` r
-
 # Development version (includes boosting, cross-fitting, ridge and Potter)
 # install.packages("remotes")
 remotes::install_github("jpferreira33/weightflow")
@@ -66,7 +65,6 @@ whole process reproducible and auditable, and it is exactly what lets
 the bootstrap re-run the entire cascade per replicate.
 
 ``` r
-
 library(weightflow)
 
 recipe <- weighting_spec(sample_one, base_weights = pw) |>
@@ -104,7 +102,6 @@ models in
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).
 
 ``` r
-
 step_nonresponse(respondent = responded, method = "propensity",
                  formula = ~ region + sex + age, engine = "boost")
 ```
@@ -118,7 +115,6 @@ folds; folds are formed by cluster when a `cluster` is set, so household
 members never leak across folds.
 
 ``` r
-
 step_nonresponse(respondent = responded, method = "propensity",
                  formula = ~ region + sex + age, engine = "boost",
                  crossfit = 5, crossfit_seed = 1)
@@ -137,7 +133,6 @@ controlled way — a single, scale-free `penalty` trades a little accuracy
 on the totals for much steadier weights.
 
 ``` r
-
 step_calibrate(method = "linear", formula = ~ region + sex,
                totals = pop_totals, penalty = 1)   # smaller = more relaxation
 ```
@@ -149,7 +144,6 @@ minimizes an estimate of bias^2 + variance (Potter 1990), balancing the
 bias of trimming against the variance from extreme weights.
 
 ``` r
-
 step_trim_weights(method = "potter")
 ```
 
@@ -187,7 +181,6 @@ server required.
 **Variance estimation** (see the *Variance estimation* article):
 
 ``` r
-
 boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu")
 boot_mean(boot, "income")           # estimate, SE and CI
 as_svydesign(fitted, ids = "psu", strata = "region")   # survey linearization

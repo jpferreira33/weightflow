@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Machine learning, cross-fitting and robust calibration">
 </head>
@@ -36,7 +36,7 @@
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../articles/weightflow.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="active nav-item dropdown">
+<li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
@@ -68,7 +68,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Machine learning, cross-fitting and robust calibration</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/master/vignettes/advanced-methods.Rmd" class="external-link"><code>vignettes/advanced-methods.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/HEAD/vignettes/advanced-methods.Rmd" class="external-link"><code>vignettes/advanced-methods.Rmd</code></a></small>
       <div class="d-none name"><code>advanced-methods.Rmd</code></div>
     </div>
 
@@ -98,7 +98,7 @@ are auxiliary totals known for
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math>;
 and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><annotation encoding="application/x-tex">\hat\phi_i</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>m</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\hat m(x_i)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>m</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\hat m(x_i)</annotation></semantics></math>
 are estimated response propensities and outcome predictions.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">base</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_one</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -145,7 +145,7 @@ weighting is meant to avoid.</p>
 <p>The design effect makes this visible. With in-sample boosting, a
 single propensity class can carry a factor an order of magnitude larger
 than the rest, and the Kish design effect
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">deff</mtext><mo>=</mo><mn>1</mn><mo>+</mo><msup><mtext mathvariant="normal">CV</mtext><mn>2</mn></msup><mo stretchy="false" form="prefix">(</mo><mi>w</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\text{deff} = 1 + \text{CV}^2(w)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">deff</mtext><mo>=</mo><mn>1</mn><mo>+</mo><msup><mtext mathvariant="normal">CV</mtext><mn>2</mn></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\text{deff} = 1 + \text{CV}^2(w)</annotation></semantics></math>
 climbs accordingly.</p>
 </div>
 <div class="section level2">
@@ -175,14 +175,14 @@ classes come out balanced. The estimates barely change; the
 <p>Cross-fitting is available wherever a model is fitted. In
 <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> it plays the same role: a working
 model
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>m</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\hat m(x)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>m</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\hat m(x)</annotation></semantics></math>
 is fitted for each outcome
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>,
 and the weights are calibrated so that the weighted sample total of the
 prediction matches its population total,</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></munder><msub><mi>w</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><mover><mi>m</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></munder><mover><mi>m</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\sum_{i \in s} w_i\,\hat m(x_i) = \sum_{i \in U} \hat m(x_i).</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></munder><msub><mi>w</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><mover><mi>m</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></munder><mover><mi>m</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">\sum_{i \in s} w_i\,\hat m(x_i) = \sum_{i \in U} \hat m(x_i).</annotation></semantics></math></p>
 <p>With <code>crossfit = K</code>, the sample predictions
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>m</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\hat m(x_i)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>m</mi><mo accent="true">̂</mo></mover><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\hat m(x_i)</annotation></semantics></math>
 on the left are made out-of-fold (each unit predicted by a model that
 did not see it), while the population total on the right uses the full
 model. The example below fits the outcome model for <code>income</code>
@@ -220,9 +220,9 @@ totals. With many control variables, forcing every constraint
 calibration relaxes the constraints in a controlled way: each target is
 allowed a small, penalized deviation. In the linear case the calibration
 system
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>λ</mi><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>X</mi><mo>−</mo><mover><mi>X</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">A\lambda = (X - \hat X)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>λ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo>−</mo><mover><mi>X</mi><mo accent="true">̂</mo></mover><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">A\lambda = (X - \hat X)</annotation></semantics></math>
 gains a penalty on its diagonal,</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo minsize="120%" maxsize="120%" stretchy="true" form="prefix">(</mo><mi>A</mi><mo>+</mo><mrow><mi mathvariant="normal">diag</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mi>/</mi><msub><mi>c</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo><mo minsize="120%" maxsize="120%" stretchy="true" form="postfix">)</mo><mspace width="0.167em"></mspace><mi>λ</mi><mo>=</mo><mi>X</mi><mo>−</mo><mover><mi>X</mi><mo accent="true">̂</mo></mover><mo>,</mo></mrow><annotation encoding="application/x-tex">\big(A + \operatorname{diag}(s / c_j)\big)\,\lambda = X - \hat X,</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo minsize="1.2" maxsize="1.2" stretchy="false" form="prefix">(</mo><mi>A</mi><mo>+</mo><mo>diag</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>s</mi><mi>/</mi><msub><mi>c</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo minsize="1.2" maxsize="1.2" stretchy="false" form="postfix">)</mo><mspace width="0.167em"></mspace><mi>λ</mi><mo>=</mo><mi>X</mi><mo>−</mo><mover><mi>X</mi><mo accent="true">̂</mo></mover><mo>,</mo></mrow><annotation encoding="application/x-tex">\big(A + \operatorname{diag}(s / c_j)\big)\,\lambda = X - \hat X,</annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mi>j</mi></msub><annotation encoding="application/x-tex">c_j</annotation></semantics></math>
 is the cost of constraint
@@ -271,7 +271,7 @@ are capped), the method evaluates a grid of values of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math>
 and minimizes an estimate of the mean squared error of the weighted
 total,</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">MSE</mtext><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mtext mathvariant="normal">bias</mtext><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>+</mo><mtext mathvariant="normal">var</mtext><mo stretchy="false" form="prefix">(</mo><mi>τ</mi><mo stretchy="false" form="postfix">)</mo><mo>,</mo></mrow><annotation encoding="application/x-tex">\text{MSE}(\tau) = \text{bias}(\tau)^2 + \text{var}(\tau),</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">MSE</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mtext mathvariant="normal">bias</mtext><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>+</mo><mtext mathvariant="normal">var</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mi>τ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">\text{MSE}(\tau) = \text{bias}(\tau)^2 + \text{var}(\tau),</annotation></semantics></math></p>
 <p>balancing the bias introduced by trimming at
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>τ</mi><annotation encoding="application/x-tex">\tau</annotation></semantics></math>
 (related to the weight removed above the cutoff) against the variance

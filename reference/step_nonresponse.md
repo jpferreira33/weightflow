@@ -180,7 +180,7 @@ if (requireNamespace("xgboost", quietly = TRUE)) {
 #> Stage summary:
 #>                     stage n_active sum_wts cv_wts deff_kish n_eff
 #>                      base      467    4371  0.236     1.056   442
-#>  stage_1_step_nonresponse      270    4371  0.252     1.063   254
+#>  stage_1_step_nonresponse      270    4371  0.237     1.056   256
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
