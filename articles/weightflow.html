@@ -74,27 +74,63 @@
 
     
     
-<p>Survey weighting turns a sample into estimates for a population. It
-starts from the design and then corrects, one stage at a time, for
-everything that pulls the realized sample away from the target
-population: addresses that could not be resolved, units out of scope,
-subsampling inside households, nonresponse, and coverage. weightflow
-expresses that chain as a pipeline of explicit steps. This vignette
-walks the logic of each stage, why it exists, and why the order
-matters.</p>
+<p>Survey weights are the fundamental input used to produce population
+estimates from sample data. Let
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mo>=</mo><mrow><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>N</mi></mrow></mrow><annotation encoding="application/x-tex">U={1,\ldots,N}</annotation></semantics></math>
+denote the target population and let
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mi>i</mi></msub><annotation encoding="application/x-tex">y_i</annotation></semantics></math>
+be the value of a study variable for unit
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>).
+A common objective is to estimate finite population quantities such as
+the total</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></munder><msub><mi>y</mi><mi>i</mi></msub><mo>,</mo></mrow><annotation encoding="application/x-tex">Y=\sum_{i \in U} y_i, </annotation></semantics></math></p>
+<p>or functions derived from it (e.g., means, proportions, and ratios).
+Survey weighting provides the mechanism for translating information
+observed in the sample into estimates for these population
+quantities.</p>
+<p>The process starts from the sample design and then sequentially
+adjusts for the mechanisms that cause the realized sample to differ from
+the target population. Some adjustments aim to reduce potential
+selection biases in the effective sample (i.e., eligible responding
+units) by modeling mechanisms such as response propensities. Other
+adjustments incorporate auxiliary information to improve precision and
+ensure consistency with known population counts or totals through
+techniques such as calibration. Together, these steps transform the
+initial design weights into analysis weights suitable for population
+inference.</p>
+<p><code>weightflow</code> expresses the weighting process as a
+reproducible pipeline of explicit steps. Each step corresponds to a well
+defined adjustment, records how weights are modified, and passes its
+output to the next stage in the workflow. This vignette explains the
+purpose of each adjustment, the statistical reasoning behind it, and why
+the order of the steps matters.</p>
 <div class="section level2">
 <h2 id="the-starting-point-design-weights">The starting point: design weights<a class="anchor" aria-label="anchor" href="#the-starting-point-design-weights"></a>
 </h2>
-<p>Under a probability design, unit <code>i</code> enters the sample
-with a known inclusion probability <code>pi_i</code>. The design (base)
-weight is its inverse,</p>
-<pre><code>d_i = 1 / pi_i,</code></pre>
-<p>so the Horvitz-Thompson estimator of a total,
-<code>sum(d_i * y_i)</code> over the sample, is unbiased for the
-population total. Every later stage multiplies this weight by a
-correction factor; the recipe is just the product of those factors,
-applied in order. We use the bundled multistage sample:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<p>Under a probability design, unit
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+enters the sample
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>)
+with a known inclusion probability
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>π</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\pi_i</annotation></semantics></math>.
+The design (base) weight is its inverse,
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>w</mi><mi>i</mi><mn>0</mn></msubsup><mo>=</mo><mfrac><mn>1</mn><msub><mi>π</mi><mi>i</mi></msub></mfrac></mrow><annotation encoding="application/x-tex">w_i^{0} =\frac{1}{\pi_i}</annotation></semantics></math></p>
+<p>Under ideal conditions, the Horvitz-Thompson estimator,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Y</mi><mo accent="true">̂</mo></mover><mrow><mi>H</mi><mi>T</mi></mrow></msub><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></munder><msubsup><mi>w</mi><mi>i</mi><mn>0</mn></msubsup><mo>×</mo><msub><mi>y</mi><mi>i</mi></msub><mo>,</mo></mrow><annotation encoding="application/x-tex">\hat{Y}_{HT}=\sum_{i\in s}w_i^{0} \times y_i,</annotation></semantics></math></p>
+<p>is unbiased for the population total. These conditions include a
+sampling frame that perfectly covers the target population
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math>,
+correct inclusion probabilities, and complete response from all selected
+units. In practice, however, surveys rarely satisfy these assumptions.
+Frames may contain coverage errors, some sampled units may be found
+ineligible, and nonresponse typically reduces the effective sample. As a
+result, additional weighting adjustments are often required to mitigate
+potential biases and improve the quality of the resulting estimates.</p>
+<p>Every subsequent stage modifies the base weight through a
+multiplicative adjustment factor. The final analysis weight is therefore
+obtained as the product of all adjustment factors applied in sequence.
+We use the bundled multistage sample:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="va">sample_one</span></span>
 <span><span class="va">dat</span><span class="op">$</span><span class="va">age_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cut.html" class="external-link">cut</a></span><span class="op">(</span><span class="va">dat</span><span class="op">$</span><span class="va">age</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span>, <span class="fl">45</span>, <span class="fl">60</span>, <span class="cn">Inf</span><span class="op">)</span>,</span>
 <span>                   labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"18-30"</span>, <span class="st">"31-45"</span>, <span class="st">"46-60"</span>, <span class="st">"60+"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -102,55 +138,83 @@ applied in order. We use the bundled multistage sample:</p>
 <div class="section level2">
 <h2 id="the-cascade">The cascade<a class="anchor" aria-label="anchor" href="#the-cascade"></a>
 </h2>
+<p>Starting from the design weights, each stage addresses a specific
+departure from the ideal conditions under which design based estimators
+are unbiased. Some adjustments aim to reduce potential selection biases
+arising because the effective sample differs from the original
+probability sample. These adjustments often increase weight variability
+and, consequently, the standard errors of survey estimates. Other
+adjustments incorporate auxiliary information
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math>
+to improve efficiency and align estimates with known population totals.
+The weighting process therefore involves balancing bias reduction
+against variance inflation.</p>
 <div class="section level3">
 <h3 id="unknown-eligibility">Unknown eligibility<a class="anchor" aria-label="anchor" href="#unknown-eligibility"></a>
 </h3>
-<p>Some sampled addresses are never resolved — you cannot tell whether
-they were in scope. Discarding them would lose their share of the
-population; keeping them as if eligible would overstate it. The standard
-fix redistributes their weight over the resolved cases (eligible
-<strong>and</strong> ineligible) within cells, so the resolved units
-carry the unresolved share. When the unknowns arrive without a roster,
+<p>Some sampled units are never resolved, making it impossible to
+determine whether they belong to the target population. Ignoring them
+would implicitly assume they represent no population units, while
+treating them all as eligible would overestimate the target population
+size. The standard solution redistributes their weight among resolved
+cases (eligible and ineligible, i.e., out-of-scope units) within
+adjustment cells, allowing resolved units to represent the unresolved
+share. This adjustment seeks to reduce potential bias arising from
+unresolved cases, although the resulting increase in weight variability
+may inflate standard errors. When the unknowns arrive without a roster,
 this is done at the household level (<code>cluster</code>).</p>
 </div>
 <div class="section level3">
 <h3 id="ineligible-units">Ineligible units<a class="anchor" aria-label="anchor" href="#ineligible-units"></a>
 </h3>
-<p>Resolved out-of-scope units (vacant addresses, non-residential) are
-simply removed — their weight goes to zero with no redistribution. They
-must be present during the unknown-eligibility step (so they absorb
-their share) and only then dropped.</p>
+<p>Resolved out of scope units (e.g., vacant dwellings or non
+residential addresses) do not belong to the target population and
+therefore receive zero weight. They must remain in the data during the
+unknown eligibility adjustment so they absorb their share of unresolved
+cases before being removed. This step primarily ensures that estimation
+targets the correct population.</p>
 </div>
 <div class="section level3">
 <h3 id="within-household-selection">Within-household selection<a class="anchor" aria-label="anchor" href="#within-household-selection"></a>
 </h3>
-<p>When one person is selected per household, that person represents all
-the eligible persons there. The weight is multiplied by the inverse of
-the within-household selection probability (<code>prob</code>), or by
-the number of eligibles (<code>n_eligible</code>) under equal
-selection.</p>
+<p>When only one person is selected within a sampled household, that
+person must represent all eligible persons in the household. The weight
+is therefore multiplied by the inverse of the within household selection
+probability (<code>prob</code>) or, under equal probability selection,
+by the number of eligible persons (<code>n_eligible</code>). This
+adjustment restores the original selection probabilities implied by the
+sampling design.</p>
 </div>
 <div class="section level3">
 <h3 id="nonresponse">Nonresponse<a class="anchor" aria-label="anchor" href="#nonresponse"></a>
 </h3>
-<p>Not everyone responds. Under the assumption that response is
-ignorable given the auxiliaries used (missing at random within cells or
-given the model), the respondents are inflated to represent the
-nonrespondents — either with weighting classes or a response-propensity
-model, at the person or household level. The <em>Nonresponse</em>
-article covers this stage in detail.</p>
+<p>Not all sampled units provide data. If respondents and nonrespondents
+differ systematically, estimates based only on respondents may be
+biased. Under the assumption that response is ignorable conditional on
+observed auxiliary variables, respondents are inflated to represent
+nonrespondents using weighting classes or response propensity models.
+These adjustments can substantially reduce nonresponse bias but
+typically increase weight variability and may lead to larger standard
+errors. They can be applied at either the household or person level. The
+<em>Nonresponse</em> article covers this stage in detail.</p>
 </div>
 <div class="section level3">
 <h3 id="calibration">Calibration<a class="anchor" aria-label="anchor" href="#calibration"></a>
 </h3>
-<p>Finally, auxiliary totals known for the whole population (here,
-region and sex counts) are used to force the weighted sample to match
-them. Calibration reduces coverage bias and, when the auxiliaries are
-related to the outcomes, lowers variance; it is the weighting
-counterpart of the generalized regression (GREG) estimator. The
+<p>Finally, auxiliary information available for the entire population is
+used to align the weighted sample with known population totals. In this
+example, calibration forces agreement with known counts by region and
+sex. Besides improving consistency with external benchmarks, calibration
+can reduce coverage bias and increase precision when the calibration
+variables are associated with the survey outcomes. Unlike many
+nonresponse adjustments, calibration often reduces variance while
+simultaneously improving accuracy. From a design based perspective,
+calibration is closely related to the generalized regression (GREG)
+estimator. The Validation article shows that weightflow reproduces the
+calibration results obtained with the survey package.The
 <em>Validation</em> article shows weightflow’s calibration reproduces
 the <code>survey</code> package.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">dat</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">ineligible</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -167,16 +231,26 @@ the <code>survey</code> package.</p>
 <div class="section level3">
 <h3 id="trimming-rounding-rescaling">Trimming, rounding, rescaling<a class="anchor" aria-label="anchor" href="#trimming-rounding-rescaling"></a>
 </h3>
-<p>Adjustments can create a few very large weights, which inflate the
-variance. Trimming caps them (and redistributes the excess) to trade a
-little bias for a worthwhile variance reduction; the bias-variance
-trade-off of trimming is a classic topic (Potter). Rounding and
-rescaling are presentational: integer weights, or weights that sum to
-the sample size (mean one) or to a chosen total.</p>
-<p>A caveat on order: trimming after calibration preserves the overall
-total but can perturb the calibrated margins slightly, so a rigorous
-workflow re-calibrates after trimming.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<p>Weighting adjustments can sometimes produce a small number of
+extremely large weights. While these weights may help reduce bias, they
+can substantially increase the variance of survey estimates and inflate
+design effects.</p>
+<p>Trimming limits extreme weights, typically by capping them and
+redistributing the excess weight among other units. This introduces a
+controlled amount of bias in exchange for potentially meaningful
+reductions in variance, a classic bias-variance trade-off in survey
+weighting (e.g., Potter, 1990).</p>
+<p>Rounding and rescaling serve different purposes. They do not alter
+the underlying adjustment logic but make weights easier to interpret,
+report, or use operationally. Common examples include integer weights,
+weights that sum to the sample size, or weights scaled to a known
+population total.</p>
+<p>A final consideration is the order of operations. Trimming performed
+after calibration generally preserves the overall weight total but may
+disturb the calibrated margins. For this reason, a rigorous workflow
+typically re-calibrates the weights after trimming to restore
+consistency with the auxiliary population totals.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">trimmed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">dat</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">ineligible</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -195,14 +269,27 @@ workflow re-calibrates after trimming.</p>
 <div class="section level2">
 <h2 id="reading-the-cascade-the-design-effect">Reading the cascade: the design effect<a class="anchor" aria-label="anchor" href="#reading-the-cascade-the-design-effect"></a>
 </h2>
-<p>The Kish design effect, <code>deff = 1 + CV^2</code> (with
-<code>CV</code> the coefficient of variation of the weights), measures
-how much unequal weighting inflates the variance; the effective sample
-size is <code>n_eff = n_active / deff</code>. Each adjustment tends to
-<em>raise</em> the design effect (it makes the weights more unequal) and
-trimming brings it back down. The per-stage summary shows the whole
-trajectory:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>The Kish design effect,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>e</mi><mi>f</mi><mi>f</mi><mo>=</mo><mn>1</mn><mo>+</mo><mi>C</mi><msup><mi>V</mi><mn>2</mn></msup><mo>,</mo></mrow><annotation encoding="application/x-tex">deff = 1 + CV^2,</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>V</mi></mrow><annotation encoding="application/x-tex">CV</annotation></semantics></math>
+is the coefficient of variation of the weights, quantifies the variance
+inflation attributable to unequal weighting. An approximate effective
+sample size can be obtained as</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>n</mi><mrow><mi>e</mi><mi>f</mi><mi>f</mi></mrow></msub><mo>=</mo><mfrac><msub><mi>n</mi><mrow><mi>a</mi><mi>c</mi><mi>t</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow></msub><mrow><mi>d</mi><mi>e</mi><mi>f</mi><mi>f</mi></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">n_{eff} = \frac{n_{active}}{deff}.</annotation></semantics></math></p>
+<p>Many weighting adjustments, particularly those addressing
+eligibility, within household selection, and nonresponse, increase
+weight variability and therefore tend to increase the design effect.
+Calibration may either increase or decrease weight dispersion depending
+on the auxiliary information used and the calibration constraints.
+Trimming typically reduces the design effect by limiting extreme
+weights, trading a small amount of bias for a potentially substantial
+reduction in variance.</p>
+<p>The per stage summary provides a useful diagnostic of this process,
+showing how each adjustment modifies the weight distribution and how the
+cumulative weighting strategy affects both effective sample size and
+variance inflation:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; == Weighting specification (weightflow) ==</span></span>
@@ -304,7 +391,7 @@ trajectory:</p>
 <span><span class="co">#&gt; (converged/iterated in 4 iterations)</span></span>
 <span><span class="co">#&gt; Kish deff: 1.510 -&gt; 1.548   |   n_eff: 138 -&gt; 135</span></span></code></pre></div>
 <p>And the effect of trimming on the final design effect:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>no_trim <span class="op">=</span> <span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span>,</span>
 <span>  trimmed <span class="op">=</span> <span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="va">trimmed</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  no_trim  trimmed </span></span>
@@ -313,18 +400,31 @@ trajectory:</p>
 <div class="section level2">
 <h2 id="why-the-order-matters">Why the order matters<a class="anchor" aria-label="anchor" href="#why-the-order-matters"></a>
 </h2>
-<p>The sequence is not arbitrary. Unknown eligibility comes first, so
-ineligibles are still present to absorb their share before being
-dropped. Household nonresponse precedes within-household selection (the
-household must be reached before a person is selected), and person
-nonresponse follows it. Calibration comes last, so it operates on
-weights that already reflect eligibility, selection and response.
-Trimming and presentational steps close the pipeline. weightflow makes
-this order explicit — it is simply the order in which you pipe the steps
-— and records what each one did, which you can inspect with
-<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and
-<code><a href="../reference/report_weighting.html">report_weighting()</a></code>. For standard errors that respect the
-whole cascade, see the <em>Variance estimation</em> article.</p>
+<p>The sequence of weighting adjustments is not arbitrary. Each step
+defines the population, weights, and assumptions that underpin the next
+one.</p>
+<p>Unknown eligibility must be addressed before ineligible units are
+removed, so that resolved cases (including out of scope units) absorb
+their appropriate share of unresolved cases. Household nonresponse
+adjustments precede within household selection because a household must
+first be contacted before an individual can be selected and interviewed.
+Person level nonresponse adjustments naturally follow the within
+household selection step, since they operate on the set of sampled
+persons.</p>
+<p>Calibration is typically performed near the end of the process
+because it uses auxiliary information to align weights that already
+reflect eligibility, selection, and response mechanisms. If trimming is
+applied after calibration, a subsequent calibration step may be required
+to restore agreement with the population totals.</p>
+<p>In <strong>weightflow</strong>, this logic is made explicit through
+the weighting pipeline itself. The order of operations is the order in
+which the steps are applied, making the weighting process transparent,
+reproducible, and easy to audit. The contribution of each stage can be
+examined through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>, and
+<code><a href="../reference/report_weighting.html">report_weighting()</a></code>, which document how weights evolve
+across the cascade. For variance estimation methods that account for the
+full weighting process, see the <em>Variance estimation</em>
+article.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
