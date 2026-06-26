@@ -79,20 +79,73 @@ also represent the nonrespondents. <code><a href="../reference/step_nonresponse.
 offers two routes: weighting classes and response propensity models.
 This vignette explains both, when each is preferable, and how they are
 estimated.</p>
-<p>Throughout, only <strong>active</strong> units (weight &gt; 0) take
-part, so cases already dropped earlier in the recipe (unknown
-eligibility, ineligible) are excluded automatically.</p>
+<p>Throughout, only active units (weight &gt; 0) take part, so cases
+already dropped earlier in the recipe (unknown eligibility, ineligible)
+are excluded automatically. We write
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>w</mi><mi>i</mi></msub><annotation encoding="application/x-tex">w_i</annotation></semantics></math>
+for the weight entering the step,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math>
+for the set of respondents,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_i</annotation></semantics></math>
+for the auxiliaries known for unit
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>,
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>w</mi><mi>i</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">r</mi></mrow></msubsup><annotation encoding="application/x-tex">w_i^{\mathrm{nr}}</annotation></semantics></math>
+for the weight after the adjustment.</p>
+<p>Both routes rest on the same assumption: response is ignorable given
+the auxiliaries (missing at random). That is, conditional on
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_i</annotation></semantics></math>,
+responding is independent of the survey outcome
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mi>i</mi></msub><annotation encoding="application/x-tex">y_i</annotation></semantics></math>,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo>,</mo><msub><mi>y</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>P</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>ϕ</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">P(\text{respond} \mid \mathbf{x}_i, y_i) = P(\text{respond} \mid \mathbf{x}_i)
+  = \phi_i .</annotation></semantics></math></p>
+<p>Under this assumption the respondents, reweighted by the inverse of
+their response propensity
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ϕ</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\phi_i</annotation></semantics></math>,
+represent the nonrespondents without bias. Choosing auxiliaries that are
+related both to responding and to the outcomes is therefore what makes
+the adjustment work.</p>
 <div class="section level2">
 <h2 id="weighting-classes">Weighting classes<a class="anchor" aria-label="anchor" href="#weighting-classes"></a>
 </h2>
-<p>Units are grouped into cells defined by <code>by</code>, and within
-each cell the respondents absorb the weight of the nonrespondents. The
-adjustment factor in a cell <code>c</code> is</p>
-<pre><code>f_c = ( sum of weights of all active units in c ) /
-      ( sum of weights of the respondents in c )</code></pre>
-<p>Each respondent’s weight is multiplied by <code>f_c</code>;
-nonrespondents go to zero.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<p>Units are partitioned into cells (the <em>weighting classes</em>)
+according to one or more categorical auxiliaries, and within each cell
+the respondents absorb the weight of the nonrespondents. The method
+rests on a homogeneity assumption: every unit in a cell is taken to have
+the same response probability, so that within the cell the respondents
+are a random subsample of the active units (response is MCAR within the
+cell, MAR across cells). Equivalently, it is a model in which the
+expected outcome is the same for respondents and nonrespondents of the
+same cell; the adjustment removes bias to the extent that this
+within-cell equality holds. Cells should therefore be chosen so that
+response rates differ between cells while the units inside a cell are
+homogeneous (i.e., similar in their propensity to respond and, ideally,
+in the survey outcomes).</p>
+<p>This adjustment is the natural choice when nothing is known about the
+nonrespondents beyond what the sampling frame already carries (e.g.,
+strata, primary sampling units, region, and other design variables
+available for sampled respondents and nonrespondents alike). When the
+auxiliaries are known for the whole population rather than only the
+sample, the same arithmetic becomes post-stratification.</p>
+<p>The adjustment factor in a cell
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math>
+is the total weight of the active units over the weight of the
+respondents in that cell,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mi>c</mi></msub><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>c</mi></mrow></munder><msub><mi>w</mi><mi>i</mi></msub></mrow><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>c</mi><mo>∩</mo><mi>r</mi></mrow></munder><msub><mi>w</mi><mi>i</mi></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">f_c = \frac{\sum_{i \in c} w_i}{\sum_{i \in c \cap r} w_i} .</annotation></semantics></math></p>
+<p>Each respondent’s weight is multiplied by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>c</mi></msub><annotation encoding="application/x-tex">f_c</annotation></semantics></math>
+and nonrespondents go to zero, so
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>w</mi><mi>i</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">r</mi></mrow></msubsup><mo>=</mo><msub><mi>f</mi><mi>c</mi></msub><mspace width="0.167em"></mspace><msub><mi>w</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">w_i^{\mathrm{nr}} = f_c\,w_i</annotation></semantics></math>
+for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi><mo>∈</mo><mi>c</mi><mo>∩</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">i \in c \cap r</annotation></semantics></math>.
+This is the special case of a propensity model in which
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ϕ</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\phi_i</annotation></semantics></math>
+is estimated by the (weighted) response rate within the cell — a single
+estimated propensity shared by every unit of the cell.</p>
+<p>In <code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code> the cells are specified through
+the <code>by</code> argument, which names the categorical variables that
+define them (here, <code>region</code>):</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -126,7 +179,7 @@ nonrespondents go to zero.</p>
 preserved <em>within each cell</em> (the nonrespondents’ weight is moved
 to the respondents, not lost). So the weighted total per region after
 the step equals the base-weight total before it:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">before</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span><span class="va">sample_survey</span><span class="op">$</span><span class="va">pw</span>,  <span class="va">sample_survey</span><span class="op">$</span><span class="va">region</span>, <span class="va">sum</span><span class="op">)</span></span>
 <span><span class="va">after</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span>,   <span class="va">sample_survey</span><span class="op">$</span><span class="va">region</span>, <span class="va">sum</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">before</span>, <span class="va">after</span>, diff <span class="op">=</span> <span class="va">after</span> <span class="op">-</span> <span class="va">before</span><span class="op">)</span>, <span class="fl">6</span><span class="op">)</span></span>
@@ -142,19 +195,24 @@ create or destroy weight.</p>
 <h2 id="response-propensities">Response propensities<a class="anchor" aria-label="anchor" href="#response-propensities"></a>
 </h2>
 <p>Instead of cells, the probability of responding is modelled from
-auxiliaries known for respondents and nonrespondents alike:</p>
-<pre><code><span><span class="va">p_i</span> <span class="op">=</span> <span class="fu">P</span><span class="op">(</span><span class="va">respond</span> <span class="op">|</span> <span class="va">x_i</span><span class="op">)</span></span></code></pre>
-<p>The model is fitted <strong>on the active units, weighted by the
-current weights</strong>, and two routes follow. With
-<code>num_classes = NULL</code>, each respondent is weighted by the
-inverse propensity, <code>w_i* = w_i / p_i</code>. With an integer
-<code>num_classes</code>, units are grouped into that many propensity
-classes and a weighting-class adjustment is applied within each, which
-is more robust to a misspecified model.</p>
+auxiliaries known for respondents and nonrespondents alike,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϕ</mi><mi>i</mi></msub><mo>=</mo><mi>P</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>,</mo></mrow><annotation encoding="application/x-tex">\phi_i = P(\text{respond} \mid \mathbf{x}_i),</annotation></semantics></math></p>
+<p>and estimated by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><annotation encoding="application/x-tex">\hat\phi_i</annotation></semantics></math>.
+The model is fitted on the active units, weighted by the current
+weights, and two routes follow. With <code>num_classes = NULL</code>,
+each respondent is weighted by the inverse propensity,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>w</mi><mi>i</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">r</mi></mrow></msubsup><mo>=</mo><msub><mi>w</mi><mi>i</mi></msub><mi>/</mi><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">w_i^{\mathrm{nr}}
+= w_i / \hat\phi_i</annotation></semantics></math>. With an integer
+<code>num_classes</code>, units are grouped into that many classes
+formed from quantiles of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><annotation encoding="application/x-tex">\hat\phi_i</annotation></semantics></math>
+and a weighting-class adjustment is applied within each, which is more
+robust to a misspecified model.</p>
 <div class="section level3">
 <h3 id="logistic-regression">Logistic regression<a class="anchor" aria-label="anchor" href="#logistic-regression"></a>
 </h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
 <span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"logit"</span>,</span>
@@ -192,19 +250,20 @@ weighted binomial fit and does not affect the estimated
 propensities.</p>
 </div>
 <div class="section level3">
-<h3 id="trees-and-forests">Trees and forests<a class="anchor" aria-label="anchor" href="#trees-and-forests"></a>
+<h3 id="trees-forests-and-boosting">Trees, forests and boosting<a class="anchor" aria-label="anchor" href="#trees-forests-and-boosting"></a>
 </h3>
 <p>The same propensity can be estimated with a regression tree
-(<code>engine = "tree"</code>, package <strong>rpart</strong>) or a
-random forest (<code>engine = "forest"</code>, package
-<strong>ranger</strong>), which capture nonlinearities and interactions
+(<code>engine = "tree"</code>, package <code>rpart</code>), a random
+forest (<code>engine = "forest"</code>, package <code>ranger</code>), or
+gradient boosting (<code>engine = "boost"</code>, package
+<code>xgboost</code>), which capture nonlinearities and interactions
 without specifying them. More flexibility is not free, though: a very
 flexible model can overfit the response and produce more dispersed
-adjustment factors, which <em>raises</em> the variance of the weights (a
-higher design effect). Compare the <code>deff</code> after each engine
-below — the forest typically yields the largest, the weighting classes
-the smallest.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+adjustment factors, which raises the variance of the weights (a higher
+design effect). Compare the deff after each engine below, the forest and
+boosting typically yield the largest, the weighting classes the
+smallest.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
 <span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"tree"</span>,</span>
@@ -212,7 +271,7 @@ the smallest.</p>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span></span>
 <span><span class="co">#&gt; [1] 1.055763</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
 <span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"forest"</span>,</span>
@@ -220,6 +279,37 @@ the smallest.</p>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span></span>
 <span><span class="co">#&gt; [1] 1.12651</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="flexibility-overfitting-and-cross-fitting">Flexibility, overfitting, and cross-fitting<a class="anchor" aria-label="anchor" href="#flexibility-overfitting-and-cross-fitting"></a>
+</h3>
+<p>The reason flexibility is not free deserves a closer look. A very
+flexible model can fit the <em>noise</em> of the particular sample in
+addition to the signal (overfitting). When the propensity is then
+predicted for the very units the model was trained on, the estimates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><annotation encoding="application/x-tex">\hat\phi_i</annotation></semantics></math>
+are pulled toward the observed responses: some respondents receive
+artificially low propensities, and since the adjustment is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">1/\hat\phi_i</annotation></semantics></math>,
+those units get extreme weights that inflate the variance. The model is
+not bad at prediction; i.e., it predicts too well in-sample and poorly
+out of it.</p>
+<p>The remedy is <strong>cross-fitting</strong>: estimate each unit’s
+propensity with a model trained on <em>other</em> units (held-out
+folds), so the prediction is out-of-sample and free of this optimism.
+weightflow provides it through the <code>crossfit</code> argument:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
+<span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"forest"</span>,</span>
+<span>                   num_classes <span class="op">=</span> <span class="fl">5</span>, crossfit <span class="op">=</span> <span class="fl">5</span>, crossfit_seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span></span>
+<span><span class="co">#&gt; [1] 1.050402</span></span></code></pre></div>
+<p>The <em>Machine learning, cross-fitting and robust calibration</em>
+article develops the boosting engine and cross-fitting in full, with a
+worked comparison of the design effect with and without
+cross-fitting.</p>
 </div>
 </div>
 <div class="section level2">
@@ -231,7 +321,7 @@ reached). The <code>cluster</code> argument moves the adjustment to the
 household: each household counts once with its weight, and the
 redistribution (or the propensity model) is done over households, then
 assigned to their members.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="st">"region"</span>, cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -242,7 +332,7 @@ assigned to their members.</p>
 household auxiliaries and a whole-household outcome call for
 <code>cluster</code>; person-level auxiliaries within reached households
 do not. Note that the effective sample size drops more at the household
-level, since households — not persons — are the independent units being
+level, since households (not persons) are the independent units being
 adjusted.</p>
 </div>
 <div class="section level2">
@@ -251,12 +341,13 @@ adjusted.</p>
 <p>Weighting classes need categorical auxiliaries and enough respondents
 per cell; they are simple and transparent. Propensity models handle
 continuous predictors and many auxiliaries at once, and the tree/forest
-engines relax functional-form assumptions. Using propensity
-<strong>classes</strong> (<code>num_classes</code>) rather than the
-direct <code>1 / p</code> keeps the adjustment stable when the model is
-imperfect, at the cost of some efficiency. In all cases, model the
-response on auxiliaries that are both predictive of responding and
-related to the survey outcomes.</p>
+engines relax functional-form assumptions. Using propensity classes
+(<code>num_classes</code>) rather than the direct
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">1/\hat\phi_i</annotation></semantics></math>
+keeps the adjustment stable when the model is imperfect, at the cost of
+some efficiency. In all cases, model the response on auxiliaries that
+are both predictive of responding and related to the survey
+outcomes.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

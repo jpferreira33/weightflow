@@ -7,21 +7,68 @@ offers two routes: weighting classes and response propensity models.
 This vignette explains both, when each is preferable, and how they are
 estimated.
 
-Throughout, only **active** units (weight \> 0) take part, so cases
-already dropped earlier in the recipe (unknown eligibility, ineligible)
-are excluded automatically.
+Throughout, only active units (weight \> 0) take part, so cases already
+dropped earlier in the recipe (unknown eligibility, ineligible) are
+excluded automatically. We write $`w_i`$ for the weight entering the
+step, $`r`$ for the set of respondents, $`\mathbf{x}_i`$ for the
+auxiliaries known for unit $`i`$, and $`w_i^{\mathrm{nr}}`$ for the
+weight after the adjustment.
+
+Both routes rest on the same assumption: response is ignorable given the
+auxiliaries (missing at random). That is, conditional on
+$`\mathbf{x}_i`$, responding is independent of the survey outcome
+$`y_i`$,
+
+``` math
+P(\text{respond} \mid \mathbf{x}_i, y_i) = P(\text{respond} \mid \mathbf{x}_i)
+  = \phi_i .
+```
+
+Under this assumption the respondents, reweighted by the inverse of
+their response propensity $`\phi_i`$, represent the nonrespondents
+without bias. Choosing auxiliaries that are related both to responding
+and to the outcomes is therefore what makes the adjustment work.
 
 ## Weighting classes
 
-Units are grouped into cells defined by `by`, and within each cell the
-respondents absorb the weight of the nonrespondents. The adjustment
-factor in a cell `c` is
+Units are partitioned into cells (the *weighting classes*) according to
+one or more categorical auxiliaries, and within each cell the
+respondents absorb the weight of the nonrespondents. The method rests on
+a homogeneity assumption: every unit in a cell is taken to have the same
+response probability, so that within the cell the respondents are a
+random subsample of the active units (response is MCAR within the cell,
+MAR across cells). Equivalently, it is a model in which the expected
+outcome is the same for respondents and nonrespondents of the same cell;
+the adjustment removes bias to the extent that this within-cell equality
+holds. Cells should therefore be chosen so that response rates differ
+between cells while the units inside a cell are homogeneous (i.e.,
+similar in their propensity to respond and, ideally, in the survey
+outcomes).
 
-    f_c = ( sum of weights of all active units in c ) /
-          ( sum of weights of the respondents in c )
+This adjustment is the natural choice when nothing is known about the
+nonrespondents beyond what the sampling frame already carries (e.g.,
+strata, primary sampling units, region, and other design variables
+available for sampled respondents and nonrespondents alike). When the
+auxiliaries are known for the whole population rather than only the
+sample, the same arithmetic becomes post-stratification.
 
-Each respondent’s weight is multiplied by `f_c`; nonrespondents go to
-zero.
+The adjustment factor in a cell $`c`$ is the total weight of the active
+units over the weight of the respondents in that cell,
+
+``` math
+f_c = \frac{\sum_{i \in c} w_i}{\sum_{i \in c \cap r} w_i} .
+```
+
+Each respondent’s weight is multiplied by $`f_c`$ and nonrespondents go
+to zero, so $`w_i^{\mathrm{nr}} = f_c\,w_i`$ for $`i \in c \cap r`$.
+This is the special case of a propensity model in which $`\phi_i`$ is
+estimated by the (weighted) response rate within the cell — a single
+estimated propensity shared by every unit of the cell.
+
+In
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+the cells are specified through the `by` argument, which names the
+categorical variables that define them (here, `region`):
 
 ``` r
 
@@ -79,16 +126,20 @@ create or destroy weight.
 ## Response propensities
 
 Instead of cells, the probability of responding is modelled from
-auxiliaries known for respondents and nonrespondents alike:
+auxiliaries known for respondents and nonrespondents alike,
 
-    p_i = P(respond | x_i)
+``` math
+\phi_i = P(\text{respond} \mid \mathbf{x}_i),
+```
 
-The model is fitted **on the active units, weighted by the current
-weights**, and two routes follow. With `num_classes = NULL`, each
-respondent is weighted by the inverse propensity, `w_i* = w_i / p_i`.
-With an integer `num_classes`, units are grouped into that many
-propensity classes and a weighting-class adjustment is applied within
-each, which is more robust to a misspecified model.
+and estimated by $`\hat\phi_i`$. The model is fitted on the active
+units, weighted by the current weights, and two routes follow. With
+`num_classes = NULL`, each respondent is weighted by the inverse
+propensity, $`w_i^{\mathrm{nr}}
+= w_i / \hat\phi_i`$. With an integer `num_classes`, units are grouped
+into that many classes formed from quantiles of $`\hat\phi_i`$ and a
+weighting-class adjustment is applied within each, which is more robust
+to a misspecified model.
 
 ### Logistic regression
 
@@ -131,17 +182,18 @@ Because the model is fitted with survey weights, a logistic fit may
 print a “non-integer \#successes” message: that is expected for a
 weighted binomial fit and does not affect the estimated propensities.
 
-### Trees and forests
+### Trees, forests and boosting
 
 The same propensity can be estimated with a regression tree
-(`engine = "tree"`, package **rpart**) or a random forest
-(`engine = "forest"`, package **ranger**), which capture nonlinearities
+(`engine = "tree"`, package `rpart`), a random forest
+(`engine = "forest"`, package `ranger`), or gradient boosting
+(`engine = "boost"`, package `xgboost`), which capture nonlinearities
 and interactions without specifying them. More flexibility is not free,
 though: a very flexible model can overfit the response and produce more
-dispersed adjustment factors, which *raises* the variance of the weights
-(a higher design effect). Compare the `deff` after each engine below —
-the forest typically yields the largest, the weighting classes the
-smallest.
+dispersed adjustment factors, which raises the variance of the weights
+(a higher design effect). Compare the deff after each engine below, the
+forest and boosting typically yield the largest, the weighting classes
+the smallest.
 
 ``` r
 
@@ -165,6 +217,38 @@ design_effect(wf$final_weight)$deff
 #> [1] 1.12651
 ```
 
+### Flexibility, overfitting, and cross-fitting
+
+The reason flexibility is not free deserves a closer look. A very
+flexible model can fit the *noise* of the particular sample in addition
+to the signal (overfitting). When the propensity is then predicted for
+the very units the model was trained on, the estimates $`\hat\phi_i`$
+are pulled toward the observed responses: some respondents receive
+artificially low propensities, and since the adjustment is
+$`1/\hat\phi_i`$, those units get extreme weights that inflate the
+variance. The model is not bad at prediction; i.e., it predicts too well
+in-sample and poorly out of it.
+
+The remedy is **cross-fitting**: estimate each unit’s propensity with a
+model trained on *other* units (held-out folds), so the prediction is
+out-of-sample and free of this optimism. weightflow provides it through
+the `crossfit` argument:
+
+``` r
+
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   formula = ~ region + sex + age, engine = "forest",
+                   num_classes = 5, crossfit = 5, crossfit_seed = 1) |>
+  prep()
+design_effect(wf$final_weight)$deff
+#> [1] 1.050402
+```
+
+The *Machine learning, cross-fitting and robust calibration* article
+develops the boosting engine and cross-fitting in full, with a worked
+comparison of the design effect with and without cross-fitting.
+
 ## Person or household level
 
 Nonresponse can occur at the person level (within a reached household)
@@ -187,15 +271,15 @@ The level is dictated by what is known about the nonrespondents:
 household auxiliaries and a whole-household outcome call for `cluster`;
 person-level auxiliaries within reached households do not. Note that the
 effective sample size drops more at the household level, since
-households — not persons — are the independent units being adjusted.
+households (not persons) are the independent units being adjusted.
 
 ## Which to use
 
 Weighting classes need categorical auxiliaries and enough respondents
 per cell; they are simple and transparent. Propensity models handle
 continuous predictors and many auxiliaries at once, and the tree/forest
-engines relax functional-form assumptions. Using propensity **classes**
-(`num_classes`) rather than the direct `1 / p` keeps the adjustment
-stable when the model is imperfect, at the cost of some efficiency. In
-all cases, model the response on auxiliaries that are both predictive of
-responding and related to the survey outcomes.
+engines relax functional-form assumptions. Using propensity classes
+(`num_classes`) rather than the direct $`1/\hat\phi_i`$ keeps the
+adjustment stable when the model is imperfect, at the cost of some
+efficiency. In all cases, model the response on auxiliaries that are
+both predictive of responding and related to the survey outcomes.
