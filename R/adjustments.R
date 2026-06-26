@@ -269,7 +269,13 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
     dtr <- dd[tr, , drop = FALSE]; dte <- dd[te, , drop = FALSE]
     wtr <- weights[tr]
     if (engine == "logit") {
-      fit <- stats::glm(f, data = dtr, family = stats::binomial(), weights = .wts)
+      # weighted binomial glm warns about non-integer successes; this is a
+      # known, benign consequence of survey weights, so suppress just that one.
+      fit <- withCallingHandlers(
+        stats::glm(f, data = dtr, family = stats::binomial(), weights = .wts),
+        warning = function(w) {
+          if (grepl("non-integer", conditionMessage(w))) invokeRestart("muffleWarning")
+        })
       as.numeric(stats::predict(fit, newdata = dte, type = "response"))
     } else if (engine == "tree") {
       if (!requireNamespace("rpart", quietly = TRUE))
