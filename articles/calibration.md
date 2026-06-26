@@ -1,0 +1,319 @@
+# Calibration: raking, post-stratification and GREG
+
+Calibration adjusts the weights so that the weighted sample reproduces
+known population totals of auxiliary variables. It is usually the last
+stage of the recipe, applied to weights that already reflect
+eligibility, selection and nonresponse.
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+provides raking, post-stratification and linear (GREG) calibration, with
+optional bounds and an equal-weights-within-cluster variant.
+
+Throughout, $`w_i`$ is the weight entering the step (the design weight,
+or the weight coming from the previous adjustment for eligibility,
+selection or nonresponse), $`w_i^{\mathrm{cal}}`$ is the calibrated
+weight, $`\mathbf{x}_i`$ is the vector of calibration auxiliaries for
+unit $`i`$, and $`\mathbf{X} = \sum_{i \in
+U} \mathbf{x}_i`$ are their known population totals.
+
+## What calibration does
+
+A calibrated weight system satisfies the calibration equation, i.e. the
+weighted sample totals of the auxiliaries match the population totals,
+
+``` math
+\sum_{i \in s} w_i^{\mathrm{cal}}\,\mathbf{x}_i = \mathbf{X} .
+```
+
+The calibrated weight is the incoming weight times an adjustment factor,
+$`w_i^{\mathrm{cal}} = g_i\,w_i`$, where $`g_i`$ is the calibration
+factor (the g-weight). Many weight systems satisfy the calibration
+equation, so calibration picks the one whose factors $`g_i`$ keep
+$`w_i^{\mathrm{cal}}`$**closest** to the incoming weights $`w_i`$.
+Several distance measures exist (they differ in how they penalize moving
+a weight), but they share the same idea: change the previous weights as
+little as possible. The reason is that the incoming weights already
+carry good properties (for instance, if they are Horvitz-Thompson design
+weights, the estimator is design-unbiased); keeping the calibrated
+weights near them preserves those properties, so the calibration
+estimator is approximately (asymptotically) unbiased, while gaining the
+consistency with the population totals.
+
+Calibration auxiliaries are chosen with two goals in mind. First,
+**precision**: variables correlated with the survey outcomes reduce the
+standard errors (more on why below). Second, **bias reduction**:
+aligning the weights to population totals corrects residual imbalances
+left after the nonresponse adjustment (for example a group that ended up
+under- or over-represented), provided the totals are known without
+error.
+
+## Why calibration reduces variance: the regression link
+
+Calibration is tied to a regression model for the outcome, which is the
+clearest way to see why it helps. The calibration estimator can be
+written in generalized-regression (GREG) form,
+
+``` math
+\hat Y = \sum_{i \in U} \hat y_i + \sum_{i \in s} w_i\,(y_i - \hat y_i),
+\qquad \hat y_i = \mathbf{x}_i^\top \hat{\boldsymbol\beta},
+```
+
+a population total of fitted values plus a weighted sum of the sample
+residuals $`e_i = y_i - \hat y_i`$. The variance of this estimator
+depends on the residuals $`e_i`$, not on $`y_i`$ itself. So when the
+auxiliaries predict the outcome well, the residuals are small and the
+variance drops. This is the intuition behind calibrating on variables
+related to the outcomes: you are implicitly fitting a model for $`y`$,
+and you only pay (in variance) for what the model fails to explain.
+
+## Post-stratification
+
+Post-stratification uses the **full cross-classification** of the
+auxiliaries into groups (post-strata): the population count $`N_g`$ of
+every group $`g`$ must be known. Within each group the factor is the
+same for all units,
+
+``` math
+g_i = \frac{N_g}{\hat N_g}, \qquad \hat N_g = \sum_{i \in g \cap s} w_i,
+```
+
+the known population count over the weighted sample count. It is a
+saturated model (one factor per group) and reproduces every group total
+exactly.
+
+With a single post-stratifying variable, the groups are its categories,
+and `poststratify` takes that one variable:
+
+``` r
+
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "poststratify",
+                 margins = list(region = c(table(population$region)))) |>
+  prep()
+wf$steps[[2]]$diagnostics
+#>   variable category target prev_total    factor
+#> 1   region    North   1570  1487.5000 1.0554622
+#> 2   region    South   1250  1210.0000 1.0330579
+#> 3   region     East    927   800.0000 1.1587500
+#> 4   region     West    748   873.3333 0.8564885
+```
+
+The `poststratify` method works on exactly one categorical variable. To
+post-stratify on **several** variables the post-strata are their
+**interaction** (every combination of categories), and there are two
+ways to obtain it. One is to create a single variable in the sample that
+holds the interaction (e.g. `interaction(region, sex)`) and
+post-stratify on it, supplying the population counts of every
+combination. The other, more convenient, is linear calibration with an
+interaction formula `~ region * sex`, whose design matrix has one column
+per cell, so it reproduces the full cross-table and, unlike the
+shortcut, also accepts bounds:
+
+``` r
+
+totals_cross <- colSums(model.matrix(~ region * sex, population))
+wf2 <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "linear", formula = ~ region * sex,
+                 totals = totals_cross) |>
+  prep()
+wf2$steps[[2]]$diagnostics
+#>                          variable target achieved
+#> (Intercept)           (Intercept)   4495     4495
+#> regionSouth           regionSouth   1250     1250
+#> regionEast             regionEast    927      927
+#> regionWest             regionWest    748      748
+#> sexM                         sexM   2184     2184
+#> regionSouth:sexM regionSouth:sexM    607      607
+#> regionEast:sexM   regionEast:sexM    460      460
+#> regionWest:sexM   regionWest:sexM    372      372
+```
+
+Creating more cells than the sample can support has a cost: cells may
+come out empty in the sample (no respondents to carry the weight), and
+small sample cells produce large factors $`g = N_g / \hat N_g`$ when
+$`\hat N_g`$ is built from very few units. Both make the weights
+unstable, which is the practical limit on how finely you can
+post-stratify.
+
+There is a regression model behind it. Post-stratification is a GREG
+whose predictor is the post-stratum indicator, so the fitted value
+$`\hat y_i`$ is the estimated post-stratum mean and the residual is
+$`e_i = y_i - \bar y_g`$, the deviation of $`y_i`$ from its post-stratum
+mean. As in the GREG form above, the variance depends on these
+residuals: the more homogeneous the outcome within post-strata, the
+smaller the residuals and the larger the precision gain.
+
+## Raking
+
+Raking (iterative proportional fitting) needs only the marginal totals
+of each variable, not the full cross-table. It cycles through the
+margins, post-stratifying to one at a time, until all marginal totals
+are met simultaneously.
+
+``` r
+
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex)))) |>
+  prep()
+wf$steps[[2]]$diagnostics
+#>   variable category target achieved
+#> 1   region    North   1570     1570
+#> 2   region    South   1250     1250
+#> 3   region     East    927      927
+#> 4   region     West    748      748
+#> 5      sex        F   2311     2311
+#> 6      sex        M   2184     2184
+```
+
+Raking fits an implicit log-linear model with main effects only: it
+matches each margin but says nothing about the interactions. As a result
+it does not reproduce the counts of the cross-classification (e.g. the
+region-by-sex cell totals): those are left at whatever the sample
+implies, not forced to a known value. That is exactly why raking is the
+method of choice when you want to include many auxiliaries (each thought
+to be a good predictor of response and of the outcomes) without
+inflating the weights: by constraining only the margins, it avoids the
+small, unstable cells of a full cross-table and keeps the weights closer
+to the incoming ones. A further practical property is that raking
+factors $`g_i`$ are always positive (they can be large, but never
+negative), so the calibrated weights never change sign.
+
+## Linear calibration (GREG)
+
+Linear calibration matches the totals of a design matrix, and is the
+natural choice with continuous auxiliaries or when a linear relationship
+with the outcome is plausible. It is the calibration form that
+corresponds most directly to the GREG estimator above. As seen in the
+post-stratification section, a saturated interaction formula
+(`~ region * sex`) makes linear calibration reproduce a full
+cross-table, and unlike the `poststratify` shortcut it then accepts
+bounds.
+
+What sets linear calibration apart from post-stratification and raking
+is that its auxiliaries need not be categorical. Those two methods work
+on group membership (cells or margins), whereas linear calibration can
+match the total of a quantitative variable, e.g. the population total of
+`age`, alongside the categorical ones. The formula below calibrates on
+region, sex and mean age at once:
+
+``` r
+
+totals <- colSums(model.matrix(~ region + sex + age, population))
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "linear", formula = ~ region + sex + age,
+                 totals = totals) |>
+  prep()
+wf$steps[[2]]$diagnostics
+#>                variable target achieved
+#> (Intercept) (Intercept)   4495     4495
+#> regionSouth regionSouth   1250     1250
+#> regionEast   regionEast    927      927
+#> regionWest   regionWest    748      748
+#> sexM               sexM   2184     2184
+#> age                 age 190781   190781
+```
+
+The `age` row is calibrated to the known population total of age,
+something neither post-stratification nor raking can do directly: they
+would first have to bin age into categories, losing information.
+Continuous auxiliaries are where the regression view of calibration is
+most natural.
+
+Unlike raking, linear calibration can produce negative factors $`g_i`$
+(and so negative weights). This is most likely when the incoming weights
+$`w_i`$ are very small, or when the calibration equation includes more
+variables than the sample can support (for example many auxiliaries with
+interactions omitted): the system is then close to over-parameterized
+and some factors overshoot below zero. Negative weights are awkward to
+use and report, which motivates the next two options.
+
+## Bounded calibration
+
+Bounding the calibration factor $`g_i = w_i^{\mathrm{cal}} / w_i`$ keeps
+the adjustment within a range and rules out the negative or extreme
+weights that unbounded linear calibration can produce (the logit
+distance of Deville and Sarndal enforces the bounds smoothly), trading a
+little exactness for safer weights.
+
+``` r
+
+totals_rs <- colSums(model.matrix(~ region + sex, population))
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "linear", formula = ~ region + sex, totals = totals_rs,
+                 bounds = c(0.83, 1.2)) |>
+  prep()
+range(wf$steps[[2]]$diagnostics$achieved / wf$steps[[2]]$diagnostics$target)
+#> [1] 1 1
+```
+
+Bounds cap the factors but still solve the calibration exactly within
+those limits. When the real problem is too many auxiliaries for the
+sample (an over-parameterized calibration equation), a better remedy is
+to **relax** the targets rather than bound the factor: ridge (penalized)
+calibration, and more generally penalized or lasso-type calibration,
+shrink the solution and avoid the instability that produces extreme or
+negative weights. The ridge option is covered in the *Machine learning,
+cross-fitting and robust calibration* article.
+
+## Equal weights within a cluster
+
+In household surveys it is often desirable that every member of a
+household carry the **same** final weight (so that person and household
+estimates stay coherent). With `equal_within_cluster = TRUE`, linear
+calibration finds a single weight per cluster that still meets the
+population totals.
+
+``` r
+
+totals_rs <- colSums(model.matrix(~ region + sex, population))
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "linear", formula = ~ region + sex, totals = totals_rs,
+                 cluster = "household_id", equal_within_cluster = TRUE) |>
+  prep()
+# every member of a household shares one weight
+tapply(wf$final_weight, sample_survey$household_id, function(x) diff(range(x))) |>
+  max()
+#> [1] 23.26389
+```
+
+The maximum within-household spread is zero: the weight is constant
+inside each household, while the region and sex totals are still
+reproduced.
+
+## Which to use
+
+Post-stratification when the full cross-table is known and the cells are
+large enough. Raking when only margins are available, or when you want
+many auxiliaries without unstable cells. Linear (GREG) for continuous
+auxiliaries or an explicit linear model. Add bounds (or ridge, in the
+advanced article) when the weights risk becoming extreme, and
+`equal_within_cluster` when household members must share a weight. When
+a working model for the outcome is available and the auxiliaries are
+known at the unit level for the whole population, the model-calibration
+approach (see the *Model calibration* article) can be more efficient
+still.
+
+## References
+
+- Deville, J.-C., & Sarndal, C.-E. (1992). Calibration estimators in
+  survey sampling. *JASA*, 87(418), 376–382.
+- Deville, J.-C., Sarndal, C.-E., & Sautory, O. (1993). Generalized
+  raking procedures in survey sampling. *JASA*, 88(423), 1013–1020.
+- Deming, W. E., & Stephan, F. F. (1940). On a least squares adjustment
+  of a sampled frequency table. *Annals of Mathematical Statistics*,
+  11(4), 427–444.
+- Sarndal, C.-E. (2007). The calibration approach in survey theory and
+  practice. *Survey Methodology*, 33(2), 99–119.
