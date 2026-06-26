@@ -138,11 +138,6 @@ weighting_spec(sample_survey, base_weights = pw) |>
                    formula = ~ region + sex, engine = "logit",
                    num_classes = 5, crossfit = 5, crossfit_seed = 1) |>
   prep()
-#> Warning: non-integer #successes in a binomial glm!
-#> Warning: non-integer #successes in a binomial glm!
-#> Warning: non-integer #successes in a binomial glm!
-#> Warning: non-integer #successes in a binomial glm!
-#> Warning: non-integer #successes in a binomial glm!
 #> 
 #> == Weighting specification (weightflow) ==
 #> Data    : 467 cases
