@@ -4,6 +4,12 @@ weightflow computes weights and also estimates their variances. This
 vignette shows two ways to obtain standard errors from a weightflow
 recipe, and how they relate.
 
+Throughout, $`U`$ is the population and $`s`$ the sample; $`w_i`$ is the
+final weight of unit $`i`$; and a population total is written
+$`Y = \sum_{i \in U} y_i`$, estimated by
+$`\hat Y = \sum_{i \in s} w_i\,y_i`$. The sample is drawn in clusters:
+primary sampling units (PSUs) nested in strata.
+
 ## Why the adjustments matter for variance
 
 A weighting recipe rarely stops at the design weight. It redistributes
@@ -55,19 +61,36 @@ boot
 #>   psu        : psu
 ```
 
-The multiplier is the **Rao-Wu rescaling bootstrap**. Within a stratum
-with `n` PSUs, `m` PSUs are drawn with replacement (by default
-`m = n - 1`), and a unit whose PSU was drawn `t` times is rescaled by
+The multiplier is the **Rao-Wu rescaling bootstrap**. Consider a stratum
+$`h`$ with $`n_h`$ PSUs, from which $`m_h`$ are drawn with replacement
+(by default $`m_h = n_h -
+1`$). Let $`t_{hi}^{*}`$ be the number of times PSU $`i`$ is selected in
+a replicate. Every unit in that PSU has its weight rescaled by
 
-    lambda = 1 - sqrt(m / (n - 1)) + sqrt(m / (n - 1)) * (n / m) * t
+``` math
+\lambda_{hi} = 1 - \sqrt{\tfrac{m_h}{n_h - 1}}
+  + \sqrt{\tfrac{m_h}{n_h - 1}}\;\frac{n_h}{m_h}\,t_{hi}^{*},
+```
 
-which has expectation one and never turns negative. Whole PSUs are kept
-together (every unit in a drawn PSU is retained), as the design’s
-clustering requires.
+so the replicate weight is $`w_i^{*} = \lambda_{hi}\,w_i`$. The factor
+has expectation one over the resampling,
+$`\mathbb{E}(\lambda_{hi}) = 1`$, which keeps each replicate
+design-unbiased, and the construction never turns it negative, so the
+recipe can be re-prepped on every replicate without invalid weights.
+Whole PSUs are kept together (every unit in a drawn PSU is retained), as
+the design’s clustering requires.
 
 ### Estimates with bootstrap standard errors
 
-The bootstrap variance is `(1 / B) * sum((theta_b - theta_hat)^2)`.
+Writing $`\hat\theta`$ for the point estimate and $`\hat\theta_b`$ for
+its value on replicate $`b`$ (each computed from the re-prepped
+replicate weights), the bootstrap variance is the average squared
+deviation across the $`B`$ replicates,
+
+``` math
+\widehat{\operatorname{Var}}(\hat\theta)
+  = \frac{1}{B} \sum_{b=1}^{B} \big(\hat\theta_b - \hat\theta\big)^2 .
+```
 
 ``` r
 

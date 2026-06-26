@@ -77,6 +77,20 @@
 <p>weightflow computes weights and also estimates their variances. This
 vignette shows two ways to obtain standard errors from a weightflow
 recipe, and how they relate.</p>
+<p>Throughout,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math>
+is the population and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>
+the sample;
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>w</mi><mi>i</mi></msub><annotation encoding="application/x-tex">w_i</annotation></semantics></math>
+is the final weight of unit
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>;
+and a population total is written
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>=</mo><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></msub><msub><mi>y</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">Y = \sum_{i \in U} y_i</annotation></semantics></math>,
+estimated by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>Y</mi><mo accent="true">̂</mo></mover><mo>=</mo><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></msub><msub><mi>w</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><msub><mi>y</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\hat Y = \sum_{i \in s} w_i\,y_i</annotation></semantics></math>.
+The sample is drawn in clusters: primary sampling units (PSUs) nested in
+strata.</p>
 <div class="section level2">
 <h2 id="why-the-adjustments-matter-for-variance">Why the adjustments matter for variance<a class="anchor" aria-label="anchor" href="#why-the-adjustments-matter-for-variance"></a>
 </h2>
@@ -125,19 +139,46 @@ replicate.</p>
 <span><span class="co">#&gt;   strata     : region</span></span>
 <span><span class="co">#&gt;   psu        : psu</span></span></code></pre></div>
 <p>The multiplier is the <strong>Rao-Wu rescaling bootstrap</strong>.
-Within a stratum with <code>n</code> PSUs, <code>m</code> PSUs are drawn
-with replacement (by default <code>m = n - 1</code>), and a unit whose
-PSU was drawn <code>t</code> times is rescaled by</p>
-<pre><code><span><span class="va">lambda</span> <span class="op">=</span> <span class="fl">1</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">m</span> <span class="op">/</span> <span class="op">(</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">m</span> <span class="op">/</span> <span class="op">(</span><span class="va">n</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="va">n</span> <span class="op">/</span> <span class="va">m</span><span class="op">)</span> <span class="op">*</span> <span class="va">t</span></span></code></pre>
-<p>which has expectation one and never turns negative. Whole PSUs are
-kept together (every unit in a drawn PSU is retained), as the design’s
-clustering requires.</p>
+Consider a stratum
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>
+with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mi>h</mi></msub><annotation encoding="application/x-tex">n_h</annotation></semantics></math>
+PSUs, from which
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>m</mi><mi>h</mi></msub><annotation encoding="application/x-tex">m_h</annotation></semantics></math>
+are drawn with replacement (by default
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>m</mi><mi>h</mi></msub><mo>=</mo><msub><mi>n</mi><mi>h</mi></msub><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">m_h = n_h -
+1</annotation></semantics></math>). Let
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>t</mi><mrow><mi>h</mi><mi>i</mi></mrow><mo>*</mo></msubsup><annotation encoding="application/x-tex">t_{hi}^{*}</annotation></semantics></math>
+be the number of times PSU
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+is selected in a replicate. Every unit in that PSU has its weight
+rescaled by</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>λ</mi><mrow><mi>h</mi><mi>i</mi></mrow></msub><mo>=</mo><mn>1</mn><mo>−</mo><msqrt><mstyle displaystyle="false"><mfrac><msub><mi>m</mi><mi>h</mi></msub><mrow><msub><mi>n</mi><mi>h</mi></msub><mo>−</mo><mn>1</mn></mrow></mfrac></mstyle></msqrt><mo>+</mo><msqrt><mstyle displaystyle="false"><mfrac><msub><mi>m</mi><mi>h</mi></msub><mrow><msub><mi>n</mi><mi>h</mi></msub><mo>−</mo><mn>1</mn></mrow></mfrac></mstyle></msqrt><mspace width="0.278em"></mspace><mfrac><msub><mi>n</mi><mi>h</mi></msub><msub><mi>m</mi><mi>h</mi></msub></mfrac><mspace width="0.167em"></mspace><msubsup><mi>t</mi><mrow><mi>h</mi><mi>i</mi></mrow><mo>*</mo></msubsup><mo>,</mo></mrow><annotation encoding="application/x-tex">\lambda_{hi} = 1 - \sqrt{\tfrac{m_h}{n_h - 1}}
+  + \sqrt{\tfrac{m_h}{n_h - 1}}\;\frac{n_h}{m_h}\,t_{hi}^{*},</annotation></semantics></math></p>
+<p>so the replicate weight is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>w</mi><mi>i</mi><mo>*</mo></msubsup><mo>=</mo><msub><mi>λ</mi><mrow><mi>h</mi><mi>i</mi></mrow></msub><mspace width="0.167em"></mspace><msub><mi>w</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">w_i^{*} = \lambda_{hi}\,w_i</annotation></semantics></math>.
+The factor has expectation one over the resampling,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝔼</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>λ</mi><mrow><mi>h</mi><mi>i</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\mathbb{E}(\lambda_{hi}) = 1</annotation></semantics></math>,
+which keeps each replicate design-unbiased, and the construction never
+turns it negative, so the recipe can be re-prepped on every replicate
+without invalid weights. Whole PSUs are kept together (every unit in a
+drawn PSU is retained), as the design’s clustering requires.</p>
 <div class="section level3">
 <h3 id="estimates-with-bootstrap-standard-errors">Estimates with bootstrap standard errors<a class="anchor" aria-label="anchor" href="#estimates-with-bootstrap-standard-errors"></a>
 </h3>
-<p>The bootstrap variance is
-<code>(1 / B) * sum((theta_b - theta_hat)^2)</code>.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<p>Writing
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>θ</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\hat\theta</annotation></semantics></math>
+for the point estimate and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>b</mi></msub><annotation encoding="application/x-tex">\hat\theta_b</annotation></semantics></math>
+for its value on replicate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+(each computed from the re-prepped replicate weights), the bootstrap
+variance is the average squared deviation across the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>B</mi><annotation encoding="application/x-tex">B</annotation></semantics></math>
+replicates,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi mathvariant="normal">Var</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="prefix">(</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mfrac><mn>1</mn><mi>B</mi></mfrac><munderover><mo>∑</mo><mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow><mi>B</mi></munderover><mo minsize="120%" maxsize="120%" stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>b</mi></msub><mo>−</mo><mover><mi>θ</mi><mo accent="true">̂</mo></mover><msup><mo minsize="120%" maxsize="120%" stretchy="true" form="postfix">)</mo><mn>2</mn></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">\widehat{\operatorname{Var}}(\hat\theta)
+  = \frac{1}{B} \sum_{b=1}^{B} \big(\hat\theta_b - \hat\theta\big)^2 .</annotation></semantics></math></p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>,  <span class="st">"income"</span><span class="op">)</span>     <span class="co"># mean income</span></span>
 <span><span class="co">#&gt;   estimate       se ci_lower ci_upper</span></span>
 <span><span class="co">#&gt; 1 21615.21 872.7788 19904.59 23325.82</span></span>
@@ -149,7 +190,7 @@ clustering requires.</p>
 <span><span class="co">#&gt; 1 0.4287473 0.03102821 0.3679331 0.4895615</span></span></code></pre></div>
 <p>For any other statistic, pass a function of the weights and the data
 to <code><a href="../reference/bootstrap_estimate.html">bootstrap_estimate()</a></code>:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bootstrap_estimate.html">bootstrap_estimate</a></span><span class="op">(</span><span class="va">boot</span>, <span class="kw">function</span><span class="op">(</span><span class="va">w</span>, <span class="va">d</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">ok</span> <span class="op">&lt;-</span> <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">income</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">w</span> <span class="op">&gt;</span> <span class="fl">0</span></span>
 <span>  <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">income</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span>, times <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">w</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>   <span class="co"># weighted median (approx.)</span></span>
@@ -164,7 +205,7 @@ to <code><a href="../reference/bootstrap_estimate.html">bootstrap_estimate()</a>
 <p><code><a href="../reference/as_svydesign.html">as_svydesign()</a></code> builds an ultimate-cluster linearization
 design from a prepped recipe. It is fast, but treats the calibration as
 fixed.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="va">spec</span><span class="op">)</span></span>
 <span><span class="va">des</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_svydesign.html">as_svydesign</a></span><span class="op">(</span><span class="va">fitted</span>, ids <span class="op">=</span> <span class="st">"psu"</span>, strata <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span>
 <span><span class="fu">survey</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/surveysummary.html" class="external-link">svymean</a></span><span class="op">(</span><span class="op">~</span><span class="va">income</span>, <span class="va">des</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -172,7 +213,7 @@ fixed.</p>
 <span><span class="co">#&gt; income 21615 989.34</span></span></code></pre></div>
 <p>To keep the recipe’s adjustments in the variance while still using
 survey, feed it the bootstrap replicate weights from method 1:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rep_des</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_svydesign.html">as_svrepdesign</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span></span>
 <span><span class="fu">survey</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/surveysummary.html" class="external-link">svymean</a></span><span class="op">(</span><span class="op">~</span><span class="va">income</span>, <span class="va">rep_des</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         mean     SE</span></span>
@@ -187,7 +228,7 @@ survey, feed it the bootstrap replicate weights from method 1:</p>
 <p><code><a href="../reference/collect_replicate_weights.html">collect_replicate_weights()</a></code> attaches the point weight
 (<code>.weight</code>) and the replicate weights (<code>rep_1</code> …
 <code>rep_B</code>) to the active respondents, ready for srvyr.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/collect_replicate_weights.html">collect_replicate_weights</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span></span>
 <span><span class="va">d_rep</span> <span class="op">&lt;-</span> <span class="fu">srvyr</span><span class="fu">::</span><span class="fu"><a href="http://gdfe.co/srvyr/reference/as_survey_rep.html" class="external-link">as_survey_rep</a></span><span class="op">(</span><span class="va">df</span>, weights <span class="op">=</span> <span class="va">.weight</span>,</span>
 <span>                              repweights <span class="op">=</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">starts_with</a></span><span class="op">(</span><span class="st">"rep_"</span><span class="op">)</span>,</span>
