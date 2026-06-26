@@ -78,32 +78,74 @@
 population totals of <em>auxiliary</em> variables. Model calibration (Wu
 and Sitter, 2001) goes further: it uses a working model for the
 <em>outcome</em> to build a better calibration variable.
-<code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> implements it, and — less commonly
-— lets you keep the ordinary consistency constraints on the auxiliaries
-in the <strong>same</strong> step.</p>
+<code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> implements it, and (less commonly)
+lets you keep the ordinary consistency constraints on the auxiliaries in
+the same step.</p>
+<p>Throughout we follow the design-based notation:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>U</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>N</mi><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">U = \{1, \dots, N\}</annotation></semantics></math>
+is the finite population,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo>⊆</mo><mi>U</mi></mrow><annotation encoding="application/x-tex">s \subseteq U</annotation></semantics></math>
+the sample, and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>w</mi><mi>i</mi></msub><annotation encoding="application/x-tex">w_i</annotation></semantics></math>
+the weight of unit
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>.
+The study variable is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>,
+observed only in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>,
+with population total
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>=</mo><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></msub><msub><mi>y</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">Y =
+\sum_{i \in U} y_i</annotation></semantics></math>. Each unit carries a
+vector of auxiliaries
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_i</annotation></semantics></math>,
+known for every unit of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math>,
+with population totals
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>𝐗</mi><mo>=</mo><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></msub><msub><mi>𝐱</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\mathbf{X} = \sum_{i \in
+U} \mathbf{x}_i</annotation></semantics></math>.</p>
 <div class="section level2">
 <h2 id="the-idea">The idea<a class="anchor" aria-label="anchor" href="#the-idea"></a>
 </h2>
-<p>You do not know the population total of an outcome <code>y</code> —
-estimating it is the goal. But you can fit a working model for
-<code>y</code> on auxiliaries <code>x</code> known for the whole
-population, and calibrate on the model’s
-<strong>predictions</strong>:</p>
-<ol style="list-style-type: decimal">
-<li>Fit <code>y_hat = m(x)</code> on the sample (weighted by the current
-weights).</li>
-<li>Predict <code>y_hat</code> for every unit, in the
-<strong>sample</strong> and in the <strong>population</strong> (the
-predictors <code>x</code> are known throughout the frame).</li>
-<li>Calibrate so the weighted sample total of the predictions equals
-their population total:</li>
-</ol>
-<pre><code>sum_{i in sample} w_i * y_hat_i  =  sum_{i in population} y_hat_i.</code></pre>
-<p>The target is the population total of the <em>fitted values</em>,
-which is computable — not the unknown total of <code>y</code>. If the
-model predicts <code>y</code> well, the estimator of the <code>y</code>
-total is efficient, because its error depends on the residuals
-<code>y_i - y_hat_i</code> rather than on <code>y</code> itself.</p>
+<p>You do not know the total
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>
+and estimating it is the goal. But you can fit a working model
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><mi>m</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\hat y_i = m(\mathbf{x}_i)</annotation></semantics></math>
+for the outcome on the sample, predict the fitted values for every unit
+in the sample and in the population, and calibrate so that the weighted
+sample total of the predictions equals their population total:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></munder><msubsup><mi>w</mi><mi>i</mi><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">c</mi></mrow></msubsup><mspace width="0.167em"></mspace><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></munder><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\sum_{i \in s} w_i^{\mathrm{mc}}\,\hat y_i = \sum_{i \in U} \hat y_i .</annotation></semantics></math></p>
+<p>The calibration target is the right-hand side,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></msub><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\sum_{i \in U} \hat y_i</annotation></semantics></math>,
+the total of the predictions over the whole population. This is
+computable, because the predictors
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_i</annotation></semantics></math>
+are known for every population unit, so
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><mi>m</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\hat y_i =
+m(\mathbf{x}_i)</annotation></semantics></math> can be evaluated and
+summed across
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math>.
+The total of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
+itself,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Y</mi><mo>=</mo><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></msub><msub><mi>y</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">Y = \sum_{i \in U} y_i</annotation></semantics></math>,
+is not computable:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
+is observed only in the sample. Model calibration therefore calibrates
+against the population total of the predictions as a computable stand-in
+for the unknown total of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>.
+The resulting estimator</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Y</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">c</mi></mrow></msub><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></munder><msubsup><mi>w</mi><mi>i</mi><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">c</mi></mrow></msubsup><mspace width="0.167em"></mspace><msub><mi>y</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\hat Y_{\mathrm{mc}} = \sum_{i \in s} w_i^{\mathrm{mc}}\,y_i</annotation></semantics></math></p>
+<p>is design-consistent and efficient when the model predicts
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
+well, since its error depends on the residuals
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>i</mi></msub><mo>−</mo><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">y_i - \hat y_i</annotation></semantics></math>
+rather than on
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math>
+itself. Wu (2003) established the optimality of this estimator within a
+class of calibration estimators, and Montanari and Ranalli (2005)
+extended it to nonparametric models, the natural home of the tree and
+forest learners.</p>
 </div>
 <div class="section level2">
 <h2 id="in-weightflow-with-a-random-forest">In weightflow, with a random forest<a class="anchor" aria-label="anchor" href="#in-weightflow-with-a-random-forest"></a>
@@ -112,10 +154,10 @@ total is efficient, because its error depends on the residuals
 (<code>x_formula</code>, with known population totals), a named list of
 working <code>models</code> from <code><a href="../reference/y_model.html">y_model()</a></code>, and the
 <code>population</code> frame used to compute the prediction totals.
-Here the working model is a <strong>random forest</strong>, which
-captures nonlinear structure in the predictors without specifying
-it.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+Here, the working model is a random forest (although other models can be
+used), which captures nonlinear structure in the predictors without
+specifying it.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -125,9 +167,9 @@ it.</p>
 <span>                                       engine <span class="op">=</span> <span class="st">"forest"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    population <span class="op">=</span> <span class="va">population</span><span class="op">)</span></span>
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="va">spec</span><span class="op">)</span></span></code></pre></div>
-<p>The model is fitted on the <strong>active</strong> units only (the
-respondents, where <code>income</code> is observed), weighted by the
-weights entering the step.</p>
+<p>The model is fitted on the responding units only (where
+<code>income</code> is observed), weighted by the weights entering the
+step</p>
 </div>
 <div class="section level2">
 <h2 id="validation-the-constraints-are-met-exactly">Validation: the constraints are met exactly<a class="anchor" aria-label="anchor" href="#validation-the-constraints-are-met-exactly"></a>
@@ -136,7 +178,7 @@ weights entering the step.</p>
 consistency auxiliaries match their known population totals, and the
 weighted total of the income predictions matches its population total.
 The step’s diagnostics show target versus achieved:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fitted</span><span class="op">$</span><span class="va">steps</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">diagnostics</span></span>
 <span><span class="co">#&gt;              constraint            type   target achieved</span></span>
 <span><span class="co">#&gt; (Intercept) (Intercept) X (consistency)     4495     4495</span></span>
@@ -156,88 +198,101 @@ predictions. Each <code>achieved</code> equals its
 <p>Because the weights are calibrated on the income predictions, the
 weighted estimate of the income total tracks the true population
 total:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">est_total</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">final_weight</span> <span class="op">*</span> <span class="va">sample_survey</span><span class="op">$</span><span class="va">income</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">true_total</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">income</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>estimated <span class="op">=</span> <span class="va">est_total</span>, population <span class="op">=</span> <span class="va">true_total</span>,</span>
 <span>  rel_error <span class="op">=</span> <span class="op">(</span><span class="va">est_total</span> <span class="op">-</span> <span class="va">true_total</span><span class="op">)</span> <span class="op">/</span> <span class="va">true_total</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    estimated   population    rel_error </span></span>
 <span><span class="co">#&gt; 8.971419e+07 8.674501e+07 3.422891e-02</span></span></code></pre></div>
-<p>The estimator stays design-based (<code>sum(w_i y_i)</code>); the
-model only shapes the weights to make it efficient. A poor model does
-not bias the result — it just yields a less efficient one.</p>
+<p>The estimator stays design-based,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Y</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">c</mi></mrow></msub><mo>=</mo><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></msub><msub><mi>w</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><msub><mi>y</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\hat Y_{\mathrm{mc}} = \sum_{i \in s} w_i\,y_i</annotation></semantics></math>;
+the model only shapes the weights to make it efficient. A poor model
+does not bias the result, it just yields a less efficient one, because
+the design-based form is (approximately) unbiased regardless of how well
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math>
+fits.</p>
 </div>
 <div class="section level2">
 <h2 id="what-you-need-unit-level-auxiliaries">What you need: unit-level auxiliaries<a class="anchor" aria-label="anchor" href="#what-you-need-unit-level-auxiliaries"></a>
 </h2>
-<p>This is the practical catch that sets model calibration apart.
-Raking, post-stratification and GREG need only the population
-<strong>totals</strong> (or margins) of the auxiliaries — numbers such
-as “1570 people in the North, 2311 women” — which official statistics
-routinely publish. Model calibration needs more: the auxiliaries
-<strong>at the unit level for the whole population</strong>, because
-step 2 predicts <code>y_hat</code> for every population unit before
-summing. You cannot get <code>sum(y_hat_i)</code> from the totals of
-<code>x</code> alone (unless the model is linear, in which case you are
-back to GREG).</p>
+<p>This is the practical asymmetry that sets model calibration apart.
+Raking, post-stratification and GREG need only the population totals
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐗</mi><annotation encoding="application/x-tex">\mathbf{X}</annotation></semantics></math>
+of the auxiliaries (e.g. numbers such as “1570 people in the North, 2311
+women”) which official statistics routinely publish. Model calibration
+needs more: the auxiliaries
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_i</annotation></semantics></math>
+at the unit level for the whole population, because the fitted values
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><annotation encoding="application/x-tex">\hat y_i</annotation></semantics></math>
+must be evaluated for every population unit before being summed. This is
+the complete auxiliary information of the Wu-Sitter setting, and it
+confines the method to situations where a population register, a census
+microdata file, or a large reference frame is available. When only
+published totals are at hand, the analyst is restricted to raking,
+post-stratification or GREG.</p>
 <p>That difference is visible in the arguments:
 <code><a href="../reference/step_calibrate.html">step_calibrate()</a></code> takes <code>margins</code> or
 <code>totals</code> (vectors of totals), whereas
-<code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> takes <code>population</code> — a
-data frame with <strong>one row per population unit</strong> carrying
-the predictors. So model calibration applies when you have a register or
-frame with microdata (a population register, administrative records, a
-census microdata file, a large reference survey) — the “complete
-auxiliary information” of the Wu-Sitter title means <em>unit-level for
-the whole population</em>, not just aggregates. When you only have
-published totals, use raking, post-stratification or GREG. The
-consistency constraints in the hybrid still calibrate to the
-<code>x</code> totals (obtained by summing <code>population</code>); it
-is the model term that requires the microdata.</p>
+<code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> takes <code>population</code>, a
+data frame with one row per population unit carrying the predictors.</p>
 </div>
 <div class="section level2">
-<h2 id="combining-the-model-with-consistency-constraints">Combining the model with consistency constraints<a class="anchor" aria-label="anchor" href="#combining-the-model-with-consistency-constraints"></a>
+<h2 id="the-hybrid-model-term-and-consistency-constraints">The hybrid: model term and consistency constraints<a class="anchor" aria-label="anchor" href="#the-hybrid-model-term-and-consistency-constraints"></a>
 </h2>
 <p>The distinctive part of the step is the <strong>hybrid</strong>: it
-calibrates on the model predictions <em>and</em> on the raw auxiliary
-totals (<code>x_formula</code>) at once. This pairing matters precisely
-when the model is <strong>nonlinear</strong>. With a linear working
-model the predictions lie in the span of <code>x</code>, so adding them
-is redundant and the estimator reduces to ordinary linear calibration —
-the generalized regression (GREG) estimator. With a forest (or any
-nonlinear model), the predictions carry information beyond the linear
-<code>x</code> terms, so the two sets of constraints are complementary:
-the <code>x</code> totals give <strong>internal consistency /
-benchmarking</strong> (the weights reproduce the published region and
-sex totals), while the model term adds <strong>efficiency</strong> from
-the nonlinear fit.</p>
+imposes the consistency constraints on the raw auxiliary totals and the
+model-calibration constraint on the predictions at once,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></munder><msub><mi>w</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><msub><mi>𝐱</mi><mi>i</mi></msub><mo>=</mo><mi>𝐗</mi><mspace width="2.0em"></mspace><mtext mathvariant="normal">and</mtext><mspace width="2.0em"></mspace><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></munder><msub><mi>w</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>U</mi></mrow></munder><msub><mover><mi>y</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\sum_{i \in s} w_i\,\mathbf{x}_i = \mathbf{X}
+\qquad\text{and}\qquad
+\sum_{i \in s} w_i\,\hat y_i = \sum_{i \in U} \hat y_i .</annotation></semantics></math></p>
+<p>Whether this second constraint adds anything depends on the model. If
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math>
+is linear in
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐱</mi><annotation encoding="application/x-tex">\mathbf{x}</annotation></semantics></math>,
+the predictions lie in the span of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐱</mi><annotation encoding="application/x-tex">\mathbf{x}</annotation></semantics></math>,
+the second constraint is already implied by the first, and the estimator
+reduces to the generalized regression (GREG) estimator. If
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>m</mi><annotation encoding="application/x-tex">m</annotation></semantics></math>
+is nonlinear (e.g regression tree or a random forest) the predictions
+carry information beyond the linear terms, and the two sets of
+constraints become complementary: the auxiliary totals enforce internal
+consistency with published figures (benchmarking), while the model term
+injects the efficiency of the nonlinear fit. The hybrid is therefore
+meaningful precisely for the flexible learners that motivate it.</p>
 </div>
 <div class="section level2">
 <h2 id="relationship-to-the-literature">Relationship to the literature<a class="anchor" aria-label="anchor" href="#relationship-to-the-literature"></a>
 </h2>
 <p>Model calibration was introduced by Wu and Sitter (2001), who showed
 it handles any linear or nonlinear working model and reduces to the
-Deville-Särndal calibration / GREG estimator in the linear case. Wu
+Deville-Sarndal calibration / GREG estimator in the linear case. Wu
 (2003) proved its optimality within a class of calibration estimators,
 and Montanari and Ranalli (2005) extended it to nonparametric models,
-close in spirit to the forest used here. Särndal (2007) reviews the
+close in spirit to the forest used here. Sarndal (2007) reviews the
 approach within the general calibration framework.</p>
 <p>Combining the model term with the ordinary consistency constraints is
 supported by the fact that calibration accommodates an arbitrary number
-of constraints (Deville and Särndal, 1992); the practical motivation —
-efficiency from the model <em>plus</em> benchmarking to published totals
-— is standard. What is uncommon is a ready-to-use implementation: the
-major R survey packages calibrate on auxiliary totals (GREG, raking,
-post-stratification) but do not fit an outcome model and calibrate on
-its predictions, let alone with flexible engines combined with
-consistency constraints. <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> packages
-exactly that. It is an accessible implementation of an established idea,
-not a new method.</p>
-<p><strong>References.</strong> Wu &amp; Sitter (2001), <em>JASA</em>
-96(453), 185–193. Wu (2003), <em>Biometrika</em> 90(4), 937–951.
-Montanari &amp; Ranalli (2005), <em>JASA</em> 100, 1429–1442. Särndal
-(2007), <em>Survey Methodology</em> 33(2), 99–119. Deville &amp; Särndal
-(1992), <em>JASA</em> 87(418), 376–382.</p>
+of constraints; the practical motivation (efficiency from the model plus
+benchmarking to published totals) is standard. What is uncommon is a
+ready-to-use implementation: the major R survey packages calibrate on
+auxiliary totals (GREG, raking, post-stratification) but do not fit an
+outcome model and calibrate on its predictions, let alone with flexible
+engines combined with consistency constraints.
+<code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> packages exactly that. It is an
+accessible implementation of an established idea, not a new method.</p>
+<p><strong>References.</strong></p>
+<ul>
+<li><p>Wu &amp; Sitter (2001), <em>JASA</em> 96(453), 185–193.</p></li>
+<li><p>Wu (2003), <em>Biometrika</em> 90(4), 937–951.</p></li>
+<li><p>Montanari &amp; Ranalli (2005), <em>JASA</em> 100,
+1429–1442.</p></li>
+<li><p>Sarndal (2007), <em>Survey Methodology</em> 33(2),
+99–119.</p></li>
+<li><p>Deville &amp; Sarndal (1992), <em>JASA</em> 87(418),
+376–382.</p></li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
