@@ -2,7 +2,7 @@
 % Please edit documentation in R/report_interactive.R
 \name{report_weighting_interactive}
 \alias{report_weighting_interactive}
-\title{Interactive HTML report of a prepped recipe (prototype)}
+\title{Interactive HTML report of a weighting recipe (prototype)}
 \usage{
 report_weighting_interactive(
   object,
@@ -13,20 +13,48 @@ report_weighting_interactive(
 )
 }
 \arguments{
-\item{object}{a prepped_weighting_spec.}
+\item{object}{a prepped object (output of \code{prep()}).}
 
-\item{target}{optional name of a numeric variable; if given, the report tracks
-its weighted estimate across stages.}
+\item{target}{optional name of a numeric variable in the data. If given, the
+report tracks its weighted estimate across the adjustment stages, computed
+on a fixed set of units (those with \code{target} observed and positive final
+weight). Design-only steps (e.g. within-household selection) are excluded.}
 
-\item{statistic}{"mean" or "total": the estimate computed for \code{target}.}
+\item{statistic}{the estimate computed for \code{target}: \code{"mean"} (default) or
+\code{"total"}.}
 
-\item{file}{output path; if NULL a temp file.}
+\item{file}{output path; if \code{NULL}, a temporary \code{.html} file.}
 
-\item{open}{open in a browser?}
+\item{open}{logical; open the file in the browser.}
 }
 \value{
-(invisibly) the file path.
+(invisibly) the path to the HTML file.
 }
 \description{
-Interactive HTML report of a prepped recipe (prototype)
+Writes a self-contained, interactive HTML report of a prepped recipe and
+opens it in the browser. The report shows headline metrics, a dynamic
+pipeline diagram (built from the actual steps, with the variables each step
+used), a design summary, a case-flow table, the per-stage summary, and
+per-step diagnostics with interactive scatter and histogram charts. When a
+\code{target} variable is supplied, it also tracks the variable's weighted
+estimate across the weighting adjustments.
+}
+\details{
+The diagram is rendered with Mermaid and the charts with Plotly, both loaded
+from a CDN, so an internet connection is needed to view the interactive
+elements (the report file itself is generated with no R dependencies).
+
+This is a prototype intended for a future release; its interface may change.
+}
+\examples{
+fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)))) |>
+  prep()
+\dontrun{
+report_weighting_interactive(fitted)                       # opens in browser
+report_weighting_interactive(fitted, target = "income")    # track a variable
+report_weighting_interactive(fitted, target = "income", statistic = "total")
+}
 }

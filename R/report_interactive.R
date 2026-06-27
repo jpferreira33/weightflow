@@ -183,14 +183,43 @@ Plotly.newPlot("tgt",
   list(html = html, js = js)
 }
 
-#' Interactive HTML report of a prepped recipe (prototype)
-#' @param object a prepped_weighting_spec.
-#' @param target optional name of a numeric variable; if given, the report tracks
-#'   its weighted estimate across stages.
-#' @param statistic "mean" or "total": the estimate computed for `target`.
-#' @param file output path; if NULL a temp file.
-#' @param open open in a browser?
-#' @return (invisibly) the file path.
+#' Interactive HTML report of a weighting recipe (prototype)
+#'
+#' Writes a self-contained, interactive HTML report of a prepped recipe and
+#' opens it in the browser. The report shows headline metrics, a dynamic
+#' pipeline diagram (built from the actual steps, with the variables each step
+#' used), a design summary, a case-flow table, the per-stage summary, and
+#' per-step diagnostics with interactive scatter and histogram charts. When a
+#' `target` variable is supplied, it also tracks the variable's weighted
+#' estimate across the weighting adjustments.
+#'
+#' The diagram is rendered with Mermaid and the charts with Plotly, both loaded
+#' from a CDN, so an internet connection is needed to view the interactive
+#' elements (the report file itself is generated with no R dependencies).
+#'
+#' This is a prototype intended for a future release; its interface may change.
+#'
+#' @param object a prepped object (output of `prep()`).
+#' @param target optional name of a numeric variable in the data. If given, the
+#'   report tracks its weighted estimate across the adjustment stages, computed
+#'   on a fixed set of units (those with `target` observed and positive final
+#'   weight). Design-only steps (e.g. within-household selection) are excluded.
+#' @param statistic the estimate computed for `target`: `"mean"` (default) or
+#'   `"total"`.
+#' @param file output path; if `NULL`, a temporary `.html` file.
+#' @param open logical; open the file in the browser.
+#' @return (invisibly) the path to the HTML file.
+#' @examples
+#' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_calibrate(method = "raking",
+#'                  margins = list(region = c(table(population$region)))) |>
+#'   prep()
+#' \dontrun{
+#' report_weighting_interactive(fitted)                       # opens in browser
+#' report_weighting_interactive(fitted, target = "income")    # track a variable
+#' report_weighting_interactive(fitted, target = "income", statistic = "total")
+#' }
 #' @export
 report_weighting_interactive <- function(object, target = NULL,
                                           statistic = c("mean", "total"),
