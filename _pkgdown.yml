@@ -2,6 +2,25 @@ url: https://jpferreira33.github.io/weightflow/
 
 template:
   bootstrap: 5
+  bslib:
+    primary: "#3d3580"
+    secondary: "#7a6ad0"
+    success: "#1d9e75"
+    info: "#534ab7"
+    base_font: {google: "Inter"}
+    heading_font: {google: "Inter"}
+    code_font: {google: "JetBrains Mono"}
+    "link-color": "#534ab7"
+    "link-hover-color": "#3d3580"
+    "border-radius": "0.5rem"
+    "code-color": "#7a3d1d"
+
+navbar:
+  bg: primary
+  type: dark
+
+development:
+  mode: auto
 
 reference:
 - title: Overview
