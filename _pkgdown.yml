@@ -2,6 +2,25 @@ url: https://jpferreira33.github.io/weightflow/
 
 template:
   bootstrap: 5
+  bslib:
+    primary: "#3d3580"
+    secondary: "#7a6ad0"
+    success: "#1d9e75"
+    info: "#534ab7"
+    base_font: {google: "Inter"}
+    heading_font: {google: "Inter"}
+    code_font: {google: "JetBrains Mono"}
+    "link-color": "#534ab7"
+    "link-hover-color": "#3d3580"
+    "border-radius": "0.5rem"
+    "code-color": "#7a3d1d"
+
+navbar:
+  bg: primary
+  type: dark
+
+development:
+  mode: auto
 
 reference:
 - title: Overview
@@ -28,6 +47,14 @@ reference:
   - step_round
   - step_rescale
   - step_assert
+- title: Nonprobability samples
+  desc: >
+    Build pseudo-weights for a nonprobability sample using a probability
+    reference sample (experimental).
+  contents:
+  - weighting_spec_nonprob
+  - step_initial_weights
+  - step_pseudo_weight
 - title: Diagnostics and reporting
   desc: Inspect, summarise and report the cascade.
   contents:
@@ -36,6 +63,7 @@ reference:
   - weight_factors
   - design_effect
   - report_weighting
+  - report_weighting_interactive
 - title: Variance estimation
   desc: Bootstrap that re-applies the recipe, plus survey/srvyr bridges.
   contents:
@@ -48,3 +76,5 @@ reference:
   - population
   - sample_survey
   - sample_one
+  - nps_sample
+  - reference_sample

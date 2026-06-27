@@ -1,0 +1,20 @@
+/* weightflow theme extras: amber accent from the logo's center dot */
+$wf-amber: #e8941f;
+
+.navbar .nav-link.active {
+  border-bottom: 2px solid $wf-amber;
+}
+
+.page-header {
+  border-bottom: 2px solid $wf-amber;
+}
+
+pre {
+  border-left: 3px solid $wf-amber;
+}
+
+.btn-primary {
+  background-color: #3d3580;
+  border-color: #3d3580;
+  &:hover { background-color: #534ab7; border-color: #534ab7; }
+}
