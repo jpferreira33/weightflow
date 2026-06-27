@@ -1,0 +1,170 @@
+---
+title: "Nonprobability samples: pseudo-weights by volunteering propensity"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Nonprobability samples: pseudo-weights by volunteering propensity}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(weightflow)
+```
+
+A nonprobability sample (a web panel, an opt-in survey, an opportunity source)
+has no known inclusion probabilities, so its design weights do not exist and the
+units enter through an unknown self-selection mechanism. Estimating population
+quantities from it requires borrowing structure from a probability **reference**
+sample. This article shows how `weightflow` builds inverse-propensity
+pseudo-weights for a nonprobability sample, and is honest about what they can and
+cannot fix.
+
+## Notation and the two samples
+
+Let $U = \{1, \dots, N\}$ be the population, $Y = \sum_{i \in U} y_i$ the total of
+the study variable and $\bar Y$ its mean. We have two samples from $U$:
+
+* $A$: a probability **reference** sample of size $n_A$, with weights $w_i^A$.
+  We write $w_i^A$ (not a design weight specifically) because the reference
+  weights may be design weights or already-calibrated weights; either way they
+  make $A$ represent the population.
+* $B$: the **nonprobability** sample of size $n_B$, with no known weights. Its
+  units self-select (volunteer) into $B$.
+
+Both samples observe a common set of covariates $\mathbf{x}_i$ (and, in $B$, the
+outcome $y_i$).
+
+## Volunteering propensity and the key assumption
+
+The true **volunteering propensity** of a unit is
+
+$$\phi_i^B = P(i \in B \mid \cdot),$$
+
+the probability that unit $i$ self-selects into $B$. This is unknown and, in
+general, may depend on anything, including the outcome $y_i$ itself: people
+volunteer for reasons often related to what we are trying to measure. That makes
+self-selection, in general, **non-ignorable** (unlike classical nonresponse,
+where assuming ignorability given covariates is often defensible).
+
+To make progress, the quasi-randomization approach **assumes** that volunteering
+is ignorable given the covariates,
+
+$$P(i \in B \mid \mathbf{x}_i, y_i) = P(i \in B \mid \mathbf{x}_i),$$
+
+and, under this assumption, estimates the propensity as a function of the
+covariates alone, $\hat\phi_i^B = \hat\phi^B(\mathbf{x}_i)$. The dependence on
+$\mathbf{x}$ is a property of the **estimate** (inherited from the assumption),
+not a known property of the true $\phi_i^B$. When the assumption fails (the true
+volunteering depends on $y$ beyond $\mathbf{x}$), the correction will be only
+partial, as we will see.
+
+## Estimating the propensity by pooling A and B
+
+The propensity is estimated by stacking the two samples and modelling membership:
+the units of $B$ get an indicator $1$, the units of $A$ an indicator $0$, and a
+model predicts $\hat\phi^B(\mathbf{x}_i)$ from the common covariates. The
+reference weights $w_i^A$ enter this model so that the propensity targets the
+population rather than the (unweighted) reference. The pseudo-weight of a
+nonprobability unit is then the inverse-odds form (Elliott and Valliant, 2017),
+
+$$w_i^B = w_i^{0}\,\frac{1 - \hat\phi_i^B}{\hat\phi_i^B},$$
+
+where $w_i^0$ is an initial weight, rescaled so the pseudo-weights represent the
+population.
+
+## A recipe for a nonprobability sample
+
+The bundled `nps_sample` is a small volunteer sample (its participation depends
+on age, sex, region **and** income), and `reference_sample` is a large
+probability sample with design weights `pw_ref` summing to the population. We
+start the recipe with `weighting_spec_nonprob()` (the sample has no design
+weights), set the initial weights, and adjust by the volunteering propensity.
+
+```{r recipe}
+fitted <- weighting_spec_nonprob(nps_sample) |>
+  step_initial_weights(method = "unity", pop_size = 1e6) |>
+  step_pseudo_weight(reference = reference_sample,
+                     reference_weights = "pw_ref",
+                     formula = ~ region + sex + age,
+                     engine = "logit") |>
+  prep()
+
+fitted$steps[[2]]$diagnostics
+```
+
+### Initial weights
+
+`step_initial_weights()` fixes the starting weights $w_i^0$ before the
+adjustment. Several conventions from the literature are available: `"unity"`
+(unit weights, optionally normalized to the population size, which performs well
+in simulations), `"naive"` (unit weights, no normalization), `"constant"` (a
+fixed value such as $N/n$), and `"ipa"` (inclusion-probability adjusted: each
+nonprobability unit borrows the design weight of the most similar reference
+unit).
+
+### Flexible engines and cross-fitting
+
+The propensity engine can be logistic regression or a machine-learning learner
+(`"tree"`, `"forest"`, `"boost"`), useful when volunteering depends on the
+covariates nonlinearly. As with the nonresponse step, flexible learners can
+overfit the pooled membership, so `crossfit = K` estimates each propensity
+out-of-fold. The `pooling` argument controls how the two samples' weights enter
+the model (`"unweighted_nps"`, `"weighted"`, `"pseudo_lik"`).
+
+## Does it reduce the bias?
+
+The point of the pseudo-weights is to move the nonprobability estimate toward the
+truth. Compare the naive (unweighted) mean of income in $B$, the pseudo-weighted
+mean, and the true population mean:
+
+```{r compare}
+w_pseudo <- fitted$final_weight
+naive    <- mean(nps_sample$income)
+pseudo   <- sum(w_pseudo * nps_sample$income) / sum(w_pseudo)
+truth    <- 22264   # known for this synthetic population
+
+c(naive = round(naive), pseudo = round(pseudo), truth = truth)
+```
+
+The pseudo-weights pull the estimate down from the naive value toward the truth,
+correcting a large part of the selection bias.
+
+## The honest part: residual bias and non-ignorability
+
+The correction is **partial**, and this is the central lesson, not a defect. In
+this example volunteering was made to depend on `region`, `sex`, `age` **and**
+directly on `income`. The propensity model only sees the covariates
+`region + sex + age`; it cannot capture the part of the self-selection driven by
+`income` itself, because the outcome does not enter the propensity (and is not
+even observed in the reference). That residual is exactly the footprint of
+**non-ignorable** volunteering: the assumption
+$P(i \in B \mid \mathbf{x}, y) = P(i \in B \mid \mathbf{x})$ does not hold, so a
+gap to the truth remains.
+
+The practical implications are the ones official statistics care about. The
+quality of the adjustment depends entirely on having covariates that explain the
+self-selection; pseudo-weights are not a black box that removes bias, but a
+device that removes the bias **captured by the covariates**. Choosing
+$\mathbf{x}$ that is related both to volunteering and to the outcomes is what
+makes the method work, and no amount of modelling recovers a mechanism that the
+covariates do not contain.
+
+This residual is also what motivates **doubly robust** estimation, which pairs
+the propensity model with a model for the outcome: if either model is correctly
+specified, the estimator is approximately unbiased, giving a second chance to
+remove the bias the propensity alone leaves behind.
+
+## References
+
+- Elliott, M. R., & Valliant, R. (2017). Inference for nonprobability samples.
+  *Statistical Science*, 32(2), 249-264.
+- Valliant, R., & Dever, J. A. (2011). Estimating propensity adjustments for
+  volunteer web surveys. *Sociological Methods & Research*, 40(1), 105-137.
+- Wang, L., Valliant, R., & Li, Y. (2021). Adjusted logistic propensity weighting
+  methods for population inference using nonprobability volunteer-based cohorts.
+  *Statistics in Medicine*, 40(24), 5237-5250.
+- Chen, Y., Li, P., & Wu, C. (2020). Doubly robust inference with nonprobability
+  survey samples. *JASA*, 115(532), 2011-2021.
+- Beaumont, J.-F. (2020). Are probability surveys bound to disappear for the
+  production of official statistics? *Survey Methodology*, 46(1), 1-28.
