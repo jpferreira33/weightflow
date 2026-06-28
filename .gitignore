@@ -12,3 +12,13 @@ docs
 inst/doc
 /doc/
 /Meta/
+
+vignettes/articles/ech_data/
+
+vignettes/articles/ech-case-study_files/
+
+ech_data/
+
+**/ech_data/
+
+vignettes/articles/*_files/

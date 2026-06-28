@@ -1,0 +1,351 @@
+---
+title: "A full weighting pipeline on a real household survey (ECH 2019)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{A full weighting pipeline on a real household survey (ECH 2019)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7, fig.height = 4.4, dpi = 110)
+```
+
+This article puts the whole `weightflow` pipeline to work on a real survey: the
+Uruguayan continuous household survey (Encuesta Continua de Hogares, ECH 2019),
+released as open microdata by the national statistical office (INE). It doubles
+as a stress test, since the working sample has tens of thousands of records and
+the expanded population has more than three million.
+
+The published microdata contain only the eligible respondents. A real survey
+operation also faces ineligible units, units of unknown eligibility, and
+nonresponse, and none of those carry survey answers. To exercise the full
+pipeline we therefore induce these outcomes on the public data in a reproducible
+(seeded) way, weight the survivors back to the population, and check how close we
+land to a known truth.
+
+The target parameter is the **poverty rate**
+$$p = \frac{1}{N}\sum_{i \in U} y_i,$$
+where $y_i = 1$ if person $i$ is poor and $U$ is the population. The estimator is
+the weighted mean $\hat p = \sum_s w_i\,y_i / \sum_s w_i$, and the weights travel
+through the cascade $w_i^0 \to w_i^{el} \to w_i^{nr} \to w_i^{cal} \to w_i$:
+design base weight, unknown-eligibility adjustment, nonresponse adjustment,
+calibration, and final trimming and rounding.
+
+```{r libs}
+library(weightflow)
+library(dplyr)
+library(tidyr)
+library(haven)
+library(archive)
+library(ggplot2)
+
+wf_violet <- "#3d3580"; wf_lav <- "#7a6ad0"; wf_amber <- "#e8941f"
+```
+
+## 1. Download the ECH microdata
+
+The INE publishes, on its ANDA portal, the ECH 2019 person/household file and a
+companion file with the stratum and primary sampling unit (PSU) of each
+household. We download both and unpack them.
+
+```{r download, eval = TRUE}
+dir_ine <- "ech_data"
+if (!dir.exists(dir_ine)) dir.create(dir_ine)
+
+f1 <- tempfile(fileext = ".rar")
+download.file("https://www4.ine.gub.uy/Anda5/index.php/catalog/715/download/956",
+              f1, mode = "wb"); archive_extract(f1, dir = dir_ine)
+
+f2 <- tempfile(fileext = ".rar")
+download.file("https://www4.ine.gub.uy/Anda5/index.php/catalog/715/download/1154",
+              f2, mode = "wb"); archive_extract(f2, dir = dir_ine)
+```
+
+## 2. Build the sample and the population
+
+We keep the design identifiers (stratum, PSU, household), the calibration
+auxiliaries (region, sex, age), the outcome (poverty), and the ECH person weight.
+Each row is a person, and the design is two-stage: PSUs within strata, with the
+household as the last stage.
+
+A key modelling choice: we set the base weight equal to the **individual ECH
+weight** `w_ech`. With this choice the base-weighted poverty rate reproduces the
+population rate exactly, so the sample starts at the truth and any later gap is
+caused by the problems we induce, not by the starting point. Expanding the sample
+by `w_ech` gives the finite population `U`, which we treat as ground truth.
+
+```{r build, eval = TRUE}
+df_raw <- read_sav(file.path(dir_ine, "HyP_2019_Terceros.sav"))
+info   <- read_sav(file.path(dir_ine, "ESTRATO_UPM_ECH2019.sav"))
+
+df <- df_raw |>
+  left_join(info |> select(numero, estrato, upm_fic), by = "numero") |>
+  transmute(
+    id_household  = numero,
+    person_number = nper,
+    strata        = estrato,
+    psu           = upm_fic,
+    region        = as_factor(dpto),
+    sex           = ifelse(e26 == 1, "male", "female"),
+    age           = e27,
+    poverty       = ifelse(pobre06 == 1, 1, 0),
+    w_ech         = pesoano
+  ) |>
+  mutate(base_weight = w_ech)
+
+# five-year age groups, shared by sample and population
+brks <- seq(0, 100, by = 5)
+df   <- df |> mutate(age_grp = cut(age, breaks = brks, right = FALSE))
+
+sample_ech_full <- df |> select(-w_ech)
+U      <- df |> uncount(w_ech)
+p_true <- mean(U$poverty)
+
+# sanity check: base weights reproduce the truth before any damage
+with(sample_ech_full, sum(base_weight * poverty) / sum(base_weight))  # equals p_true
+```
+
+## 3. Induce eligibility and response outcomes
+
+Because the public file is all eligible respondents, we induce the operational
+outcomes at the **household** level: a dwelling is ineligible, of unknown
+eligibility, or a nonrespondent as a whole. Frame variables (region, stratum,
+PSU, base weight) stay known for every household. The survey variables (sex, age,
+poverty) are erased for problematic households, which collapse to a single row,
+because in practice their roster is never observed.
+
+Nonresponse is missing-at-random and, importantly, **coherent with reality**: the
+poorest strata (the low-numbered ones) respond less. We assign an explicit
+response level per band of strata so the gradient is concentrated where poverty
+lives instead of being diluted across the whole stratum range. As poverty is
+heavily concentrated in the lowest strata, this makes the poor under-represented
+among respondents, exactly the direction a real survey faces.
+
+```{r causales, eval = TRUE}
+set.seed(2023)
+
+hh <- sample_ech_full |>
+  group_by(id_household) |>
+  summarise(strata = first(strata), psu = first(psu), region = first(region),
+            base_weight = first(base_weight), mean_age = mean(age),
+            .groups = "drop")
+
+# eligibility: ineligible ~4%, unknown ~6%, the rest eligible
+u <- runif(nrow(hh))
+hh$ineligible   <- as.integer(u < 0.04)
+hh$unknown_elig <- as.integer(u >= 0.04 & u < 0.10)
+hh$eligible     <- as.integer(u >= 0.10)
+
+# response by stratum band: the poorest strata respond markedly less
+sn <- suppressWarnings(as.numeric(as.character(hh$strata)))
+strata_logit <- ifelse(sn <= 2, -0.8,
+                ifelse(sn <= 5,  0.0,
+                ifelse(sn <= 10, 0.9, 1.5)))
+strata_logit[is.na(strata_logit)] <- 0.9
+p_resp <- plogis(strata_logit + 0.040 * (hh$mean_age - 40))
+
+hh$responded <- 0L
+elig <- hh$eligible == 1
+hh$responded[elig] <- rbinom(sum(elig), 1, p_resp[elig])
+
+# respondent households keep their persons; problematic ones collapse to one row
+resp_hh <- hh$id_household[hh$responded == 1 & hh$eligible == 1]
+persons_resp <- sample_ech_full |>
+  filter(id_household %in% resp_hh) |>
+  left_join(hh |> select(id_household, ineligible, unknown_elig, responded),
+            by = "id_household") |>
+  select(id_household, person_number, strata, psu, region, base_weight,
+         sex, age, age_grp, poverty, ineligible, unknown_elig, responded)
+prob_hh <- hh |>
+  filter(!(responded == 1 & eligible == 1)) |>
+  transmute(id_household, person_number = 1L, strata, psu, region, base_weight,
+            sex = NA_character_, age = NA_real_,
+            age_grp = factor(NA, levels = levels(df$age_grp)),
+            poverty = NA_real_, ineligible, unknown_elig, responded)
+
+sample_ech <- bind_rows(persons_resp, prob_hh) |>
+  arrange(id_household, person_number)
+```
+
+## 4. Build calibration targets from the population
+
+Raking or linear calibration needs population totals for the margins. A
+statistical office reads these from population projections; here we read them
+from `U`. We calibrate to the number of people by five-year age group, by sex,
+and by region, and we build the totals with the **same** model matrix the recipe
+will use, so the column names line up.
+
+A subtlety on totals: after dropping the ineligibles the sample represents the
+**eligible** population, which is smaller than all of `U`. Since eligibility was
+induced at random (independent of age, sex and region), the eligible population
+has the same composition as `U` scaled by the eligible share, so we scale the
+totals by that factor.
+
+```{r targets, eval = TRUE}
+elig_factor <- mean(hh$eligible)            # share of eligible households
+cal_formula <- ~ age_grp + sex + region
+
+XU     <- model.matrix(cal_formula, data = U)
+totals <- colSums(XU) * elig_factor         # scaled to the eligible population
+```
+
+## 5. The weighting recipe
+
+We pipe the whole cascade. Note the calibration step: we use **linear** distance
+with `equal_within_cluster = TRUE` and `cluster = "id_household"`, which produces
+a single weight per household (integrated household weighting, Lemaitre-Dufour).
+This is what an official household survey wants, since every member of a dwelling
+shares the same selection probability.
+
+```{r recipe, eval = TRUE}
+fitted <- weighting_spec(sample_ech, base_weights = base_weight) |>
+  step_unknown_eligibility(unknown = unknown_elig == 1, by = "region",
+                           cluster = "id_household") |>
+  step_drop_ineligible(ineligible = ineligible == 1) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "strata", cluster = "id_household") |>
+  step_calibrate(method = "linear", formula = cal_formula, totals = totals,
+                 cluster = "id_household", equal_within_cluster = TRUE) |>
+  step_trim_weights(method = "potter") |>
+  step_round(digits = 0, method = "preserve_total") |>
+  prep()
+
+summary(fitted)
+```
+
+## 6. The estimate against the truth
+
+We compute $\hat p$ at each stage of the cascade and compare it with the true
+rate $p$. The naive (base-weight) estimate is biased downward, because the poor
+responded less. The nonresponse adjustment by stratum recovers the between-strata
+part of that bias, and calibration to age, sex and region recovers more.
+
+```{r validation, eval = TRUE}
+y <- sample_ech$poverty
+stage_phat <- sapply(fitted$history, function(w) {
+  ok <- w > 0 & !is.na(y); sum(w[ok] * y[ok]) / sum(w[ok])
+})
+labs <- gsub("^stage_[0-9]+_step_", "", names(stage_phat))
+est  <- data.frame(stage = factor(labs, levels = labs), phat = stage_phat)
+
+data.frame(stage = labs, phat = round(stage_phat, 5),
+           dist = round(stage_phat - p_true, 5))
+
+ggplot(est, aes(stage, phat, group = 1)) +
+  geom_hline(yintercept = p_true, color = wf_amber, linewidth = 1) +
+  annotate("text", x = levels(est$stage)[1], y = p_true, label = "true p",
+           vjust = -0.6, hjust = 0, color = wf_amber) +
+  geom_line(color = wf_lav, linewidth = 1) +
+  geom_point(color = wf_violet, size = 3) +
+  labs(x = NULL, y = expression(hat(p)),
+       title = "Poverty rate across the weighting cascade") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+Each adjustment moves the estimate toward the truth. A small residual gap
+remains, which is honest and expected: the adjustments use only the frame and the
+calibration margins, so the part of the bias they cannot explain is not fully
+removed. Cutting the initial bias by most of its size is the realistic outcome of
+weighting, not a perfect bullseye.
+
+## 7. Per-step weight diagnostics
+
+We inspect what each step does to the weights. First, a scatter of the weight
+before versus after each step: points on the amber diagonal were left untouched,
+points off it were reweighted. The integrated household calibration shows up as
+aligned points, because every member of a household receives the same factor.
+
+```{r diag-scatter, fig.height = 6}
+h    <- fitted$history
+labs <- gsub("^stage_[0-9]+_step_", "", names(h))
+
+pairs <- bind_rows(lapply(seq_len(length(h) - 1L), function(i) {
+  prev <- h[[i]]; cur <- h[[i + 1L]]; keep <- prev > 0 & cur > 0
+  data.frame(step = factor(labs[i + 1L], levels = labs[-1]),
+             prev = prev[keep], cur = cur[keep])
+}))
+
+ggplot(pairs, aes(prev, cur)) +
+  geom_abline(slope = 1, intercept = 0, color = wf_amber, linewidth = 0.7) +
+  geom_point(color = wf_violet, alpha = 0.2, size = 0.6) +
+  facet_wrap(~ step, scales = "free", ncol = 3) +
+  labs(x = "weight before the step", y = "weight after the step",
+       title = "Weights before vs after each step") +
+  theme_minimal(base_size = 11) +
+  theme(strip.text = element_text(color = wf_violet, face = "bold"))
+```
+
+Second, the distribution of the adjustment factor (the weight after the step
+divided by the weight before). A factor of one (the amber line) means the step
+left a unit untouched; mass away from one shows where, and how hard, the step
+worked.
+
+```{r diag-factor, fig.height = 6}
+ggplot(pairs |> mutate(factor = cur / prev), aes(factor)) +
+  geom_histogram(bins = 30, fill = wf_lav, color = "white") +
+  geom_vline(xintercept = 1, color = wf_amber, linewidth = 0.7) +
+  facet_wrap(~ step, scales = "free", ncol = 3) +
+  labs(x = "adjustment factor (after / before)", y = "units",
+       title = "Distribution of the adjustment factor at each step") +
+  theme_minimal(base_size = 11) +
+  theme(strip.text = element_text(color = wf_violet, face = "bold"))
+```
+
+The Kish design effect summarises the variance cost of unequal weights. It is
+useful to track it across stages as a single number per step.
+
+```{r deff, eval = TRUE}
+data.frame(
+  stage = labs,
+  deff  = round(vapply(h, function(w) design_effect(w)$deff, numeric(1)), 3)
+)
+```
+
+## 8. Design-based inference: bootstrap and 95% CI
+
+The variance must reflect the design (PSUs within strata) and the fact that the
+recipe is re-estimated on each replicate. `bootstrap_weights()` resamples PSUs
+within strata (Rao-Wu rescaling) and re-applies the whole recipe;
+`boot_mean()` returns the estimate, its standard error and a 95% interval (a
+normal interval around the point estimate).
+
+```{r bootstrap, eval = TRUE}
+boot <- bootstrap_weights(fitted, replicates = 200, strata = "strata", psu = "psu")
+ci <- boot_mean(boot, "poverty")
+ci
+```
+
+The empirical distribution of $\hat p$ across the replicates shows the sampling
+variability behind that interval.
+
+```{r boot-hist, eval = TRUE}
+reps <- apply(boot$replicates, 2, function(w) {
+  ok <- w > 0 & !is.na(y); sum(w[ok] * y[ok]) / sum(w[ok])
+})
+
+ggplot(data.frame(phat = reps), aes(phat)) +
+  geom_histogram(bins = 30, fill = wf_lav, color = "white") +
+  geom_vline(xintercept = ci$estimate, color = wf_violet, linewidth = 1) +
+  geom_vline(xintercept = c(ci$ci_lower, ci$ci_upper), color = wf_violet,
+             linetype = "dashed") +
+  geom_vline(xintercept = p_true, color = wf_amber, linewidth = 1) +
+  annotate("text", x = p_true, y = Inf, label = "true p", vjust = 1.4,
+           hjust = -0.1, color = wf_amber) +
+  labs(x = expression(hat(p)), y = "replicates",
+       title = "Bootstrap distribution of the poverty-rate estimator",
+       subtitle = "solid = estimate, dashed = 95% CI, amber = true p") +
+  theme_minimal(base_size = 12)
+```
+
+## Notes
+
+The pipeline runs on tens of thousands of records in a few seconds, so it doubles
+as a light stress test. Everything is reproducible from the public ECH file plus
+the seeded code, so the induced outcomes and the resulting weights are identical
+on every run. The residual gap between the final estimate and the truth is a
+faithful reminder that weighting reduces nonresponse bias substantially but, when
+the response mechanism depends on more than the frame and the calibration
+margins, does not erase it entirely.
