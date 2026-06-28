@@ -5,7 +5,9 @@ First release.
 A dependency-free, pipeable API to compute survey weights from design base
 weights through a chain of hierarchical adjustment stages. Build a recipe
 lazily, estimate it with `prep()`, and extract the weights with
-`collect_weights()`.
+`collect_weights()`. Separating *define* from *apply* makes the whole process
+reproducible and auditable, and lets the bootstrap re-run the entire cascade on
+each replicate.
 
 ## Adjustment steps
 
@@ -17,7 +19,8 @@ lazily, estimate it with `prep()`, and extract the weights with
 * `step_nonresponse()` — weighting-class or propensity adjustment, at the person
   or household level (`cluster`).
 * `step_calibrate()` — raking, post-stratification and linear/GREG calibration,
-  with bounded (Deville-Särndal) and integrative cluster options.
+  with bounded (Deville-Särndal) and integrative (one weight per household)
+  cluster options.
 * `step_model_calibration()` — Wu-Sitter model calibration.
 * `step_trim()`, `step_trim_weights()`, `step_round()`, `step_rescale()` —
   trimming, rounding and rescaling.
@@ -30,10 +33,33 @@ lazily, estimate it with `prep()`, and extract the weights with
 * `report_weighting()` builds a self-contained HTML report with a pipeline
   diagram, the variables used, per-stage summaries and per-step visuals.
 
+## Variance estimation
+
+* `bootstrap_weights()` resamples PSUs within strata (Rao-Wu rescaling) and
+  re-applies the whole recipe on each replicate, so the replicate weights carry
+  the variability of every adjustment.
+* `boot_mean()` and `boot_total()` return the estimate, standard error and CI.
+* `as_svydesign()`, `as_svrepdesign()` and `collect_replicate_weights()` bridge
+  to the `survey` and `srvyr` packages for design-based inference.
+
 ## Data
 
 * Bundled example datasets `population`, `sample_survey` (take-all roster) and
-  `sample_one` (multistage select-one design).
+  `sample_one` (multistage select-one design), all with stratum, PSU and design
+  weight.
 
-This package produces weights only; for variance estimation, export the final
-weights to the `survey` package.
+## Development version
+
+The following are available in the development version on GitHub and are planned
+for a future CRAN release:
+
+* **Machine-learning response propensities** (CART, random forest and gradient
+  boosting via `xgboost`) for `step_nonresponse()` and `step_model_calibration()`.
+* **k-fold cross-fitting** (`crossfit`) to estimate each unit out-of-sample,
+  with folds formed by cluster to avoid leakage.
+* **Ridge (penalized) calibration** (`penalty`) to keep weights stable with many
+  auxiliaries.
+* **Potter MSE-optimal trimming** (`method = "potter"`), a data-driven cutoff.
+
+Install with `remotes::install_github("jpferreira33/weightflow")` to use them
+today.
