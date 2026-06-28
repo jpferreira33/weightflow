@@ -10,6 +10,9 @@ recipe lazily, estimate it with
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md),
 and extract the weights with
 [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md).
+Separating *define* from *apply* makes the whole process reproducible
+and auditable, and lets the bootstrap re-run the entire cascade on each
+replicate.
 
 ### Adjustment steps
 
@@ -25,7 +28,8 @@ and extract the weights with
   level (`cluster`).
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
   — raking, post-stratification and linear/GREG calibration, with
-  bounded (Deville-Särndal) and integrative cluster options.
+  bounded (Deville-Särndal) and integrative (one weight per household)
+  cluster options.
 - [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
   — Wu-Sitter model calibration.
 - [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
@@ -48,10 +52,45 @@ and extract the weights with
   builds a self-contained HTML report with a pipeline diagram, the
   variables used, per-stage summaries and per-step visuals.
 
+### Variance estimation
+
+- [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  resamples PSUs within strata (Rao-Wu rescaling) and re-applies the
+  whole recipe on each replicate, so the replicate weights carry the
+  variability of every adjustment.
+- [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  and
+  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  return the estimate, standard error and CI.
+- [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md),
+  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  and
+  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
+  bridge to the `survey` and `srvyr` packages for design-based
+  inference.
+
 ### Data
 
 - Bundled example datasets `population`, `sample_survey` (take-all
-  roster) and `sample_one` (multistage select-one design).
+  roster) and `sample_one` (multistage select-one design), all with
+  stratum, PSU and design weight.
 
-This package produces weights only; for variance estimation, export the
-final weights to the `survey` package.
+### Development version
+
+The following are available in the development version on GitHub and are
+planned for a future CRAN release:
+
+- **Machine-learning response propensities** (CART, random forest and
+  gradient boosting via `xgboost`) for
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  and
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).
+- **k-fold cross-fitting** (`crossfit`) to estimate each unit
+  out-of-sample, with folds formed by cluster to avoid leakage.
+- **Ridge (penalized) calibration** (`penalty`) to keep weights stable
+  with many auxiliaries.
+- **Potter MSE-optimal trimming** (`method = "potter"`), a data-driven
+  cutoff.
+
+Install with `remotes::install_github("jpferreira33/weightflow")` to use
+them today.

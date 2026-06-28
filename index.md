@@ -9,6 +9,13 @@ with a bootstrap that re-applies the whole recipe on each replicate. It
 has **no hard dependencies** (base R, R \>= 4.1) and bridges to
 `survey`/`srvyr` for design-based inference.
 
+Where does it fit? `survey` and `srvyr` are the standard tools for
+*analysing* data once you already have weights. weightflow sits one step
+earlier: it *builds* those weights from the design base weights, making
+every adjustment (eligibility, nonresponse, calibration, trimming) an
+explicit, auditable step, and then hands the result to `survey`/`srvyr`
+for inference.
+
 ## What makes weightflow different
 
 - **A weighting recipe, not a black box.** The whole process —
@@ -88,6 +95,16 @@ fitted <- prep(recipe)              # estimate the cascade
 summary(fitted)                     # per-stage diagnostics + Kish deff
 wts    <- collect_weights(fitted)   # data.frame with .weight
 ```
+
+## A worked example on real data
+
+The article [*A full weighting pipeline on a real household survey (ECH
+2019)*](https://jpferreira33.github.io/weightflow/articles/ech-case-study.html)
+runs the whole workflow on open microdata from Uruguay’s continuous
+household survey: it induces realistic eligibility and nonresponse,
+weights the survivors back with integrated household calibration,
+validates the poverty-rate estimate against a known truth, and attaches
+design-based confidence intervals with the bootstrap.
 
 ## Highlights
 

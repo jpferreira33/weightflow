@@ -19,13 +19,18 @@
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/weightflow.html">Get started</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Case studies</h6></li>
+    <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full pipeline on a real survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Methods</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
-    <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
-    <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
+    <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -45,7 +50,7 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="weightflow-010">weightflow 0.1.0<a class="anchor" aria-label="anchor" href="#weightflow-010"></a></h2>
 <p>First release.</p>
-<p>A dependency-free, pipeable API to compute survey weights from design base weights through a chain of hierarchical adjustment stages. Build a recipe lazily, estimate it with <code><a href="../reference/prep.html">prep()</a></code>, and extract the weights with <code><a href="../reference/collect_weights.html">collect_weights()</a></code>.</p>
+<p>A dependency-free, pipeable API to compute survey weights from design base weights through a chain of hierarchical adjustment stages. Build a recipe lazily, estimate it with <code><a href="../reference/prep.html">prep()</a></code>, and extract the weights with <code><a href="../reference/collect_weights.html">collect_weights()</a></code>. Separating <em>define</em> from <em>apply</em> makes the whole process reproducible and auditable, and lets the bootstrap re-run the entire cascade on each replicate.</p>
 <div class="section level3">
 <h3 id="adjustment-steps-0-1-0">Adjustment steps<a class="anchor" aria-label="anchor" href="#adjustment-steps-0-1-0"></a></h3>
 <ul><li>
@@ -57,7 +62,7 @@
 <li>
 <code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code> — weighting-class or propensity adjustment, at the person or household level (<code>cluster</code>).</li>
 <li>
-<code><a href="../reference/step_calibrate.html">step_calibrate()</a></code> — raking, post-stratification and linear/GREG calibration, with bounded (Deville-Särndal) and integrative cluster options.</li>
+<code><a href="../reference/step_calibrate.html">step_calibrate()</a></code> — raking, post-stratification and linear/GREG calibration, with bounded (Deville-Särndal) and integrative (one weight per household) cluster options.</li>
 <li>
 <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> — Wu-Sitter model calibration.</li>
 <li>
@@ -75,9 +80,30 @@
 <code><a href="../reference/report_weighting.html">report_weighting()</a></code> builds a self-contained HTML report with a pipeline diagram, the variables used, per-stage summaries and per-step visuals.</li>
 </ul></div>
 <div class="section level3">
+<h3 id="variance-estimation-0-1-0">Variance estimation<a class="anchor" aria-label="anchor" href="#variance-estimation-0-1-0"></a></h3>
+<ul><li>
+<code><a href="../reference/bootstrap_weights.html">bootstrap_weights()</a></code> resamples PSUs within strata (Rao-Wu rescaling) and re-applies the whole recipe on each replicate, so the replicate weights carry the variability of every adjustment.</li>
+<li>
+<code><a href="../reference/bootstrap_estimate.html">boot_mean()</a></code> and <code><a href="../reference/bootstrap_estimate.html">boot_total()</a></code> return the estimate, standard error and CI.</li>
+<li>
+<code><a href="../reference/as_svydesign.html">as_svydesign()</a></code>, <code><a href="../reference/as_svydesign.html">as_svrepdesign()</a></code> and <code><a href="../reference/collect_replicate_weights.html">collect_replicate_weights()</a></code> bridge to the <code>survey</code> and <code>srvyr</code> packages for design-based inference.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="data-0-1-0">Data<a class="anchor" aria-label="anchor" href="#data-0-1-0"></a></h3>
-<ul><li>Bundled example datasets <code>population</code>, <code>sample_survey</code> (take-all roster) and <code>sample_one</code> (multistage select-one design).</li>
-</ul><p>This package produces weights only; for variance estimation, export the final weights to the <code>survey</code> package.</p>
+<ul><li>Bundled example datasets <code>population</code>, <code>sample_survey</code> (take-all roster) and <code>sample_one</code> (multistage select-one design), all with stratum, PSU and design weight.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="development-version-0-1-0">Development version<a class="anchor" aria-label="anchor" href="#development-version-0-1-0"></a></h3>
+<p>The following are available in the development version on GitHub and are planned for a future CRAN release:</p>
+<ul><li>
+<strong>Machine-learning response propensities</strong> (CART, random forest and gradient boosting via <code>xgboost</code>) for <code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code> and <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code>.</li>
+<li>
+<strong>k-fold cross-fitting</strong> (<code>crossfit</code>) to estimate each unit out-of-sample, with folds formed by cluster to avoid leakage.</li>
+<li>
+<strong>Ridge (penalized) calibration</strong> (<code>penalty</code>) to keep weights stable with many auxiliaries.</li>
+<li>
+<strong>Potter MSE-optimal trimming</strong> (<code>method = "potter"</code>), a data-driven cutoff.</li>
+</ul><p>Install with <code>remotes::install_github("jpferreira33/weightflow")</code> to use them today.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

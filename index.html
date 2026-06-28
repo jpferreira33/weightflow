@@ -44,13 +44,18 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+<li><a class="dropdown-item" href="articles/weightflow.html">Get started</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Case studies</h6></li>
+    <li><a class="dropdown-item" href="articles/ech-case-study.html">A full pipeline on a real survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Methods</h6></li>
     <li><a class="dropdown-item" href="articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
-    <li><a class="dropdown-item" href="articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><a class="dropdown-item" href="articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
-    <li><a class="dropdown-item" href="articles/validation-against-survey.html">Validation against the survey package</a></li>
+    <li><a class="dropdown-item" href="articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><a class="dropdown-item" href="articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -72,10 +77,13 @@
 <img src="logo.png" class="logo" alt=""><h1 id="weightflow-">weightflow <a class="anchor" aria-label="anchor" href="#weightflow-"></a>
 </h1>
 </div>
+<!-- badges: start -->
+
 <blockquote>
 <p>Declarative, pipeable survey weighting in base R — from design weights to calibrated, model-assisted, variance-ready weights.</p>
 </blockquote>
 <p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
+<p>Where does it fit? <code>survey</code> and <code>srvyr</code> are the standard tools for <em>analysing</em> data once you already have weights. weightflow sits one step earlier: it <em>builds</em> those weights from the design base weights, making every adjustment (eligibility, nonresponse, calibration, trimming) an explicit, auditable step, and then hands the result to <code>survey</code>/<code>srvyr</code> for inference.</p>
 <div class="section level2">
 <h2 id="what-makes-weightflow-different">What makes weightflow different<a class="anchor" aria-label="anchor" href="#what-makes-weightflow-different"></a>
 </h2>
@@ -136,6 +144,11 @@
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="va">recipe</span><span class="op">)</span>              <span class="co"># estimate the cascade</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>                     <span class="co"># per-stage diagnostics + Kish deff</span></span>
 <span><span class="va">wts</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/collect_weights.html">collect_weights</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span>   <span class="co"># data.frame with .weight</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="a-worked-example-on-real-data">A worked example on real data<a class="anchor" aria-label="anchor" href="#a-worked-example-on-real-data"></a>
+</h2>
+<p>The article <a href="https://jpferreira33.github.io/weightflow/articles/ech-case-study.html"><em>A full weighting pipeline on a real household survey (ECH 2019)</em></a> runs the whole workflow on open microdata from Uruguay’s continuous household survey: it induces realistic eligibility and nonresponse, weights the survivors back with integrated household calibration, validates the poverty-rate estimate against a known truth, and attaches design-based confidence intervals with the bootstrap.</p>
 </div>
 <div class="section level2">
 <h2 id="highlights">Highlights<a class="anchor" aria-label="anchor" href="#highlights"></a>
