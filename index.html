@@ -115,7 +115,10 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Development version (includes boosting, cross-fitting, ridge and Potter)</span></span>
+<code class="sourceCode R"><span><span class="co"># From CRAN</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"weightflow"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Development version (adds boosting, cross-fitting, ridge and Potter)</span></span>
 <span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"jpferreira33/weightflow"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -129,9 +132,13 @@
 <span><span class="va">recipe</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_one</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">ineligible</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="co"># household nonresponse: the whole dwelling is lost (no roster), so the</span></span>
+<span>  <span class="co"># adjustment is at the household level and uses only frame information</span></span>
 <span>  <span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">hh_responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
-<span>                   by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>                   by <span class="op">=</span> <span class="st">"region"</span>, cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="reference/step_select_within.html">step_select_within</a></span><span class="op">(</span>prob <span class="op">=</span> <span class="va">p_within</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="co"># person nonresponse: among the selected persons, the roster gives sex and age</span></span>
+<span>  <span class="co"># even for those who did not respond, so a propensity model can use them</span></span>
 <span>  <span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
 <span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"logit"</span>,</span>
 <span>                   num_classes <span class="op">=</span> <span class="fl">10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -246,13 +253,15 @@
 </table>
 <p>Eligibility and response accept <strong>0/1 dummy columns</strong> or any logical condition.</p>
 <p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV^2) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors; <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained HTML report — pipeline diagram, variables used, per-stage summaries and per-step visuals — with no graphics device or server required.</p>
-<p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article):</p>
+<p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article). Once the weights are built, get design-based standard errors with a bootstrap that re-runs the <strong>whole recipe</strong> on each replicate:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">recipe</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and CI</span></span>
-<span><span class="fu"><a href="reference/as_svydesign.html">as_svydesign</a></span><span class="op">(</span><span class="va">fitted</span>, ids <span class="op">=</span> <span class="st">"psu"</span>, strata <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span>   <span class="co"># survey linearization</span></span>
-<span><span class="fu"><a href="reference/collect_replicate_weights.html">collect_replicate_weights</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span>     <span class="co"># replicate weights, ready for srvyr</span></span></code></pre></div>
-<p>The bootstrap resamples PSUs within strata (Rao-Wu rescaling bootstrap) and re-applies the recipe on each replicate, so the replicate weights carry the variability of <strong>every</strong> adjustment.</p>
+<span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and 95% CI</span></span>
+<span></span>
+<span><span class="co"># hand the replicate weights to survey / srvyr for the rest of the analysis</span></span>
+<span><span class="va">rep_design</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_svydesign.html">as_svrepdesign</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span>              <span class="co"># a svyrep.design object</span></span>
+<span><span class="fu"><a href="reference/collect_replicate_weights.html">collect_replicate_weights</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span>                 <span class="co"># replicate weights as a data.frame</span></span></code></pre></div>
+<p>The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and then re-applies the entire cascade (eligibility, nonresponse, calibration, trimming) on each replicate. So the replicate weights carry <strong>two</strong> sources of variability at once: the sampling design (the resampling of PSUs within strata) and every weighting adjustment (each one is re-estimated on each replicate). Re-running the full recipe per replicate is automatic here, rather than something you re-orchestrate by hand on top of the replicate weights, and the result plugs straight into <code>survey</code>/<code>srvyr</code> through <code><a href="reference/as_svydesign.html">as_svrepdesign()</a></code> for any downstream estimator.</p>
 </div>
 <div class="section level2">
 <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a>
@@ -312,6 +321,7 @@
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
+<li><a href="https://cloud.r-project.org/package=weightflow" class="external-link">View on CRAN</a></li>
 <li><a href="https://github.com/jpferreira33/weightflow/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/jpferreira33/weightflow/issues" class="external-link">Report a bug</a></li>
 </ul>

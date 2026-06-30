@@ -57,7 +57,10 @@ process](reference/figures/flow-diagram.png)
 
 ``` r
 
-# Development version (includes boosting, cross-fitting, ridge and Potter)
+# From CRAN
+install.packages("weightflow")
+
+# Development version (adds boosting, cross-fitting, ridge and Potter)
 # install.packages("remotes")
 remotes::install_github("jpferreira33/weightflow")
 ```
@@ -79,9 +82,13 @@ library(weightflow)
 recipe <- weighting_spec(sample_one, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_drop_ineligible(ineligible = ineligible) |>
+  # household nonresponse: the whole dwelling is lost (no roster), so the
+  # adjustment is at the household level and uses only frame information
   step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+                   by = "region", cluster = "household_id") |>
   step_select_within(prob = p_within) |>
+  # person nonresponse: among the selected persons, the roster gives sex and age
+  # even for those who did not respond, so a propensity model can use them
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "logit",
                    num_classes = 10) |>
@@ -201,19 +208,31 @@ writes a self-contained HTML report — pipeline diagram, variables used,
 per-stage summaries and per-step visuals — with no graphics device or
 server required.
 
-**Variance estimation** (see the *Variance estimation* article):
+**Variance estimation** (see the *Variance estimation* article). Once
+the weights are built, get design-based standard errors with a bootstrap
+that re-runs the **whole recipe** on each replicate:
 
 ``` r
 
 boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu")
-boot_mean(boot, "income")           # estimate, SE and CI
-as_svydesign(fitted, ids = "psu", strata = "region")   # survey linearization
-collect_replicate_weights(boot)     # replicate weights, ready for srvyr
+boot_mean(boot, "income")           # estimate, SE and 95% CI
+
+# hand the replicate weights to survey / srvyr for the rest of the analysis
+rep_design <- as_svrepdesign(boot)              # a svyrep.design object
+collect_replicate_weights(boot)                 # replicate weights as a data.frame
 ```
 
-The bootstrap resamples PSUs within strata (Rao-Wu rescaling bootstrap)
-and re-applies the recipe on each replicate, so the replicate weights
-carry the variability of **every** adjustment.
+The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and then
+re-applies the entire cascade (eligibility, nonresponse, calibration,
+trimming) on each replicate. So the replicate weights carry **two**
+sources of variability at once: the sampling design (the resampling of
+PSUs within strata) and every weighting adjustment (each one is
+re-estimated on each replicate). Re-running the full recipe per
+replicate is automatic here, rather than something you re-orchestrate by
+hand on top of the replicate weights, and the result plugs straight into
+`survey`/`srvyr` through
+[`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+for any downstream estimator.
 
 ## Example data
 
