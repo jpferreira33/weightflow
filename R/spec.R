@@ -263,18 +263,29 @@ step_nonresponse <- function(spec, respondent,
 #' the targets to control extreme weights when there are many auxiliaries.
 #'
 #' @param spec a weighting_spec.
-#' @param margins named list (for "raking"/"poststratify"). Each element is a
-#'   named numeric vector with the target totals per category. E.g.:
-#'   list(sex = c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)).
-#' @param method "raking" (IPF, categorical margins), "poststratify" (a single
-#'   categorical variable) or "linear" (GREG / regression estimator; handles
-#'   continuous and categorical auxiliaries together).
+#' @param margins named list (classic format for "raking"/"poststratify"). Each
+#'   element is a named numeric vector with the target totals per category. E.g.:
+#'   list(sex = c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)). Still
+#'   fully supported; for a tidy alternative see `totals` and `count`.
+#' @param method "raking" (IPF, categorical margins), "poststratify"
+#'   (post-strata: one or more categorical variables crossed) or "linear"
+#'   (GREG / regression estimator; handles continuous and categorical
+#'   auxiliaries together).
 #' @param formula (only "linear") auxiliary formula, e.g. ~ sex + income.
 #'   Uses model.matrix; includes the intercept unless you write ~ 0 + ...
-#' @param totals (only "linear") named numeric vector with the population
-#'   totals, names matching the model.matrix columns (including "(Intercept)" =
-#'   N if there is an intercept). If names do not match, the error lists the
-#'   expected ones.
+#' @param totals population totals, in one of two forms. Classic (all methods):
+#'   for "linear" a named numeric vector aligned with the model.matrix columns
+#'   (including "(Intercept)" = N); for "raking"/"poststratify" use `margins`.
+#'   Tidy (recommended): a data frame or a named list of data frames/numbers
+#'   giving the totals in a friendly way, paired with `count`. For
+#'   "poststratify", a single data frame with one or more category columns plus
+#'   a counts column. For "raking", a list of data frames, one per margin. For
+#'   "linear", a named list whose names match the formula terms: a data frame
+#'   with all categories for each factor, and a single number for each
+#'   continuous auxiliary; weightflow builds the model.matrix totals internally
+#'   (you never handle the intercept or dropped reference category).
+#' @param count (tidy `totals` only) string naming the counts column in the
+#'   totals data frame(s). All other columns are treated as category variables.
 #' @param cluster (only "linear") name of the cluster id column (e.g. "household"),
 #'   for equal weights within the cluster.
 #' @param equal_within_cluster (only "linear") logical. If TRUE, Lemaitre-Dufour
@@ -316,20 +327,82 @@ step_nonresponse <- function(spec, respondent,
 #'   step_calibrate(method = "linear", formula = ~ region + sex,
 #'                  totals = pop_tot, penalty = 1) |>
 #'   prep()
+#'
+#' # --- Tidy `totals` format (recommended) ---------------------------------
+#' # Post-stratification: give the population counts as a data frame with one or
+#' # more category columns plus a counts column named by `count`.
+#' ps_totals <- as.data.frame(table(region = population$region, sex = population$sex))
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_calibrate(method = "poststratify", totals = ps_totals, count = "Freq") |>
+#'   prep()
+#'
+#' # Raking: a list of data frames, one per margin.
+#' m_region <- as.data.frame(table(region = population$region))
+#' m_sex    <- as.data.frame(table(sex = population$sex))
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_calibrate(method = "raking",
+#'                  totals = list(m_region, m_sex), count = "Freq") |>
+#'   prep()
+#'
+#' # Linear/GREG with mixed auxiliaries: data frames for categoricals (all
+#' # categories) and a single number for a continuous total. weightflow builds
+#' # the model.matrix totals internally, so you never drop a reference category.
+#' resp <- subset(sample_survey, responded == 1)
+#' weighting_spec(resp, base_weights = pw) |>
+#'   step_calibrate(method = "linear", formula = ~ region + sex + income,
+#'                  totals = list(region = m_region, sex = m_sex,
+#'                                income = sum(population$income)),
+#'                  count = "Freq") |>
+#'   prep()
 step_calibrate <- function(spec, margins = NULL,
                            method = c("raking", "poststratify", "linear"),
-                           formula = NULL, totals = NULL,
+                           formula = NULL, totals = NULL, count = NULL,
                            cluster = NULL, equal_within_cluster = FALSE,
                            calfun = c("linear", "logit"), bounds = NULL,
                            maxit = 50L, tol = 1e-6, penalty = NULL) {
   method <- match.arg(method)
   calfun <- match.arg(calfun)
+  totals_is_df   <- is.data.frame(totals)
+  totals_is_list <- is.list(totals) && !is.data.frame(totals) &&
+                    length(totals) > 0L &&
+                    all(vapply(totals, function(t)
+                          is.data.frame(t) || (is.numeric(t) && length(t) == 1L),
+                          logical(1)))
   if (method %in% c("raking", "poststratify")) {
-    if (!is.list(margins) || is.null(names(margins)))
-      stop("'raking'/'poststratify' require `margins` (a named list).")
+    # Accept the classic `margins` (named list of named vectors) or the tidy
+    # `totals`: a data frame (post-stratification) or a list of data frames
+    # (raking), each with category columns + a counts column named by `count`.
+    has_margins <- is.list(margins) && !is.null(names(margins)) &&
+                   !is.data.frame(margins)
+    if (!has_margins && !totals_is_df && !totals_is_list)
+      stop(paste0("'", method, "' requires either `margins` (a named list) or ",
+                  "`totals` (a data frame, or a list of data frames for raking, ",
+                  "with category columns and a counts column named by `count`)."))
+    if (totals_is_df || totals_is_list) {
+      if (is.null(count) || !is.character(count) || length(count) != 1L)
+        stop("When `totals` is provided, `count` must be a single string naming the counts column.")
+      dfs <- if (totals_is_df) list(totals) else totals
+      for (d in dfs)
+        if (!count %in% names(d))
+          stop(sprintf("`count = \"%s\"` is not a column of every `totals` data frame. Columns seen: %s",
+                       count, paste(names(d), collapse = ", ")))
+    }
   } else {                                   # linear
     if (is.null(formula) || is.null(totals))
       stop("method = 'linear' requires `formula` and `totals`.")
+    if (totals_is_df) {
+      if (is.null(count) || !is.character(count) || length(count) != 1L ||
+          !count %in% names(totals))
+        stop("When `totals` is a data frame, `count` must name the counts column of `totals`.")
+    }
+    if (totals_is_list) {
+      # tidy linear: named list of data frames (categorical) / numbers (continuous)
+      if (is.null(names(totals)))
+        stop("For the tidy linear format, `totals` must be a NAMED list (one entry per auxiliary variable).")
+      if (any(vapply(totals, is.data.frame, logical(1))) &&
+          (is.null(count) || !is.character(count) || length(count) != 1L))
+        stop("When `totals` contains data frames, `count` must name their counts column.")
+    }
   }
   if (calfun == "logit" && is.null(bounds))
     stop("calfun = 'logit' requires `bounds` = c(L, U).")
@@ -363,6 +436,7 @@ step_calibrate <- function(spec, margins = NULL,
       method  = method,
       formula = formula,
       totals  = totals,
+      count   = count,
       cluster = cluster,
       equal_within_cluster = equal_within_cluster,
       calfun  = calfun,

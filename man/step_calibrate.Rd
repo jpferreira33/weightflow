@@ -10,6 +10,7 @@ step_calibrate(
   method = c("raking", "poststratify", "linear"),
   formula = NULL,
   totals = NULL,
+  count = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
   calfun = c("linear", "logit"),
@@ -22,21 +23,33 @@ step_calibrate(
 \arguments{
 \item{spec}{a weighting_spec.}
 
-\item{margins}{named list (for "raking"/"poststratify"). Each element is a
-named numeric vector with the target totals per category. E.g.:
-list(sex = c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)).}
+\item{margins}{named list (classic format for "raking"/"poststratify"). Each
+element is a named numeric vector with the target totals per category. E.g.:
+list(sex = c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)). Still
+fully supported; for a tidy alternative see \code{totals} and \code{count}.}
 
-\item{method}{"raking" (IPF, categorical margins), "poststratify" (a single
-categorical variable) or "linear" (GREG / regression estimator; handles
-continuous and categorical auxiliaries together).}
+\item{method}{"raking" (IPF, categorical margins), "poststratify"
+(post-strata: one or more categorical variables crossed) or "linear"
+(GREG / regression estimator; handles continuous and categorical
+auxiliaries together).}
 
 \item{formula}{(only "linear") auxiliary formula, e.g. ~ sex + income.
 Uses model.matrix; includes the intercept unless you write ~ 0 + ...}
 
-\item{totals}{(only "linear") named numeric vector with the population
-totals, names matching the model.matrix columns (including "(Intercept)" =
-N if there is an intercept). If names do not match, the error lists the
-expected ones.}
+\item{totals}{population totals, in one of two forms. Classic (all methods):
+for "linear" a named numeric vector aligned with the model.matrix columns
+(including "(Intercept)" = N); for "raking"/"poststratify" use \code{margins}.
+Tidy (recommended): a data frame or a named list of data frames/numbers
+giving the totals in a friendly way, paired with \code{count}. For
+"poststratify", a single data frame with one or more category columns plus
+a counts column. For "raking", a list of data frames, one per margin. For
+"linear", a named list whose names match the formula terms: a data frame
+with all categories for each factor, and a single number for each
+continuous auxiliary; weightflow builds the model.matrix totals internally
+(you never handle the intercept or dropped reference category).}
+
+\item{count}{(tidy \code{totals} only) string naming the counts column in the
+totals data frame(s). All other columns are treated as category variables.}
 
 \item{cluster}{(only "linear") name of the cluster id column (e.g. "household"),
 for equal weights within the cluster.}
@@ -93,5 +106,32 @@ weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
   step_calibrate(method = "linear", formula = ~ region + sex,
                  totals = pop_tot, penalty = 1) |>
+  prep()
+
+# --- Tidy `totals` format (recommended) ---------------------------------
+# Post-stratification: give the population counts as a data frame with one or
+# more category columns plus a counts column named by `count`.
+ps_totals <- as.data.frame(table(region = population$region, sex = population$sex))
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_calibrate(method = "poststratify", totals = ps_totals, count = "Freq") |>
+  prep()
+
+# Raking: a list of data frames, one per margin.
+m_region <- as.data.frame(table(region = population$region))
+m_sex    <- as.data.frame(table(sex = population$sex))
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 totals = list(m_region, m_sex), count = "Freq") |>
+  prep()
+
+# Linear/GREG with mixed auxiliaries: data frames for categoricals (all
+# categories) and a single number for a continuous total. weightflow builds
+# the model.matrix totals internally, so you never drop a reference category.
+resp <- subset(sample_survey, responded == 1)
+weighting_spec(resp, base_weights = pw) |>
+  step_calibrate(method = "linear", formula = ~ region + sex + income,
+                 totals = list(region = m_region, sex = m_sex,
+                               income = sum(population$income)),
+                 count = "Freq") |>
   prep()
 }

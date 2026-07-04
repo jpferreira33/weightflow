@@ -558,6 +558,13 @@ apply_step.step_calibrate <- function(step, data, w) {
   new_w  <- w
 
   if (step$method == "poststratify") {
+    # --- tidy `totals` data frame (one or more category columns + counts) ---
+    if (is.data.frame(step$totals)) {
+      prep <- .prep_poststrata(step$totals, step$count, data, active)
+      out  <- .poststratify_calc(prep, new_w, active)
+      return(list(weights = out$weights, diagnostics = out$diagnostics))
+    }
+    # --- classic `margins` named list (unchanged) ---
     if (length(step$margins) != 1L)
       stop("poststratify uses exactly one variable in `margins`.")
     v      <- names(step$margins)[1]
@@ -584,11 +591,21 @@ apply_step.step_calibrate <- function(step, data, w) {
     d  <- new_w[active]
     X  <- stats::model.matrix(step$formula, data = data[active, , drop = FALSE])
     cn <- colnames(X)
-    if (!setequal(names(step$totals), cn))
+    # `totals` may be given two ways:
+    #   - tidy: a NAMED LIST (data frame per categorical, number per continuous)
+    #     -> translate to the model.matrix totals vector
+    #   - classic: a named numeric vector aligned with the model.matrix columns
+    if (is.list(step$totals) && !is.data.frame(step$totals)) {
+      totvec <- .prep_linear_totals(step$formula, step$totals, step$count,
+                                    data, active)
+    } else {
+      totvec <- step$totals
+    }
+    if (!setequal(names(totvec), cn))
       stop(sprintf(
         "`totals` names must match the model.matrix columns.\nExpected: %s",
         paste(cn, collapse = ", ")))
-    Tvec     <- as.numeric(step$totals[cn])      # reorder to X columns
+    Tvec     <- as.numeric(totvec[cn])      # reorder to X columns
     bounded  <- !is.null(step$bounds) || step$calfun == "logit"
 
     if (!step$equal_within_cluster) {
@@ -630,6 +647,20 @@ apply_step.step_calibrate <- function(step, data, w) {
 
     # Achieved totals with the REAL X (must match the targets, except under ridge)
     achieved <- colSums(new_w[active] * X)
+    # Check that the calibration constraints are satisfied (unless ridge, where
+    # relaxation is intentional, or bounded, which has its own convergence warn).
+    if (is.null(step$penalty) && !bounded) {
+      rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
+      off <- which(rel_dev > 1e-6)
+      if (length(off) > 0L)
+        warning(sprintf(
+          paste0("Linear calibration did not fully satisfy the constraints for: ",
+                 "%s. The achieved totals differ from the targets (max relative ",
+                 "deviation = %.2e). This can happen with collinear auxiliaries ",
+                 "or an ill-conditioned system; check the auxiliary variables."),
+          paste(utils::head(cn[off], 10L), collapse = ", "), max(rel_dev)),
+          call. = FALSE)
+    }
     diag <- data.frame(variable = cn, target = Tvec,
                        achieved = round(achieved, 2), stringsAsFactors = FALSE)
     if (!is.null(step$penalty))
@@ -648,6 +679,16 @@ apply_step.step_calibrate <- function(step, data, w) {
   }
 
   # method == "raking": iterative proportional fitting (IPF)
+
+  # --- tidy `totals`: a LIST of data frames (one per margin) ---
+  if (is.list(step$totals) && !is.data.frame(step$totals) &&
+      length(step$totals) > 0L && is.data.frame(step$totals[[1]])) {
+    mprep <- .prep_raking_margins(step$totals, step$count, data, active)
+    out   <- .raking_calc(mprep, new_w, active, step$maxit, step$tol)
+    return(list(weights = out$weights, diagnostics = out$diagnostics))
+  }
+
+  # --- classic `margins` named list (unchanged behaviour + convergence warn) ---
   it <- 0L; maxdiff <- Inf
   while (it < step$maxit && maxdiff >= step$tol) {
     it <- it + 1L; maxdiff <- 0
@@ -665,6 +706,14 @@ apply_step.step_calibrate <- function(step, data, w) {
       }
     }
   }
+  if (maxdiff >= step$tol) {
+    warning(sprintf(
+      paste0("Raking did not converge after %d iterations (max relative change ",
+             "= %.2e, tolerance = %.2e). The returned weights do not fully ",
+             "satisfy all margins. Consider increasing `maxit`, or check that ",
+             "the margin totals are mutually consistent."),
+      it, maxdiff, step$tol), call. = FALSE)
+  }
   # diagnostics: final target vs achieved
   diag <- list()
   for (v in names(step$margins)) {
@@ -680,6 +729,7 @@ apply_step.step_calibrate <- function(step, data, w) {
   }
   diag <- do.call(rbind, diag)
   attr(diag, "iterations") <- it
+  attr(diag, "converged")  <- (maxdiff < step$tol)
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -996,4 +1046,307 @@ apply_step.step_rescale <- function(step, data, w) {
       factor = round(fac, 4), stringsAsFactors = FALSE)
   }
   list(weights = new_w, diagnostics = do.call(rbind, diag))
+}
+
+
+# =========================================================================
+# Helpers for the tidy `totals` input to post-stratification (step_calibrate)
+# =========================================================================
+
+# Normalise and validate a data.frame/tibble of population counts for
+# post-stratification. Infers the post-stratification variables (every column
+# except `count`), builds cell keys (all coerced to character for matching),
+# and runs the validation cascade:
+#   - structure: `count` present & numeric; category columns present in `data`
+#   - Rule 1: cells in the sample but not in `totals` -> error (conceptual)
+#   - Rule 2: cells in `totals` but not in the sample -> warning, calibrate anyway
+# Returns list(cells, vars, sample_key, note).
+.prep_poststrata <- function(totals, count, data, active) {
+
+  totals <- as.data.frame(totals, stringsAsFactors = FALSE)
+
+  if (!is.character(count) || length(count) != 1L)
+    stop("`count` must be a single string naming the counts column in `totals`.")
+  if (!count %in% names(totals))
+    stop(sprintf(
+      "The counts column '%s' is not in the totals data frame.\nColumns found: %s",
+      count, paste(names(totals), collapse = ", ")))
+  if (!is.numeric(totals[[count]]))
+    stop(sprintf("The counts column '%s' must be numeric.", count))
+
+  vars <- setdiff(names(totals), count)
+  if (length(vars) == 0L)
+    stop("The totals data frame has no category columns (only the counts column).")
+
+  missing_cols <- setdiff(vars, names(data))
+  if (length(missing_cols) > 0L)
+    stop(sprintf(
+      paste0("These post-stratification columns from `totals` are not present ",
+             "in the data: %s.\nThe category columns of `totals` must match ",
+             "variable names in the sample.\nSample columns available: %s"),
+      paste(missing_cols, collapse = ", "),
+      paste(names(data), collapse = ", ")))
+
+  key_of <- function(df, vars) {
+    parts <- lapply(vars, function(v) as.character(df[[v]]))
+    do.call(paste, c(parts, sep = "\r"))
+  }
+
+  totals$.key  <- key_of(totals, vars)
+  totals$.Freq <- as.numeric(totals[[count]])
+  # collapse duplicate cells by summing their counts (robust to extra columns)
+  agg   <- tapply(totals$.Freq, totals$.key, sum)
+  cells <- data.frame(.key = names(agg), .Freq = as.numeric(agg),
+                      stringsAsFactors = FALSE)
+
+  sample_key <- rep(NA_character_, nrow(data))
+  sample_key[active] <- key_of(data[active, , drop = FALSE], vars)
+
+  s_cells <- unique(sample_key[active])
+  u_cells <- cells$.key
+  in_s_not_u <- setdiff(s_cells, u_cells)
+  if (length(in_s_not_u) > 0L) {
+    show <- utils::head(in_s_not_u, 10L)
+    lbl  <- gsub("\r", " x ", show)
+    stop(sprintf(
+      paste0("Some post-strata are present in the sample but have no population ",
+             "total in `totals`.\n",
+             "Every unit in the sample must belong to the population, so each ",
+             "cell that appears in the sample must have a known total.\n",
+             "Post-strata without a total (showing up to 10): %s\n",
+             "Variables crossed: %s"),
+      paste(lbl, collapse = " | "),
+      paste(vars, collapse = " x ")))
+  }
+
+  note <- NULL
+  in_u_not_s <- setdiff(u_cells, s_cells)
+  if (length(in_u_not_s) > 0L) {
+    missing_N <- sum(cells$.Freq[cells$.key %in% in_u_not_s])
+    total_N   <- sum(cells$.Freq)
+    note <- sprintf(
+      paste0("%d population post-strata have no units in the sample, so no ",
+             "weight can be assigned to them. Calibration will proceed on the ",
+             "post-strata that are present, and the calibrated weights will sum ",
+             "to about %s rather than the full population size N = %s (a shortfall ",
+             "of %s, ~%.1f%% of N)."),
+      length(in_u_not_s),
+      format(total_N - missing_N, big.mark = ","),
+      format(total_N, big.mark = ","),
+      format(missing_N, big.mark = ","),
+      100 * missing_N / total_N)
+    warning(note, call. = FALSE)
+  }
+
+  list(cells = cells, vars = vars, sample_key = sample_key, note = note)
+}
+
+# Apply the post-stratification adjustment from a .prep_poststrata() result:
+# within each cell, rescale weights so they sum to the known population total.
+.poststratify_calc <- function(prep, w, active) {
+
+  new_w <- w
+  cells <- prep$cells
+  skey  <- prep$sample_key
+
+  diag <- vector("list", nrow(cells))
+  for (i in seq_len(nrow(cells))) {
+    key    <- cells$.key[i]
+    target <- cells$.Freq[i]
+    idx <- which(skey == key & active)
+    cur <- sum(new_w[idx])
+    fac <- if (cur > 0) target / cur else NA_real_
+    if (!is.na(fac)) new_w[idx] <- new_w[idx] * fac
+    diag[[i]] <- data.frame(
+      variable   = paste(prep$vars, collapse = " x "),
+      category   = gsub("\r", " x ", key),
+      target     = target,
+      prev_total = cur,
+      factor     = fac,
+      stringsAsFactors = FALSE
+    )
+  }
+  list(weights = new_w, diagnostics = do.call(rbind, diag))
+}
+
+
+# =========================================================================
+# Helpers for the tidy `totals` input to raking (step_calibrate)
+# =========================================================================
+
+# Prepare a LIST of margin data frames for raking. Each margin is validated
+# with the same cell logic as post-stratification (structure, Rule 1, Rule 2).
+# Returns a list of margins, each: list(cells, vars, sample_key).
+.prep_raking_margins <- function(totals_list, count, data, active) {
+
+  if (!is.list(totals_list) || is.data.frame(totals_list))
+    stop(paste0("For raking with the tidy format, `totals` must be a LIST of ",
+                "data frames (one per margin). For a single margin, use ",
+                "post-stratification instead."))
+  if (length(totals_list) == 0L)
+    stop("`totals` is an empty list; provide at least one margin data frame.")
+
+  lapply(totals_list, function(df) {
+    prep <- .prep_poststrata(df, count, data, active)
+    list(cells = prep$cells, vars = prep$vars, sample_key = prep$sample_key)
+  })
+}
+
+# Iterative proportional fitting (raking) over prepared tidy margins.
+# Warns if margins are inconsistent (different Ns) or if it fails to converge.
+.raking_calc <- function(margins_prep, w, active, maxit, tol) {
+
+  new_w <- w
+
+  Ns <- vapply(margins_prep, function(m) sum(m$cells$.Freq), numeric(1))
+  if (length(Ns) > 1L && diff(range(Ns)) > tol * max(Ns)) {
+    warning(sprintf(
+      paste0("The margin totals do not all sum to the same population size ",
+             "(margin Ns: %s). Raking may not converge; each margin should sum ",
+             "to the same N."),
+      paste(format(round(Ns), big.mark = ","), collapse = ", ")),
+      call. = FALSE)
+  }
+
+  it <- 0L; maxdiff <- Inf
+  while (it < maxit && maxdiff >= tol) {
+    it <- it + 1L; maxdiff <- 0
+    for (m in margins_prep) {
+      skey <- m$sample_key
+      for (i in seq_len(nrow(m$cells))) {
+        key    <- m$cells$.key[i]
+        target <- m$cells$.Freq[i]
+        idx <- which(skey == key & active)
+        cur <- sum(new_w[idx])
+        if (cur > 0) {
+          adj        <- target / cur
+          new_w[idx] <- new_w[idx] * adj
+          maxdiff    <- max(maxdiff, abs(adj - 1))
+        }
+      }
+    }
+  }
+
+  if (maxdiff >= tol) {
+    warning(sprintf(
+      paste0("Raking did not converge after %d iterations (max relative change ",
+             "= %.2e, tolerance = %.2e). The returned weights do not fully ",
+             "satisfy all margins. Consider increasing `maxit`, or check that ",
+             "the margin totals are mutually consistent."),
+      it, maxdiff, tol), call. = FALSE)
+  }
+
+  diag <- list()
+  for (m in margins_prep) {
+    skey <- m$sample_key
+    vlab <- paste(m$vars, collapse = " x ")
+    for (i in seq_len(nrow(m$cells))) {
+      key <- m$cells$.key[i]
+      idx <- which(skey == key & active)
+      diag[[length(diag) + 1]] <- data.frame(
+        variable = vlab,
+        category = gsub("\r", " x ", key),
+        target   = m$cells$.Freq[i],
+        achieved = sum(new_w[idx]),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  diag <- do.call(rbind, diag)
+  attr(diag, "iterations") <- it
+  attr(diag, "converged")  <- (maxdiff < tol)
+  list(weights = new_w, diagnostics = diag)
+}
+
+
+# =========================================================================
+# Helper for the tidy `totals` input to linear/GREG calibration
+# =========================================================================
+
+# Translate friendly calibration targets into the model.matrix totals vector
+# expected by the linear engine. Categorical variables are given as data frames
+# (all categories + a counts column named by `count`); continuous variables as
+# a single number. The user never deals with the intercept or with treatment
+# contrasts.
+.prep_linear_totals <- function(formula, totals, count, data, active) {
+
+  if (!is.list(totals) || is.data.frame(totals) || is.null(names(totals)))
+    stop(paste0("For the tidy linear format, `totals` must be a NAMED list ",
+                "(one entry per auxiliary variable), each entry a data frame ",
+                "(categorical) or a single number (continuous)."))
+
+  # calibration requires complete auxiliaries: NA breaks the calibration
+  # equations (a unit with a missing value cannot enter that constraint).
+  aux_vars <- all.vars(formula)
+  present  <- intersect(aux_vars, names(data))
+  for (v in present) {
+    if (anyNA(data[[v]][active]))
+      stop(sprintf(
+        paste0("The calibration variable '%s' has missing values (NA) in the ",
+               "sample. Calibration requires every unit to have a value for ",
+               "each auxiliary variable, so a variable with NAs cannot be used ",
+               "as a calibration target. Impute the missing values first, or ",
+               "calibrate on a frame variable that is complete for all units."),
+        v))
+  }
+
+  X  <- stats::model.matrix(formula, data = data[active, , drop = FALSE])
+  cn <- colnames(X)
+
+  # population size N from any categorical margin (they must agree)
+  Ns <- vapply(totals, function(t) {
+    if (is.data.frame(t)) sum(as.numeric(t[[count]])) else NA_real_
+  }, numeric(1))
+  Ns <- Ns[!is.na(Ns)]
+  if (length(Ns) == 0L)
+    stop(paste0("At least one categorical target (a data frame) is required to ",
+                "determine the population size N for the intercept."))
+  if (diff(range(Ns)) > 1e-6 * max(Ns))
+    warning(sprintf(
+      "Categorical margins do not all sum to the same N (%s). Using the first.",
+      paste(format(round(Ns), big.mark = ","), collapse = ", ")),
+      call. = FALSE)
+  N <- Ns[1]
+
+  Tvec <- stats::setNames(rep(NA_real_, length(cn)), cn)
+  if ("(Intercept)" %in% cn) Tvec["(Intercept)"] <- N
+
+  for (v in names(totals)) {
+    t <- totals[[v]]
+    if (is.data.frame(t)) {
+      if (!count %in% names(t))
+        stop(sprintf("`count = \"%s\"` is not a column of the totals for '%s'.",
+                     count, v))
+      lev_col <- setdiff(names(t), count)
+      if (length(lev_col) != 1L)
+        stop(sprintf(paste0("The totals data frame for '%s' must have exactly ",
+                            "one category column plus the counts column."), v))
+      levels_v <- as.character(t[[lev_col]])
+      counts_v <- as.numeric(t[[count]])
+      for (j in seq_along(levels_v)) {
+        col <- paste0(v, levels_v[j])
+        if (col %in% cn) Tvec[col] <- counts_v[j]
+      }
+    } else if (is.numeric(t) && length(t) == 1L) {
+      if (v %in% cn) {
+        Tvec[v] <- t
+      } else {
+        stop(sprintf(paste0("Continuous target '%s' is not a column of the ",
+                            "model.matrix. Check the formula and the name."), v))
+      }
+    } else {
+      stop(sprintf(paste0("Target for '%s' must be a data frame (categorical) ",
+                          "or a single number (continuous)."), v))
+    }
+  }
+
+  missing <- cn[is.na(Tvec)]
+  if (length(missing) > 0L)
+    stop(sprintf(
+      paste0("No population total was provided for these model terms: %s.\n",
+             "Make sure `totals` covers every variable in the formula ",
+             "(all categories for factors, a number for continuous)."),
+      paste(missing, collapse = ", ")))
+
+  Tvec
 }

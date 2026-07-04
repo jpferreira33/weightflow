@@ -12,3 +12,5 @@
 ^cran-comments\.md$
 ^CRAN-SUBMISSION$
 ^CONTRIBUTING\.md$
+^paper$
+^ech_data$

@@ -53,6 +53,24 @@ each replicate.
 The following are available in the development version on GitHub and are planned
 for a future CRAN release:
 
+* **Tidy population totals for `step_calibrate()`.** In addition to the classic
+  `margins`/`totals` inputs (which keep working unchanged), calibration targets
+  can now be given as tidy data frames, paired with the new `count` argument
+  that names the counts column:
+    - *Post-stratification*: a data frame with one or more category columns plus
+      a counts column. Several category columns are crossed automatically, so
+      there is no need to build a collapsed cell variable by hand.
+    - *Raking*: a list of data frames, one per margin.
+    - *Linear/GREG*: a named list matching the formula terms, with a data frame
+      (all categories) for each factor and a single number for each continuous
+      total; weightflow builds the model.matrix totals internally, so the user
+      never drops a reference category or handles the intercept.
+  Calibration also reports clearer diagnostics and warnings: post-stratification
+  flags cells in the sample but missing from the totals (error) or in the totals
+  but absent from the sample (warning); raking warns on mutually inconsistent
+  margins or non-convergence; linear calibration warns when the constraints are
+  not fully satisfied; and calibration variables with missing values raise an
+  informative error.
 * **Machine-learning response propensities** (CART, random forest and gradient
   boosting via `xgboost`) for `step_nonresponse()` and `step_model_calibration()`.
 * **k-fold cross-fitting** (`crossfit`) to estimate each unit out-of-sample,
