@@ -78,6 +78,7 @@ the targets to control extreme weights when there are many auxiliaries.</p>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"raking"</span>, <span class="st">"poststratify"</span>, <span class="st">"linear"</span><span class="op">)</span>,</span>
 <span>  formula <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  totals <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  count <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  calfun <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linear"</span>, <span class="st">"logit"</span><span class="op">)</span>,</span>
@@ -97,15 +98,17 @@ the targets to control extreme weights when there are many auxiliaries.</p>
 
 
 <dt id="arg-margins">margins<a class="anchor" aria-label="anchor" href="#arg-margins"></a></dt>
-<dd><p>named list (for "raking"/"poststratify"). Each element is a
-named numeric vector with the target totals per category. E.g.:
-list(sex = c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)).</p></dd>
+<dd><p>named list (classic format for "raking"/"poststratify"). Each
+element is a named numeric vector with the target totals per category. E.g.:
+list(sex = c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)). Still
+fully supported; for a tidy alternative see <code>totals</code> and <code>count</code>.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>"raking" (IPF, categorical margins), "poststratify" (a single
-categorical variable) or "linear" (GREG / regression estimator; handles
-continuous and categorical auxiliaries together).</p></dd>
+<dd><p>"raking" (IPF, categorical margins), "poststratify"
+(post-strata: one or more categorical variables crossed) or "linear"
+(GREG / regression estimator; handles continuous and categorical
+auxiliaries together).</p></dd>
 
 
 <dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
@@ -114,10 +117,22 @@ Uses model.matrix; includes the intercept unless you write ~ 0 + ...</p></dd>
 
 
 <dt id="arg-totals">totals<a class="anchor" aria-label="anchor" href="#arg-totals"></a></dt>
-<dd><p>(only "linear") named numeric vector with the population
-totals, names matching the model.matrix columns (including "(Intercept)" =
-N if there is an intercept). If names do not match, the error lists the
-expected ones.</p></dd>
+<dd><p>population totals, in one of two forms. Classic (all methods):
+for "linear" a named numeric vector aligned with the model.matrix columns
+(including "(Intercept)" = N); for "raking"/"poststratify" use <code>margins</code>.
+Tidy (recommended): a data frame or a named list of data frames/numbers
+giving the totals in a friendly way, paired with <code>count</code>. For
+"poststratify", a single data frame with one or more category columns plus
+a counts column. For "raking", a list of data frames, one per margin. For
+"linear", a named list whose names match the formula terms: a data frame
+with all categories for each factor, and a single number for each
+continuous auxiliary; weightflow builds the model.matrix totals internally
+(you never handle the intercept or dropped reference category).</p></dd>
+
+
+<dt id="arg-count">count<a class="anchor" aria-label="anchor" href="#arg-count"></a></dt>
+<dd><p>(tidy <code>totals</code> only) string naming the counts column in the
+totals data frame(s). All other columns are treated as category variables.</p></dd>
 
 
 <dt id="arg-cluster">cluster<a class="anchor" aria-label="anchor" href="#arg-cluster"></a></dt>
@@ -214,6 +229,84 @@ match the targets exactly; the diagnostics report the deviation.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                      base      467    4371  0.236     1.056   442</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  stage_1_step_nonresponse      270    4371  0.144     1.021   265</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    stage_2_step_calibrate      270    4438  0.159     1.025   263</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> n_eff = n_active / deff_kish. Both worsen with each adjustment and</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> improve with trimming.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># --- Tidy `totals` format (recommended) ---------------------------------</span></span></span>
+<span class="r-in"><span><span class="co"># Post-stratification: give the population counts as a data frame with one or</span></span></span>
+<span class="r-in"><span><span class="co"># more category columns plus a counts column named by `count`.</span></span></span>
+<span class="r-in"><span><span class="va">ps_totals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>, sex <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_calibrate</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"poststratify"</span>, totals <span class="op">=</span> <span class="va">ps_totals</span>, count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 467 cases</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. calibration (poststratify)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Status  : estimated (prep)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Stage summary:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                   stage n_active sum_wts cv_wts deff_kish n_eff</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    base      467    4371  0.236     1.056   442</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  stage_1_step_calibrate      467    4495  0.306     1.093   427</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> n_eff = n_active / deff_kish. Both worsen with each adjustment and</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> improve with trimming.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Raking: a list of data frames, one per margin.</span></span></span>
+<span class="r-in"><span><span class="va">m_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">m_sex</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>sex <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_calibrate</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>,</span></span>
+<span class="r-in"><span>                 totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">m_region</span>, <span class="va">m_sex</span><span class="op">)</span>, count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 467 cases</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. calibration (raking)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Status  : estimated (prep)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Stage summary:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                   stage n_active sum_wts cv_wts deff_kish n_eff</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    base      467    4371  0.236     1.056   442</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  stage_1_step_calibrate      467    4495  0.295     1.087   430</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> n_eff = n_active / deff_kish. Both worsen with each adjustment and</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> improve with trimming.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Linear/GREG with mixed auxiliaries: data frames for categoricals (all</span></span></span>
+<span class="r-in"><span><span class="co"># categories) and a single number for a continuous total. weightflow builds</span></span></span>
+<span class="r-in"><span><span class="co"># the model.matrix totals internally, so you never drop a reference category.</span></span></span>
+<span class="r-in"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">sample_survey</span>, <span class="va">responded</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">resp</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_calibrate</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">income</span>,</span></span>
+<span class="r-in"><span>                 totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">m_region</span>, sex <span class="op">=</span> <span class="va">m_sex</span>,</span></span>
+<span class="r-in"><span>                               income <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">income</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                 count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 270 cases</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. calibration (linear)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Status  : estimated (prep)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Stage summary:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                   stage n_active sum_wts cv_wts deff_kish n_eff</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    base      270    2582  0.233     1.054   256</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  stage_1_step_calibrate      270    4495  0.242     1.058   255</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> n_eff = n_active / deff_kish. Both worsen with each adjustment and</span>

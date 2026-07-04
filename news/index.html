@@ -96,6 +96,15 @@
 <h3 id="development-version-0-1-0">Development version<a class="anchor" aria-label="anchor" href="#development-version-0-1-0"></a></h3>
 <p>The following are available in the development version on GitHub and are planned for a future CRAN release:</p>
 <ul><li>
+<strong>Tidy population totals for <code><a href="../reference/step_calibrate.html">step_calibrate()</a></code>.</strong> In addition to the classic <code>margins</code>/<code>totals</code> inputs (which keep working unchanged), calibration targets can now be given as tidy data frames, paired with the new <code>count</code> argument that names the counts column:
+<ul><li>
+<em>Post-stratification</em>: a data frame with one or more category columns plus a counts column. Several category columns are crossed automatically, so there is no need to build a collapsed cell variable by hand.</li>
+<li>
+<em>Raking</em>: a list of data frames, one per margin.</li>
+<li>
+<em>Linear/GREG</em>: a named list matching the formula terms, with a data frame (all categories) for each factor and a single number for each continuous total; weightflow builds the model.matrix totals internally, so the user never drops a reference category or handles the intercept. Calibration also reports clearer diagnostics and warnings: post-stratification flags cells in the sample but missing from the totals (error) or in the totals but absent from the sample (warning); raking warns on mutually inconsistent margins or non-convergence; linear calibration warns when the constraints are not fully satisfied; and calibration variables with missing values raise an informative error.</li>
+</ul></li>
+<li>
 <strong>Machine-learning response propensities</strong> (CART, random forest and gradient boosting via <code>xgboost</code>) for <code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code> and <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code>.</li>
 <li>
 <strong>k-fold cross-fitting</strong> (<code>crossfit</code>) to estimate each unit out-of-sample, with folds formed by cluster to avoid leakage.</li>

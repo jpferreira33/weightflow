@@ -18,6 +18,7 @@ step_calibrate(
   method = c("raking", "poststratify", "linear"),
   formula = NULL,
   totals = NULL,
+  count = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
   calfun = c("linear", "logit"),
@@ -36,15 +37,17 @@ step_calibrate(
 
 - margins:
 
-  named list (for "raking"/"poststratify"). Each element is a named
-  numeric vector with the target totals per category. E.g.: list(sex =
-  c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)).
+  named list (classic format for "raking"/"poststratify"). Each element
+  is a named numeric vector with the target totals per category. E.g.:
+  list(sex = c(M = 5000, F = 5200), region = c(N = 3000, S = 7200)).
+  Still fully supported; for a tidy alternative see `totals` and
+  `count`.
 
 - method:
 
-  "raking" (IPF, categorical margins), "poststratify" (a single
-  categorical variable) or "linear" (GREG / regression estimator;
-  handles continuous and categorical auxiliaries together).
+  "raking" (IPF, categorical margins), "poststratify" (post-strata: one
+  or more categorical variables crossed) or "linear" (GREG / regression
+  estimator; handles continuous and categorical auxiliaries together).
 
 - formula:
 
@@ -53,10 +56,23 @@ step_calibrate(
 
 - totals:
 
-  (only "linear") named numeric vector with the population totals, names
-  matching the model.matrix columns (including "(Intercept)" = N if
-  there is an intercept). If names do not match, the error lists the
-  expected ones.
+  population totals, in one of two forms. Classic (all methods): for
+  "linear" a named numeric vector aligned with the model.matrix columns
+  (including "(Intercept)" = N); for "raking"/"poststratify" use
+  `margins`. Tidy (recommended): a data frame or a named list of data
+  frames/numbers giving the totals in a friendly way, paired with
+  `count`. For "poststratify", a single data frame with one or more
+  category columns plus a counts column. For "raking", a list of data
+  frames, one per margin. For "linear", a named list whose names match
+  the formula terms: a data frame with all categories for each factor,
+  and a single number for each continuous auxiliary; weightflow builds
+  the model.matrix totals internally (you never handle the intercept or
+  dropped reference category).
+
+- count:
+
+  (tidy `totals` only) string naming the counts column in the totals
+  data frame(s). All other columns are treated as category variables.
 
 - cluster:
 
@@ -153,6 +169,84 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #>                      base      467    4371  0.236     1.056   442
 #>  stage_1_step_nonresponse      270    4371  0.144     1.021   265
 #>    stage_2_step_calibrate      270    4438  0.159     1.025   263
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# --- Tidy `totals` format (recommended) ---------------------------------
+# Post-stratification: give the population counts as a data frame with one or
+# more category columns plus a counts column named by `count`.
+ps_totals <- as.data.frame(table(region = population$region, sex = population$sex))
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_calibrate(method = "poststratify", totals = ps_totals, count = "Freq") |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. calibration (poststratify)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                   stage n_active sum_wts cv_wts deff_kish n_eff
+#>                    base      467    4371  0.236     1.056   442
+#>  stage_1_step_calibrate      467    4495  0.306     1.093   427
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# Raking: a list of data frames, one per margin.
+m_region <- as.data.frame(table(region = population$region))
+m_sex    <- as.data.frame(table(sex = population$sex))
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 totals = list(m_region, m_sex), count = "Freq") |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. calibration (raking)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                   stage n_active sum_wts cv_wts deff_kish n_eff
+#>                    base      467    4371  0.236     1.056   442
+#>  stage_1_step_calibrate      467    4495  0.295     1.087   430
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# Linear/GREG with mixed auxiliaries: data frames for categoricals (all
+# categories) and a single number for a continuous total. weightflow builds
+# the model.matrix totals internally, so you never drop a reference category.
+resp <- subset(sample_survey, responded == 1)
+weighting_spec(resp, base_weights = pw) |>
+  step_calibrate(method = "linear", formula = ~ region + sex + income,
+                 totals = list(region = m_region, sex = m_sex,
+                               income = sum(population$income)),
+                 count = "Freq") |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 270 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. calibration (linear)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                   stage n_active sum_wts cv_wts deff_kish n_eff
+#>                    base      270    2582  0.233     1.054   256
+#>  stage_1_step_calibrate      270    4495  0.242     1.058   255
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
