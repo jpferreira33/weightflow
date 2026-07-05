@@ -378,10 +378,15 @@ apply_step.step_select_within <- function(step, data, w) {
     lbl <- "1/prob"
   } else {
     k <- as.numeric(eval(step$n_eligible, envir = data, enclos = baseenv()))
+    m <- if (is.null(step$n_selected)) rep(1, length(k))
+         else as.numeric(eval(step$n_selected, envir = data, enclos = baseenv()))
+    if (length(m) == 1L) m <- rep(m, length(k))
     if (any(is.na(k[active])) || any(k[active] < 1))
       stop("`n_eligible` must be >= 1.")
-    fac <- k
-    lbl <- "n_eligible"
+    if (any(is.na(m[active])) || any(m[active] < 1) || any(m[active] > k[active]))
+      stop("`n_selected` must be >= 1 and <= `n_eligible`.")
+    fac <- k / m
+    lbl <- if (is.null(step$n_selected)) "n_eligible" else "n_eligible/n_selected"
   }
   new_w[active] <- w[active] * fac[active]
   diag <- data.frame(

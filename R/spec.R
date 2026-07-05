@@ -91,23 +91,39 @@ step_unknown_eligibility <- function(spec, unknown, by = NULL, cluster = NULL) {
 #'   the selected person (need not be 1/n_eligible). The weight is multiplied by
 #'   1/prob.
 #' @param n_eligible unquoted column with the number of eligible persons in the
-#'   household, for simple random selection of one person. The weight is
-#'   multiplied by n_eligible (equivalent to prob = 1/n_eligible).
+#'   household, for simple random selection within the household. When a single
+#'   person is selected (the default), the weight is multiplied by n_eligible
+#'   (equivalent to prob = 1/n_eligible).
+#' @param n_selected optional number of persons selected per household under
+#'   simple random selection, when more than one person is subsampled. Either a
+#'   single number (same subsample size in every household) or an unquoted column
+#'   (subsample size varying by household). The weight is multiplied by
+#'   n_eligible / n_selected (equivalent to prob = n_selected/n_eligible).
+#'   Defaults to 1. Only used together with `n_eligible`.
 #' @examples
 #' # simple random selection of one eligible person per household
 #' df <- transform(sample_survey,
 #'                 n_elig = ave(person_id, household_id, FUN = length))
 #' weighting_spec(df, base_weights = pw) |>
 #'   step_select_within(n_eligible = n_elig)
-step_select_within <- function(spec, prob = NULL, n_eligible = NULL) {
+#'
+#' # simple random selection of two eligible persons per household
+#' weighting_spec(df, base_weights = pw) |>
+#'   step_select_within(n_eligible = n_elig, n_selected = 2)
+step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
+                               n_selected = NULL) {
   p <- substitute(prob)
   k <- substitute(n_eligible)
+  m <- substitute(n_selected)
+  if (!is.null(m) && is.null(k))
+    stop("`n_selected` only applies together with `n_eligible`.")
   if (is.null(p) && is.null(k))
     stop("Provide either `prob` or `n_eligible`.")
   if (!is.null(p) && !is.null(k))
     stop("Provide only one of `prob` or `n_eligible`.")
   step <- structure(
-    list(label = "within-household selection", prob = p, n_eligible = k),
+    list(label = "within-household selection", prob = p,
+         n_eligible = k, n_selected = m),
     class = c("step_select_within", "weighting_step")
   )
   .add_step(spec, step)
