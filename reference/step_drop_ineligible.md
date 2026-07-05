@@ -21,6 +21,13 @@ step_drop_ineligible(spec, ineligible)
   a 0/1 dummy column (1 = ineligible) or any logical condition
   (unquoted) that is TRUE for out-of-scope units.
 
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+is called.
+
 ## Details
 
 Apply it AFTER step_unknown_eligibility: ineligibles must be present and

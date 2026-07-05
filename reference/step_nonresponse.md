@@ -95,6 +95,13 @@ step_nonresponse(
   integer or NULL. Seed for reproducible fold assignment when `crossfit`
   is used.
 
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+is called.
+
 ## Examples
 
 ``` r

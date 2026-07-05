@@ -102,12 +102,33 @@ replicate. The number of replicates is stored in attribute <code>"R"</code>.</p>
 <span class="r-in"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">spec</span>, replicates <span class="op">=</span> <span class="fl">30</span>, strata <span class="op">=</span> <span class="st">"region"</span>,</span></span>
 <span class="r-in"><span>                          psu <span class="op">=</span> <span class="st">"psu"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu">collect_replicate_weights</span><span class="op">(</span><span class="va">boot</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="fu">srvyr</span><span class="fu">::</span><span class="fu"><a href="http://gdfe.co/srvyr/reference/as_survey_rep.html" class="external-link">as_survey_rep</a></span><span class="op">(</span><span class="va">df</span>, weights <span class="op">=</span> <span class="va">.weight</span>,</span></span>
-<span class="r-in"><span>                     repweights <span class="op">=</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">starts_with</a></span><span class="op">(</span><span class="st">"rep_"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                     type <span class="op">=</span> <span class="st">"bootstrap"</span>, combined.weights <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
-<span class="r-in"><span>                     scale <span class="op">=</span> <span class="fl">1</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">df</span>, <span class="st">"R"</span><span class="op">)</span>, rscales <span class="op">=</span> <span class="fl">1</span>, mse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"srvyr"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">&amp;&amp;</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"dplyr"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="fu">srvyr</span><span class="fu">::</span><span class="fu"><a href="http://gdfe.co/srvyr/reference/as_survey_rep.html" class="external-link">as_survey_rep</a></span><span class="op">(</span><span class="va">df</span>, weights <span class="op">=</span> <span class="va">.weight</span>,</span></span>
+<span class="r-in"><span>                       repweights <span class="op">=</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">starts_with</a></span><span class="op">(</span><span class="st">"rep_"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                       type <span class="op">=</span> <span class="st">"bootstrap"</span>, combined.weights <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>                       scale <span class="op">=</span> <span class="fl">1</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">df</span>, <span class="st">"R"</span><span class="op">)</span>, rscales <span class="op">=</span> <span class="fl">1</span>, mse <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call: Called via srvyr</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Survey bootstrap with 30 replicates and MSE variances.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Sampling variables:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   - repweights: `rep_1 + rep_2 + rep_3 + rep_4 + rep_5 + rep_6 + rep_7 + rep_8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     + rep_9 + rep_10 + rep_11 + rep_12 + rep_13 + rep_14 + rep_15 + rep_16 +</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rep_17 + rep_18 + rep_19 + rep_20 + rep_21 + rep_22 + rep_23 + rep_24 +</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rep_25 + rep_26 + rep_27 + rep_28 + rep_29 + rep_30` </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   - weights: .weight </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Data variables: </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   - person_id (int), household_id (int), psu (int), region (fct), sex (fct),</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     age (dbl), pw (dbl), unknown_elig (int), responded (dbl), income (dbl),</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     employed (int), .weight (dbl), rep_1 (dbl), rep_2 (dbl), rep_3 (dbl), rep_4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     (dbl), rep_5 (dbl), rep_6 (dbl), rep_7 (dbl), rep_8 (dbl), rep_9 (dbl),</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rep_10 (dbl), rep_11 (dbl), rep_12 (dbl), rep_13 (dbl), rep_14 (dbl),</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rep_15 (dbl), rep_16 (dbl), rep_17 (dbl), rep_18 (dbl), rep_19 (dbl),</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rep_20 (dbl), rep_21 (dbl), rep_22 (dbl), rep_23 (dbl), rep_24 (dbl),</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rep_25 (dbl), rep_26 (dbl), rep_27 (dbl), rep_28 (dbl), rep_29 (dbl),</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     rep_30 (dbl)</span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

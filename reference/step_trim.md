@@ -55,6 +55,13 @@ step_trim(
 
   integer. Maximum cap+redistribution iterations.
 
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+is called.
+
 ## Details
 
 There is no standard threshold: `max_ratio` is an analyst decision, a

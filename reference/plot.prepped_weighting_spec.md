@@ -26,6 +26,11 @@ plot(x, type = c("all", "factors", "summary"), ...)
 
   ignored.
 
+## Value
+
+Invisibly, the prepped object `x`. Called for its side effect of drawing
+the diagnostic plots described above.
+
 ## Examples
 
 ``` r

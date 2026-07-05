@@ -35,6 +35,13 @@ step_unknown_eligibility(spec, unknown, by = NULL, cluster = NULL)
   no roster (one row per address) while resolved units are expanded by
   person.
 
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+is called.
+
 ## Examples
 
 ``` r

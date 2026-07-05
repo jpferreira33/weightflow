@@ -41,7 +41,9 @@ report_weighting(object, file = NULL, open = TRUE, plots = TRUE)
 fitted <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
   prep()
-if (FALSE) { # \dontrun{
-report_weighting(fitted)            # opens an HTML report in the browser
-} # }
+# \donttest{
+# writes a self-contained HTML report to a temporary file (open = FALSE so
+# nothing is launched); use open = TRUE to view it in the browser.
+path <- report_weighting(fitted, open = FALSE)
+# }
 ```

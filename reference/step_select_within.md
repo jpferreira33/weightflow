@@ -40,6 +40,13 @@ step_select_within(spec, prob = NULL, n_eligible = NULL, n_selected = NULL)
   n_eligible / n_selected (equivalent to prob = n_selected/n_eligible).
   Defaults to 1. Only used together with `n_eligible`.
 
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+is called.
+
 ## Examples
 
 ``` r

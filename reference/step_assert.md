@@ -39,6 +39,13 @@ step_assert(
 
   "error" (stop the cascade) or "warning".
 
+## Value
+
+The input `weighting_spec` with this checkpoint appended to its recipe.
+The check is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+is called and does not modify the weights.
+
 ## Examples
 
 ``` r
