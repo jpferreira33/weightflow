@@ -101,6 +101,8 @@
 <em>Linear/GREG</em>: a named list matching the formula terms, with a data frame (all categories) for each factor and a single number for each continuous total; weightflow builds the model.matrix totals internally, so the user never drops a reference category or handles the intercept. Calibration also reports clearer diagnostics and warnings: post-stratification flags cells in the sample but missing from the totals (error) or in the totals but absent from the sample (warning); raking warns on mutually inconsistent margins or non-convergence; linear calibration warns when the constraints are not fully satisfied; and calibration variables with missing values raise an informative error.</li>
 </ul></li>
 <li>
+<strong>Subsampling of more than one person per household in <code><a href="../reference/step_select_within.html">step_select_within()</a></code>.</strong> A new <code>n_selected</code> argument (a single number or an unquoted column) works alongside <code>n_eligible</code> for simple random selection of a subsample: the weight is multiplied by <code>n_eligible / n_selected</code> (equivalent to <code>prob = n_selected/n_eligible</code>). It defaults to 1, so selecting a single person keeps working unchanged.</li>
+<li>
 <strong>Machine-learning response propensities</strong> (CART, random forest and gradient boosting via <code>xgboost</code>) for <code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code> and <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code>.</li>
 <li>
 <strong>k-fold cross-fitting</strong> (<code>crossfit</code>) to estimate each unit out-of-sample, with folds formed by cluster to avoid leakage.</li>

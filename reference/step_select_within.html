@@ -62,7 +62,7 @@ nonresponse adjustment.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">step_select_within</span><span class="op">(</span><span class="va">spec</span>, prob <span class="op">=</span> <span class="cn">NULL</span>, n_eligible <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">step_select_within</span><span class="op">(</span><span class="va">spec</span>, prob <span class="op">=</span> <span class="cn">NULL</span>, n_eligible <span class="op">=</span> <span class="cn">NULL</span>, n_selected <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -81,8 +81,18 @@ the selected person (need not be 1/n_eligible). The weight is multiplied by
 
 <dt id="arg-n-eligible">n_eligible<a class="anchor" aria-label="anchor" href="#arg-n-eligible"></a></dt>
 <dd><p>unquoted column with the number of eligible persons in the
-household, for simple random selection of one person. The weight is
-multiplied by n_eligible (equivalent to prob = 1/n_eligible).</p></dd>
+household, for simple random selection within the household. When a single
+person is selected (the default), the weight is multiplied by n_eligible
+(equivalent to prob = 1/n_eligible).</p></dd>
+
+
+<dt id="arg-n-selected">n_selected<a class="anchor" aria-label="anchor" href="#arg-n-selected"></a></dt>
+<dd><p>optional number of persons selected per household under
+simple random selection, when more than one person is subsampled. Either a
+single number (same subsample size in every household) or an unquoted column
+(subsample size varying by household). The weight is multiplied by
+n_eligible / n_selected (equivalent to prob = n_selected/n_eligible).
+Defaults to 1. Only used together with <code>n_eligible</code>.</p></dd>
 
 </dl></div>
 
@@ -93,6 +103,18 @@ multiplied by n_eligible (equivalent to prob = 1/n_eligible).</p></dd>
 <span class="r-in"><span>                n_elig <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/ave.html" class="external-link">ave</a></span><span class="op">(</span><span class="va">person_id</span>, <span class="va">household_id</span>, FUN <span class="op">=</span> <span class="va">length</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">df</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu">step_select_within</span><span class="op">(</span>n_eligible <span class="op">=</span> <span class="va">n_elig</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 467 cases</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. within-household selection</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Status  : not estimated</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># simple random selection of two eligible persons per household</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">df</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_select_within</span><span class="op">(</span>n_eligible <span class="op">=</span> <span class="va">n_elig</span>, n_selected <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 467 cases</span>

@@ -104,6 +104,13 @@ planned for a future CRAN release:
     non-convergence; linear calibration warns when the constraints are
     not fully satisfied; and calibration variables with missing values
     raise an informative error.
+- **Subsampling of more than one person per household in
+  [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md).**
+  A new `n_selected` argument (a single number or an unquoted column)
+  works alongside `n_eligible` for simple random selection of a
+  subsample: the weight is multiplied by `n_eligible / n_selected`
+  (equivalent to `prob = n_selected/n_eligible`). It defaults to 1, so
+  selecting a single person keeps working unchanged.
 - **Machine-learning response propensities** (CART, random forest and
   gradient boosting via `xgboost`) for
   [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
