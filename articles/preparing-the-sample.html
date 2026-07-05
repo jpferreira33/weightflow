@@ -101,38 +101,7 @@ Definitions</em> (2016).</p>
 (does it belong to the target population?) and only eligible cases are
 then resolved for <strong>response</strong>. The colours below are
 reused throughout <code>weightflow</code>’s plots and reports.</p>
-<div style="text-align:center; margin: 1.2em 0;">
-<svg viewbox="0 0 720 470" width="100%" style="max-width:720px; font-family: Inter, system-ui, sans-serif;" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Survey disposition tree: sampled cases split into eligible, unknown eligibility and ineligible; eligible cases split into respondents and nonrespondents."><!-- connectors --><p><g stroke="#c7c9d6" stroke-width="1.6" fill="none"><path d="M380 68 L180 150"></path><path d="M380 68 L367 150"></path><path d="M380 68 L600 150"></path><path d="M180 202 L110 290"></path><path d="M180 202 L250 290"></path></g></p>
-<!-- root -->
-<p><rect x="300" y="20" width="160" height="48" rx="9" fill="#3d3580"></rect><text x="380" y="41" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="600">Sampled
-cases</text><text x="380" y="58" text-anchor="middle" fill="#d7d3f0" font-size="10.5">carry
-the design base weight</text></p>
-<!-- level 2: eligibility -->
-<p><rect x="105" y="150" width="150" height="52" rx="9" fill="#534ab7"></rect><text x="180" y="173" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="600">Eligible</text><text x="180" y="190" text-anchor="middle" fill="#dcd9f4" font-size="10.5">in
-the target population</text></p>
-<p><rect x="280" y="150" width="175" height="52" rx="9" fill="#7a6ad0"></rect><text x="367" y="173" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="600">Unknown
-eligibility</text><text x="367" y="190" text-anchor="middle" fill="#eae7f8" font-size="10.5">never
-resolved</text></p>
-<p><rect x="520" y="150" width="160" height="52" rx="9" fill="#8a90a0"></rect><text x="600" y="173" text-anchor="middle" fill="#ffffff" font-size="14" font-weight="600">Ineligible</text><text x="600" y="190" text-anchor="middle" fill="#eef0f4" font-size="10.5">out
-of scope</text></p>
-<!-- level 3: response, under eligible -->
-<p><rect x="50" y="290" width="120" height="50" rx="9" fill="#1d9e75"></rect><text x="110" y="312" text-anchor="middle" fill="#ffffff" font-size="13.5" font-weight="600">Respondent</text><text x="110" y="328" text-anchor="middle" fill="#dcf3ea" font-size="10.5">provides
-data</text></p>
-<p><rect x="180" y="290" width="140" height="50" rx="9" fill="#cf7a33"></rect><text x="250" y="312" text-anchor="middle" fill="#ffffff" font-size="13.5" font-weight="600">Nonrespondent</text><text x="250" y="328" text-anchor="middle" fill="#f7e6d5" font-size="10.5">no
-data</text></p>
-<!-- step annotations -->
-<p><text x="367" y="222" text-anchor="middle" fill="#534ab7" font-size="11" font-weight="600">step_unknown_eligibility()</text><text x="367" y="237" text-anchor="middle" fill="#6b7280" font-size="10.5">weight
-redistributed to resolved cases</text></p>
-<p><text x="600" y="222" text-anchor="middle" fill="#534ab7" font-size="11" font-weight="600">step_drop_ineligible()</text><text x="600" y="237" text-anchor="middle" fill="#6b7280" font-size="10.5">weight
-set to 0 (removed)</text></p>
-<p><text x="110" y="360" text-anchor="middle" fill="#6b7280" font-size="10.5">kept
-as is</text></p>
-<p><text x="250" y="360" text-anchor="middle" fill="#534ab7" font-size="11" font-weight="600">step_nonresponse()</text><text x="250" y="375" text-anchor="middle" fill="#6b7280" font-size="10.5">respondents
-inflated to represent them</text></p>
-<!-- within-household note -->
-<text x="180" y="262" text-anchor="middle" fill="#6b7280" font-size="10.5">if
-one person is selected per household:</text><text x="180" y="277" text-anchor="middle" fill="#534ab7" font-size="11" font-weight="600">step_select_within()</text></svg>
-</div>
+<p><img src="disposition-tree.svg" class="r-plt" alt="Survey disposition tree: sampled cases split into eligible, unknown eligibility and ineligible; eligible cases split into respondents and nonrespondents." width="100%"></p>
 </div>
 <div class="section level2">
 <h2 id="what-each-branch-means-and-when-it-happens">What each branch means, and when it happens<a class="anchor" aria-label="anchor" href="#what-each-branch-means-and-when-it-happens"></a>
@@ -334,20 +303,33 @@ person is selected and may or may not respond.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="va">sample_one</span></span>
 <span></span>
-<span><span class="co"># eligibility dispositions as they arrive from the field</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>status <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">status</span><span class="op">)</span></span>
-<span><span class="co">#&gt; status</span></span>
-<span><span class="co">#&gt;   eligible ineligible    unknown </span></span>
-<span><span class="co">#&gt;        365         29         23</span></span>
-<span></span>
-<span><span class="co"># among eligible, resolved households: reached vs household nonresponse</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>reached <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">hh_responded</span>, useNA <span class="op">=</span> <span class="st">"ifany"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; reached</span></span>
-<span><span class="co">#&gt;    0    1 &lt;NA&gt; </span></span>
-<span><span class="co">#&gt;   50  315   52</span></span></code></pre></div>
-<p>We add an age grouping for the person-level nonresponse cells, then
-run the disposition stages in order.</p>
+<span><span class="co"># the whole field disposition in a single column, matching the tree above</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>disposition <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">disposition</span><span class="op">)</span></span>
+<span><span class="co">#&gt; disposition</span></span>
+<span><span class="co">#&gt;    eligible respondent eligible nonrespondent  household nonresponse </span></span>
+<span><span class="co">#&gt;                    209                    106                     50 </span></span>
+<span><span class="co">#&gt;             ineligible    unknown eligibility </span></span>
+<span><span class="co">#&gt;                     29                     23</span></span></code></pre></div>
+<p><code>sample_one</code> ships the dispositions in two equivalent
+forms: the ready-made 0/1 indicator columns (<code>unknown_elig</code>,
+<code>ineligible</code>, <code>responded</code>,
+<code>hh_responded</code>) and the single <code>disposition</code>
+factor they were recoded from. Every step accepts either a 0/1 column or
+an unquoted logical condition, so you can point a step at the indicator
+column or write the condition on <code>disposition</code> directly; the
+two give the same flag.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># the indicator column and the equivalent condition on `disposition` agree</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">dat</span><span class="op">$</span><span class="va">ineligible</span> <span class="op">==</span> <span class="fl">1L</span>, <span class="va">dat</span><span class="op">$</span><span class="va">disposition</span> <span class="op">==</span> <span class="st">"ineligible"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span></span>
+<span><span class="co"># so these two calls are interchangeable:</span></span>
+<span><span class="co">#   step_drop_ineligible(ineligible = ineligible)</span></span>
+<span><span class="co">#   step_drop_ineligible(ineligible = disposition == "ineligible")</span></span></code></pre></div>
+<p>We add an age grouping for the person-level nonresponse cells, then
+run the disposition stages in order (using the indicator columns
+here).</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dat</span><span class="op">$</span><span class="va">age_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cut.html" class="external-link">cut</a></span><span class="op">(</span><span class="va">dat</span><span class="op">$</span><span class="va">age</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span>, <span class="fl">45</span>, <span class="fl">60</span>, <span class="cn">Inf</span><span class="op">)</span>,</span>
 <span>                   labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"18-30"</span>, <span class="st">"31-45"</span>, <span class="st">"46-60"</span>, <span class="st">"60+"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -395,7 +377,7 @@ run the disposition stages in order.</p>
 change as each disposition is handled: unresolved weight is moved onto
 resolved cases, ineligibles drop out, and respondents are inflated to
 carry the nonrespondents.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; == Weighting specification (weightflow) ==</span></span>

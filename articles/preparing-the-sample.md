@@ -22,7 +22,9 @@ to the target population?) and only eligible cases are then resolved for
 **response**. The colours below are reused throughout `weightflow`’s
 plots and reports.
 
-![](data:image/svg+xml;base64,PHN2ZyB2aWV3Ym94PSIwIDAgNzIwIDQ3MCIgd2lkdGg9IjEwMCUiIHN0eWxlPSJtYXgtd2lkdGg6NzIwcHg7IGZvbnQtZmFtaWx5OiBJbnRlciwgc3lzdGVtLXVpLCBzYW5zLXNlcmlmOyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlN1cnZleSBkaXNwb3NpdGlvbiB0cmVlOiBzYW1wbGVkIGNhc2VzIHNwbGl0IGludG8gZWxpZ2libGUsIHVua25vd24gZWxpZ2liaWxpdHkgYW5kIGluZWxpZ2libGU7IGVsaWdpYmxlIGNhc2VzIHNwbGl0IGludG8gcmVzcG9uZGVudHMgYW5kIG5vbnJlc3BvbmRlbnRzLiI+PCEtLSBjb25uZWN0b3JzIC0tPjxwPjxnIHN0cm9rZT0iI2M3YzlkNiIgc3Ryb2tlLXdpZHRoPSIxLjYiIGZpbGw9Im5vbmUiPjxwYXRoIGQ9Ik0zODAgNjggTDE4MCAxNTAiIC8+PHBhdGggZD0iTTM4MCA2OCBMMzY3IDE1MCIgLz48cGF0aCBkPSJNMzgwIDY4IEw2MDAgMTUwIiAvPjxwYXRoIGQ9Ik0xODAgMjAyIEwxMTAgMjkwIiAvPjxwYXRoIGQ9Ik0xODAgMjAyIEwyNTAgMjkwIiAvPjwvZz48L3A+CjwhLS0gcm9vdCAtLT4KPHA+PHJlY3QgeD0iMzAwIiB5PSIyMCIgd2lkdGg9IjE2MCIgaGVpZ2h0PSI0OCIgcng9IjkiIGZpbGw9IiMzZDM1ODAiIC8+PHRleHQgeD0iMzgwIiB5PSI0MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZmZmZiIgZm9udC1zaXplPSIxNSIgZm9udC13ZWlnaHQ9IjYwMCI+U2FtcGxlZApjYXNlczwvdGV4dD48dGV4dCB4PSIzODAiIHk9IjU4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZDdkM2YwIiBmb250LXNpemU9IjEwLjUiPmNhcnJ5CnRoZSBkZXNpZ24gYmFzZSB3ZWlnaHQ8L3RleHQ+PC9wPgo8IS0tIGxldmVsIDI6IGVsaWdpYmlsaXR5IC0tPgo8cD48cmVjdCB4PSIxMDUiIHk9IjE1MCIgd2lkdGg9IjE1MCIgaGVpZ2h0PSI1MiIgcng9IjkiIGZpbGw9IiM1MzRhYjciIC8+PHRleHQgeD0iMTgwIiB5PSIxNzMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmZmZmYiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSI2MDAiPkVsaWdpYmxlPC90ZXh0Pjx0ZXh0IHg9IjE4MCIgeT0iMTkwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZGNkOWY0IiBmb250LXNpemU9IjEwLjUiPmluCnRoZSB0YXJnZXQgcG9wdWxhdGlvbjwvdGV4dD48L3A+CjxwPjxyZWN0IHg9IjI4MCIgeT0iMTUwIiB3aWR0aD0iMTc1IiBoZWlnaHQ9IjUyIiByeD0iOSIgZmlsbD0iIzdhNmFkMCIgLz48dGV4dCB4PSIzNjciIHk9IjE3MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZmZmZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9IjYwMCI+VW5rbm93bgplbGlnaWJpbGl0eTwvdGV4dD48dGV4dCB4PSIzNjciIHk9IjE5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2VhZTdmOCIgZm9udC1zaXplPSIxMC41Ij5uZXZlcgpyZXNvbHZlZDwvdGV4dD48L3A+CjxwPjxyZWN0IHg9IjUyMCIgeT0iMTUwIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjUyIiByeD0iOSIgZmlsbD0iIzhhOTBhMCIgLz48dGV4dCB4PSI2MDAiIHk9IjE3MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZmZmZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9IjYwMCI+SW5lbGlnaWJsZTwvdGV4dD48dGV4dCB4PSI2MDAiIHk9IjE5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2VlZjBmNCIgZm9udC1zaXplPSIxMC41Ij5vdXQKb2Ygc2NvcGU8L3RleHQ+PC9wPgo8IS0tIGxldmVsIDM6IHJlc3BvbnNlLCB1bmRlciBlbGlnaWJsZSAtLT4KPHA+PHJlY3QgeD0iNTAiIHk9IjI5MCIgd2lkdGg9IjEyMCIgaGVpZ2h0PSI1MCIgcng9IjkiIGZpbGw9IiMxZDllNzUiIC8+PHRleHQgeD0iMTEwIiB5PSIzMTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmZmZmYiIGZvbnQtc2l6ZT0iMTMuNSIgZm9udC13ZWlnaHQ9IjYwMCI+UmVzcG9uZGVudDwvdGV4dD48dGV4dCB4PSIxMTAiIHk9IjMyOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2RjZjNlYSIgZm9udC1zaXplPSIxMC41Ij5wcm92aWRlcwpkYXRhPC90ZXh0PjwvcD4KPHA+PHJlY3QgeD0iMTgwIiB5PSIyOTAiIHdpZHRoPSIxNDAiIGhlaWdodD0iNTAiIHJ4PSI5IiBmaWxsPSIjY2Y3YTMzIiAvPjx0ZXh0IHg9IjI1MCIgeT0iMzEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmZmZmIiBmb250LXNpemU9IjEzLjUiIGZvbnQtd2VpZ2h0PSI2MDAiPk5vbnJlc3BvbmRlbnQ8L3RleHQ+PHRleHQgeD0iMjUwIiB5PSIzMjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmN2U2ZDUiIGZvbnQtc2l6ZT0iMTAuNSI+bm8KZGF0YTwvdGV4dD48L3A+CjwhLS0gc3RlcCBhbm5vdGF0aW9ucyAtLT4KPHA+PHRleHQgeD0iMzY3IiB5PSIyMjIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSI2MDAiPnN0ZXBfdW5rbm93bl9lbGlnaWJpbGl0eSgpPC90ZXh0Pjx0ZXh0IHg9IjM2NyIgeT0iMjM3IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNmI3MjgwIiBmb250LXNpemU9IjEwLjUiPndlaWdodApyZWRpc3RyaWJ1dGVkIHRvIHJlc29sdmVkIGNhc2VzPC90ZXh0PjwvcD4KPHA+PHRleHQgeD0iNjAwIiB5PSIyMjIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSI2MDAiPnN0ZXBfZHJvcF9pbmVsaWdpYmxlKCk8L3RleHQ+PHRleHQgeD0iNjAwIiB5PSIyMzciIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM2YjcyODAiIGZvbnQtc2l6ZT0iMTAuNSI+d2VpZ2h0CnNldCB0byAwIChyZW1vdmVkKTwvdGV4dD48L3A+CjxwPjx0ZXh0IHg9IjExMCIgeT0iMzYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNmI3MjgwIiBmb250LXNpemU9IjEwLjUiPmtlcHQKYXMgaXM8L3RleHQ+PC9wPgo8cD48dGV4dCB4PSIyNTAiIHk9IjM2MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzUzNGFiNyIgZm9udC1zaXplPSIxMSIgZm9udC13ZWlnaHQ9IjYwMCI+c3RlcF9ub25yZXNwb25zZSgpPC90ZXh0Pjx0ZXh0IHg9IjI1MCIgeT0iMzc1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNmI3MjgwIiBmb250LXNpemU9IjEwLjUiPnJlc3BvbmRlbnRzCmluZmxhdGVkIHRvIHJlcHJlc2VudCB0aGVtPC90ZXh0PjwvcD4KPCEtLSB3aXRoaW4taG91c2Vob2xkIG5vdGUgLS0+Cjx0ZXh0IHg9IjE4MCIgeT0iMjYyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNmI3MjgwIiBmb250LXNpemU9IjEwLjUiPmlmCm9uZSBwZXJzb24gaXMgc2VsZWN0ZWQgcGVyIGhvdXNlaG9sZDo8L3RleHQ+PHRleHQgeD0iMTgwIiB5PSIyNzciIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSI2MDAiPnN0ZXBfc2VsZWN0X3dpdGhpbigpPC90ZXh0Pjwvc3ZnPg==)
+![Survey disposition tree: sampled cases split into eligible, unknown
+eligibility and ineligible; eligible cases split into respondents and
+nonrespondents.](disposition-tree.svg)
 
 ## What each branch means, and when it happens
 
@@ -184,21 +186,36 @@ is selected and may or may not respond.
 
 dat <- sample_one
 
-# eligibility dispositions as they arrive from the field
-table(status = dat$status)
-#> status
-#>   eligible ineligible    unknown 
-#>        365         29         23
+# the whole field disposition in a single column, matching the tree above
+table(disposition = dat$disposition)
+#> disposition
+#>    eligible respondent eligible nonrespondent  household nonresponse 
+#>                    209                    106                     50 
+#>             ineligible    unknown eligibility 
+#>                     29                     23
+```
 
-# among eligible, resolved households: reached vs household nonresponse
-table(reached = dat$hh_responded, useNA = "ifany")
-#> reached
-#>    0    1 <NA> 
-#>   50  315   52
+`sample_one` ships the dispositions in two equivalent forms: the
+ready-made 0/1 indicator columns (`unknown_elig`, `ineligible`,
+`responded`, `hh_responded`) and the single `disposition` factor they
+were recoded from. Every step accepts either a 0/1 column or an unquoted
+logical condition, so you can point a step at the indicator column or
+write the condition on `disposition` directly; the two give the same
+flag.
+
+``` r
+
+# the indicator column and the equivalent condition on `disposition` agree
+identical(dat$ineligible == 1L, dat$disposition == "ineligible")
+#> [1] TRUE
+
+# so these two calls are interchangeable:
+#   step_drop_ineligible(ineligible = ineligible)
+#   step_drop_ineligible(ineligible = disposition == "ineligible")
 ```
 
 We add an age grouping for the person-level nonresponse cells, then run
-the disposition stages in order.
+the disposition stages in order (using the indicator columns here).
 
 ``` r
 

@@ -41,6 +41,12 @@ a single placeholder row for non-roster cases):
 
   "eligible", "ineligible" or "unknown"
 
+- disposition:
+
+  full field disposition as a single factor (a recode of the indicator
+  columns): "eligible respondent", "eligible nonrespondent", "household
+  nonresponse", "ineligible" or "unknown eligibility"
+
 - unknown_elig:
 
   1 if eligibility is unknown (no roster)
