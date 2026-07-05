@@ -142,4 +142,19 @@ sample_one <- sample_one[order(sample_one$psu, sample_one$household_id), ]
 sample_one$person_id <- seq_len(nrow(sample_one))
 rownames(sample_one) <- NULL
 
+# Full field disposition as a single "reason" column, recoded from the
+# eligibility and response components above. It matches the survey disposition
+# tree (eligible respondent / eligible nonrespondent / household nonresponse /
+# ineligible / unknown eligibility). The 0/1 indicator columns are kept for
+# backward compatibility; `disposition` is the tidy single-column view of them.
+sample_one$disposition <- factor(
+  with(sample_one, ifelse(
+    status == "unknown",         "unknown eligibility",
+    ifelse(status == "ineligible",   "ineligible",
+    ifelse(hh_responded %in% 0L,     "household nonresponse",
+    ifelse(responded == 1,           "eligible respondent",
+                                     "eligible nonrespondent"))))),
+  levels = c("eligible respondent", "eligible nonrespondent",
+             "household nonresponse", "ineligible", "unknown eligibility"))
+
 usethis::use_data(population, sample_survey, sample_one, overwrite = TRUE)

@@ -57,6 +57,9 @@
 #'   \item{sex, age}{selected person's attributes (NA on non-roster rows)}
 #'   \item{pw}{design base weight (product of the stage selection probabilities)}
 #'   \item{status}{"eligible", "ineligible" or "unknown"}
+#'   \item{disposition}{full field disposition as a single factor (a recode of
+#'     the indicator columns): "eligible respondent", "eligible nonrespondent",
+#'     "household nonresponse", "ineligible" or "unknown eligibility"}
 #'   \item{unknown_elig}{1 if eligibility is unknown (no roster)}
 #'   \item{ineligible}{1 if the address is out of scope (no roster)}
 #'   \item{hh_responded}{1 reached, 0 household nonresponse, NA for non-eligible}
