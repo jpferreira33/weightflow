@@ -64,6 +64,8 @@ totals (consistency with the auxiliary controls).</p>
 <span>  <span class="va">x_formula</span>,</span>
 <span>  <span class="va">models</span>,</span>
 <span>  <span class="va">population</span>,</span>
+<span>  x_totals <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  count <span class="op">=</span> <span class="st">"Freq"</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  crossfit <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -90,7 +92,28 @@ the prediction constraints.</p></dd>
 
 <dt id="arg-population">population<a class="anchor" aria-label="anchor" href="#arg-population"></a></dt>
 <dd><p>population data.frame with the auxiliary and predictor
-columns (the y variables are not needed; they are predicted).</p></dd>
+columns (the y variables are not needed; they are predicted). Always
+required: the model-assisted block predicts each y over every population
+unit, which cannot be done from aggregated totals.</p></dd>
+
+
+<dt id="arg-x-totals">x_totals<a class="anchor" aria-label="anchor" href="#arg-x-totals"></a></dt>
+<dd><p>optional population totals for the consistency auxiliaries
+(<code>x_formula</code>), for when they come from an external source rather than from
+<code>population</code> (e.g. an official control total, a variable not present in the
+frame). Two shapes, the same as <code>step_calibrate(method = "linear")</code>: the
+tidy format, a named list matching the formula terms with a data frame (all
+categories + a counts column named by <code>count</code>) per factor and a single
+number per continuous total; or the classic model-matrix vector (intercept
+plus treatment contrasts). When NULL (default) the X totals are taken from
+<code>population</code>. When given, the X totals no longer require <code>x_formula</code> columns
+to exist in <code>population</code> (only in the sample), and <code>population</code> is used only
+for the model predictions.</p></dd>
+
+
+<dt id="arg-count">count<a class="anchor" aria-label="anchor" href="#arg-count"></a></dt>
+<dd><p>name of the counts column in the tidy <code>x_totals</code> data frames.
+Only used when <code>x_totals</code> is given in the tidy (data-frame) format.</p></dd>
 
 
 <dt id="arg-cluster">cluster<a class="anchor" aria-label="anchor" href="#arg-cluster"></a></dt>
@@ -160,6 +183,40 @@ reference frame/census).</p>
 <span class="r-in"><span>    x_formula  <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">region</span>,</span></span>
 <span class="r-in"><span>    models     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>income <span class="op">=</span> <span class="fu"><a href="y_model.html">y_model</a></span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, engine <span class="op">=</span> <span class="st">"glm"</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>    population <span class="op">=</span> <span class="va">population</span>, crossfit <span class="op">=</span> <span class="fl">5</span>, crossfit_seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 467 cases</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. nonresponse (weighting class)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2. model calibration (1 y variables)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Status  : estimated (prep)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Stage summary:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                           stage n_active sum_wts cv_wts deff_kish n_eff</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                            base      467    4371  0.236     1.056   442</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        stage_1_step_nonresponse      270    4371  0.144     1.021   265</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  stage_2_step_model_calibration      270    4495  0.212     1.045   258</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> n_eff = n_active / deff_kish. Both worsen with each adjustment and</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> improve with trimming.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># consistency totals from an external source (tidy format): a data frame per</span></span></span>
+<span class="r-in"><span><span class="co"># factor and a single number per continuous total. `population` is still used</span></span></span>
+<span class="r-in"><span><span class="co"># for the model predictions. Adjust for nonresponse first, since the outcome</span></span></span>
+<span class="r-in"><span><span class="co"># is only observed for respondents.</span></span></span>
+<span class="r-in"><span><span class="va">m_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_model_calibration</span><span class="op">(</span></span></span>
+<span class="r-in"><span>    x_formula  <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">age</span>,</span></span>
+<span class="r-in"><span>    models     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>income <span class="op">=</span> <span class="fu"><a href="y_model.html">y_model</a></span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, engine <span class="op">=</span> <span class="st">"glm"</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    population <span class="op">=</span> <span class="va">population</span>,</span></span>
+<span class="r-in"><span>    x_totals   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">m_region</span>, age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">age</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>    count      <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>

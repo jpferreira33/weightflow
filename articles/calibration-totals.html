@@ -294,6 +294,59 @@ warning about it.</p>
 </div>
 </div>
 <div class="section level2">
+<h2 id="model-calibration">Model calibration<a class="anchor" aria-label="anchor" href="#model-calibration"></a>
+</h2>
+<p><code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> (model-assisted, Wu &amp;
+Sitter 2001) fits a working model for each study variable, predicts it
+over the population, and calibrates so the weighted sample reproduces
+two kinds of target at once: the population total of each prediction
+(the model-assisted part) and the totals of a set of
+<em>consistency</em> auxiliaries given by <code>x_formula</code>
+(exactly as in linear calibration).</p>
+<p>By default those consistency totals are read from the
+<code>population</code> frame. But the control totals of the auxiliaries
+often come from <strong>another source</strong>: an official published
+total, or a variable that is not even in the frame. For that,
+<code>x_totals</code> accepts the <strong>same two shapes</strong> as
+linear calibration (tidy named list, or classic model-matrix vector),
+paired with <code>count</code> for the tidy form. The model predictors
+and the consistency auxiliaries are independent: a variable can drive
+the model without being a control total, and a control total need not
+enter the model.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">resp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">sample_survey</span>, <span class="va">responded</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">resp</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_model_calibration.html">step_model_calibration</a></span><span class="op">(</span></span>
+<span>    x_formula  <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">age</span>,                                <span class="co"># consistency block</span></span>
+<span>    models     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>income <span class="op">=</span> <span class="fu"><a href="../reference/y_model.html">y_model</a></span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>,      <span class="co"># model block</span></span>
+<span>                                       engine <span class="op">=</span> <span class="st">"glm"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    population <span class="op">=</span> <span class="va">population</span>,                                     <span class="co"># used for prediction</span></span>
+<span>    x_totals   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">m_region</span>, age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">age</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    count      <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># both blocks are reproduced: the X totals and the model prediction total</span></span>
+<span><span class="va">mc</span><span class="op">$</span><span class="va">steps</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">diagnostics</span></span>
+<span><span class="co">#&gt;              constraint            type   target achieved</span></span>
+<span><span class="co">#&gt; (Intercept) (Intercept) X (consistency)     4495     4495</span></span>
+<span><span class="co">#&gt; regionSouth regionSouth X (consistency)     1250     1250</span></span>
+<span><span class="co">#&gt; regionEast   regionEast X (consistency)      927      927</span></span>
+<span><span class="co">#&gt; regionWest   regionWest X (consistency)      748      748</span></span>
+<span><span class="co">#&gt; age                 age X (consistency)   190781   190781</span></span>
+<span><span class="co">#&gt; income           income       y (model) 93413771 93413771</span></span></code></pre></div>
+<p>Here <code>region</code> is a tidy data frame of category counts and
+<code>age</code> is a single external number, just like the mixed linear
+example. <code>population</code> is still required because the model
+must predict over every population unit, but the consistency auxiliaries
+only need to exist in the sample: when <code>x_totals</code> is given,
+weightflow does not read them from the frame, so <code>age</code> (or a
+variable absent from <code>population</code> altogether) can be
+controlled from an outside total. Leaving <code>x_totals = NULL</code>
+keeps the earlier behaviour, reading the X totals from
+<code>population</code>.</p>
+</div>
+<div class="section level2">
 <h2 id="validation-and-messages">Validation and messages<a class="anchor" aria-label="anchor" href="#validation-and-messages"></a>
 </h2>
 <p>The tidy format is not only more convenient; it checks the totals
