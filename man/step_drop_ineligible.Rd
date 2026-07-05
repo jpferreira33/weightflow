@@ -12,6 +12,10 @@ step_drop_ineligible(spec, ineligible)
 \item{ineligible}{a 0/1 dummy column (1 = ineligible) or any logical
 condition (unquoted) that is TRUE for out-of-scope units.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 Sets the weight of known-ineligible units to zero so they leave the cascade
 (excluded from every later step and from collect_weights). No redistribution

@@ -35,6 +35,10 @@ afterwards you can use FALSE: calibration restores the totals.}
 
 \item{maxit}{integer. Maximum cap+redistribution iterations.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 Caps weights above a limit and, optionally, redistributes the excess among
 the others to preserve the weighted total (Potter 1988, 1990; Liu et al.

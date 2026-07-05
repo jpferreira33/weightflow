@@ -25,6 +25,10 @@ single number (same subsample size in every household) or an unquoted column
 n_eligible / n_selected (equivalent to prob = n_selected/n_eligible).
 Defaults to 1. Only used together with \code{n_eligible}.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 When one (or a subsample) of the eligible persons is selected within each
 household, the selected person represents all eligible persons, so the weight

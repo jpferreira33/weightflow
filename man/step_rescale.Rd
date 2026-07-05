@@ -17,6 +17,10 @@ or "total" (weights sum to \code{total}).}
 \item{by}{character. Rescale within these groups (optional). With to = "n",
 each group sums to its own active count.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 Rescale (normalize) the weights
 }

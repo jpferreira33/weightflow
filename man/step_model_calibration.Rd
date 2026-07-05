@@ -61,6 +61,10 @@ uses the full model. Folds are formed by \code{cluster} when given. NULL
 
 \item{crossfit_seed}{integer or NULL. Seed for reproducible fold assignment.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 Fits a working model for each study variable y, predicts over the population,
 and calibrates the weights so that the sample total of each prediction equals

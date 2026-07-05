@@ -62,6 +62,8 @@ weighting_spec <- function(data, base_weights) {
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_unknown_eligibility(unknown = unknown_elig, by = "region",
 #'                            cluster = "household_id")
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_unknown_eligibility <- function(spec, unknown, by = NULL, cluster = NULL) {
   step <- structure(
     list(
@@ -110,6 +112,8 @@ step_unknown_eligibility <- function(spec, unknown, by = NULL, cluster = NULL) {
 #' # simple random selection of two eligible persons per household
 #' weighting_spec(df, base_weights = pw) |>
 #'   step_select_within(n_eligible = n_elig, n_selected = 2)
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
                                n_selected = NULL) {
   p <- substitute(prob)
@@ -152,6 +156,8 @@ step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
 #' weighting_spec(df, base_weights = pw) |>
 #'   step_drop_ineligible(ineligible = ineligible) |>
 #'   prep()
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_drop_ineligible <- function(spec, ineligible) {
   step <- structure(
     list(label = "drop ineligible", ineligible = substitute(ineligible)),
@@ -232,6 +238,8 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'                      num_classes = 5, crossfit = 5) |>
 #'     prep()
 #' }
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_nonresponse <- function(spec, respondent,
                              method = c("weighting_class", "propensity"),
                              by = NULL, formula = NULL,
@@ -370,6 +378,8 @@ step_nonresponse <- function(spec, respondent,
 #'                                income = sum(population$income)),
 #'                  count = "Freq") |>
 #'   prep()
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_calibrate <- function(spec, margins = NULL,
                            method = c("raking", "poststratify", "linear"),
                            formula = NULL, totals = NULL, count = NULL,
@@ -495,6 +505,8 @@ step_calibrate <- function(spec, margins = NULL,
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_trim(max_ratio = 3, reference = "base")
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim <- function(spec, max_ratio, min_ratio = NULL,
                       reference = c("base", "median", "value"),
                       redistribute = TRUE, by = NULL, maxit = 50L) {
@@ -550,6 +562,8 @@ design_effect <- function(w) {
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_round(digits = 0) |> prep()
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total")) {
   method <- match.arg(method)
   step <- structure(
@@ -656,6 +670,8 @@ y_model <- function(formula, engine = c("glm", "tree", "forest", "boost"), famil
 #'     x_totals   = list(region = m_region, age = sum(population$age)),
 #'     count      = "Freq") |>
 #'   prep()
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_model_calibration <- function(spec, x_formula, models, population,
                                    x_totals = NULL, count = "Freq",
                                    cluster = NULL, equal_within_cluster = FALSE,
@@ -715,6 +731,9 @@ step_model_calibration <- function(spec, x_formula, models, population,
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_assert(max_deff = 5, on_fail = "warning") |> prep()
+#' @return The input `weighting_spec` with this checkpoint appended to its
+#'   recipe. The check is recorded only; it is evaluated when `prep()` is called
+#'   and does not modify the weights.
 step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
                         min_n_eff = NULL, on_fail = c("error", "warning")) {
   on_fail <- match.arg(on_fail)
@@ -763,6 +782,8 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
 #'   step_trim_weights(method = "potter") |> prep()
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim_weights <- function(spec, lower = 1, upper = NULL,
                               method = c("tukey", "potter"),
                               strict = TRUE, maxit = 50L) {
@@ -795,6 +816,8 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_rescale(to = "n") |> prep()
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
 step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL) {
   to <- match.arg(to)
   if (to == "total" && is.null(total)) stop("to = 'total' requires `total`.")

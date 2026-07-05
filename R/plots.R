@@ -11,6 +11,8 @@
 #'   stage), all in one grid. "factors": only the per-step factor histograms.
 #'   "summary": only the summary panel.
 #' @param ... ignored.
+#' @return Invisibly, the prepped object `x`. Called for its side effect of
+#'   drawing the diagnostic plots described above.
 #' @examples
 #' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>

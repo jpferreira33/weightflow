@@ -62,6 +62,10 @@ correlated units stay together). NULL (default) fits and predicts in-sample.}
 \item{crossfit_seed}{integer or NULL. Seed for reproducible fold assignment
 when \code{crossfit} is used.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 Inflates the weights of respondents to represent the nonrespondents, under the
 assumption that response is ignorable given the information used. The response

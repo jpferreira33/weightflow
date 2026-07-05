@@ -77,6 +77,10 @@ constraint (near) exact, a small value relaxes it to control extreme weights
 when there are many auxiliaries. Under ridge the achieved totals no longer
 match the targets exactly; the diagnostics report the deviation.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 Adjusts the weights so that the weighted sample reproduces known population
 totals of auxiliary variables, while staying as close as possible to the input

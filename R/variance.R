@@ -215,11 +215,14 @@ as_svrepdesign <- function(boot, ...) {
 #' boot <- bootstrap_weights(spec, replicates = 30, strata = "region",
 #'                           psu = "psu", seed = 1, progress = FALSE)
 #' df <- collect_replicate_weights(boot)
-#' \dontrun{
-#' srvyr::as_survey_rep(df, weights = .weight,
-#'                      repweights = dplyr::starts_with("rep_"),
-#'                      type = "bootstrap", combined.weights = TRUE,
-#'                      scale = 1 / attr(df, "R"), rscales = 1, mse = TRUE)
+#' \donttest{
+#' if (requireNamespace("srvyr", quietly = TRUE) &&
+#'     requireNamespace("dplyr", quietly = TRUE)) {
+#'   srvyr::as_survey_rep(df, weights = .weight,
+#'                        repweights = dplyr::starts_with("rep_"),
+#'                        type = "bootstrap", combined.weights = TRUE,
+#'                        scale = 1 / attr(df, "R"), rscales = 1, mse = TRUE)
+#' }
 #' }
 #' @export
 collect_replicate_weights <- function(boot, weight_name = ".weight",

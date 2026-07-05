@@ -33,6 +33,10 @@ single pass (redistribution may push some weights slightly past the cap).}
 
 \item{maxit}{integer. Maximum iterations when strict = TRUE.}
 }
+\value{
+The input \code{weighting_spec} with this step appended to its recipe. The
+step is recorded only; it is evaluated when \code{prep()} is called.
+}
 \description{
 Caps weights into \verb{[lower, upper]} and redistributes the change among the
 untrimmed units to preserve the total, mirroring survey::trimWeights().
