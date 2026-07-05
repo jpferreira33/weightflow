@@ -14,6 +14,8 @@
   weighting)](https://jpferreira33.github.io/weightflow/articles/model-calibration.md):
 - [Nonresponse: weighting classes and
   propensities](https://jpferreira33.github.io/weightflow/articles/nonresponse-propensities.md):
+- [Preparing the sample: eligibility and response before
+  weighting](https://jpferreira33.github.io/weightflow/articles/preparing-the-sample.md):
 - [Validation against the survey
   package](https://jpferreira33.github.io/weightflow/articles/validation-against-survey.md):
 - [Variance
