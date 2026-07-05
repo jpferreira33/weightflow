@@ -208,6 +208,50 @@ Ridge (penalized) calibration works with the tidy format too: add `penalty` as
 usual. Under ridge the achieved totals are deliberately not exact, so weightflow
 reports the deviation instead of warning about it.
 
+## Model calibration
+
+`step_model_calibration()` (model-assisted, Wu & Sitter 2001) fits a working
+model for each study variable, predicts it over the population, and calibrates so
+the weighted sample reproduces two kinds of target at once: the population total
+of each prediction (the model-assisted part) and the totals of a set of
+*consistency* auxiliaries given by `x_formula` (exactly as in linear
+calibration).
+
+By default those consistency totals are read from the `population` frame. But the
+control totals of the auxiliaries often come from **another source**: an official
+published total, or a variable that is not even in the frame. For that,
+`x_totals` accepts the **same two shapes** as linear calibration (tidy named
+list, or classic model-matrix vector), paired with `count` for the tidy form. The
+model predictors and the consistency auxiliaries are independent: a variable can
+drive the model without being a control total, and a control total need not enter
+the model.
+
+```{r mc-xtotals}
+resp <- subset(sample_survey, responded == 1)
+
+mc <- weighting_spec(resp, base_weights = pw) |>
+  step_model_calibration(
+    x_formula  = ~ region + age,                                # consistency block
+    models     = list(income = y_model(income ~ age + sex,      # model block
+                                       engine = "glm")),
+    population = population,                                     # used for prediction
+    x_totals   = list(region = m_region, age = sum(population$age)),
+    count      = "Freq") |>
+  prep()
+
+# both blocks are reproduced: the X totals and the model prediction total
+mc$steps[[1]]$diagnostics
+```
+
+Here `region` is a tidy data frame of category counts and `age` is a single
+external number, just like the mixed linear example. `population` is still
+required because the model must predict over every population unit, but the
+consistency auxiliaries only need to exist in the sample: when `x_totals` is
+given, weightflow does not read them from the frame, so `age` (or a variable
+absent from `population` altogether) can be controlled from an outside total.
+Leaving `x_totals = NULL` keeps the earlier behaviour, reading the X totals from
+`population`.
+
 ## Validation and messages
 
 The tidy format is not only more convenient; it checks the totals against the

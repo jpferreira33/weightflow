@@ -859,11 +859,32 @@ apply_step.step_model_calibration <- function(step, data, w) {
   pop    <- step$population
 
   # Consistency block: X auxiliaries
-  X    <- stats::model.matrix(step$x_formula, data = sdata)
-  Xpop <- stats::model.matrix(step$x_formula, data = pop)
-  Tx   <- colSums(Xpop)[colnames(X)]
-  if (anyNA(Tx))
-    stop("Inconsistent factor levels between the sample and `population` in x_formula.")
+  X  <- stats::model.matrix(step$x_formula, data = sdata)
+  cn <- colnames(X)
+  # X totals may come from the frame (default) or from an external source.
+  if (is.null(step$x_totals)) {
+    # from the population frame, as before
+    Xpop <- stats::model.matrix(step$x_formula, data = pop)
+    Tx   <- colSums(Xpop)[cn]
+    if (anyNA(Tx))
+      stop("Inconsistent factor levels between the sample and `population` in x_formula.")
+  } else {
+    # external totals, same two shapes as step_calibrate(method = "linear"):
+    #   - tidy: a NAMED LIST (data frame per factor, number per continuous)
+    #   - classic: a named numeric vector aligned with the model.matrix columns
+    # `x_formula` columns are only required in the sample, not in `population`.
+    if (is.list(step$x_totals) && !is.data.frame(step$x_totals)) {
+      totvec <- .prep_linear_totals(step$x_formula, step$x_totals, step$count,
+                                    data, active)
+    } else {
+      totvec <- step$x_totals
+    }
+    if (!setequal(names(totvec), cn))
+      stop(sprintf(
+        paste0("`x_totals` names must match the model.matrix columns of ",
+               "`x_formula`.\nExpected: %s"), paste(cn, collapse = ", ")))
+    Tx <- as.numeric(totvec[cn]); names(Tx) <- cn
+  }
 
   # Model-assisted block: one prediction column per model y
   mu_cols <- list(); Tmu <- numeric(0)
@@ -917,6 +938,19 @@ apply_step.step_model_calibration <- function(step, data, w) {
   }
 
   achieved <- colSums(new_w[active] * Z)
+  # Check that the calibration constraints (X and model blocks) are satisfied.
+  # Model calibration is unbounded linear, so deviations only arise from
+  # collinear auxiliaries or an ill-conditioned system.
+  rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
+  off     <- which(rel_dev > 1e-6)
+  if (length(off) > 0L)
+    warning(sprintf(
+      paste0("Model calibration did not fully satisfy the constraints for: %s. ",
+             "The achieved totals differ from the targets (max relative ",
+             "deviation = %.2e); this can happen with collinear auxiliaries or ",
+             "an ill-conditioned system; check the auxiliary variables."),
+      paste(utils::head(colnames(Z)[off], 10L), collapse = ", "), max(rel_dev)),
+      call. = FALSE)
   type <- c(rep("X (consistency)", ncol(X)),
             rep("y (model)", length(step$models)))
   diag <- data.frame(constraint = colnames(Z), type = type,

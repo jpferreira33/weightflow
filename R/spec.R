@@ -596,7 +596,22 @@ y_model <- function(formula, engine = c("glm", "tree", "forest", "boost"), famil
 #' @param models named list of models created with y_model(). The names label
 #'   the prediction constraints.
 #' @param population population data.frame with the auxiliary and predictor
-#'   columns (the y variables are not needed; they are predicted).
+#'   columns (the y variables are not needed; they are predicted). Always
+#'   required: the model-assisted block predicts each y over every population
+#'   unit, which cannot be done from aggregated totals.
+#' @param x_totals optional population totals for the consistency auxiliaries
+#'   (`x_formula`), for when they come from an external source rather than from
+#'   `population` (e.g. an official control total, a variable not present in the
+#'   frame). Two shapes, the same as `step_calibrate(method = "linear")`: the
+#'   tidy format, a named list matching the formula terms with a data frame (all
+#'   categories + a counts column named by `count`) per factor and a single
+#'   number per continuous total; or the classic model-matrix vector (intercept
+#'   plus treatment contrasts). When NULL (default) the X totals are taken from
+#'   `population`. When given, the X totals no longer require `x_formula` columns
+#'   to exist in `population` (only in the sample), and `population` is used only
+#'   for the model predictions.
+#' @param count name of the counts column in the tidy `x_totals` data frames.
+#'   Only used when `x_totals` is given in the tidy (data-frame) format.
 #' @param cluster name of the cluster id column (e.g. "household"), for equal
 #'   weights within the cluster.
 #' @param equal_within_cluster logical. If TRUE, integrative calibration: a
@@ -626,7 +641,23 @@ y_model <- function(formula, engine = c("glm", "tree", "forest", "boost"), famil
 #'     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
 #'     population = population, crossfit = 5, crossfit_seed = 1) |>
 #'   prep()
+#'
+#' # consistency totals from an external source (tidy format): a data frame per
+#' # factor and a single number per continuous total. `population` is still used
+#' # for the model predictions. Adjust for nonresponse first, since the outcome
+#' # is only observed for respondents.
+#' m_region <- as.data.frame(table(region = population$region))
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_model_calibration(
+#'     x_formula  = ~ region + age,
+#'     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+#'     population = population,
+#'     x_totals   = list(region = m_region, age = sum(population$age)),
+#'     count      = "Freq") |>
+#'   prep()
 step_model_calibration <- function(spec, x_formula, models, population,
+                                   x_totals = NULL, count = "Freq",
                                    cluster = NULL, equal_within_cluster = FALSE,
                                    crossfit = NULL, crossfit_seed = NULL) {
   if (!inherits(spec, "weighting_spec"))
@@ -642,6 +673,10 @@ step_model_calibration <- function(spec, x_formula, models, population,
     stop("equal_within_cluster = TRUE requires `cluster`.")
   if (!is.null(crossfit) && (!is.numeric(crossfit) || crossfit < 2))
     stop("`crossfit` must be NULL or an integer >= 2 (number of folds).")
+  if (!is.null(x_totals) &&
+      !(is.numeric(x_totals) || (is.list(x_totals) && !is.data.frame(x_totals))))
+    stop(paste0("`x_totals` must be NULL, a named list (tidy format) or a named ",
+                "numeric vector aligned with the model matrix (classic format)."))
   detail <- if (equal_within_cluster)
               sprintf("%d y variables, equal weights by %s", length(models), cluster)
             else sprintf("%d y variables", length(models))
@@ -651,6 +686,8 @@ step_model_calibration <- function(spec, x_formula, models, population,
       x_formula  = x_formula,
       models     = models,
       population = population,
+      x_totals   = x_totals,
+      count      = count,
       cluster    = cluster,
       equal_within_cluster = equal_within_cluster,
       crossfit      = if (is.null(crossfit)) NULL else as.integer(crossfit),

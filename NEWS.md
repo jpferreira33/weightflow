@@ -77,6 +77,19 @@ for a future CRAN release:
   multiplied by `n_eligible / n_selected` (equivalent to
   `prob = n_selected/n_eligible`). It defaults to 1, so selecting a single person
   keeps working unchanged.
+* **External consistency totals for `step_model_calibration()`.** The totals of
+  the `x_formula` auxiliaries can now be supplied through the new `x_totals`
+  argument, in the same two shapes as `step_calibrate(method = "linear")`: the
+  tidy format (a named list with a data frame per factor, paired with `count`,
+  and a single number per continuous total) or the classic model-matrix vector.
+  This covers the common case where the X control totals come from an external
+  source rather than from the frame; the auxiliaries then need to be present only
+  in the sample, not in `population`. When `x_totals` is `NULL` (default) the X
+  totals are still taken from `population`, so existing code is unchanged.
+  `population` remains required, because the model-assisted block predicts each
+  outcome over every population unit. Model calibration now also warns, like
+  linear calibration, when the achieved totals do not fully satisfy the
+  constraints (collinear or ill-conditioned auxiliaries).
 * **Machine-learning response propensities** (CART, random forest and gradient
   boosting via `xgboost`) for `step_nonresponse()` and `step_model_calibration()`.
 * **k-fold cross-fitting** (`crossfit`) to estimate each unit out-of-sample,
