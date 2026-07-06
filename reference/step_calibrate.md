@@ -21,7 +21,7 @@ step_calibrate(
   count = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
-  calfun = c("linear", "logit"),
+  calfun = c("linear", "logit", "raking"),
   bounds = NULL,
   maxit = 50L,
   tol = 1e-06,
@@ -88,8 +88,13 @@ step_calibrate(
 
 - calfun:
 
-  (only "linear") distance function: "linear" (g = 1 + u) or "logit"
-  (bounded by construction). With "logit", `bounds` is required.
+  (only method = "linear") distance function for the calibration factor
+  g: "linear" (g = 1 + u, closed form), "raking" (g = exp(u), the
+  exponential/multiplicative distance, which keeps the weights positive
+  and still satisfies the constraints exactly) or "logit" (bounded by
+  construction; requires `bounds`). "raking" and "logit" use the
+  iterative Deville-Sarndal solver and work with the integrative option
+  (`equal_within_cluster`) too.
 
 - bounds:
 

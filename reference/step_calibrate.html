@@ -81,7 +81,7 @@ the targets to control extreme weights when there are many auxiliaries.</p>
 <span>  count <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  calfun <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linear"</span>, <span class="st">"logit"</span><span class="op">)</span>,</span>
+<span>  calfun <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linear"</span>, <span class="st">"logit"</span>, <span class="st">"raking"</span><span class="op">)</span>,</span>
 <span>  bounds <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  maxit <span class="op">=</span> <span class="fl">50L</span>,</span>
 <span>  tol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
@@ -148,8 +148,13 @@ weight is also uniform within the cluster.</p></dd>
 
 
 <dt id="arg-calfun">calfun<a class="anchor" aria-label="anchor" href="#arg-calfun"></a></dt>
-<dd><p>(only "linear") distance function: "linear" (g = 1 + u) or
-"logit" (bounded by construction). With "logit", <code>bounds</code> is required.</p></dd>
+<dd><p>(only method = "linear") distance function for the calibration
+factor g: "linear" (g = 1 + u, closed form), "raking" (g = exp(u), the
+exponential/multiplicative distance, which keeps the weights positive and
+still satisfies the constraints exactly) or "logit" (bounded by
+construction; requires <code>bounds</code>). "raking" and "logit" use the iterative
+Deville-Sarndal solver and work with the integrative option
+(<code>equal_within_cluster</code>) too.</p></dd>
 
 
 <dt id="arg-bounds">bounds<a class="anchor" aria-label="anchor" href="#arg-bounds"></a></dt>
