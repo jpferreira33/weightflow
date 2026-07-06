@@ -54,6 +54,22 @@ test_that("jackknife has one replicate per PSU and finite SEs", {
   expect_true(is.finite(jack_mean(jk, "y")$se))
 })
 
+test_that("as_svrepdesign bridges the jackknife into survey (total SE matches)", {
+  skip_if_not_installed("survey")
+  set.seed(5)
+  strata <- rep(c("A", "B", "C"), each = 200)
+  psu    <- paste0(strata, "_", rep(rep(1:5, each = 40), 3))
+  dat    <- data.frame(stratum = strata, psu = psu,
+                       y = rbinom(600, 1, 0.4), w = runif(600, 1, 3))
+  spec <- weighting_spec(dat, base_weights = w)
+  jk   <- jackknife_weights(spec, strata = "stratum", psu = "psu", progress = FALSE)
+
+  se_wf <- jack_total(jk, "y")$se
+  rd    <- as_svrepdesign(jk)
+  se_sv <- as.numeric(survey::SE(survey::svytotal(~y, rd)))
+  expect_equal(as.numeric(se_wf), se_sv, tolerance = 1e-6)
+})
+
 test_that("a single-PSU stratum contributes no variance and warns", {
   dat <- data.frame(stratum = c(rep("A", 4), rep("B", 2)),
                     psu = c("A_1", "A_1", "A_2", "A_2", "B_1", "B_1"),

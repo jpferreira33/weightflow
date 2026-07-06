@@ -7,19 +7,18 @@
 \usage{
 as_svydesign(object, ids, strata = NULL, weight_name = ".weight", ...)
 
-as_svrepdesign(boot, ...)
+as_svrepdesign(object, ...)
 }
 \arguments{
-\item{object}{a prepped recipe (for \code{as_svydesign}) or a data frame with the
-weight and design columns.}
+\item{object}{for \code{as_svydesign}, a prepped recipe or a data frame with the
+weight and design columns; for \code{as_svrepdesign}, a \code{weightflow_boot} or
+\code{weightflow_jack} object.}
 
 \item{ids, strata}{column names of the PSU and the stratum.}
 
 \item{weight_name}{name of the weight column.}
 
 \item{...}{passed to the survey constructor.}
-
-\item{boot}{a \code{weightflow_boot} object.}
 }
 \value{
 A \code{survey.design} / \code{svyrep.design} object.
@@ -27,6 +26,9 @@ A \code{survey.design} / \code{svyrep.design} object.
 \description{
 \code{as_svydesign()} builds a linearization (ultimate-cluster) design from a
 prepped recipe; \code{as_svrepdesign()} builds a replicate-weights design from a
-bootstrap object, so survey/srvyr standard errors include the recipe's
-adjustments. Both require the 'survey' package.
+bootstrap (\code{weightflow_boot}) or jackknife (\code{weightflow_jack}) object, so
+survey/srvyr standard errors include the recipe's adjustments. Both require
+the 'survey' package. With replicate weights you can then estimate any
+statistic for any domain (\code{svytotal}, \code{svymean}, \code{svyratio}, \code{svyby}, ...)
+with variances that reflect the whole recipe.
 }

@@ -324,11 +324,15 @@ jack_mean <- function(jack, variable)
 #'
 #' `as_svydesign()` builds a linearization (ultimate-cluster) design from a
 #' prepped recipe; `as_svrepdesign()` builds a replicate-weights design from a
-#' bootstrap object, so survey/srvyr standard errors include the recipe's
-#' adjustments. Both require the 'survey' package.
+#' bootstrap (`weightflow_boot`) or jackknife (`weightflow_jack`) object, so
+#' survey/srvyr standard errors include the recipe's adjustments. Both require
+#' the 'survey' package. With replicate weights you can then estimate any
+#' statistic for any domain (`svytotal`, `svymean`, `svyratio`, `svyby`, ...)
+#' with variances that reflect the whole recipe.
 #'
-#' @param object a prepped recipe (for `as_svydesign`) or a data frame with the
-#'   weight and design columns.
+#' @param object for `as_svydesign`, a prepped recipe or a data frame with the
+#'   weight and design columns; for `as_svrepdesign`, a `weightflow_boot` or
+#'   `weightflow_jack` object.
 #' @param ids,strata column names of the PSU and the stratum.
 #' @param weight_name name of the weight column.
 #' @param ... passed to the survey constructor.
@@ -351,19 +355,30 @@ as_svydesign <- function(object, ids, strata = NULL, weight_name = ".weight", ..
 }
 
 #' @rdname as_svydesign
-#' @param boot a `weightflow_boot` object.
 #' @export
-as_svrepdesign <- function(boot, ...) {
+as_svrepdesign <- function(object, ...) {
   if (!requireNamespace("survey", quietly = TRUE))
     stop("Install the 'survey' package to use as_svrepdesign().")
-  if (!inherits(boot, "weightflow_boot")) stop("`boot` must be a weightflow_boot object.")
-  keep <- boot$weights > 0
-  survey::svrepdesign(
-    data = boot$data[keep, , drop = FALSE],
-    weights = boot$weights[keep],
-    repweights = boot$replicates[keep, , drop = FALSE],
-    type = "bootstrap", combined.weights = TRUE,
-    scale = 1 / boot$R, rscales = rep(1, boot$R), mse = TRUE, ...)
+  keep <- object$weights > 0
+  if (inherits(object, "weightflow_boot")) {
+    survey::svrepdesign(
+      data = object$data[keep, , drop = FALSE],
+      weights = object$weights[keep],
+      repweights = object$replicates[keep, , drop = FALSE],
+      type = "bootstrap", combined.weights = TRUE,
+      scale = 1 / object$R, rscales = rep(1, object$R), mse = TRUE, ...)
+  } else if (inherits(object, "weightflow_jack")) {
+    # delete-a-PSU jackknife: full (combined) replicate weights with per-replicate
+    # scale (n_h - 1)/n_h; survey centres at the point estimate (mse = TRUE).
+    survey::svrepdesign(
+      data = object$data[keep, , drop = FALSE],
+      weights = object$weights[keep],
+      repweights = object$replicates[keep, , drop = FALSE],
+      type = "other", combined.weights = TRUE,
+      scale = 1, rscales = (object$rep_nh - 1) / object$rep_nh, mse = TRUE, ...)
+  } else {
+    stop("`object` must be a weightflow_boot or weightflow_jack object.")
+  }
 }
 
 #' Collect replicate weights into a data frame ready for srvyr

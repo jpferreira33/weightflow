@@ -97,7 +97,9 @@ for a future CRAN release:
   `strata`/`psu`, the unstratified jackknife (JK1) with `strata = NULL`, and the
   delete-one-unit jackknife with `psu = NULL`. `jackknife_estimate()` (plus
   `jack_total()` / `jack_mean()`) summarise a statistic with the JKn variance and
-  match `survey`'s replicate jackknife for totals.
+  match `survey`'s replicate jackknife for totals. `as_svrepdesign()` now also
+  accepts a jackknife object, so the recipe-aware replicate weights flow into
+  `survey`/`srvyr` for any estimand and any domain.
 * **Exponential (raking) distance for `step_calibrate(method = "linear")`.**
   `calfun` now also accepts `"raking"` (the multiplicative distance g = exp(u)),
   next to `"linear"` and `"logit"`. It keeps the calibration weights positive
