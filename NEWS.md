@@ -90,6 +90,23 @@ for a future CRAN release:
   outcome over every population unit. Model calibration now also warns, like
   linear calibration, when the achieved totals do not fully satisfy the
   constraints (collinear or ill-conditioned auxiliaries).
+* **Exponential (raking) distance for `step_calibrate(method = "linear")`.**
+  `calfun` now also accepts `"raking"` (the multiplicative distance g = exp(u)),
+  next to `"linear"` and `"logit"`. It keeps the calibration weights positive
+  without needing explicit `bounds` and still satisfies the constraints exactly,
+  and works on mixed categorical and continuous auxiliaries as well as with the
+  integrative option (`equal_within_cluster`, one weight per cluster). Matches
+  `survey::calibrate(calfun = "raking")`.
+* **New `disposition` column in the `sample_one` example data.** A single factor
+  with the full field disposition (eligible respondent, eligible nonrespondent,
+  household nonresponse, ineligible, unknown eligibility), recoded from the
+  existing indicator columns (which are kept). It gives a tidy single-column view
+  of the dispositions and can be used directly via logical conditions in the
+  steps.
+* **New vignette "Preparing the sample: eligibility and response before
+  weighting"**, on how the input sample should be classified (the disposition
+  tree), how it is sized (eligibility and response inflation) and how the
+  dispositions map to the adjustment steps.
 * **Machine-learning response propensities** (CART, random forest and gradient
   boosting via `xgboost`) for `step_nonresponse()` and `step_model_calibration()`.
 * **k-fold cross-fitting** (`crossfit`) to estimate each unit out-of-sample,

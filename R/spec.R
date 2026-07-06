@@ -316,8 +316,13 @@ step_nonresponse <- function(spec, respondent,
 #'   (1987) integrative calibration: a single weight per cluster. Requires
 #'   `cluster`. Final weights are equal within the cluster provided the incoming
 #'   weight is also uniform within the cluster.
-#' @param calfun (only "linear") distance function: "linear" (g = 1 + u) or
-#'   "logit" (bounded by construction). With "logit", `bounds` is required.
+#' @param calfun (only method = "linear") distance function for the calibration
+#'   factor g: "linear" (g = 1 + u, closed form), "raking" (g = exp(u), the
+#'   exponential/multiplicative distance, which keeps the weights positive and
+#'   still satisfies the constraints exactly) or "logit" (bounded by
+#'   construction; requires `bounds`). "raking" and "logit" use the iterative
+#'   Deville-Sarndal solver and work with the integrative option
+#'   (`equal_within_cluster`) too.
 #' @param bounds (only "linear") numeric c(L, U) with L < 1 < U. Bounds on the
 #'   calibration factor g (g-weights). With "linear" it truncates; with "logit"
 #'   it is enforced smoothly. Avoids extreme/negative weights without a separate
@@ -384,7 +389,7 @@ step_calibrate <- function(spec, margins = NULL,
                            method = c("raking", "poststratify", "linear"),
                            formula = NULL, totals = NULL, count = NULL,
                            cluster = NULL, equal_within_cluster = FALSE,
-                           calfun = c("linear", "logit"), bounds = NULL,
+                           calfun = c("linear", "logit", "raking"), bounds = NULL,
                            maxit = 50L, tol = 1e-6, penalty = NULL) {
   method <- match.arg(method)
   calfun <- match.arg(calfun)

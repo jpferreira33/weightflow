@@ -78,3 +78,43 @@ test_that("linear/GREG (categorical + numeric) matches survey::calibrate", {
                                population = pop_tot, calfun = "linear")
   expect_equal(as.numeric(weights(des_lin)), as.numeric(wf), tolerance = 1e-6)
 })
+
+test_that("the exponential (raking) distance matches survey calfun = 'raking'", {
+  skip_if_not_installed("survey")
+  skip_if_not_installed("MASS")   # survey's raking distance uses MASS::ginv
+  cc <- cascade()
+  wf <- prep(cc$nr_spec |>
+               step_calibrate(method = "linear", formula = ~ region + sex + income,
+                              totals = list(region = reg_tab, sex = sex_tab,
+                                            income = inc_tot),
+                              count = "Freq", calfun = "raking"))$final_weight[cc$act]
+  rlev <- levels(population$region); slev <- levels(population$sex)
+  pop_tot <- c(`(Intercept)` = nrow(population),
+    stats::setNames(as.numeric(table(population$region))[-1], paste0("region", rlev[-1])),
+    stats::setNames(as.numeric(table(population$sex))[-1],    paste0("sex",    slev[-1])),
+    income = inc_tot)
+  des_rk <- survey::calibrate(cc$des, ~ region + sex + income,
+                              population = pop_tot, calfun = "raking")
+  expect_equal(as.numeric(weights(des_rk)), as.numeric(wf), tolerance = 1e-6)
+})
+
+test_that("the raking distance keeps positive weights and works with the integrative option", {
+  # take-all roster: base weights are uniform within household, so integrative
+  # calibration (one weight per household) is well defined.
+  d   <- sample_survey
+  reg <- as.data.frame(table(region = population$region))
+  sx  <- as.data.frame(table(sex    = population$sex))
+
+  fitted <- weighting_spec(d, base_weights = pw) |>
+    step_calibrate(method = "linear", formula = ~ region + sex,
+                   totals = list(region = reg, sex = sx), count = "Freq",
+                   calfun = "raking",
+                   cluster = "household_id", equal_within_cluster = TRUE) |>
+    prep()
+
+  w <- fitted$final_weight
+  a <- w > 0
+  expect_true(all(w[a] > 0))                                   # exponential -> positive
+  spread <- tapply(w[a], d$household_id[a], function(x) diff(range(x)))
+  expect_lt(max(spread), 1e-8)                                 # equal within household
+})

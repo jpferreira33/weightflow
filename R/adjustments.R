@@ -611,11 +611,19 @@ apply_step.step_calibrate <- function(step, data, w) {
         "`totals` names must match the model.matrix columns.\nExpected: %s",
         paste(cn, collapse = ", ")))
     Tvec     <- as.numeric(totvec[cn])      # reorder to X columns
-    bounded  <- !is.null(step$bounds) || step$calfun == "logit"
+    # Closed form only for plain linear (calfun = "linear", no bounds). The
+    # exponential ("raking") distance, logit, or explicit bounds use the
+    # iterative Deville-Sarndal solver. Only bounds/logit may relax the
+    # constraints; the exponential distance is exact when it converges.
+    use_ds    <- step$calfun != "linear" || !is.null(step$bounds)
+    truncated <- !is.null(step$bounds) || step$calfun == "logit"
+    if (!is.null(step$penalty) && use_ds)
+      stop("`penalty` (ridge) is only available for unbounded linear ",
+           "calibration (calfun = \"linear\" without bounds).")
 
     if (!step$equal_within_cluster) {
       # --- unit-level ---
-      if (!bounded) {
+      if (!use_ds) {
         A <- t(X) %*% (d * X)
         if (!is.null(step$penalty)) A <- A + .ridge_diag(step$penalty, cn, A)
         lambda <- .solve_calib(A, Tvec - colSums(d * X))
@@ -636,7 +644,7 @@ apply_step.step_calibrate <- function(step, data, w) {
       hh <- unique(cl)
       Wh <- as.numeric(tapply(d, cl, mean)[hh])           # household weight
       Sh <- rowsum(X, group = cl)[hh, , drop = FALSE]     # household aux. sums
-      if (!bounded) {
+      if (!use_ds) {
         A <- t(Sh) %*% (Wh * Sh)
         if (!is.null(step$penalty)) A <- A + .ridge_diag(step$penalty, cn, A)
         lambda <- .solve_calib(A, Tvec - colSums(Wh * Sh))
@@ -654,7 +662,7 @@ apply_step.step_calibrate <- function(step, data, w) {
     achieved <- colSums(new_w[active] * X)
     # Check that the calibration constraints are satisfied (unless ridge, where
     # relaxation is intentional, or bounded, which has its own convergence warn).
-    if (is.null(step$penalty) && !bounded) {
+    if (is.null(step$penalty) && !truncated) {
       rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
       off <- which(rel_dev > 1e-6)
       if (length(off) > 0L)
@@ -670,7 +678,7 @@ apply_step.step_calibrate <- function(step, data, w) {
                        achieved = round(achieved, 2), stringsAsFactors = FALSE)
     if (!is.null(step$penalty))
       diag$deviation <- round(achieved - Tvec, 2)
-    bnote <- if (bounded)
+    bnote <- if (use_ds)
       sprintf(" [calfun = %s%s]", step$calfun,
               if (!is.null(step$bounds)) sprintf(", bounds (%.2f, %.2f)",
                                                  step$bounds[1], step$bounds[2]) else "")
