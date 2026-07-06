@@ -334,25 +334,27 @@ two give the same flag.</p>
 <span><span class="co">#   step_drop_ineligible(ineligible = ineligible)</span></span>
 <span><span class="co">#   step_drop_ineligible(ineligible = disposition == "ineligible")</span></span></code></pre></div>
 <p>We add an age grouping for the person-level nonresponse cells, then
-run the disposition stages in order (using the indicator columns
-here).</p>
+run the disposition stages in order, pointing each step at a condition
+on the <code>disposition</code> column, the single field-outcome
+variable the sample carries.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dat</span><span class="op">$</span><span class="va">age_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cut.html" class="external-link">cut</a></span><span class="op">(</span><span class="va">dat</span><span class="op">$</span><span class="va">age</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span>, <span class="fl">45</span>, <span class="fl">60</span>, <span class="cn">Inf</span><span class="op">)</span>,</span>
 <span>                   labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"18-30"</span>, <span class="st">"31-45"</span>, <span class="st">"46-60"</span>, <span class="st">"60+"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">dat</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 1. unresolved cases: redistribute their weight within region (no roster)</span></span>
-<span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"unknown eligibility"</span>,</span>
+<span>                           by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 2. out-of-scope cases: remove after they absorbed the unknown share</span></span>
-<span>  <span class="fu"><a href="../reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">ineligible</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="co"># 3. household nonresponse: reached vs not, within region</span></span>
-<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">hh_responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
-<span>                   by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"ineligible"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="co"># 3. household nonresponse: reached households vs not, within region</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">disposition</span> <span class="op">!=</span> <span class="st">"household nonresponse"</span>,</span>
+<span>                   method <span class="op">=</span> <span class="st">"weighting_class"</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 4. within-household selection of one person</span></span>
 <span>  <span class="fu"><a href="../reference/step_select_within.html">step_select_within</a></span><span class="op">(</span>prob <span class="op">=</span> <span class="va">p_within</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 5. person nonresponse, within demographic cells</span></span>
-<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
-<span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span>, <span class="st">"age_grp"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"eligible respondent"</span>,</span>
+<span>                   method <span class="op">=</span> <span class="st">"weighting_class"</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span>, <span class="st">"age_grp"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fitted</span></span>
@@ -472,11 +474,35 @@ carry the nonrespondents.</p>
 <span><span class="co">#&gt;   West | M | 46-60             3             3 2.005306</span></span>
 <span><span class="co">#&gt;     West | M | 60+             4             2 1.499946</span></span>
 <span><span class="co">#&gt; Kish deff: 1.460 -&gt; 1.510   |   n_eff: 216 -&gt; 138</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="the-same-recipe-with-the-ready-made-indicator-columns">The same recipe with the ready-made indicator columns<a class="anchor" aria-label="anchor" href="#the-same-recipe-with-the-ready-made-indicator-columns"></a>
+</h3>
+<p><code>sample_one</code> also ships the dispositions as 0/1 indicator
+columns (<code>unknown_elig</code>, <code>ineligible</code>,
+<code>hh_responded</code>, <code>responded</code>), and every step
+accepts either form. Pointing the steps at those columns is exactly
+equivalent, and it is the style the other articles use, so the recipes
+there look like this:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fitted2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">dat</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">ineligible</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">hh_responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
+<span>                   by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_select_within.html">step_select_within</a></span><span class="op">(</span>prob <span class="op">=</span> <span class="va">p_within</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
+<span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span>, <span class="st">"age_grp"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># same weights as the disposition-based version</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">final_weight</span>, <span class="va">fitted2</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p>From here the recipe would continue with calibration and, optionally,
 trimming; those stages are covered in the calibration and
 getting-started articles. The point of this article is upstream of them:
 if the dispositions are classified and encoded correctly, every later
 factor is applied to the right set of cases.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

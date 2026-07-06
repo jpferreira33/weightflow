@@ -219,7 +219,9 @@ identical(dat$ineligible == 1L, dat$disposition == "ineligible")
 ```
 
 We add an age grouping for the person-level nonresponse cells, then run
-the disposition stages in order (using the indicator columns here).
+the disposition stages in order, pointing each step at a condition on
+the `disposition` column, the single field-outcome variable the sample
+carries.
 
 ``` r
 
@@ -228,17 +230,18 @@ dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
 
 fitted <- weighting_spec(dat, base_weights = pw) |>
   # 1. unresolved cases: redistribute their weight within region (no roster)
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = disposition == "unknown eligibility",
+                           by = "region") |>
   # 2. out-of-scope cases: remove after they absorbed the unknown share
-  step_drop_ineligible(ineligible = ineligible) |>
-  # 3. household nonresponse: reached vs not, within region
-  step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+  step_drop_ineligible(ineligible = disposition == "ineligible") |>
+  # 3. household nonresponse: reached households vs not, within region
+  step_nonresponse(respondent = disposition != "household nonresponse",
+                   method = "weighting_class", by = "region") |>
   # 4. within-household selection of one person
   step_select_within(prob = p_within) |>
   # 5. person nonresponse, within demographic cells
-  step_nonresponse(respondent = responded, method = "weighting_class",
-                   by = c("region", "sex", "age_grp")) |>
+  step_nonresponse(respondent = disposition == "eligible respondent",
+                   method = "weighting_class", by = c("region", "sex", "age_grp")) |>
   prep()
 
 fitted
@@ -362,6 +365,31 @@ summary(fitted)
 #>   West | M | 46-60             3             3 2.005306
 #>     West | M | 60+             4             2 1.499946
 #> Kish deff: 1.460 -> 1.510   |   n_eff: 216 -> 138
+```
+
+### The same recipe with the ready-made indicator columns
+
+`sample_one` also ships the dispositions as 0/1 indicator columns
+(`unknown_elig`, `ineligible`, `hh_responded`, `responded`), and every
+step accepts either form. Pointing the steps at those columns is exactly
+equivalent, and it is the style the other articles use, so the recipes
+there look like this:
+
+``` r
+
+fitted2 <- weighting_spec(dat, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_drop_ineligible(ineligible = ineligible) |>
+  step_nonresponse(respondent = hh_responded, method = "weighting_class",
+                   by = "region") |>
+  step_select_within(prob = p_within) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = c("region", "sex", "age_grp")) |>
+  prep()
+
+# same weights as the disposition-based version
+all.equal(fitted$final_weight, fitted2$final_weight)
+#> [1] TRUE
 ```
 
 From here the recipe would continue with calibration and, optionally,
