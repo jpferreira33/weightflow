@@ -90,6 +90,14 @@ for a future CRAN release:
   outcome over every population unit. Model calibration now also warns, like
   linear calibration, when the achieved totals do not fully satisfy the
   constraints (collinear or ill-conditioned auxiliaries).
+* **Delete-a-PSU jackknife variance (recipe-aware).** `jackknife_weights()`
+  builds jackknife replicate weights by deleting one PSU at a time and re-running
+  the whole recipe on each replicate, so the replicate weights carry the
+  variability of every adjustment. It is the stratified jackknife (JKn) with
+  `strata`/`psu`, the unstratified jackknife (JK1) with `strata = NULL`, and the
+  delete-one-unit jackknife with `psu = NULL`. `jackknife_estimate()` (plus
+  `jack_total()` / `jack_mean()`) summarise a statistic with the JKn variance and
+  match `survey`'s replicate jackknife for totals.
 * **Exponential (raking) distance for `step_calibrate(method = "linear")`.**
   `calfun` now also accepts `"raking"` (the multiplicative distance g = exp(u)),
   next to `"linear"` and `"logit"`. It keeps the calibration weights positive

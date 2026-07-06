@@ -108,10 +108,12 @@ reference:
   - design_effect
   - report_weighting
 - title: Variance estimation
-  desc: Bootstrap that re-applies the recipe, plus survey/srvyr bridges.
+  desc: Bootstrap and jackknife that re-apply the recipe, plus survey/srvyr bridges.
   contents:
   - bootstrap_weights
   - bootstrap_estimate
+  - jackknife_weights
+  - jackknife_estimate
   - as_svydesign
   - collect_replicate_weights
 - title: Example data
