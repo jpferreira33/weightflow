@@ -382,7 +382,8 @@ Inspect, summarise and report the cascade.
 
 ## Variance estimation
 
-Bootstrap that re-applies the recipe, plus survey/srvyr bridges.
+Bootstrap and jackknife that re-apply the recipe, plus survey/srvyr
+bridges.
 
 - [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
   : Bootstrap replicate weights that re-apply the recipe
@@ -390,6 +391,12 @@ Bootstrap that re-applies the recipe, plus survey/srvyr bridges.
   [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
   [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
   : Bootstrap estimate, standard error and confidence interval
+- [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+  : Delete-a-PSU jackknife replicate weights that re-apply the recipe
+- [`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  [`jack_mean()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  : Jackknife estimate, standard error and confidence interval
 - [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
   [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
   : Export weightflow weights to a survey design

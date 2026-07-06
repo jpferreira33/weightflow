@@ -127,6 +127,21 @@ planned for a future CRAN release:
   Model calibration now also warns, like linear calibration, when the
   achieved totals do not fully satisfy the constraints (collinear or
   ill-conditioned auxiliaries).
+- **Delete-a-PSU jackknife variance (recipe-aware).**
+  [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+  builds jackknife replicate weights by deleting one PSU at a time and
+  re-running the whole recipe on each replicate, so the replicate
+  weights carry the variability of every adjustment. It is the
+  stratified jackknife (JKn) with `strata`/`psu`, the unstratified
+  jackknife (JK1) with `strata = NULL`, and the delete-one-unit
+  jackknife with `psu = NULL`.
+  [`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  (plus
+  [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  /
+  [`jack_mean()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md))
+  summarise a statistic with the JKn variance and match `survey`’s
+  replicate jackknife for totals.
 - **Exponential (raking) distance for
   `step_calibrate(method = "linear")`.** `calfun` now also accepts
   `"raking"` (the multiplicative distance g = exp(u)), next to
