@@ -142,6 +142,9 @@ planned for a future CRAN release:
   [`jack_mean()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md))
   summarise a statistic with the JKn variance and match `survey`’s
   replicate jackknife for totals.
+  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  now also accepts a jackknife object, so the recipe-aware replicate
+  weights flow into `survey`/`srvyr` for any estimand and any domain.
 - **Exponential (raking) distance for
   `step_calibrate(method = "linear")`.** `calfun` now also accepts
   `"raking"` (the multiplicative distance g = exp(u)), next to
