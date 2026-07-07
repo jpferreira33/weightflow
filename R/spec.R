@@ -310,6 +310,15 @@ step_nonresponse <- function(spec, respondent,
 #'   (you never handle the intercept or dropped reference category).
 #' @param count (tidy `totals` only) string naming the counts column in the
 #'   totals data frame(s). All other columns are treated as category variables.
+#' @param by (tidy `totals` only) NULL, or a string naming a domain (partition)
+#'   column. When given, the weights are calibrated **independently within each
+#'   domain**, each to its own totals (partitioned / domain calibration). The
+#'   totals tables carry the domain as a column, and each `count` table is split
+#'   by it; a continuous total becomes a data frame `domain, value` (one total per
+#'   domain). The domain variable must NOT appear in `formula` / the margins: it
+#'   is the partition. Composes with `calfun`, `bounds`, `penalty` and
+#'   `equal_within_cluster`, applied within each domain. NULL (default) calibrates
+#'   globally, as before.
 #' @param cluster (only "linear") name of the cluster id column (e.g. "household"),
 #'   for equal weights within the cluster.
 #' @param equal_within_cluster (only "linear") logical. If TRUE, Lemaitre-Dufour
@@ -387,7 +396,7 @@ step_nonresponse <- function(spec, respondent,
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_calibrate <- function(spec, margins = NULL,
                            method = c("raking", "poststratify", "linear"),
-                           formula = NULL, totals = NULL, count = NULL,
+                           formula = NULL, totals = NULL, count = NULL, by = NULL,
                            cluster = NULL, equal_within_cluster = FALSE,
                            calfun = c("linear", "logit", "raking"), bounds = NULL,
                            maxit = 50L, tol = 1e-6, penalty = NULL) {
@@ -435,6 +444,18 @@ step_calibrate <- function(spec, margins = NULL,
         stop("When `totals` contains data frames, `count` must name their counts column.")
     }
   }
+  if (!is.null(by)) {
+    if (!is.character(by) || length(by) != 1L)
+      stop("`by` must be a single string naming the domain (partition) column.")
+    if (!(totals_is_df || totals_is_list))
+      stop(paste0("`by` (domain calibration) requires the tidy `totals` format ",
+                  "(a data frame, or a list of data frames, carrying the domain ",
+                  "as a column), not `margins`."))
+    if (method == "linear" && !is.null(formula) && by %in% all.vars(formula))
+      stop(sprintf(paste0("The domain variable '%s' must not appear in `formula`; ",
+                          "it is the partition, and the totals tables carry it as ",
+                          "a column."), by))
+  }
   if (calfun == "logit" && is.null(bounds))
     stop("calfun = 'logit' requires `bounds` = c(L, U).")
   if (!is.null(bounds)) {
@@ -468,6 +489,7 @@ step_calibrate <- function(spec, margins = NULL,
       formula = formula,
       totals  = totals,
       count   = count,
+      by      = by,
       cluster = cluster,
       equal_within_cluster = equal_within_cluster,
       calfun  = calfun,

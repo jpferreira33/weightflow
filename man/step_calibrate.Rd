@@ -11,6 +11,7 @@ step_calibrate(
   formula = NULL,
   totals = NULL,
   count = NULL,
+  by = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
   calfun = c("linear", "logit", "raking"),
@@ -50,6 +51,16 @@ continuous auxiliary; weightflow builds the model.matrix totals internally
 
 \item{count}{(tidy \code{totals} only) string naming the counts column in the
 totals data frame(s). All other columns are treated as category variables.}
+
+\item{by}{(tidy \code{totals} only) NULL, or a string naming a domain (partition)
+column. When given, the weights are calibrated \strong{independently within each
+domain}, each to its own totals (partitioned / domain calibration). The
+totals tables carry the domain as a column, and each \code{count} table is split
+by it; a continuous total becomes a data frame \verb{domain, value} (one total per
+domain). The domain variable must NOT appear in \code{formula} / the margins: it
+is the partition. Composes with \code{calfun}, \code{bounds}, \code{penalty} and
+\code{equal_within_cluster}, applied within each domain. NULL (default) calibrates
+globally, as before.}
 
 \item{cluster}{(only "linear") name of the cluster id column (e.g. "household"),
 for equal weights within the cluster.}

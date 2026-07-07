@@ -557,10 +557,65 @@ apply_step.step_nonresponse <- function(step, data, w) {
   list(weights = new_w, diagnostics = diag)
 }
 
+# --- Domain (partitioned) calibration --------------------------------------
+# Split one tidy totals table to a single domain `d`: keep the rows of that
+# domain, drop the domain column. A table with the `count` column stays a
+# (categorical) data frame; a 2-column table without `count` (a continuous
+# total given as `domain, value`) collapses to the single number for `d`.
+.split_totals_by_domain <- function(totals, byvar, count, d) {
+  split_one <- function(t) {
+    if (!is.data.frame(t)) return(t)
+    if (!byvar %in% names(t))
+      stop(sprintf("The calibration totals are missing the domain column '%s'.", byvar))
+    sub <- t[as.character(t[[byvar]]) == d, , drop = FALSE]
+    sub[[byvar]] <- NULL
+    rownames(sub) <- NULL
+    if (!is.null(count) && !(count %in% names(sub)) && ncol(sub) == 1L)
+      return(as.numeric(sub[[1L]][1L]))           # continuous total -> single number
+    sub
+  }
+  if (is.data.frame(totals)) split_one(totals)
+  else if (is.list(totals)) { out <- lapply(totals, split_one); names(out) <- names(totals); out }
+  else totals
+}
+
+# Calibrate independently within each domain and stitch the weights back.
+.calibrate_by_domain <- function(step, data, w) {
+  byvar <- step$by
+  if (!byvar %in% names(data))
+    stop(sprintf("Domain column '%s' not found in the data.", byvar))
+  dom    <- as.character(data[[byvar]])
+  active <- w > 0
+  if (any(is.na(dom[active])))
+    stop(sprintf("Domain column '%s' has missing values (NA) among active units.", byvar))
+
+  new_w <- w
+  diags <- list()
+  doms  <- unique(dom[active])
+  for (d in doms) {
+    idx_d  <- which(dom == d)
+    step_d <- step
+    step_d$by     <- NULL                          # avoid recursion; calibrate this domain
+    step_d$totals <- .split_totals_by_domain(step$totals, byvar, step$count, d)
+    res_d <- apply_step(step_d, data[idx_d, , drop = FALSE], w[idx_d])
+    new_w[idx_d] <- res_d$weights
+    dg <- res_d$diagnostics
+    if (!is.null(dg) && nrow(dg) > 0L)
+      diags[[length(diags) + 1L]] <- cbind(domain = d, dg)
+  }
+  diag <- if (length(diags)) do.call(rbind, diags) else NULL
+  if (!is.null(diag))
+    attr(diag, "note") <- sprintf("calibrated independently within '%s' (%d domains)",
+                                  byvar, length(doms))
+  list(weights = new_w, diagnostics = diag)
+}
+
 # --- Calibration -----------------------------------------------------------
 apply_step.step_calibrate <- function(step, data, w) {
   active <- w > 0
   new_w  <- w
+
+  if (!is.null(step$by)) return(.calibrate_by_domain(step, data, w))
 
   if (step$method == "poststratify") {
     # --- tidy `totals` data frame (one or more category columns + counts) ---
