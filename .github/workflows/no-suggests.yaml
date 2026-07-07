@@ -1,0 +1,47 @@
+# Verifies that the package's CORE works without any Suggests installed
+# (no survey, xgboost, ranger, rpart, srvyr, ...): the base recipe must run and
+# the optional-engine / survey-bridge tests must skip gracefully.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+name: no-suggests.yaml
+
+permissions: read-all
+
+jobs:
+  no-suggests:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      # Install ONLY hard dependencies (Depends/Imports/LinkingTo) plus testthat.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"hard"'
+          extra-packages: any::testthat
+
+      - name: Install the package (no Suggests)
+        run: R CMD INSTALL --no-multiarch --with-keep.source .
+
+      - name: Run the test suite without Suggests
+        run: |
+          # The optional-engine and survey-bridge tests use skip_if_not_installed(),
+          # so they skip here; everything else must pass.
+          res <- testthat::test_package("weightflow", reporter = "summary")
+          df  <- as.data.frame(res)
+          if (sum(df$failed) > 0 || any(df$error)) {
+            stop(sprintf("%d test failure(s) without Suggests.", sum(df$failed)))
+          }
+          message(sprintf("OK: %d passed, %d skipped, 0 failed (no Suggests).",
+                          sum(df$passed), sum(df$skipped)))
+        shell: Rscript {0}
