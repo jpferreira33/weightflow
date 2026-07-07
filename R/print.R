@@ -68,5 +68,11 @@ summary.prepped_weighting_spec <- function(object, ...) {
       de_before$deff, de_after$deff, de_before$n_eff, de_after$n_eff
     ))
   }
+  # R-indicator (representativity of the response), shown when the recipe
+  # includes a nonresponse adjustment. Closer to 1 = more representative.
+  ri <- .r_indicator(object)
+  if (!is.null(ri))
+    cat(sprintf("R-indicator (representativity of response): %.3f  (on %s)\n",
+                ri$R, paste(ri$aux, collapse = ", ")))
   invisible(object)
 }

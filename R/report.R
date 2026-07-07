@@ -238,6 +238,25 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
       if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else ""))
   }
 
+  # R-indicator (representativity of response), only when the recipe adjusts for
+  # nonresponse. Global R plus the partial R-indicators by variable.
+  ri <- .r_indicator(object)
+  ri_html <- if (is.null(ri)) "" else {
+    ptab <- ri$partials
+    if (!is.null(ptab)) {
+      ptab <- ptab[order(-ptab$partial_R), , drop = FALSE]
+      ptab$partial_R <- round(ptab$partial_R, 4)
+    }
+    sprintf(
+      "<h2>Response representativity (R-indicator)</h2>
+<p class='muted'>Design-weighted logistic of response on <code>%s</code>, over the eligible sample (n = %s). Closer to 1 = more representative response; the partials show which variable drives the lack of representativity.</p>
+<div class='cards'><div class='metric'><div class='mv'>%.3f</div><div class='ml'>R-indicator</div></div></div>%s",
+      .html_escape(paste(ri$aux, collapse = ", ")),
+      format(ri$n_eligible, big.mark = ","), ri$R,
+      if (!is.null(ptab))
+        paste0("<p class='muted'>Partial R-indicators:</p>", .df_to_html(ptab)) else "")
+  }
+
   diagram <- .pipeline_diagram(object)
   allvars <- unique(c(object$base_weights, unlist(lapply(object$steps, .step_vars))))
   vars_chips <- .chips(allvars)
@@ -250,10 +269,11 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
 <h2>Pipeline</h2>%s
 <p class='muted'>Variables used:</p>%s
 <h2>Per-stage summary</h2>%s
+%s
 <h2>Steps</h2>%s
 <p class='foot'>deff = Kish design effect (1 + CV&sup2;). This report shows weights only; for inference use the 'survey' package.</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), cards, diagram, vars_chips, .df_to_html(stab), steps_html)
+    length(object$steps), cards, diagram, vars_chips, .df_to_html(stab), ri_html, steps_html)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)

@@ -116,6 +116,16 @@ for a future CRAN release:
   and works on mixed categorical and continuous auxiliaries as well as with the
   integrative option (`equal_within_cluster`, one weight per cluster). Matches
   `survey::calibrate(calfun = "raking")`.
+* **R-indicator of response representativity (automatic diagnostic).** When the
+  recipe includes a nonresponse adjustment, `summary()` and `report_weighting()`
+  now report the R-indicator (Schouten, Cobben & Bethlehem), R = 1 - 2·S(ρ̂) with
+  the design-weighted standard deviation of the estimated response propensities
+  over the eligible sample: closer to 1 means a more representative response and
+  less nonresponse-bias risk. The report also shows the unconditional partial
+  R-indicators by auxiliary, pointing to which variable drives the lack of
+  representativity. It is computed on the auxiliaries of the nonresponse step and
+  needs no new function or user action; recipes without a nonresponse step are
+  unaffected.
 * **New `disposition` column in the `sample_one` example data.** A single factor
   with the full field disposition (eligible respondent, eligible nonrespondent,
   household nonresponse, ineligible, unknown eligibility), recoded from the

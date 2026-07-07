@@ -2,10 +2,12 @@ AAPOR
 ANDA
 ASA
 Bardsley
+Bethlehem
 Biometrika
 Breidt
 CMD
 Chernozhukov
+Cobben
 Dever
 Deville
 Dufour
@@ -37,6 +39,7 @@ Ranalli
 Rao
 Sarndal
 Sautory
+Schouten
 Springer
 Swensson
 Särndal
@@ -96,6 +99,7 @@ poststratify
 pre
 prev
 qquad
+representativity
 rpart
 srvyr
 subseteq
