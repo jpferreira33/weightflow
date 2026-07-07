@@ -15,9 +15,16 @@ has_srvyr  <- requireNamespace("srvyr", quietly = TRUE) &&
               requireNamespace("dplyr", quietly = TRUE)
 ```
 
+> **Development version.** The PSU bootstrap (method 1) and the survey/srvyr
+> bridges are on CRAN. The delete-a-PSU **jackknife** (method 3,
+> `jackknife_weights()` / `jackknife_estimate()`) is in the development version
+> (GitHub) and ships in **0.2.0**. Install with
+> `remotes::install_github("jpferreira33/weightflow")` to use it today.
+
 weightflow computes weights and also estimates their variances. This vignette
-shows two ways to obtain standard errors from a weightflow recipe, and how they
-relate.
+shows a few ways to obtain standard errors from a weightflow recipe, and how they
+relate: a recipe-aware bootstrap, a survey-package linearization, and a
+recipe-aware jackknife.
 
 Throughout, $U$ is the population and $s$ the sample; $w_i$ is the final weight of
 unit $i$; and a population total is written $Y = \sum_{i \in U} y_i$, estimated by
@@ -143,13 +150,37 @@ d_rep <- srvyr::as_survey_rep(df, weights = .weight,
 srvyr::summarise(d_rep, mean_income = srvyr::survey_mean(income, na.rm = TRUE))
 ```
 
+## Method 3: a delete-a-PSU jackknife that re-applies the recipe
+
+The jackknife is the natural sibling of the bootstrap: instead of resampling
+PSUs, it **deletes one PSU at a time** and re-runs the whole recipe, so the
+replicate weights again carry the variability of every stage.
+`jackknife_weights()` builds the stratified delete-a-PSU jackknife (JKn) with
+`strata`/`psu`; the unstratified JK1 follows from `strata = NULL`.
+
+```{r jackknife}
+jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
+jk
+
+jack_mean(jk,  "income")     # mean income, with the JKn variance
+jack_total(jk, "employed")   # total employed
+```
+
+For a total it matches `survey`'s replicate jackknife exactly. As with the
+bootstrap, the replicate weights bridge to survey/srvyr through
+`as_svrepdesign(jk)`, so any estimand or domain can be estimated downstream with
+the recipe's uncertainty built in.
+
 ## Which one to use
 
 Use the **recipe-aware bootstrap** (method 1, in any of its three forms) when
 the nonresponse and calibration steps are a meaningful part of the design and
 you want their uncertainty reflected; it is the more honest variance. Use the
 **linearization** (method 2) for a quick, well-understood standard error when
-the adjustments are minor or you only need the design-and-clustering part.
+the adjustments are minor or you only need the design-and-clustering part. The
+**jackknife** (method 3) is the recipe-aware alternative to the bootstrap when a
+deterministic, replicate-based variance is preferred; it matches `survey`'s
+replicate jackknife for totals.
 
 A few practical notes. More replicates give a more stable bootstrap SE; 200 is
 fine for exploration, 500-1000 for final figures. Each stratum needs at least
