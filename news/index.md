@@ -169,7 +169,7 @@ planned for a future CRAN release:
   [`summary()`](https://rdrr.io/r/base/summary.html) and
   [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
   now report the R-indicator (Schouten, Cobben & Bethlehem), R = 1 -
-  2·S(ρ̂) with the design-weighted standard deviation of the estimated
+  2\*S, with S the design-weighted standard deviation of the estimated
   response propensities over the eligible sample: closer to 1 means a
   more representative response and less nonresponse-bias risk. The
   report also shows the unconditional partial R-indicators by auxiliary,
