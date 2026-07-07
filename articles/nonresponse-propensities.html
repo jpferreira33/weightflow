@@ -40,15 +40,18 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
@@ -83,6 +86,16 @@
 
     
     
+<blockquote>
+<p><strong>Development version.</strong> The gradient-boosting engine
+(<code>engine = "boost"</code>) and k-fold cross-fitting
+(<code>crossfit</code>) shown here are in the development version of
+weightflow (GitHub) and not yet on CRAN; so is the R-indicator line that
+<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> prints. Install with
+<code>remotes::install_github("jpferreira33/weightflow")</code>.
+Weighting classes and the logit/tree/forest propensity engines are on
+CRAN and unchanged.</p>
+</blockquote>
 <p>Nonresponse adjustment inflates the weights of respondents so they
 also represent the nonrespondents. <code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code>
 offers two routes: weighting classes and response propensity models.
@@ -183,7 +196,9 @@ define them (here, <code>region</code>):</p>
 <span><span class="co">#&gt;  North            78            41 1.525641</span></span>
 <span><span class="co">#&gt;  South            72            49 1.680556</span></span>
 <span><span class="co">#&gt;   West            68            63 1.926471</span></span>
-<span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.021   |   n_eff: 442 -&gt; 265</span></span></code></pre></div>
+<span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.021   |   n_eff: 442 -&gt; 265</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.892  (on region)</span></span></code></pre></div>
 <p><strong>Validation.</strong> By construction the total weight is
 preserved <em>within each cell</em> (the nonrespondents’ weight is moved
 to the respondents, not lost). So the weighted total per region after
@@ -252,7 +267,9 @@ robust to a misspecified model.</p>
 <span><span class="co">#&gt;     (0.547,0.594] 101 0.5721654 1.602273</span></span>
 <span><span class="co">#&gt;     (0.594,0.643]  86 0.6162161 1.574468</span></span>
 <span><span class="co">#&gt;     (0.643,0.684]  93 0.6600845 1.576271</span></span>
-<span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.024   |   n_eff: 442 -&gt; 264</span></span></code></pre></div>
+<span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.024   |   n_eff: 442 -&gt; 264</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.889  (on region, sex, age)</span></span></code></pre></div>
 <p>Because the model is fitted with survey weights, a logistic fit may
 print a “non-integer #successes” message: that is expected for a
 weighted binomial fit and does not affect the estimated

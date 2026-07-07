@@ -1,8 +1,15 @@
 # Ways to specify calibration totals
 
-> **Development version.** The tidy data-frame format described here is
-> available in the development version of weightflow. The classic
-> `margins`/`totals` inputs work in every version and are unchanged.
+> **Development version.** Several features shown here are in the
+> development version of weightflow (GitHub) and not yet on CRAN: the
+> tidy data-frame totals (`count`), domain/partitioned calibration
+> (`by`), the exponential raking distance (`calfun = "raking"`),
+> ridge/penalized calibration (`penalty`), and external consistency
+> totals for model calibration (`x_totals`). Install with
+> `remotes::install_github("jpferreira33/weightflow")`. The classic API
+> (raking, post-stratification, GREG, the `margins`/`totals` vector
+> inputs, and the integrative `cluster` option) is on CRAN and
+> unchanged.
 
 Calibration adjusts the weights so that the weighted sample reproduces
 known population totals of auxiliary variables. In practice those totals
@@ -245,28 +252,48 @@ totals. The tidy totals carry the domain as an extra column, and the
 domain variable does **not** go in the formula or the margins (it is the
 partition). This is also called partitioned calibration.
 
+Domain calibration earns its keep when, *within* each domain, you
+calibrate to **more than one** target: two or more raked margins, or a
+continuous total. (With a single margin per domain it would collapse to
+an ordinary global cross-tabulation, so `by =` would add nothing.) Here
+we rake to two margins, sex and age group, **within each region**: the
+region-specific `sex × age` structure is not assumed to be the same
+across regions, which is exactly what a global cross could not express
+with these marginal-only benchmarks.
+
 ``` r
 
-# sex counts by region: the domain (region) is just another column
-sex_by_region <- as.data.frame(table(region = population$region,
-                                      sex    = population$sex))
+# benchmarks known BY REGION: a sex margin and an age-group margin per region.
+pop  <- transform(population,
+  age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+samp <- transform(sample_survey,
+  age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
 
-dom <- weighting_spec(sample_survey, base_weights = pw) |>
-  step_calibrate(method = "raking", totals = list(sex_by_region),
+sex_by_region <- as.data.frame(table(region = pop$region, sex     = pop$sex))
+age_by_region <- as.data.frame(table(region = pop$region, age_grp = pop$age_grp))
+
+dom <- weighting_spec(samp, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 totals = list(sex_by_region, age_by_region),
                  count = "Freq", by = "region") |>
   prep()
 
-# the calibrated weights reproduce the sex counts WITHIN each region
+# within each region the weights reproduce BOTH margins
 w <- dom$final_weight
-round(xtabs(w ~ region + sex,
-            data = data.frame(region = sample_survey$region,
-                              sex = sample_survey$sex, w = w)))
+round(xtabs(w ~ region + sex,     data = cbind(samp, w = w)))
 #>        sex
 #> region    F   M
 #>   North 825 745
 #>   South 643 607
 #>   East  467 460
 #>   West  376 372
+round(xtabs(w ~ region + age_grp, data = cbind(samp, w = w)))
+#>        age_grp
+#> region  18-30 31-45 46-60 60+
+#>   North   415   499   408 248
+#>   South   345   396   324 185
+#>   East    252   309   232 134
+#>   West    195   242   196 115
 ```
 
 Mixing a categorical and a continuous auxiliary by domain works too. The

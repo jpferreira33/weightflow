@@ -52,7 +52,7 @@ step_calibrate(
 
 - formula:
 
-  (only "linear") auxiliary formula, e.g. ~ sex + income. Uses
+  (only method = "linear") auxiliary formula, e.g. ~ sex + income. Uses
   model.matrix; includes the intercept unless you write ~ 0 + ...
 
 - totals:
@@ -89,15 +89,17 @@ step_calibrate(
 
 - cluster:
 
-  (only "linear") name of the cluster id column (e.g. "household"), for
-  equal weights within the cluster.
+  (only method = "linear") name of the cluster id column (e.g.
+  "household"), for equal weights within the cluster.
 
 - equal_within_cluster:
 
-  (only "linear") logical. If TRUE, Lemaitre-Dufour (1987) integrative
-  calibration: a single weight per cluster. Requires `cluster`. Final
-  weights are equal within the cluster provided the incoming weight is
-  also uniform within the cluster.
+  (only method = "linear") logical. If TRUE, Lemaitre-Dufour (1987)
+  integrative calibration: a single weight per cluster. Requires
+  `cluster`. Final weights are equal within the cluster provided the
+  incoming weight is also uniform within the cluster. Works with any
+  `calfun` distance ("linear", "raking" or "logit"), with `bounds` and
+  with `by`.
 
 - calfun:
 
@@ -111,8 +113,8 @@ step_calibrate(
 
 - bounds:
 
-  (only "linear") numeric c(L, U) with L \< 1 \< U. Bounds on the
-  calibration factor g (g-weights). With "linear" it truncates; with
+  (only method = "linear") numeric c(L, U) with L \< 1 \< U. Bounds on
+  the calibration factor g (g-weights). With "linear" it truncates; with
   "logit" it is enforced smoothly. Avoids extreme/negative weights
   without a separate trimming step.
 
@@ -122,7 +124,7 @@ step_calibrate(
 
 - penalty:
 
-  (only "linear", unbounded) NULL or positive cost(s) for ridge
+  (only method = "linear", unbounded) NULL or positive cost(s) for ridge
   (penalized) calibration. A positive scalar applies the same cost to
   every constraint; a named vector sets a cost per constraint (matched
   to the model.matrix columns). The cost is scale-free: a large value
@@ -272,6 +274,39 @@ weighting_spec(resp, base_weights = pw) |>
 #>                   stage n_active sum_wts cv_wts deff_kish n_eff
 #>                    base      270    2582  0.233     1.054   256
 #>  stage_1_step_calibrate      270    4495  0.242     1.058   255
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# Domain (partitioned) calibration: `by` calibrates independently within each
+# domain, each to its own totals. The domain is an extra column in the tidy
+# totals, not a term in the formula/margins. Here we rake two margins (sex and
+# age group) within each region, which a single global cross could not express.
+pop  <- transform(population,
+  age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+samp <- transform(sample_survey,
+  age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+sex_by_region <- as.data.frame(table(region = pop$region, sex     = pop$sex))
+age_by_region <- as.data.frame(table(region = pop$region, age_grp = pop$age_grp))
+weighting_spec(samp, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 totals = list(sex_by_region, age_by_region),
+                 count = "Freq", by = "region") |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. calibration (raking)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                   stage n_active sum_wts cv_wts deff_kish n_eff
+#>                    base      467    4371  0.236     1.056   442
+#>  stage_1_step_calibrate      467    4495  0.331     1.109   421
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and

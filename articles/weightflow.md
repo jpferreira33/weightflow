@@ -1,5 +1,12 @@
 # Staged survey weighting: the adjustment logic
 
+> **Development version.** The whole cascade shown here is on CRAN. The
+> only development-version element is the R-indicator line that
+> [`summary()`](https://rdrr.io/r/base/summary.html) prints after a
+> nonresponse step (representativity of response); it needs no extra
+> code. Install with
+> `remotes::install_github("jpferreira33/weightflow")` to see it.
+
 Survey weights are the fundamental input used to produce population
 estimates from sample data. Let $`U={1,\ldots,N}`$ denote the target
 population and let $`y_i`$ be the value of a study variable for unit
@@ -142,10 +149,11 @@ article shows weightflow’s calibration reproduces the `survey` package.
 ``` r
 
 fitted <- weighting_spec(dat, base_weights = pw) |>
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
   step_drop_ineligible(ineligible = ineligible) |>
   step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+                   by = "region", cluster = "household_id") |>
   step_select_within(prob = p_within) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>
@@ -183,10 +191,11 @@ consistency with the auxiliary population totals.
 ``` r
 
 trimmed <- weighting_spec(dat, base_weights = pw) |>
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
   step_drop_ineligible(ineligible = ineligible) |>
   step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+                   by = "region", cluster = "household_id") |>
   step_select_within(prob = p_within) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>
@@ -234,9 +243,9 @@ summary(fitted)
 #> Data    : 417 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. unknown eligibility
+#>   1. unknown eligibility (by household_id)
 #>   2. drop ineligible
-#>   3. nonresponse (weighting class)
+#>   3. nonresponse (weighting class, by household_id)
 #>   4. within-household selection
 #>   5. nonresponse (weighting class)
 #>   6. calibration (raking)
@@ -256,12 +265,12 @@ summary(fitted)
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
 #> improve with trimming.
 #> 
-#> --- Step 1: unknown eligibility ---
-#>   cell  level n_known n_unknown   factor
-#>   East person      56         7 1.125000
-#>  North person     127         8 1.062992
-#>  South person      97         2 1.020619
-#>   West person     114         6 1.052632
+#> --- Step 1: unknown eligibility (by household_id) ---
+#>   cell     level n_known n_unknown   factor
+#>   East household      56         7 1.125000
+#>  North household     127         8 1.062992
+#>  South household      97         2 1.020619
+#>   West household     114         6 1.052632
 #> Kish deff: 1.057 -> 1.055   |   n_eff: 395 -> 374
 #> 
 #> --- Step 2: drop ineligible ---
@@ -269,12 +278,12 @@ summary(fitted)
 #>         29         159.22         365
 #> Kish deff: 1.055 -> 1.054   |   n_eff: 374 -> 346
 #> 
-#> --- Step 3: nonresponse (weighting class) ---
-#>   cell n_respondents n_nonresponse   factor
-#>   East            46             8 1.173913
-#>  North           105            11 1.104762
-#>  South            79            13 1.164557
-#>   West            85            18 1.211765
+#> --- Step 3: nonresponse (weighting class, by household_id) ---
+#>   cell n_resp_hh n_nr_hh   factor
+#>  North       105      11 1.104762
+#>  South        79      13 1.164557
+#>   East        46       8 1.173913
+#>   West        85      18 1.211765
 #> Kish deff: 1.054 -> 1.039   |   n_eff: 346 -> 303
 #> 
 #> --- Step 4: within-household selection ---
@@ -328,6 +337,8 @@ summary(fitted)
 #>       sex        M   2184     2184
 #> (converged/iterated in 4 iterations)
 #> Kish deff: 1.510 -> 1.548   |   n_eff: 138 -> 135
+#> 
+#> R-indicator (representativity of response): 0.802  (on region, sex, age_grp)
 ```
 
 And the effect of trimming on the final design effect:

@@ -293,6 +293,19 @@ The maximum within-household spread is zero: the weight is constant
 inside each household, while the region and sex totals are still
 reproduced.
 
+The integrative option is not tied to the default distance: it composes
+with any `calfun` (`"linear"`, `"raking"` or `"logit"`), with `bounds`,
+and with `by` (domain calibration), all applied while keeping one weight
+per cluster. For example, `calfun = "raking"` gives a single positive
+weight per household.
+
+> **Development version.** The exponential `calfun = "raking"` distance
+> and domain calibration (`by`) are in the development version of
+> weightflow (GitHub), not yet on CRAN. The integrative option itself
+> (`cluster` / `equal_within_cluster`), `calfun = "linear"`/`"logit"`
+> and `bounds` are on CRAN. Install with
+> `remotes::install_github("jpferreira33/weightflow")`.
+
 ## Which to use
 
 Post-stratification when the full cross-table is known and the cells are

@@ -18,15 +18,18 @@
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/weightflow.html">Get started</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
@@ -84,7 +87,7 @@ For tree/forest, regression vs classification is inferred from y.</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">y_model</span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, engine <span class="op">=</span> <span class="st">"glm"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $formula</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> income ~ age + sex</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5571d5f5a708&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x558785e99f80&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $engine</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "glm"</span>

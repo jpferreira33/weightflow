@@ -40,15 +40,18 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
@@ -84,10 +87,17 @@
     
     
 <blockquote>
-<p><strong>Development version.</strong> The tidy data-frame format
-described here is available in the development version of weightflow.
-The classic <code>margins</code>/<code>totals</code> inputs work in
-every version and are unchanged.</p>
+<p><strong>Development version.</strong> Several features shown here are
+in the development version of weightflow (GitHub) and not yet on CRAN:
+the tidy data-frame totals (<code>count</code>), domain/partitioned
+calibration (<code>by</code>), the exponential raking distance
+(<code>calfun = "raking"</code>), ridge/penalized calibration
+(<code>penalty</code>), and external consistency totals for model
+calibration (<code>x_totals</code>). Install with
+<code>remotes::install_github("jpferreira33/weightflow")</code>. The
+classic API (raking, post-stratification, GREG, the
+<code>margins</code>/<code>totals</code> vector inputs, and the
+integrative <code>cluster</code> option) is on CRAN and unchanged.</p>
 </blockquote>
 <p>Calibration adjusts the weights so that the weighted sample
 reproduces known population totals of auxiliary variables. In practice
@@ -308,27 +318,47 @@ domain, each to its own totals. The tidy totals carry the domain as an
 extra column, and the domain variable does <strong>not</strong> go in
 the formula or the margins (it is the partition). This is also called
 partitioned calibration.</p>
+<p>Domain calibration earns its keep when, <em>within</em> each domain,
+you calibrate to <strong>more than one</strong> target: two or more
+raked margins, or a continuous total. (With a single margin per domain
+it would collapse to an ordinary global cross-tabulation, so
+<code>by =</code> would add nothing.) Here we rake to two margins, sex
+and age group, <strong>within each region</strong>: the region-specific
+<code>sex × age</code> structure is not assumed to be the same across
+regions, which is exactly what a global cross could not express with
+these marginal-only benchmarks.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># sex counts by region: the domain (region) is just another column</span></span>
-<span><span class="va">sex_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>,</span>
-<span>                                      sex    <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># benchmarks known BY REGION: a sex margin and an age-group margin per region.</span></span>
+<span><span class="va">pop</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/transform.html" class="external-link">transform</a></span><span class="op">(</span><span class="va">population</span>,</span>
+<span>  age_grp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/cut.html" class="external-link">cut</a></span><span class="op">(</span><span class="va">age</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span>, <span class="fl">45</span>, <span class="fl">60</span>, <span class="cn">Inf</span><span class="op">)</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"18-30"</span>,<span class="st">"31-45"</span>,<span class="st">"46-60"</span>,<span class="st">"60+"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">samp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/transform.html" class="external-link">transform</a></span><span class="op">(</span><span class="va">sample_survey</span>,</span>
+<span>  age_grp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/cut.html" class="external-link">cut</a></span><span class="op">(</span><span class="va">age</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span>, <span class="fl">45</span>, <span class="fl">60</span>, <span class="cn">Inf</span><span class="op">)</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"18-30"</span>,<span class="st">"31-45"</span>,<span class="st">"46-60"</span>,<span class="st">"60+"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">dom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>, totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">sex_by_region</span><span class="op">)</span>,</span>
+<span><span class="va">sex_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">region</span>, sex     <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">age_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">region</span>, age_grp <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">age_grp</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">samp</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>,</span>
+<span>                 totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">sex_by_region</span>, <span class="va">age_by_region</span><span class="op">)</span>,</span>
 <span>                 count <span class="op">=</span> <span class="st">"Freq"</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># the calibrated weights reproduce the sex counts WITHIN each region</span></span>
+<span><span class="co"># within each region the weights reproduce BOTH margins</span></span>
 <span><span class="va">w</span> <span class="op">&lt;-</span> <span class="va">dom</span><span class="op">$</span><span class="va">final_weight</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span><span class="va">w</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>,</span>
-<span>            data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">sample_survey</span><span class="op">$</span><span class="va">region</span>,</span>
-<span>                              sex <span class="op">=</span> <span class="va">sample_survey</span><span class="op">$</span><span class="va">sex</span>, w <span class="op">=</span> <span class="va">w</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span><span class="va">w</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>,     data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">samp</span>, w <span class="op">=</span> <span class="va">w</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;        sex</span></span>
 <span><span class="co">#&gt; region    F   M</span></span>
 <span><span class="co">#&gt;   North 825 745</span></span>
 <span><span class="co">#&gt;   South 643 607</span></span>
 <span><span class="co">#&gt;   East  467 460</span></span>
-<span><span class="co">#&gt;   West  376 372</span></span></code></pre></div>
+<span><span class="co">#&gt;   West  376 372</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/xtabs.html" class="external-link">xtabs</a></span><span class="op">(</span><span class="va">w</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">age_grp</span>, data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">samp</span>, w <span class="op">=</span> <span class="va">w</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;        age_grp</span></span>
+<span><span class="co">#&gt; region  18-30 31-45 46-60 60+</span></span>
+<span><span class="co">#&gt;   North   415   499   408 248</span></span>
+<span><span class="co">#&gt;   South   345   396   324 185</span></span>
+<span><span class="co">#&gt;   East    252   309   232 134</span></span>
+<span><span class="co">#&gt;   West    195   242   196 115</span></span></code></pre></div>
 <p>Mixing a categorical and a continuous auxiliary by domain works too.
 The continuous total is a data frame <code>domain, value</code> (one
 total per domain). Here we use the exponential (raking) distance so the

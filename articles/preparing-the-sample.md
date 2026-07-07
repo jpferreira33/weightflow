@@ -1,5 +1,13 @@
 # Preparing the sample: eligibility and response before weighting
 
+> **Development version.** The `disposition` example column used
+> throughout this article is in the development version of weightflow
+> (GitHub) and not yet on CRAN; the same goes for the R-indicator line
+> that [`summary()`](https://rdrr.io/r/base/summary.html) prints.
+> Install with `remotes::install_github("jpferreira33/weightflow")`. The
+> adjustment steps and the indicator columns (`unknown_elig`,
+> `ineligible`, `hh_responded`, `responded`) are on CRAN and unchanged.
+
 Weighting starts before any factor is computed: with a clean
 classification of **what each sampled case is**. Every record drawn from
 the frame has to be placed in one of a few mutually exclusive
@@ -229,14 +237,17 @@ dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
 
 fitted <- weighting_spec(dat, base_weights = pw) |>
-  # 1. unresolved cases: redistribute their weight within region (no roster)
+  # 1. unresolved cases: redistribute their weight within region (no roster,
+  #    so at the household level via cluster)
   step_unknown_eligibility(unknown = disposition == "unknown eligibility",
-                           by = "region") |>
+                           by = "region", cluster = "household_id") |>
   # 2. out-of-scope cases: remove after they absorbed the unknown share
   step_drop_ineligible(ineligible = disposition == "ineligible") |>
   # 3. household nonresponse: reached households vs not, within region
+  #    (whole-household outcome, so at the household level via cluster)
   step_nonresponse(respondent = disposition != "household nonresponse",
-                   method = "weighting_class", by = "region") |>
+                   method = "weighting_class", by = "region",
+                   cluster = "household_id") |>
   # 4. within-household selection of one person
   step_select_within(prob = p_within) |>
   # 5. person nonresponse, within demographic cells
@@ -250,9 +261,9 @@ fitted
 #> Data    : 417 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. unknown eligibility
+#>   1. unknown eligibility (by household_id)
 #>   2. drop ineligible
-#>   3. nonresponse (weighting class)
+#>   3. nonresponse (weighting class, by household_id)
 #>   4. within-household selection
 #>   5. nonresponse (weighting class)
 #> Status  : estimated (prep)
@@ -284,9 +295,9 @@ summary(fitted)
 #> Data    : 417 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. unknown eligibility
+#>   1. unknown eligibility (by household_id)
 #>   2. drop ineligible
-#>   3. nonresponse (weighting class)
+#>   3. nonresponse (weighting class, by household_id)
 #>   4. within-household selection
 #>   5. nonresponse (weighting class)
 #> Status  : estimated (prep)
@@ -304,12 +315,12 @@ summary(fitted)
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
 #> improve with trimming.
 #> 
-#> --- Step 1: unknown eligibility ---
-#>   cell  level n_known n_unknown   factor
-#>   East person      56         7 1.125000
-#>  North person     127         8 1.062992
-#>  South person      97         2 1.020619
-#>   West person     114         6 1.052632
+#> --- Step 1: unknown eligibility (by household_id) ---
+#>   cell     level n_known n_unknown   factor
+#>   East household      56         7 1.125000
+#>  North household     127         8 1.062992
+#>  South household      97         2 1.020619
+#>   West household     114         6 1.052632
 #> Kish deff: 1.057 -> 1.055   |   n_eff: 395 -> 374
 #> 
 #> --- Step 2: drop ineligible ---
@@ -317,12 +328,12 @@ summary(fitted)
 #>         29         159.22         365
 #> Kish deff: 1.055 -> 1.054   |   n_eff: 374 -> 346
 #> 
-#> --- Step 3: nonresponse (weighting class) ---
-#>   cell n_respondents n_nonresponse   factor
-#>   East            46             8 1.173913
-#>  North           105            11 1.104762
-#>  South            79            13 1.164557
-#>   West            85            18 1.211765
+#> --- Step 3: nonresponse (weighting class, by household_id) ---
+#>   cell n_resp_hh n_nr_hh   factor
+#>  North       105      11 1.104762
+#>  South        79      13 1.164557
+#>   East        46       8 1.173913
+#>   West        85      18 1.211765
 #> Kish deff: 1.054 -> 1.039   |   n_eff: 346 -> 303
 #> 
 #> --- Step 4: within-household selection ---
@@ -365,6 +376,8 @@ summary(fitted)
 #>   West | M | 46-60             3             3 2.005306
 #>     West | M | 60+             4             2 1.499946
 #> Kish deff: 1.460 -> 1.510   |   n_eff: 216 -> 138
+#> 
+#> R-indicator (representativity of response): 0.802  (on region, sex, age_grp)
 ```
 
 ### The same recipe with the ready-made indicator columns
@@ -378,10 +391,11 @@ there look like this:
 ``` r
 
 fitted2 <- weighting_spec(dat, base_weights = pw) |>
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
   step_drop_ineligible(ineligible = ineligible) |>
   step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+                   by = "region", cluster = "household_id") |>
   step_select_within(prob = p_within) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>

@@ -40,15 +40,18 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
@@ -83,6 +86,14 @@
 
     
     
+<blockquote>
+<p><strong>Development version.</strong> This case study uses a few
+features from the development version of weightflow (GitHub), not yet on
+CRAN: Potter MSE-optimal trimming (<code>method = "potter"</code>) and
+the R-indicator that <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> reports. Install with
+<code>remotes::install_github("jpferreira33/weightflow")</code>. The
+rest of the pipeline is on CRAN and unchanged.</p>
+</blockquote>
 <p>This article puts the whole <code>weightflow</code> pipeline to work
 on a real survey: the Uruguayan continuous household survey (Encuesta
 Continua de Hogares, ECH 2019), released as open microdata by the

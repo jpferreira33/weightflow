@@ -18,15 +18,18 @@
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/weightflow.html">Get started</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
@@ -114,6 +117,8 @@
 <strong>Domain (partitioned) calibration in <code><a href="../reference/step_calibrate.html">step_calibrate()</a></code>.</strong> A new <code>by</code> argument names a domain (partition) column; the weights are then calibrated <strong>independently within each domain</strong>, each to its own totals (partitioned / domain calibration). The tidy totals carry the domain as a column, and a continuous total becomes a data frame <code>domain, value</code> (one total per domain); the domain variable does not go in the formula/margins. It composes with <code>calfun</code>, <code>bounds</code>, <code>penalty</code> and <code>equal_within_cluster</code>, applied within each domain, and reproduces every domain’s benchmarks. <code>by = NULL</code> (default) calibrates globally, unchanged.</li>
 <li>
 <strong>Exponential (raking) distance for <code>step_calibrate(method = "linear")</code>.</strong> <code>calfun</code> now also accepts <code>"raking"</code> (the multiplicative distance g = exp(u)), next to <code>"linear"</code> and <code>"logit"</code>. It keeps the calibration weights positive without needing explicit <code>bounds</code> and still satisfies the constraints exactly, and works on mixed categorical and continuous auxiliaries as well as with the integrative option (<code>equal_within_cluster</code>, one weight per cluster). Matches <code>survey::calibrate(calfun = "raking")</code>.</li>
+<li>
+<strong>R-indicator of response representativity (automatic diagnostic).</strong> When the recipe includes a nonresponse adjustment, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="../reference/report_weighting.html">report_weighting()</a></code> now report the R-indicator (Schouten, Cobben &amp; Bethlehem), R = 1 - 2·S(ρ̂) with the design-weighted standard deviation of the estimated response propensities over the eligible sample: closer to 1 means a more representative response and less nonresponse-bias risk. The report also shows the unconditional partial R-indicators by auxiliary, pointing to which variable drives the lack of representativity. It is computed on the auxiliaries of the nonresponse step and needs no new function or user action; recipes without a nonresponse step are unaffected.</li>
 <li>
 <strong>New <code>disposition</code> column in the <code>sample_one</code> example data.</strong> A single factor with the full field disposition (eligible respondent, eligible nonrespondent, household nonresponse, ineligible, unknown eligibility), recoded from the existing indicator columns (which are kept). It gives a tidy single-column view of the dispositions and can be used directly via logical conditions in the steps.</li>
 <li>

@@ -40,15 +40,18 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
@@ -83,6 +86,16 @@
 
     
     
+<blockquote>
+<p><strong>Development version.</strong> The <code>disposition</code>
+example column used throughout this article is in the development
+version of weightflow (GitHub) and not yet on CRAN; the same goes for
+the R-indicator line that <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> prints. Install with
+<code>remotes::install_github("jpferreira33/weightflow")</code>. The
+adjustment steps and the indicator columns (<code>unknown_elig</code>,
+<code>ineligible</code>, <code>hh_responded</code>,
+<code>responded</code>) are on CRAN and unchanged.</p>
+</blockquote>
 <p>Weighting starts before any factor is computed: with a clean
 classification of <strong>what each sampled case is</strong>. Every
 record drawn from the frame has to be placed in one of a few mutually
@@ -345,14 +358,17 @@ variable the sample carries.</p>
 <span>                   labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"18-30"</span>, <span class="st">"31-45"</span>, <span class="st">"46-60"</span>, <span class="st">"60+"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">dat</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="co"># 1. unresolved cases: redistribute their weight within region (no roster)</span></span>
+<span>  <span class="co"># 1. unresolved cases: redistribute their weight within region (no roster,</span></span>
+<span>  <span class="co">#    so at the household level via cluster)</span></span>
 <span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"unknown eligibility"</span>,</span>
-<span>                           by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>                           by <span class="op">=</span> <span class="st">"region"</span>, cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 2. out-of-scope cases: remove after they absorbed the unknown share</span></span>
 <span>  <span class="fu"><a href="../reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"ineligible"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 3. household nonresponse: reached households vs not, within region</span></span>
+<span>  <span class="co">#    (whole-household outcome, so at the household level via cluster)</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">disposition</span> <span class="op">!=</span> <span class="st">"household nonresponse"</span>,</span>
-<span>                   method <span class="op">=</span> <span class="st">"weighting_class"</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>                   method <span class="op">=</span> <span class="st">"weighting_class"</span>, by <span class="op">=</span> <span class="st">"region"</span>,</span>
+<span>                   cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 4. within-household selection of one person</span></span>
 <span>  <span class="fu"><a href="../reference/step_select_within.html">step_select_within</a></span><span class="op">(</span>prob <span class="op">=</span> <span class="va">p_within</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="co"># 5. person nonresponse, within demographic cells</span></span>
@@ -366,9 +382,9 @@ variable the sample carries.</p>
 <span><span class="co">#&gt; Data    : 417 cases</span></span>
 <span><span class="co">#&gt; Base wts: pw</span></span>
 <span><span class="co">#&gt; Steps   :</span></span>
-<span><span class="co">#&gt;   1. unknown eligibility</span></span>
+<span><span class="co">#&gt;   1. unknown eligibility (by household_id)</span></span>
 <span><span class="co">#&gt;   2. drop ineligible</span></span>
-<span><span class="co">#&gt;   3. nonresponse (weighting class)</span></span>
+<span><span class="co">#&gt;   3. nonresponse (weighting class, by household_id)</span></span>
 <span><span class="co">#&gt;   4. within-household selection</span></span>
 <span><span class="co">#&gt;   5. nonresponse (weighting class)</span></span>
 <span><span class="co">#&gt; Status  : estimated (prep)</span></span>
@@ -396,9 +412,9 @@ carry the nonrespondents.</p>
 <span><span class="co">#&gt; Data    : 417 cases</span></span>
 <span><span class="co">#&gt; Base wts: pw</span></span>
 <span><span class="co">#&gt; Steps   :</span></span>
-<span><span class="co">#&gt;   1. unknown eligibility</span></span>
+<span><span class="co">#&gt;   1. unknown eligibility (by household_id)</span></span>
 <span><span class="co">#&gt;   2. drop ineligible</span></span>
-<span><span class="co">#&gt;   3. nonresponse (weighting class)</span></span>
+<span><span class="co">#&gt;   3. nonresponse (weighting class, by household_id)</span></span>
 <span><span class="co">#&gt;   4. within-household selection</span></span>
 <span><span class="co">#&gt;   5. nonresponse (weighting class)</span></span>
 <span><span class="co">#&gt; Status  : estimated (prep)</span></span>
@@ -416,12 +432,12 @@ carry the nonrespondents.</p>
 <span><span class="co">#&gt; n_eff = n_active / deff_kish. Both worsen with each adjustment and</span></span>
 <span><span class="co">#&gt; improve with trimming.</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Step 1: unknown eligibility ---</span></span>
-<span><span class="co">#&gt;   cell  level n_known n_unknown   factor</span></span>
-<span><span class="co">#&gt;   East person      56         7 1.125000</span></span>
-<span><span class="co">#&gt;  North person     127         8 1.062992</span></span>
-<span><span class="co">#&gt;  South person      97         2 1.020619</span></span>
-<span><span class="co">#&gt;   West person     114         6 1.052632</span></span>
+<span><span class="co">#&gt; --- Step 1: unknown eligibility (by household_id) ---</span></span>
+<span><span class="co">#&gt;   cell     level n_known n_unknown   factor</span></span>
+<span><span class="co">#&gt;   East household      56         7 1.125000</span></span>
+<span><span class="co">#&gt;  North household     127         8 1.062992</span></span>
+<span><span class="co">#&gt;  South household      97         2 1.020619</span></span>
+<span><span class="co">#&gt;   West household     114         6 1.052632</span></span>
 <span><span class="co">#&gt; Kish deff: 1.057 -&gt; 1.055   |   n_eff: 395 -&gt; 374</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Step 2: drop ineligible ---</span></span>
@@ -429,12 +445,12 @@ carry the nonrespondents.</p>
 <span><span class="co">#&gt;         29         159.22         365</span></span>
 <span><span class="co">#&gt; Kish deff: 1.055 -&gt; 1.054   |   n_eff: 374 -&gt; 346</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; --- Step 3: nonresponse (weighting class) ---</span></span>
-<span><span class="co">#&gt;   cell n_respondents n_nonresponse   factor</span></span>
-<span><span class="co">#&gt;   East            46             8 1.173913</span></span>
-<span><span class="co">#&gt;  North           105            11 1.104762</span></span>
-<span><span class="co">#&gt;  South            79            13 1.164557</span></span>
-<span><span class="co">#&gt;   West            85            18 1.211765</span></span>
+<span><span class="co">#&gt; --- Step 3: nonresponse (weighting class, by household_id) ---</span></span>
+<span><span class="co">#&gt;   cell n_resp_hh n_nr_hh   factor</span></span>
+<span><span class="co">#&gt;  North       105      11 1.104762</span></span>
+<span><span class="co">#&gt;  South        79      13 1.164557</span></span>
+<span><span class="co">#&gt;   East        46       8 1.173913</span></span>
+<span><span class="co">#&gt;   West        85      18 1.211765</span></span>
 <span><span class="co">#&gt; Kish deff: 1.054 -&gt; 1.039   |   n_eff: 346 -&gt; 303</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Step 4: within-household selection ---</span></span>
@@ -476,7 +492,9 @@ carry the nonrespondents.</p>
 <span><span class="co">#&gt;   West | M | 31-45            12             2 1.192805</span></span>
 <span><span class="co">#&gt;   West | M | 46-60             3             3 2.005306</span></span>
 <span><span class="co">#&gt;     West | M | 60+             4             2 1.499946</span></span>
-<span><span class="co">#&gt; Kish deff: 1.460 -&gt; 1.510   |   n_eff: 216 -&gt; 138</span></span></code></pre></div>
+<span><span class="co">#&gt; Kish deff: 1.460 -&gt; 1.510   |   n_eff: 216 -&gt; 138</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.802  (on region, sex, age_grp)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="the-same-recipe-with-the-ready-made-indicator-columns">The same recipe with the ready-made indicator columns<a class="anchor" aria-label="anchor" href="#the-same-recipe-with-the-ready-made-indicator-columns"></a>
 </h3>
@@ -488,10 +506,11 @@ equivalent, and it is the style the other articles use, so the recipes
 there look like this:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fitted2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">dat</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span>unknown <span class="op">=</span> <span class="va">unknown_elig</span>, by <span class="op">=</span> <span class="st">"region"</span>,</span>
+<span>                           cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span>ineligible <span class="op">=</span> <span class="va">ineligible</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">hh_responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
-<span>                   by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>                   by <span class="op">=</span> <span class="st">"region"</span>, cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_select_within.html">step_select_within</a></span><span class="op">(</span>prob <span class="op">=</span> <span class="va">p_within</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span>, <span class="st">"age_grp"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>

@@ -1,5 +1,12 @@
 # A full weighting pipeline on a real household survey (ECH 2019)
 
+> **Development version.** This case study uses a few features from the
+> development version of weightflow (GitHub), not yet on CRAN: Potter
+> MSE-optimal trimming (`method = "potter"`) and the R-indicator that
+> [`summary()`](https://rdrr.io/r/base/summary.html) reports. Install
+> with `remotes::install_github("jpferreira33/weightflow")`. The rest of
+> the pipeline is on CRAN and unchanged.
+
 This article puts the whole `weightflow` pipeline to work on a real
 survey: the Uruguayan continuous household survey (Encuesta Continua de
 Hogares, ECH 2019), released as open microdata by the national

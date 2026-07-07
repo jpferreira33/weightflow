@@ -1,8 +1,19 @@
 # Variance estimation
 
+> **Development version.** The PSU bootstrap (method 1) and the
+> survey/srvyr bridges are on CRAN. The delete-a-PSU **jackknife**
+> (method 3,
+> [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+> /
+> [`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md))
+> is in the development version (GitHub) and ships in **0.2.0**. Install
+> with `remotes::install_github("jpferreira33/weightflow")` to use it
+> today.
+
 weightflow computes weights and also estimates their variances. This
-vignette shows two ways to obtain standard errors from a weightflow
-recipe, and how they relate.
+vignette shows a few ways to obtain standard errors from a weightflow
+recipe, and how they relate: a recipe-aware bootstrap, a survey-package
+linearization, and a recipe-aware jackknife.
 
 Throughout, $`U`$ is the population and $`s`$ the sample; $`w_i`$ is the
 final weight of unit $`i`$; and a population total is written
@@ -40,10 +51,11 @@ dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
 
 spec <- weighting_spec(dat, base_weights = pw) |>
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
   step_drop_ineligible(ineligible = ineligible) |>
   step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+                   by = "region", cluster = "household_id") |>
   step_select_within(prob = p_within) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>
@@ -168,6 +180,39 @@ srvyr::summarise(d_rep, mean_income = srvyr::survey_mean(income, na.rm = TRUE))
 #> 1      21615.           873.
 ```
 
+## Method 3: a delete-a-PSU jackknife that re-applies the recipe
+
+The jackknife is the natural sibling of the bootstrap: instead of
+resampling PSUs, it **deletes one PSU at a time** and re-runs the whole
+recipe, so the replicate weights again carry the variability of every
+stage.
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+builds the stratified delete-a-PSU jackknife (JKn) with `strata`/`psu`;
+the unstratified JK1 follows from `strata = NULL`.
+
+``` r
+
+jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
+jk
+#> <weightflow jackknife>
+#>   replicates : 48 (delete-a-PSU)
+#>   units      : 417 (active: 209)
+#>   strata     : region
+#>   psu        : psu
+
+jack_mean(jk,  "income")     # mean income, with the JKn variance
+#>   estimate       se ci_lower ci_upper
+#> 1 21615.21 939.1042  19774.6 23455.82
+jack_total(jk, "employed")   # total employed
+#>   estimate       se ci_lower ci_upper
+#> 1 1927.219 155.2414 1622.952 2231.487
+```
+
+For a total it matches `survey`’s replicate jackknife exactly. As with
+the bootstrap, the replicate weights bridge to survey/srvyr through
+`as_svrepdesign(jk)`, so any estimand or domain can be estimated
+downstream with the recipe’s uncertainty built in.
+
 ## Which one to use
 
 Use the **recipe-aware bootstrap** (method 1, in any of its three forms)
@@ -175,7 +220,10 @@ when the nonresponse and calibration steps are a meaningful part of the
 design and you want their uncertainty reflected; it is the more honest
 variance. Use the **linearization** (method 2) for a quick,
 well-understood standard error when the adjustments are minor or you
-only need the design-and-clustering part.
+only need the design-and-clustering part. The **jackknife** (method 3)
+is the recipe-aware alternative to the bootstrap when a deterministic,
+replicate-based variance is preferred; it matches `survey`’s replicate
+jackknife for totals.
 
 A few practical notes. More replicates give a more stable bootstrap SE;
 200 is fine for exploration, 500-1000 for final figures. Each stratum
