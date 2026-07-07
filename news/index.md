@@ -145,6 +145,17 @@ planned for a future CRAN release:
   [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
   now also accepts a jackknife object, so the recipe-aware replicate
   weights flow into `survey`/`srvyr` for any estimand and any domain.
+- **Domain (partitioned) calibration in
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md).**
+  A new `by` argument names a domain (partition) column; the weights are
+  then calibrated **independently within each domain**, each to its own
+  totals (partitioned / domain calibration). The tidy totals carry the
+  domain as a column, and a continuous total becomes a data frame
+  `domain, value` (one total per domain); the domain variable does not
+  go in the formula/margins. It composes with `calfun`, `bounds`,
+  `penalty` and `equal_within_cluster`, applied within each domain, and
+  reproduces every domain’s benchmarks. `by = NULL` (default) calibrates
+  globally, unchanged.
 - **Exponential (raking) distance for
   `step_calibrate(method = "linear")`.** `calfun` now also accepts
   `"raking"` (the multiplicative distance g = exp(u)), next to

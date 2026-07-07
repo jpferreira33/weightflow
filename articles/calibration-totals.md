@@ -234,6 +234,73 @@ Ridge (penalized) calibration works with the tidy format too: add
 `penalty` as usual. Under ridge the achieved totals are deliberately not
 exact, so weightflow reports the deviation instead of warning about it.
 
+## Domain (partitioned) calibration
+
+Sometimes the benchmarks are known **by domain** and you want the
+weights to reproduce them *within* each domain, not only overall. Pass
+`by =` with the domain (partition) column:
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+then calibrates independently inside each domain, each to its own
+totals. The tidy totals carry the domain as an extra column, and the
+domain variable does **not** go in the formula or the margins (it is the
+partition). This is also called partitioned calibration.
+
+``` r
+
+# sex counts by region: the domain (region) is just another column
+sex_by_region <- as.data.frame(table(region = population$region,
+                                      sex    = population$sex))
+
+dom <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_calibrate(method = "raking", totals = list(sex_by_region),
+                 count = "Freq", by = "region") |>
+  prep()
+
+# the calibrated weights reproduce the sex counts WITHIN each region
+w <- dom$final_weight
+round(xtabs(w ~ region + sex,
+            data = data.frame(region = sample_survey$region,
+                              sex = sample_survey$sex, w = w)))
+#>        sex
+#> region    F   M
+#>   North 825 745
+#>   South 643 607
+#>   East  467 460
+#>   West  376 372
+```
+
+Mixing a categorical and a continuous auxiliary by domain works too. The
+continuous total is a data frame `domain, value` (one total per domain).
+Here we use the exponential (raking) distance so the weights stay
+positive:
+
+``` r
+
+inc_by_region <- aggregate(income ~ region, population, sum)   # region, income
+resp <- subset(sample_survey, responded == 1)
+
+lin_dom <- weighting_spec(resp, base_weights = pw) |>
+  step_calibrate(method = "linear", formula = ~ sex + income,
+                 totals = list(sex = sex_by_region, income = inc_by_region),
+                 count = "Freq", calfun = "raking", by = "region") |>
+  prep()
+
+# the income total is reproduced within each region
+w   <- lin_dom$final_weight
+got <- tapply(w * resp$income, resp$region, sum)
+cbind(calibrated = round(got),
+      benchmark  = inc_by_region$income[match(names(got), inc_by_region$region)])
+#>       calibrated benchmark
+#> North   36939535  36939535
+#> South   22331582  22331581
+#> East    13076958  13076958
+#> West    14396933  14396933
+```
+
+`by =` composes with `calfun`, `bounds`, `penalty` and the integrative
+option, all applied within each domain. With `by = NULL` (the default)
+calibration is global, as in the sections above.
+
 ## Model calibration
 
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)

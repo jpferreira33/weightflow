@@ -19,6 +19,7 @@ step_calibrate(
   formula = NULL,
   totals = NULL,
   count = NULL,
+  by = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
   calfun = c("linear", "logit", "raking"),
@@ -73,6 +74,18 @@ step_calibrate(
 
   (tidy `totals` only) string naming the counts column in the totals
   data frame(s). All other columns are treated as category variables.
+
+- by:
+
+  (tidy `totals` only) NULL, or a string naming a domain (partition)
+  column. When given, the weights are calibrated **independently within
+  each domain**, each to its own totals (partitioned / domain
+  calibration). The totals tables carry the domain as a column, and each
+  `count` table is split by it; a continuous total becomes a data frame
+  `domain, value` (one total per domain). The domain variable must NOT
+  appear in `formula` / the margins: it is the partition. Composes with
+  `calfun`, `bounds`, `penalty` and `equal_within_cluster`, applied
+  within each domain. NULL (default) calibrates globally, as before.
 
 - cluster:
 
