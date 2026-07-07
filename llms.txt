@@ -68,7 +68,9 @@ process](reference/figures/flow-diagram.png)
 # From CRAN
 install.packages("weightflow")
 
-# Development version (adds boosting, cross-fitting, ridge and Potter)
+# Development version (adds the Highlights below: tidy totals, domain
+# calibration, raking distance, x_totals, jackknife, R-indicators, boosting,
+# cross-fitting, ridge and Potter)
 # install.packages("remotes")
 remotes::install_github("jpferreira33/weightflow")
 ```
@@ -183,6 +185,114 @@ bias of trimming against the variance from extreme weights.
 ``` r
 
 step_trim_weights(method = "potter")
+```
+
+### Tidy calibration totals
+
+Hand weightflow the population totals the way they actually arrive — a
+data frame (a census cross-tab, a projection, a spreadsheet) — instead
+of a fiddly model-matrix vector. Name the counts column with `count`;
+several category columns are crossed automatically, and weightflow
+builds the intercept and the dropped reference levels for you.
+
+``` r
+
+region_sex <- as.data.frame(table(region = population$region, sex = population$sex))
+step_calibrate(method = "poststratify", totals = region_sex, count = "Freq")
+```
+
+### Domain (partitioned) calibration
+
+Calibrate independently *within* each domain, each to its own totals,
+with one argument (`by`). The domain is just a column in the tidy
+totals, not a term in the formula, and it composes with `calfun`,
+`bounds`, `penalty` and the integrative cluster option.
+
+It earns its keep with a **quantitative** control total that differs by
+domain — awkward to express by hand, since it needs domain-by-covariate
+interactions. Here each region is calibrated to its sex counts *and* to
+its own income total:
+
+``` r
+
+sex_by_region    <- as.data.frame(table(region = population$region, sex = population$sex))
+income_by_region <- aggregate(income ~ region, population, sum)   # region -> income total
+
+step_calibrate(method = "linear", formula = ~ sex + income,
+               totals = list(sex = sex_by_region, income = income_by_region),
+               count = "Freq", by = "region", calfun = "raking")
+```
+
+Raking fits the case where, within each region, you know the margins
+*separately* (each region’s sex totals and its age-band totals, not
+their cross):
+
+``` r
+
+sex_by_region <- as.data.frame(table(region = population$region, sex     = population$sex))
+age_by_region <- as.data.frame(table(region = population$region, age_grp = population$age_grp))
+
+step_calibrate(method = "raking",
+               totals = list(sex_by_region, age_by_region),
+               count = "Freq", by = "region")
+```
+
+### Exponential (raking) calibration distance
+
+A `calfun = "raking"` distance (g = exp(u)) keeps the calibrated weights
+positive without explicit bounds while still hitting the targets exactly
+— on categorical and continuous auxiliaries alike, and with the
+integrative option.
+
+``` r
+
+step_calibrate(method = "linear", formula = ~ region + income,
+               totals = list(region = m_region, income = 1.2e6),
+               count = "Freq", calfun = "raking")
+```
+
+### External consistency totals for model calibration
+
+The control totals of the model-calibration auxiliaries often come from
+an outside source (an official figure, a variable not in the frame).
+Pass them through `x_totals`, in the same tidy shape as linear
+calibration; `population` is then used only for the model predictions.
+
+``` r
+
+step_model_calibration(
+  x_formula  = ~ region + age,
+  models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+  population  = population,
+  x_totals   = list(region = m_region, age = 5.1e5), count = "Freq")
+```
+
+### Recipe-aware jackknife
+
+Alongside the bootstrap, a delete-a-PSU jackknife re-runs the whole
+recipe on each replicate, so the replicate weights carry every
+adjustment. Stratified (JKn) or unstratified (JK1), and it bridges to
+survey/srvyr for any estimand or domain.
+
+``` r
+
+jk <- jackknife_weights(spec, strata = "region", psu = "psu")
+jack_total(jk, "employed")
+```
+
+### R-indicators of response representativity
+
+After a nonresponse adjustment,
+[`summary()`](https://rdrr.io/r/base/summary.html) and
+[`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+automatically report the R-indicator (Schouten, Cobben & Bethlehem) plus
+the partial R-indicators — how representative the response is, and which
+variable drives the gap. No new function to call.
+
+``` r
+
+# printed by summary() when the recipe adjusts for nonresponse:
+# R-indicator (representativity of response): 0.890  (on region, sex)
 ```
 
 ## What it does

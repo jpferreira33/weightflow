@@ -105,7 +105,7 @@ w_sv    <- weights(des_cal)
 
 c(max_abs_weight_diff = max(abs(w_wf - w_sv)))
 #> max_abs_weight_diff 
-#>         1.24345e-14
+#>        3.552714e-15
 ```
 
 ## Same estimates

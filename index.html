@@ -122,7 +122,9 @@
 <code class="sourceCode R"><span><span class="co"># From CRAN</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"weightflow"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Development version (adds boosting, cross-fitting, ridge and Potter)</span></span>
+<span><span class="co"># Development version (adds the Highlights below: tidy totals, domain</span></span>
+<span><span class="co"># calibration, raking distance, x_totals, jackknife, R-indicators, boosting,</span></span>
+<span><span class="co"># cross-fitting, ridge and Potter)</span></span>
 <span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"jpferreira33/weightflow"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -198,6 +200,71 @@
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/step_trim_weights.html">step_trim_weights</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"potter"</span><span class="op">)</span></span></code></pre></div>
 </div>
+<div class="section level3">
+<h3 id="tidy-calibration-totals">Tidy calibration totals<a class="anchor" aria-label="anchor" href="#tidy-calibration-totals"></a>
+</h3>
+<p>Hand weightflow the population totals the way they actually arrive — a data frame (a census cross-tab, a projection, a spreadsheet) — instead of a fiddly model-matrix vector. Name the counts column with <code>count</code>; several category columns are crossed automatically, and weightflow builds the intercept and the dropped reference levels for you.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">region_sex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>, sex <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"poststratify"</span>, totals <span class="op">=</span> <span class="va">region_sex</span>, count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="domain-partitioned-calibration">Domain (partitioned) calibration<a class="anchor" aria-label="anchor" href="#domain-partitioned-calibration"></a>
+</h3>
+<p>Calibrate independently <em>within</em> each domain, each to its own totals, with one argument (<code>by</code>). The domain is just a column in the tidy totals, not a term in the formula, and it composes with <code>calfun</code>, <code>bounds</code>, <code>penalty</code> and the integrative cluster option.</p>
+<p>It earns its keep with a <strong>quantitative</strong> control total that differs by domain — awkward to express by hand, since it needs domain-by-covariate interactions. Here each region is calibrated to its sex counts <em>and</em> to its own income total:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sex_by_region</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>, sex <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">income_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">region</span>, <span class="va">population</span>, <span class="va">sum</span><span class="op">)</span>   <span class="co"># region -&gt; income total</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">income</span>,</span>
+<span>               totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sex <span class="op">=</span> <span class="va">sex_by_region</span>, income <span class="op">=</span> <span class="va">income_by_region</span><span class="op">)</span>,</span>
+<span>               count <span class="op">=</span> <span class="st">"Freq"</span>, by <span class="op">=</span> <span class="st">"region"</span>, calfun <span class="op">=</span> <span class="st">"raking"</span><span class="op">)</span></span></code></pre></div>
+<p>Raking fits the case where, within each region, you know the margins <em>separately</em> (each region’s sex totals and its age-band totals, not their cross):</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sex_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>, sex     <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">age_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>, age_grp <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">age_grp</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>,</span>
+<span>               totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">sex_by_region</span>, <span class="va">age_by_region</span><span class="op">)</span>,</span>
+<span>               count <span class="op">=</span> <span class="st">"Freq"</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="exponential-raking-calibration-distance">Exponential (raking) calibration distance<a class="anchor" aria-label="anchor" href="#exponential-raking-calibration-distance"></a>
+</h3>
+<p>A <code>calfun = "raking"</code> distance (g = exp(u)) keeps the calibrated weights positive without explicit bounds while still hitting the targets exactly — on categorical and continuous auxiliaries alike, and with the integrative option.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">income</span>,</span>
+<span>               totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">m_region</span>, income <span class="op">=</span> <span class="fl">1.2e6</span><span class="op">)</span>,</span>
+<span>               count <span class="op">=</span> <span class="st">"Freq"</span>, calfun <span class="op">=</span> <span class="st">"raking"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="external-consistency-totals-for-model-calibration">External consistency totals for model calibration<a class="anchor" aria-label="anchor" href="#external-consistency-totals-for-model-calibration"></a>
+</h3>
+<p>The control totals of the model-calibration auxiliaries often come from an outside source (an official figure, a variable not in the frame). Pass them through <code>x_totals</code>, in the same tidy shape as linear calibration; <code>population</code> is then used only for the model predictions.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/step_model_calibration.html">step_model_calibration</a></span><span class="op">(</span></span>
+<span>  x_formula  <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">age</span>,</span>
+<span>  models     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>income <span class="op">=</span> <span class="fu"><a href="reference/y_model.html">y_model</a></span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, engine <span class="op">=</span> <span class="st">"glm"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  population  <span class="op">=</span> <span class="va">population</span>,</span>
+<span>  x_totals   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">m_region</span>, age <span class="op">=</span> <span class="fl">5.1e5</span><span class="op">)</span>, count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="recipe-aware-jackknife">Recipe-aware jackknife<a class="anchor" aria-label="anchor" href="#recipe-aware-jackknife"></a>
+</h3>
+<p>Alongside the bootstrap, a delete-a-PSU jackknife re-runs the whole recipe on each replicate, so the replicate weights carry every adjustment. Stratified (JKn) or unstratified (JK1), and it bridges to survey/srvyr for any estimand or domain.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">jk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jackknife_weights.html">jackknife_weights</a></span><span class="op">(</span><span class="va">spec</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/jackknife_estimate.html">jack_total</a></span><span class="op">(</span><span class="va">jk</span>, <span class="st">"employed"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="r-indicators-of-response-representativity">R-indicators of response representativity<a class="anchor" aria-label="anchor" href="#r-indicators-of-response-representativity"></a>
+</h3>
+<p>After a nonresponse adjustment, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="reference/report_weighting.html">report_weighting()</a></code> automatically report the R-indicator (Schouten, Cobben &amp; Bethlehem) plus the partial R-indicators — how representative the response is, and which variable drives the gap. No new function to call.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># printed by summary() when the recipe adjusts for nonresponse:</span></span>
+<span><span class="co"># R-indicator (representativity of response): 0.890  (on region, sex)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>
@@ -258,7 +325,7 @@
 <p>Eligibility and response accept <strong>0/1 dummy columns</strong> or any logical condition.</p>
 <p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV^2) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors; <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained HTML report — pipeline diagram, variables used, per-stage summaries and per-step visuals — with no graphics device or server required.</p>
 <p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article). Once the weights are built, get design-based standard errors with a bootstrap that re-runs the <strong>whole recipe</strong> on each replicate:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">recipe</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and 95% CI</span></span>
 <span></span>
