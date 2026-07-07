@@ -118,7 +118,7 @@ for a future CRAN release:
   `survey::calibrate(calfun = "raking")`.
 * **R-indicator of response representativity (automatic diagnostic).** When the
   recipe includes a nonresponse adjustment, `summary()` and `report_weighting()`
-  now report the R-indicator (Schouten, Cobben & Bethlehem), R = 1 - 2·S(ρ̂) with
+  now report the R-indicator (Schouten, Cobben & Bethlehem), R = 1 - 2*S, with S
   the design-weighted standard deviation of the estimated response propensities
   over the eligible sample: closer to 1 means a more representative response and
   less nonresponse-bias risk. The report also shows the unconditional partial

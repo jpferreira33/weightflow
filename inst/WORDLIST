@@ -17,6 +17,8 @@ Hogares
 Horvitz
 INE
 IPF
+JK
+JKn
 Kish
 Kish's
 Kreuter
@@ -65,6 +67,7 @@ diag
 doi
 el
 eligibles
+estimand
 et
 frac
 ggplot
@@ -103,6 +106,7 @@ representativity
 rpart
 srvyr
 subseteq
+summarise
 summarises
 tfrac
 th
@@ -110,6 +114,7 @@ tidymodels
 tidyverse
 trimWeights
 tukey
+unstratified
 weightflow's
 widehat
 wts

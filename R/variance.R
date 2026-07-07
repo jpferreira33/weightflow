@@ -162,7 +162,7 @@ boot_mean <- function(boot, variable)
 #' resampling bootstrap).
 #'
 #' For a stratum \eqn{h} with \eqn{n_h} PSUs, the replicate that deletes PSU
-#' \eqn{i} sets that PSU's base weight to zero and inflates the remaining PSUs of
+#' \eqn{i} zeros the base weight of that PSU and inflates the remaining PSUs of
 #' the stratum by \eqn{n_h/(n_h-1)}; other strata are unchanged. There is one
 #' replicate per PSU. Strata with a single PSU contribute no variance and are
 #' skipped. This is the stratified jackknife (JKn); with `strata = NULL` it is
