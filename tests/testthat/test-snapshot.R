@@ -16,14 +16,20 @@ snap_rec <- function() {
                                     sex    = c(table(population$sex)))))
 }
 
+# Skipped on CRAN: snapshots guard the format in CI / locally, but small
+# cross-platform formatting differences should never fail CRAN's checks.
+
 test_that("print() output is stable", {
+  skip_on_cran()
   expect_snapshot(print(snap_rec()))
 })
 
 test_that("summary() output (incl. the R-indicator line) is stable", {
+  skip_on_cran()
   expect_snapshot(summary(snap_rec()))
 })
 
 test_that("design_effect() output is stable", {
+  skip_on_cran()
   expect_snapshot(str(design_effect(collect_weights(snap_rec())$.weight)))
 })

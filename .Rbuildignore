@@ -10,6 +10,7 @@
 ^doc$
 ^Meta$
 ^cran-comments\.md$
+^RELEASE-CHECKLIST\.md$
 ^CRAN-SUBMISSION$
 ^CONTRIBUTING\.md$
 ^paper$
