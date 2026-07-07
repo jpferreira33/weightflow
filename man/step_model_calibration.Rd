@@ -108,4 +108,19 @@ weighting_spec(sample_survey, base_weights = pw) |>
     x_totals   = list(region = m_region, age = sum(population$age)),
     count      = "Freq") |>
   prep()
+
+# equal weights within a household (integrative, Lemaitre-Dufour): one weight
+# per cluster, so person and household estimates stay coherent. The final
+# weights are constant within each cluster among its active members.
+fit_hh <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population  = population,
+    cluster = "household_id", equal_within_cluster = TRUE) |>
+  prep()
+w <- fit_hh$final_weight
+max(tapply(w[w > 0], sample_survey$household_id[w > 0],
+           function(x) diff(range(x))))    # 0: one weight per household
 }

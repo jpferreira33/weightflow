@@ -14,6 +14,13 @@ has_rpart  <- requireNamespace("rpart",  quietly = TRUE)
 has_ranger <- requireNamespace("ranger", quietly = TRUE)
 ```
 
+> **Development version.** The gradient-boosting engine (`engine = "boost"`) and
+> k-fold cross-fitting (`crossfit`) shown here are in the development version of
+> weightflow (GitHub) and not yet on CRAN; so is the R-indicator line that
+> `summary()` prints. Install with
+> `remotes::install_github("jpferreira33/weightflow")`. Weighting classes and the
+> logit/tree/forest propensity engines are on CRAN and unchanged.
+
 Nonresponse adjustment inflates the weights of respondents so they also
 represent the nonrespondents. `step_nonresponse()` offers two routes: weighting
 classes and response propensity models. This vignette explains both, when each

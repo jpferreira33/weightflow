@@ -12,6 +12,12 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(weightflow)
 ```
 
+> **Development version.** The whole cascade shown here is on CRAN. The only
+> development-version element is the R-indicator line that `summary()` prints
+> after a nonresponse step (representativity of response); it needs no extra
+> code. Install with `remotes::install_github("jpferreira33/weightflow")` to see
+> it.
+
 Survey weights are the fundamental input used to produce population estimates from sample data. Let $U={1,\ldots,N}$ denote the target population and let $y_i$ be the value of a study variable for unit ($i$). A common objective is to estimate finite population quantities such as the total
 
 $$Y=\sum_{i \in U} y_i, $$
@@ -74,10 +80,11 @@ the `survey` package.
 
 ```{r recipe}
 fitted <- weighting_spec(dat, base_weights = pw) |>
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
   step_drop_ineligible(ineligible = ineligible) |>
   step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+                   by = "region", cluster = "household_id") |>
   step_select_within(prob = p_within) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>
@@ -99,10 +106,11 @@ A final consideration is the order of operations. Trimming performed after calib
 
 ```{r trim}
 trimmed <- weighting_spec(dat, base_weights = pw) |>
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
   step_drop_ineligible(ineligible = ineligible) |>
   step_nonresponse(respondent = hh_responded, method = "weighting_class",
-                   by = "region") |>
+                   by = "region", cluster = "household_id") |>
   step_select_within(prob = p_within) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>

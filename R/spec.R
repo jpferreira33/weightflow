@@ -295,7 +295,7 @@ step_nonresponse <- function(spec, respondent,
 #'   (post-strata: one or more categorical variables crossed) or "linear"
 #'   (GREG / regression estimator; handles continuous and categorical
 #'   auxiliaries together).
-#' @param formula (only "linear") auxiliary formula, e.g. ~ sex + income.
+#' @param formula (only method = "linear") auxiliary formula, e.g. ~ sex + income.
 #'   Uses model.matrix; includes the intercept unless you write ~ 0 + ...
 #' @param totals population totals, in one of two forms. Classic (all methods):
 #'   for "linear" a named numeric vector aligned with the model.matrix columns
@@ -319,12 +319,13 @@ step_nonresponse <- function(spec, respondent,
 #'   is the partition. Composes with `calfun`, `bounds`, `penalty` and
 #'   `equal_within_cluster`, applied within each domain. NULL (default) calibrates
 #'   globally, as before.
-#' @param cluster (only "linear") name of the cluster id column (e.g. "household"),
-#'   for equal weights within the cluster.
-#' @param equal_within_cluster (only "linear") logical. If TRUE, Lemaitre-Dufour
-#'   (1987) integrative calibration: a single weight per cluster. Requires
-#'   `cluster`. Final weights are equal within the cluster provided the incoming
-#'   weight is also uniform within the cluster.
+#' @param cluster (only method = "linear") name of the cluster id column
+#'   (e.g. "household"), for equal weights within the cluster.
+#' @param equal_within_cluster (only method = "linear") logical. If TRUE,
+#'   Lemaitre-Dufour (1987) integrative calibration: a single weight per cluster.
+#'   Requires `cluster`. Final weights are equal within the cluster provided the
+#'   incoming weight is also uniform within the cluster. Works with any `calfun`
+#'   distance ("linear", "raking" or "logit"), with `bounds` and with `by`.
 #' @param calfun (only method = "linear") distance function for the calibration
 #'   factor g: "linear" (g = 1 + u, closed form), "raking" (g = exp(u), the
 #'   exponential/multiplicative distance, which keeps the weights positive and
@@ -332,12 +333,12 @@ step_nonresponse <- function(spec, respondent,
 #'   construction; requires `bounds`). "raking" and "logit" use the iterative
 #'   Deville-Sarndal solver and work with the integrative option
 #'   (`equal_within_cluster`) too.
-#' @param bounds (only "linear") numeric c(L, U) with L < 1 < U. Bounds on the
+#' @param bounds (only method = "linear") numeric c(L, U) with L < 1 < U. Bounds on the
 #'   calibration factor g (g-weights). With "linear" it truncates; with "logit"
 #'   it is enforced smoothly. Avoids extreme/negative weights without a separate
 #'   trimming step.
 #' @param maxit,tol convergence control for raking and bounded calibration.
-#' @param penalty (only "linear", unbounded) NULL or positive cost(s) for ridge
+#' @param penalty (only method = "linear", unbounded) NULL or positive cost(s) for ridge
 #'   (penalized) calibration. A positive scalar applies the same cost to every
 #'   constraint; a named vector sets a cost per constraint (matched to the
 #'   model.matrix columns). The cost is scale-free: a large value keeps the
@@ -391,6 +392,22 @@ step_nonresponse <- function(spec, respondent,
 #'                  totals = list(region = m_region, sex = m_sex,
 #'                                income = sum(population$income)),
 #'                  count = "Freq") |>
+#'   prep()
+#'
+#' # Domain (partitioned) calibration: `by` calibrates independently within each
+#' # domain, each to its own totals. The domain is an extra column in the tidy
+#' # totals, not a term in the formula/margins. Here we rake two margins (sex and
+#' # age group) within each region, which a single global cross could not express.
+#' pop  <- transform(population,
+#'   age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+#' samp <- transform(sample_survey,
+#'   age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+#' sex_by_region <- as.data.frame(table(region = pop$region, sex     = pop$sex))
+#' age_by_region <- as.data.frame(table(region = pop$region, age_grp = pop$age_grp))
+#' weighting_spec(samp, base_weights = pw) |>
+#'   step_calibrate(method = "raking",
+#'                  totals = list(sex_by_region, age_by_region),
+#'                  count = "Freq", by = "region") |>
 #'   prep()
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
@@ -697,6 +714,21 @@ y_model <- function(formula, engine = c("glm", "tree", "forest", "boost"), famil
 #'     x_totals   = list(region = m_region, age = sum(population$age)),
 #'     count      = "Freq") |>
 #'   prep()
+#'
+#' # equal weights within a household (integrative, Lemaitre-Dufour): one weight
+#' # per cluster, so person and household estimates stay coherent. The final
+#' # weights are constant within each cluster among its active members.
+#' fit_hh <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+#'   step_model_calibration(
+#'     x_formula  = ~ sex + region,
+#'     models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+#'     population  = population,
+#'     cluster = "household_id", equal_within_cluster = TRUE) |>
+#'   prep()
+#' w <- fit_hh$final_weight
+#' max(tapply(w[w > 0], sample_survey$household_id[w > 0],
+#'            function(x) diff(range(x))))    # 0: one weight per household
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_model_calibration <- function(spec, x_formula, models, population,

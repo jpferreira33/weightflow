@@ -34,7 +34,7 @@ fully supported; for a tidy alternative see \code{totals} and \code{count}.}
 (GREG / regression estimator; handles continuous and categorical
 auxiliaries together).}
 
-\item{formula}{(only "linear") auxiliary formula, e.g. ~ sex + income.
+\item{formula}{(only method = "linear") auxiliary formula, e.g. ~ sex + income.
 Uses model.matrix; includes the intercept unless you write ~ 0 + ...}
 
 \item{totals}{population totals, in one of two forms. Classic (all methods):
@@ -62,13 +62,14 @@ is the partition. Composes with \code{calfun}, \code{bounds}, \code{penalty} and
 \code{equal_within_cluster}, applied within each domain. NULL (default) calibrates
 globally, as before.}
 
-\item{cluster}{(only "linear") name of the cluster id column (e.g. "household"),
-for equal weights within the cluster.}
+\item{cluster}{(only method = "linear") name of the cluster id column
+(e.g. "household"), for equal weights within the cluster.}
 
-\item{equal_within_cluster}{(only "linear") logical. If TRUE, Lemaitre-Dufour
-(1987) integrative calibration: a single weight per cluster. Requires
-\code{cluster}. Final weights are equal within the cluster provided the incoming
-weight is also uniform within the cluster.}
+\item{equal_within_cluster}{(only method = "linear") logical. If TRUE,
+Lemaitre-Dufour (1987) integrative calibration: a single weight per cluster.
+Requires \code{cluster}. Final weights are equal within the cluster provided the
+incoming weight is also uniform within the cluster. Works with any \code{calfun}
+distance ("linear", "raking" or "logit"), with \code{bounds} and with \code{by}.}
 
 \item{calfun}{(only method = "linear") distance function for the calibration
 factor g: "linear" (g = 1 + u, closed form), "raking" (g = exp(u), the
@@ -78,14 +79,14 @@ construction; requires \code{bounds}). "raking" and "logit" use the iterative
 Deville-Sarndal solver and work with the integrative option
 (\code{equal_within_cluster}) too.}
 
-\item{bounds}{(only "linear") numeric c(L, U) with L < 1 < U. Bounds on the
+\item{bounds}{(only method = "linear") numeric c(L, U) with L < 1 < U. Bounds on the
 calibration factor g (g-weights). With "linear" it truncates; with "logit"
 it is enforced smoothly. Avoids extreme/negative weights without a separate
 trimming step.}
 
 \item{maxit, tol}{convergence control for raking and bounded calibration.}
 
-\item{penalty}{(only "linear", unbounded) NULL or positive cost(s) for ridge
+\item{penalty}{(only method = "linear", unbounded) NULL or positive cost(s) for ridge
 (penalized) calibration. A positive scalar applies the same cost to every
 constraint; a named vector sets a cost per constraint (matched to the
 model.matrix columns). The cost is scale-free: a large value keeps the
@@ -153,5 +154,21 @@ weighting_spec(resp, base_weights = pw) |>
                  totals = list(region = m_region, sex = m_sex,
                                income = sum(population$income)),
                  count = "Freq") |>
+  prep()
+
+# Domain (partitioned) calibration: `by` calibrates independently within each
+# domain, each to its own totals. The domain is an extra column in the tidy
+# totals, not a term in the formula/margins. Here we rake two margins (sex and
+# age group) within each region, which a single global cross could not express.
+pop  <- transform(population,
+  age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+samp <- transform(sample_survey,
+  age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+sex_by_region <- as.data.frame(table(region = pop$region, sex     = pop$sex))
+age_by_region <- as.data.frame(table(region = pop$region, age_grp = pop$age_grp))
+weighting_spec(samp, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 totals = list(sex_by_region, age_by_region),
+                 count = "Freq", by = "region") |>
   prep()
 }

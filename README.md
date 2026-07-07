@@ -41,9 +41,16 @@ and then hands the result to `survey`/`srvyr` for inference.
 - **Recipe-aware variance.** The bootstrap re-applies *every* step on each
   replicate, so the standard errors carry the variability of the whole cascade.
 
-> **Note.** Gradient boosting, cross-fitting, ridge calibration and Potter
-> trimming are available in the development version (this repository) and are
-> coming to CRAN in the next release. Install from GitHub to use them today.
+> **Development version.** Several features shown on this site are in the
+> development version (this repo) and not yet on CRAN — coming in **0.2.0**:
+> gradient boosting & k-fold cross-fitting, ridge calibration, Potter trimming,
+> tidy data-frame totals (`count`), domain/partitioned calibration (`by`), the
+> exponential raking distance (`calfun = "raking"`), external consistency totals
+> for model calibration (`x_totals`), subsampling >1 person per household
+> (`n_selected`), the delete-a-PSU jackknife, R-indicators of response
+> representativity, and the `disposition` example column. Install from GitHub to
+> use them today; the classic API (raking, post-stratification, GREG,
+> weighting-class/propensity nonresponse, bootstrap) is on CRAN and unchanged.
 
 ## How it works
 

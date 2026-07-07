@@ -144,6 +144,37 @@ totals enforce internal consistency with published figures (benchmarking), while
 the model term injects the efficiency of the nonlinear fit. The hybrid is
 therefore meaningful precisely for the flexible learners that motivate it.
 
+## Equal weights within a household
+
+Like `step_calibrate()`, model calibration supports the integrative
+(Lemaitre-Dufour) option so that every member of a household carries the **same**
+final weight, keeping person and household estimates coherent. Pass
+`cluster` and `equal_within_cluster = TRUE`: the auxiliary and prediction blocks
+are summed to the household level, a single factor is solved per household, and
+that weight is assigned to all its members.
+
+```{r equal-cluster}
+fit_hh <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population  = population,
+    cluster = "household_id", equal_within_cluster = TRUE) |>
+  prep()
+
+# the weight is constant within each household (checked over active members)
+w <- fit_hh$final_weight
+max(tapply(w[w > 0], sample_survey$household_id[w > 0],
+           function(x) diff(range(x))))
+```
+
+The X totals and the model-prediction total are still reproduced; the only added
+requirement is that the incoming weight be uniform within each cluster (as it is
+after the usual design and adjustment steps). The model-calibration solve is
+unbounded linear, so `calfun`/`bounds` do not apply here, but the one-weight-per-
+household behaviour is identical to that of `step_calibrate()`.
+
 ## Relationship to the literature
 
 Model calibration was introduced by Wu and Sitter (2001), who showed it handles
