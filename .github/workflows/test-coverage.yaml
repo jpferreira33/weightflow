@@ -38,9 +38,12 @@ jobs:
           covr::to_cobertura(cov)
         shell: Rscript {0}
 
+      # Best-effort upload: do not fail the job if the CODECOV_TOKEN secret is
+      # not set yet (coverage is still computed and printed in the step above).
       - uses: codecov/codecov-action@v4
+        continue-on-error: true
         with:
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' && true || false }}
+          fail_ci_if_error: false
           file: ./cobertura.xml
           plugins: noop
           disable_search: true
