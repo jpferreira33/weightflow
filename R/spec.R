@@ -191,7 +191,10 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   "logit" (logistic regression, base R), "tree" (CART via package 'rpart'),
 #'   "forest" (random forest via package 'ranger') or "boost" (gradient boosting
 #'   via package 'xgboost'). 'rpart', 'ranger' and 'xgboost' are optional: only
-#'   needed if you pick that engine.
+#'   needed if you pick that engine. The flexible learners run with fixed default
+#'   settings and their hyperparameters are not currently exposed: "tree" and
+#'   "forest" use the 'rpart' and 'ranger' defaults, and "boost" uses xgboost
+#'   with nrounds = 150, max_depth = 4 and eta = 0.1.
 #' @param num_classes integer or NULL. Controls how propensities are used:
 #'   an integer forms that many propensity classes (cell adjustment within each
 #'   class); NULL applies the direct factor 1/p to each unit.
@@ -627,6 +630,9 @@ step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total"
 #'
 #' @param formula full formula, e.g. income ~ sex + age_g.
 #' @param engine "glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost).
+#'   The flexible learners run with fixed default settings (hyperparameters are
+#'   not currently exposed): "tree"/"forest" use the 'rpart'/'ranger' defaults,
+#'   and "boost" uses xgboost with nrounds = 150, max_depth = 4 and eta = 0.1.
 #' @param family for engine = "glm": "gaussian", "binomial" or "poisson".
 #'   For tree/forest, regression vs classification is inferred from y.
 #' @return a model specification list.
