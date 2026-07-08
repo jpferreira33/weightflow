@@ -31,6 +31,24 @@
 }
 `%||%` <- function(a, b) if (is.null(a) || (length(a) == 1 && is.na(a))) b else a
 
+# Which step parameters to display: keep only what the user meaningfully set.
+# Drops NULL fields, the internal convergence knobs, "off" logical flags, and the
+# default calibration distance, so the "Requested" table is not cluttered with
+# defaults the user never touched.
+.step_params <- function(step) {
+  keep <- setdiff(names(step), c("label", "diagnostics"))
+  out  <- list()
+  for (p in keep) {
+    v <- step[[p]]
+    if (is.null(v) || length(v) == 0L) next
+    if (p %in% c("maxit", "tol")) next                          # internal knobs
+    if (is.logical(v) && length(v) == 1L && !isTRUE(v)) next    # FALSE flag = off
+    if (identical(p, "calfun") && identical(v, "linear")) next # default distance
+    out[[p]] <- v
+  }
+  out
+}
+
 # data.frame -> HTML table
 .df_to_html <- function(df) {
   if (is.null(df) || !nrow(df)) return("<p class='muted'>no diagnostics</p>")
@@ -68,7 +86,7 @@
   '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="9">%s</svg>',
   w, h, body)
 
-# Scatter of weight before (x) vs after (y), with a y = x reference line
+# Scatter of weight before (x) vs after (y), with a y = x reference line.
 .svg_scatter <- function(x, y, w = 330, h = 215) {
   ml <- 46; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   if (length(x) > 800) { i <- sample(length(x), 800); x <- x[i]; y <- y[i] }
@@ -86,8 +104,9 @@
                     pts, ln), w, h)
 }
 
-# Histogram of the adjustment factor (after / before), line at 1
-.svg_hist <- function(v, w = 330, h = 215) {
+# Histogram of a per-unit quantity (default: the adjustment factor after/before),
+# with a reference line at 1.
+.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215) {
   ml <- 40; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   v <- v[is.finite(v)]
   if (!length(v)) return("")
@@ -104,22 +123,76 @@
   vl <- if (1 >= xr[1] && 1 <= xr[2])
     sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="red" stroke-dasharray="4 3"/>',
             sx(1), mt, sx(1), mt + ph) else ""
-  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, "weight after / before", "count", sx, sy),
+  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, "count", sx, sy),
                     bars, vl), w, h)
 }
 
-# Two per-step plots (scatter + factor histogram) as inline SVG
-.step_plots <- function(prev, cur) {
-  # Only units kept active by the step (weight > 0 before AND after): the plots
-  # show how the surviving weights are rescaled. Units the step drops to zero
-  # (nonresponse, ineligible, unknown) are reported in the diagnostics table,
-  # not drawn here, so they don't pile up as a band of zeros.
+# Per-step visual, dispatched by step type. Steps that only zero-out weights,
+# round or rescale add nothing visual, so they get no plot. The rest get the
+# weight before-vs-after scatter plus a histogram of the adjustment factor
+# (after / before), over the units kept active by the step. For within-household
+# selection the factor is 1/prob, i.e. the number of eligibles the selected
+# person represents.
+.no_visual <- c("step_drop_ineligible", "step_round", "step_rescale", "step_assert")
+.step_visual <- function(step, prev, cur) {
+  if (inherits(step, .no_visual)) return("")
   keep <- prev > 0 & cur > 0
   if (!any(keep)) return("")
-  s1 <- tryCatch(.svg_scatter(prev[keep], cur[keep]), error = function(e) "")
-  s2 <- tryCatch(.svg_hist((cur / prev)[keep]), error = function(e) "")
-  if (s1 == "" && s2 == "") return("")
-  sprintf("<div class='viz'><div>%s</div><div>%s</div></div>", s1, s2)
+  sc   <- tryCatch(.svg_scatter(prev[keep], cur[keep]), error = function(e) "")
+  fac  <- (cur / prev)[keep]
+  xlab <- if (inherits(step, "step_select_within"))
+            "persons represented (1/prob)" else "adjustment factor (after / before)"
+  hi   <- tryCatch(.svg_hist(fac, xlab = xlab), error = function(e) "")
+  if (!nzchar(sc) && !nzchar(hi)) return("")
+  sprintf("<div class='viz'><div>%s</div><div>%s</div></div>", sc, hi)
+}
+
+# Compact R-indicator block, rendered inside the (last) nonresponse step card.
+.ri_block <- function(ri) {
+  ph <- ""
+  ptab <- ri$partials
+  if (!is.null(ptab)) {
+    ptab <- ptab[order(-ptab$partial_R), , drop = FALSE]
+    ptab$partial_R <- round(ptab$partial_R, 4)
+    ph <- paste0("<p class='muted'>Partial R-indicators:</p>", .df_to_html(ptab))
+  }
+  sprintf(
+    "<div class='ri'><h4>Response representativity (R-indicator)</h4>
+<p class='muted'>Design-weighted logistic of response on <code>%s</code> (n = %s). Closer to 1 = more representative response; the partials show which variable drives the gap.</p>
+<p class='ri-val'><strong>R = %.3f</strong></p>%s</div>",
+    .html_escape(paste(ri$aux, collapse = ", ")),
+    format(ri$n_eligible, big.mark = ","), ri$R, ph)
+}
+
+# Steps that run AFTER calibration (trimming, rounding, rescaling) move the
+# weighted totals away from the calibration targets. This recomputes the last
+# calibration's categorical targets at the FINAL weights and reports the drift.
+# Only shown when there is a calibration step followed by at least one more step.
+.calibration_drift <- function(object) {
+  is_cal <- vapply(object$steps, function(s) inherits(s, "step_calibrate"), logical(1))
+  if (!any(is_cal)) return("")
+  kc <- max(which(is_cal))
+  if (kc == length(object$steps)) return("")                 # nothing after calibration
+  dcal <- object$steps[[kc]]$diagnostics
+  if (is.null(dcal) || !all(c("variable", "category", "target") %in% names(dcal)))
+    return("")                                               # e.g. linear/GREG: skip
+  data <- object$data; fin <- object$final_weight
+  rows <- lapply(seq_len(nrow(dcal)), function(r) {
+    v <- as.character(dcal$variable[r]); ct <- as.character(dcal$category[r])
+    tg <- suppressWarnings(as.numeric(dcal$target[r]))
+    if (!v %in% names(data) || is.na(tg)) return(NULL)
+    ach <- sum(fin[as.character(data[[v]]) == ct], na.rm = TRUE)
+    data.frame(variable = v, category = ct, target = round(tg), achieved = round(ach),
+               `dev %` = round(if (tg != 0) 100 * (ach - tg) / tg else NA_real_, 2),
+               check.names = FALSE, stringsAsFactors = FALSE)
+  })
+  rows <- do.call(rbind, rows)
+  if (is.null(rows) || !nrow(rows)) return("")
+  maxdev <- max(abs(rows[["dev %"]]), na.rm = TRUE)
+  sprintf(
+    "<h2>Calibration drift</h2>
+<p class='muted'>Steps after calibration (trimming, rounding, rescaling) move the weighted totals away from the calibration targets. <code>achieved</code> is recomputed at the final weights; max deviation %.2f%%.</p>%s",
+    maxdev, .df_to_html(rows))
 }
 
 # Variables of the dataset a step refers to (captured expressions + by/cluster
@@ -211,69 +284,68 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
     n_eff    = vapply(h, function(w) round(design_effect(w)$n_eff), numeric(1)),
     row.names = NULL)
 
+  # R-indicator, shown inside the LAST nonresponse step (it is computed from that
+  # step's auxiliaries), not as a separate top-level section.
+  ri      <- .r_indicator(object)
+  is_nr   <- vapply(object$steps, function(s) inherits(s, "step_nonresponse"), logical(1))
+  nr_last <- if (any(is_nr)) max(which(is_nr)) else 0L
+
   # Per-step cards
   steps_html <- ""
   for (i in seq_along(object$steps)) {
     s <- object$steps[[i]]
-    pars <- setdiff(names(s), c("label", "diagnostics"))
-    prows <- vapply(pars, function(p)
-      sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>",
-              .html_escape(p), .fmt_val(s[[p]])), character(1))
+    pp <- .step_params(s)
+    prows <- if (length(pp))
+      vapply(names(pp), function(p)
+        sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>",
+                .html_escape(p), .fmt_val(pp[[p]])), character(1))
+      else "<tr><td class='muted' colspan='2'>defaults only</td></tr>"
     note <- attr(s$diagnostics, "note")
     it   <- attr(s$diagnostics, "iterations")
     extra <- paste0(
       if (!is.null(it)) sprintf("<p class='muted'>converged/iterated in %d iterations</p>", it) else "",
       if (!is.null(note)) sprintf("<p class='note'>%s</p>", .html_escape(note)) else "")
     de1 <- design_effect(h[[i]]); de2 <- design_effect(h[[i + 1L]])
-    viz <- if (plots) .step_plots(h[[i]], h[[i + 1L]]) else ""
+    viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]]) else ""
+    ri_step <- if (i == nr_last && !is.null(ri)) .ri_block(ri) else ""
     steps_html <- paste0(steps_html, sprintf(
       "<div class='step'><div class='step-h'><span class='num'>%d</span>%s</div>
        <div class='cols'><div><h4>Requested</h4><table class='params'>%s</table></div>
        <div><h4>Diagnostics</h4>%s%s
-       <p class='muted'>Kish deff %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p></div></div>%s</div>",
+       <p class='muted'>Kish deff %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p>%s</div></div>%s</div>",
       i, .html_escape(s$label), paste(prows, collapse = ""),
       .df_to_html(s$diagnostics), extra,
       de1$deff, de2$deff, format(round(de1$n_eff), big.mark = ","),
-      format(round(de2$n_eff), big.mark = ","),
+      format(round(de2$n_eff), big.mark = ","), ri_step,
       if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else ""))
-  }
-
-  # R-indicator (representativity of response), only when the recipe adjusts for
-  # nonresponse. Global R plus the partial R-indicators by variable.
-  ri <- .r_indicator(object)
-  ri_html <- if (is.null(ri)) "" else {
-    ptab <- ri$partials
-    if (!is.null(ptab)) {
-      ptab <- ptab[order(-ptab$partial_R), , drop = FALSE]
-      ptab$partial_R <- round(ptab$partial_R, 4)
-    }
-    sprintf(
-      "<h2>Response representativity (R-indicator)</h2>
-<p class='muted'>Design-weighted logistic of response on <code>%s</code>, over the eligible sample (n = %s). Closer to 1 = more representative response; the partials show which variable drives the lack of representativity.</p>
-<div class='cards'><div class='metric'><div class='mv'>%.3f</div><div class='ml'>R-indicator</div></div></div>%s",
-      .html_escape(paste(ri$aux, collapse = ", ")),
-      format(ri$n_eligible, big.mark = ","), ri$R,
-      if (!is.null(ptab))
-        paste0("<p class='muted'>Partial R-indicators:</p>", .df_to_html(ptab)) else "")
   }
 
   diagram <- .pipeline_diagram(object)
   allvars <- unique(c(object$base_weights, unlist(lapply(object$steps, .step_vars))))
   vars_chips <- .chips(allvars)
 
+  # Provenance line for auditability: when, and with which versions, it was made.
+  prov <- sprintf("Generated %s &middot; weightflow %s &middot; R %s.%s",
+    format(Sys.time(), "%Y-%m-%d %H:%M"),
+    as.character(utils::packageVersion("weightflow")),
+    R.version$major, R.version$minor)
+
+  drift <- .calibration_drift(object)
+
   html <- sprintf("<!DOCTYPE html><html><head><meta charset='utf-8'>
 <title>weightflow report</title>%s</head><body>
 <h1>weightflow &mdash; weighting recipe</h1>
 <p class='muted'>Base weights: <code>%s</code> &nbsp;|&nbsp; %d steps</p>
+<p class='prov'>%s</p>
 <div class='cards'>%s</div>
 <h2>Pipeline</h2>%s
 <p class='muted'>Variables used:</p>%s
 <h2>Per-stage summary</h2>%s
-%s
 <h2>Steps</h2>%s
+%s
 <p class='foot'>deff = Kish design effect (1 + CV&sup2;). This report shows weights only; for inference use the 'survey' package.</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), cards, diagram, vars_chips, .df_to_html(stab), ri_html, steps_html)
+    length(object$steps), prov, cards, diagram, vars_chips, .df_to_html(stab), steps_html, drift)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
@@ -291,6 +363,7 @@ color:var(--ink);max-width:980px;margin:32px auto;padding:0 20px;background:#fff
 h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
 h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
 .muted{color:var(--mut);font-size:13px}.note{color:var(--accent);font-size:13px;margin:6px 0 0}
+.prov{color:var(--mut);font-size:12px;margin:0 0 10px}
 code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:13px}
 .cards{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}
 .metric{flex:1;min-width:120px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -307,6 +380,9 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 @media(max-width:680px){.cols{grid-template-columns:1fr}}
 .viz{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
 .viz svg{max-width:100%;height:auto}.viz-h{margin-top:14px}
+@media(max-width:680px){.viz{grid-template-columns:1fr}}
+.ri{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.ri-val{font-size:16px;margin:6px 0}
 .flow{display:flex;flex-direction:column;align-items:stretch;margin:14px 0;max-width:560px}
 .node{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff}
 .node-end{background:var(--bg);border-style:dashed}
@@ -316,6 +392,5 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .chips{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
 .chip{background:#eef2ff;color:var(--accent);border:1px solid #dbe3ff;border-radius:999px;
 padding:1px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
-@media(max-width:680px){.viz{grid-template-columns:1fr}}
 .foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
 </style>"
