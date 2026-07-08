@@ -69,7 +69,10 @@
 
 
 <dt id="arg-engine">engine<a class="anchor" aria-label="anchor" href="#arg-engine"></a></dt>
-<dd><p>"glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost).</p></dd>
+<dd><p>"glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost).
+The flexible learners run with fixed default settings (hyperparameters are
+not currently exposed): "tree"/"forest" use the 'rpart'/'ranger' defaults,
+and "boost" uses xgboost with nrounds = 150, max_depth = 4 and eta = 0.1.</p></dd>
 
 
 <dt id="arg-family">family<a class="anchor" aria-label="anchor" href="#arg-family"></a></dt>
@@ -87,7 +90,7 @@ For tree/forest, regression vs classification is inferred from y.</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">y_model</span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, engine <span class="op">=</span> <span class="st">"glm"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $formula</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> income ~ age + sex</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x56093a7fac48&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x5621b3603c48&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $engine</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "glm"</span>

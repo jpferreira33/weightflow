@@ -16,7 +16,11 @@ y_model(formula, engine = c("glm", "tree", "forest", "boost"), family = NULL)
 
 - engine:
 
-  "glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost).
+  "glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost). The
+  flexible learners run with fixed default settings (hyperparameters are
+  not currently exposed): "tree"/"forest" use the 'rpart'/'ranger'
+  defaults, and "boost" uses xgboost with nrounds = 150, max_depth = 4
+  and eta = 0.1.
 
 - family:
 
@@ -33,7 +37,7 @@ a model specification list.
 y_model(income ~ age + sex, engine = "glm")
 #> $formula
 #> income ~ age + sex
-#> <environment: 0x56093a7fac48>
+#> <environment: 0x5621b3603c48>
 #> 
 #> $engine
 #> [1] "glm"
