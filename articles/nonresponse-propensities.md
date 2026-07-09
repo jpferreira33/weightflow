@@ -71,7 +71,7 @@ f_c = \frac{\sum_{i \in c} w_i}{\sum_{i \in c \cap r} w_i} .
 Each respondent’s weight is multiplied by $`f_c`$ and nonrespondents go
 to zero, so $`w_i^{\mathrm{nr}} = f_c\,w_i`$ for $`i \in c \cap r`$.
 This is the special case of a propensity model in which $`\phi_i`$ is
-estimated by the (weighted) response rate within the cell — a single
+estimated by the (weighted) response rate within the cell: a single
 estimated propensity shared by every unit of the cell.
 
 In

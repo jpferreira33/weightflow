@@ -1,5 +1,10 @@
 # Articles
 
+### Quick start
+
+- [From raw sample to final
+  weights](https://jpferreira33.github.io/weightflow/articles/quickstart.md):
+
 ### Get started
 
 - [Staged survey weighting: the adjustment

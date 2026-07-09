@@ -1,9 +1,9 @@
 # Validation against the survey package
 
 weightflow’s calibration is meant to reproduce the established results
-of the `survey` package on the methods they share — raking,
-post-stratification and linear (GREG) calibration — while adding the
-staged cascade (eligibility, nonresponse, selection) and a recipe-aware
+of the `survey` package on the methods they share (raking,
+post-stratification and linear GREG calibration) while adding the staged
+cascade (eligibility, nonresponse, selection) and a recipe-aware
 bootstrap on top. This vignette checks that agreement directly: on the
 same starting weights and the same control totals, the two packages
 return the same weights.
@@ -136,9 +136,9 @@ c(weightflow = total_wf, survey = total_sv, difference = total_wf - total_sv)
 
 The point of agreement is trust: where the methods overlap, weightflow
 returns exactly what `survey` does. On top of that shared core,
-weightflow contributes the **staged cascade** — unknown eligibility,
+weightflow contributes the **staged cascade** (unknown eligibility,
 ineligible dropping, within-household selection, and person- or
-household-level nonresponse, each as a pipeable step with diagnostics —
+household-level nonresponse, each as a pipeable step with diagnostics)
 and a **bootstrap that re-applies the whole recipe** on each replicate,
 so the variance reflects every adjustment (see the *Variance estimation*
 article). For design-based inference you can always export the final

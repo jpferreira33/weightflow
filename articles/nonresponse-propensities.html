@@ -41,6 +41,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Quick start</h6></li>
+    <li><a class="dropdown-item" href="../articles/quickstart.html">From raw sample to final weights</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
@@ -162,7 +165,7 @@ for
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi><mo>∈</mo><mi>c</mi><mo>∩</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">i \in c \cap r</annotation></semantics></math>.
 This is the special case of a propensity model in which
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>ϕ</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\phi_i</annotation></semantics></math>
-is estimated by the (weighted) response rate within the cell — a single
+is estimated by the (weighted) response rate within the cell: a single
 estimated propensity shared by every unit of the cell.</p>
 <p>In <code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code> the cells are specified through
 the <code>by</code> argument, which names the categorical variables that
@@ -386,7 +389,7 @@ outcomes.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

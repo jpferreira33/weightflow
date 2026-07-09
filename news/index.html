@@ -19,6 +19,9 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Quick start</h6></li>
+    <li><a class="dropdown-item" href="../articles/quickstart.html">From raw sample to final weights</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
@@ -57,21 +60,21 @@
 <div class="section level3">
 <h3 id="adjustment-steps-0-1-0">Adjustment steps<a class="anchor" aria-label="anchor" href="#adjustment-steps-0-1-0"></a></h3>
 <ul><li>
-<code><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility()</a></code> — redistribute the weight of unknown-eligibility cases to the known ones (person- or household-level via <code>cluster</code>).</li>
+<code><a href="../reference/step_unknown_eligibility.html">step_unknown_eligibility()</a></code>: redistribute the weight of unknown-eligibility cases to the known ones (person- or household-level via <code>cluster</code>).</li>
 <li>
-<code><a href="../reference/step_drop_ineligible.html">step_drop_ineligible()</a></code> — zero out out-of-scope units.</li>
+<code><a href="../reference/step_drop_ineligible.html">step_drop_ineligible()</a></code>: zero out out-of-scope units.</li>
 <li>
-<code><a href="../reference/step_select_within.html">step_select_within()</a></code> — within-household selection (unequal <code>prob</code> or equal <code>n_eligible</code>).</li>
+<code><a href="../reference/step_select_within.html">step_select_within()</a></code>: within-household selection (unequal <code>prob</code> or equal <code>n_eligible</code>).</li>
 <li>
-<code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code> — weighting-class or propensity adjustment, at the person or household level (<code>cluster</code>).</li>
+<code><a href="../reference/step_nonresponse.html">step_nonresponse()</a></code>: weighting-class or propensity adjustment, at the person or household level (<code>cluster</code>).</li>
 <li>
-<code><a href="../reference/step_calibrate.html">step_calibrate()</a></code> — raking, post-stratification and linear/GREG calibration, with bounded (Deville-Särndal) and integrative (one weight per household) cluster options.</li>
+<code><a href="../reference/step_calibrate.html">step_calibrate()</a></code>: raking, post-stratification and linear/GREG calibration, with bounded (Deville-Särndal) and integrative (one weight per household) cluster options.</li>
 <li>
-<code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> — Wu-Sitter model calibration.</li>
+<code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code>: Wu-Sitter model calibration.</li>
 <li>
-<code><a href="../reference/step_trim.html">step_trim()</a></code>, <code><a href="../reference/step_trim_weights.html">step_trim_weights()</a></code>, <code><a href="../reference/step_round.html">step_round()</a></code>, <code><a href="../reference/step_rescale.html">step_rescale()</a></code> — trimming, rounding and rescaling.</li>
+<code><a href="../reference/step_trim.html">step_trim()</a></code>, <code><a href="../reference/step_trim_weights.html">step_trim_weights()</a></code>, <code><a href="../reference/step_round.html">step_round()</a></code>, <code><a href="../reference/step_rescale.html">step_rescale()</a></code>: trimming, rounding and rescaling.</li>
 <li>
-<code><a href="../reference/step_assert.html">step_assert()</a></code> — quality checkpoint (deff, weight ratio, effective n).</li>
+<code><a href="../reference/step_assert.html">step_assert()</a></code>: quality checkpoint (deff, weight ratio, effective n).</li>
 </ul></div>
 <div class="section level3">
 <h3 id="inspection-and-reporting-0-1-0">Inspection and reporting<a class="anchor" aria-label="anchor" href="#inspection-and-reporting-0-1-0"></a></h3>
@@ -143,7 +146,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

@@ -18,29 +18,29 @@ replicate.
 
 ### Adjustment steps
 
-- [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
-  — redistribute the weight of unknown-eligibility cases to the known
-  ones (person- or household-level via `cluster`).
-- [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md)
-  — zero out out-of-scope units.
-- [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md)
-  — within-household selection (unequal `prob` or equal `n_eligible`).
-- [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  — weighting-class or propensity adjustment, at the person or household
+- [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md):
+  redistribute the weight of unknown-eligibility cases to the known ones
+  (person- or household-level via `cluster`).
+- [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md):
+  zero out out-of-scope units.
+- [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md):
+  within-household selection (unequal `prob` or equal `n_eligible`).
+- [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md):
+  weighting-class or propensity adjustment, at the person or household
   level (`cluster`).
-- [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
-  — raking, post-stratification and linear/GREG calibration, with
-  bounded (Deville-Särndal) and integrative (one weight per household)
-  cluster options.
-- [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
-  — Wu-Sitter model calibration.
+- [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md):
+  raking, post-stratification and linear/GREG calibration, with bounded
+  (Deville-Särndal) and integrative (one weight per household) cluster
+  options.
+- [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md):
+  Wu-Sitter model calibration.
 - [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
   [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
   [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
-  [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md)
-  — trimming, rounding and rescaling.
-- [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
-  — quality checkpoint (deff, weight ratio, effective n).
+  [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md):
+  trimming, rounding and rescaling.
+- [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md):
+  quality checkpoint (deff, weight ratio, effective n).
 
 ### Inspection and reporting
 

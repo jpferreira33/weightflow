@@ -1,9 +1,9 @@
 # Machine learning, cross-fitting and robust calibration
 
-> **Development version.** The methods in this article — gradient
-> boosting (`engine = "boost"`), k-fold cross-fitting (`crossfit`),
-> ridge/penalized calibration (`penalty`) and Potter MSE-optimal
-> trimming (`method = "potter"`) — are in the development version of
+> **Development version.** The methods in this article (gradient
+> boosting via `engine = "boost"`, k-fold cross-fitting via `crossfit`,
+> ridge/penalized calibration via `penalty`, and Potter MSE-optimal
+> trimming via `method = "potter"`) are in the development version of
 > weightflow (GitHub) and not yet on CRAN. Install with
 > `remotes::install_github("jpferreira33/weightflow")`. The classic
 > tools (weighting classes, logit/tree/forest propensities, raking,
@@ -12,10 +12,10 @@
 The *Get started* article builds a weighting recipe with classical
 tools: weighting classes for nonresponse, raking for calibration, a
 fixed-fence trim. This article covers the methods that go one step
-further — flexible learners for the response propensity, cross-fitting
-to keep them honest, penalized calibration, and data-driven trimming.
-Each is opt-in: the defaults are the classical methods, and a single
-argument switches the richer one on.
+further: flexible learners for the response propensity, cross-fitting to
+keep them honest, penalized calibration, and data-driven trimming. Each
+is opt-in: the defaults are the classical methods, and a single argument
+switches the richer one on.
 
 We use the bundled `sample_one` design (a multistage select-one survey)
 and resolve eligibility, household nonresponse and within-household
@@ -58,7 +58,7 @@ fit_boost <- base |>
 
 Gradient boosting captures nonlinearities and interactions among the
 predictors without you specifying them. That flexibility is useful when
-nonresponse depends on the covariates in complicated ways — but it comes
+nonresponse depends on the covariates in complicated ways, but it comes
 with a risk.
 
 ## The overfitting problem
@@ -75,7 +75,7 @@ w_i^{\text{nr}} = \frac{w_i^{\text{prev}}}{\hat\phi_i},
 
 a propensity $`\hat\phi_i`$ that is biased toward zero produces an
 enormous weight. The result is a handful of extreme weights that inflate
-the variance — exactly what weighting is meant to avoid.
+the variance, exactly what weighting is meant to avoid.
 
 The design effect makes this visible. With in-sample boosting, a single
 propensity class can carry a factor an order of magnitude larger than
@@ -102,10 +102,21 @@ fit_cf <- base |>
   prep()
 ```
 
-On these data the effect is large. Without cross-fitting the boosted
-propensities overfit and the final Kish design effect rises to roughly
-2.4; with five-fold cross-fitting the same model keeps it near 1.5. The
-out-of-sample propensities are also smoother, so the quantile-based
+The Kish design effect makes the difference concrete. Compare the
+in-sample boosting with the five-fold cross-fitted model on the same
+data:
+
+``` r
+
+c(in_sample = design_effect(collect_weights(fit_boost)$.weight)$deff,
+  crossfit  = design_effect(collect_weights(fit_cf)$.weight)$deff)
+#> in_sample  crossfit 
+#>  2.393923  1.491576
+```
+
+In-sample boosting overfits and inflates the design effect;
+cross-fitting removes that in-sample optimism and brings it back down.
+The out-of-sample propensities are also smoother, so the quantile-based
 classes come out balanced. The estimates barely change; the *stability*
 of the weights does.
 
@@ -167,8 +178,8 @@ $`A\lambda = (X - \hat X)`$ gains a penalty on its diagonal,
 
 where $`c_j`$ is the cost of constraint $`j`$ and $`s`$ scales the
 penalty to the system, making it unit-free. A single, scale-free
-`penalty` governs the trade-off — large values stay (almost) exact,
-small values relax more and tighten the weights.
+`penalty` governs the trade-off: large values stay (almost) exact, small
+values relax more and tighten the weights.
 
 ``` r
 
@@ -240,15 +251,15 @@ trimmed_potter$steps[[6]]$diagnostics[, c("method", "upper", "n_capped")]
 
 The two rules give different cutoffs: the Tukey far-out fence is a
 fixed, conservative rule, while Potter searches for the cutoff that
-minimizes estimated MSE — often more aggressive, capping a few more
+minimizes estimated MSE, often more aggressive, capping a few more
 weights when that lowers the overall error.
 
 ## Putting it together
 
 These methods compose like any other step, and the recipe-aware
 bootstrap covers them automatically: because it re-applies the whole
-recipe on each replicate — re-fitting the propensity model, re-running
-the cross-fitting, re-solving the calibration — the standard errors
+recipe on each replicate (re-fitting the propensity model, re-running
+the cross-fitting, re-solving the calibration), the standard errors
 reflect the variability these methods introduce, not just the final
 weights. See the *Variance estimation* article for the bootstrap, and
 *Get started* for the staged logic these methods plug into.

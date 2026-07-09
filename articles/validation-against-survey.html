@@ -41,6 +41,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Quick start</h6></li>
+    <li><a class="dropdown-item" href="../articles/quickstart.html">From raw sample to final weights</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
@@ -87,8 +90,8 @@
     
     
 <p>weightflow’s calibration is meant to reproduce the established
-results of the <code>survey</code> package on the methods they share —
-raking, post-stratification and linear (GREG) calibration — while adding
+results of the <code>survey</code> package on the methods they share
+(raking, post-stratification and linear GREG calibration) while adding
 the staged cascade (eligibility, nonresponse, selection) and a
 recipe-aware bootstrap on top. This vignette checks that agreement
 directly: on the same starting weights and the same control totals, the
@@ -213,9 +216,9 @@ survey outcome matches between the two packages:</p>
 <p>The point of agreement is trust: where the methods overlap,
 weightflow returns exactly what <code>survey</code> does. On top of that
 shared core, weightflow contributes the <strong>staged cascade</strong>
-— unknown eligibility, ineligible dropping, within-household selection,
+(unknown eligibility, ineligible dropping, within-household selection,
 and person- or household-level nonresponse, each as a pipeable step with
-diagnostics — and a <strong>bootstrap that re-applies the whole
+diagnostics) and a <strong>bootstrap that re-applies the whole
 recipe</strong> on each replicate, so the variance reflects every
 adjustment (see the <em>Variance estimation</em> article). For
 design-based inference you can always export the final weights back to
@@ -232,7 +235,7 @@ design-based inference you can always export the final weights back to
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

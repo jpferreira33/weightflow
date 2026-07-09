@@ -1,6 +1,6 @@
 # weightflow
 
-> Declarative, pipeable survey weighting in base R — from design weights
+> Declarative, pipeable survey weighting in base R: from design weights
 > to calibrated, model-assisted, variance-ready weights.
 
 **weightflow** builds survey weights by chaining hierarchical
@@ -18,13 +18,13 @@ for inference.
 
 ## What makes weightflow different
 
-- **A weighting recipe, not a black box.** The whole process —
-  eligibility, selection, nonresponse, calibration, trimming — is one
+- **A weighting recipe, not a black box.** The whole process
+  (eligibility, selection, nonresponse, calibration, trimming) is one
   explicit, auditable, pipeable object that you read top to bottom.
 - **Flexible engines for nonresponse and outcome models.** Response
   propensities and model-calibration outcomes can be fitted with
   logistic regression, CART, random forest or **gradient boosting
-  (xgboost)** — same API, swap one argument.
+  (xgboost)**: same API, swap one argument.
 - **Cross-fitting to tame overfitting.** Flexible learners can overfit
   the propensity and blow up the weights; optional **k-fold
   cross-fitting** estimates each unit out-of-sample, with folds formed
@@ -40,7 +40,7 @@ for inference.
   whole cascade.
 
 > **Development version.** Several features shown on this site are in
-> the development version (this repo) and not yet on CRAN — coming in
+> the development version (this repo) and not yet on CRAN, coming in
 > **0.2.0**: gradient boosting & k-fold cross-fitting, ridge
 > calibration, Potter trimming, tidy data-frame totals (`count`),
 > domain/partitioned calibration (`by`), the exponential raking distance
@@ -132,7 +132,7 @@ the method on.
 ### Machine-learning propensities (xgboost)
 
 Estimate the response propensity with gradient boosting instead of
-logistic regression — useful when nonresponse depends on the covariates
+logistic regression, useful when nonresponse depends on the covariates
 in nonlinear or interacting ways. The engine also drives the outcome
 models in
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).
@@ -160,14 +160,15 @@ step_nonresponse(respondent = responded, method = "propensity",
 
 In practice this is the difference between a stable adjustment and one
 dominated by a few extreme weights: on the bundled data, boosting
-without cross-fitting drives the design effect to ~2.4, while
-cross-fitting keeps it near 1.5.
+without cross-fitting inflates the design effect, while cross-fitting
+brings it back down (the *Machine learning, cross-fitting and robust
+calibration* article shows the two side by side).
 
 ### Ridge (penalized) calibration
 
 When you calibrate to many margins, forcing every constraint exactly can
 produce extreme weights. Ridge calibration relaxes the targets in a
-controlled way — a single, scale-free `penalty` trades a little accuracy
+controlled way: a single, scale-free `penalty` trades a little accuracy
 on the totals for much steadier weights.
 
 ``` r
@@ -189,9 +190,9 @@ step_trim_weights(method = "potter")
 
 ### Tidy calibration totals
 
-Hand weightflow the population totals the way they actually arrive — a
-data frame (a census cross-tab, a projection, a spreadsheet) — instead
-of a fiddly model-matrix vector. Name the counts column with `count`;
+Hand weightflow the population totals the way they actually arrive, as a
+data frame (a census cross-tab, a projection, a spreadsheet), instead of
+a fiddly model-matrix vector. Name the counts column with `count`;
 several category columns are crossed automatically, and weightflow
 builds the intercept and the dropped reference levels for you.
 
@@ -209,7 +210,7 @@ totals, not a term in the formula, and it composes with `calfun`,
 `bounds`, `penalty` and the integrative cluster option.
 
 It earns its keep with a **quantitative** control total that differs by
-domain — awkward to express by hand, since it needs domain-by-covariate
+domain, awkward to express by hand, since it needs domain-by-covariate
 interactions. Here each region is calibrated to its sex counts *and* to
 its own income total:
 
@@ -240,8 +241,8 @@ step_calibrate(method = "raking",
 ### Exponential (raking) calibration distance
 
 A `calfun = "raking"` distance (g = exp(u)) keeps the calibrated weights
-positive without explicit bounds while still hitting the targets exactly
-— on categorical and continuous auxiliaries alike, and with the
+positive without explicit bounds while still hitting the targets
+exactly, on categorical and continuous auxiliaries alike, and with the
 integrative option.
 
 ``` r
@@ -286,7 +287,7 @@ After a nonresponse adjustment,
 [`summary()`](https://rdrr.io/r/base/summary.html) and
 [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
 automatically report the R-indicator (Schouten, Cobben & Bethlehem) plus
-the partial R-indicators — how representative the response is, and which
+the partial R-indicators: how representative the response is, and which
 variable drives the gap. No new function to call.
 
 ``` r
@@ -322,8 +323,8 @@ effective sample size;
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
 returns the per-unit, per-step factors;
 [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
-writes a self-contained HTML report — pipeline diagram, variables used,
-per-stage summaries and per-step visuals — with no graphics device or
+writes a self-contained HTML report (pipeline diagram, variables used,
+per-stage summaries and per-step visuals) with no graphics device or
 server required.
 
 **Variance estimation** (see the *Variance estimation* article). Once
@@ -363,7 +364,7 @@ variance methods run natively.
 
 `apply_step()` is the internal S3 generic behind each step. To add an
 adjustment, define a `step_*()` constructor (inert) and its
-`apply_step.<class>()` method — nothing else changes.
+`apply_step.<class>()` method; nothing else changes.
 
 ## References
 
@@ -385,7 +386,7 @@ adjustment, define a `step_*()` constructor (inert) and its
   32(2), 190–205.
 - Chernozhukov, V., et al. (2018). Double/debiased machine learning for
   treatment and structural parameters. *The Econometrics Journal*,
-  21(1), C1–C68. — *cross-fitting*.
+  21(1), C1–C68. *(cross-fitting)*.
 
 *Calibration*
 
@@ -402,12 +403,12 @@ adjustment, define a `step_*()` constructor (inert) and its
   complete auxiliary information from survey data. *JASA*, 96(453),
   185–193.
 - Bardsley, P., & Chambers, R. L. (1984). Multipurpose estimation from
-  unbalanced samples. *Applied Statistics*, 33(3), 290–299. — *ridge
-  calibration*.
+  unbalanced samples. *Applied Statistics*, 33(3), 290–299. *(ridge
+  calibration)*.
 
 *Design effect and trimming*
 
-- Kish, L. (1965). *Survey Sampling*. Wiley. — and Kish, L. (1992).
+- Kish, L. (1965). *Survey Sampling*. Wiley; and Kish, L. (1992).
   Weighting for unequal Pi. *Journal of Official Statistics*, 8(2),
   183–200.
 - Potter, F. J. (1990). A study of procedures to identify and trim
@@ -531,6 +532,11 @@ bridges.
   : Example survey sample (select-one-person, multistage)
 
 # Articles
+
+### Quick start
+
+- [From raw sample to final
+  weights](https://jpferreira33.github.io/weightflow/articles/quickstart.md):
 
 ### Get started
 

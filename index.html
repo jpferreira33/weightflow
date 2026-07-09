@@ -44,6 +44,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Quick start</h6></li>
+    <li><a class="dropdown-item" href="articles/quickstart.html">From raw sample to final weights</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
     <li><a class="dropdown-item" href="articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
@@ -84,7 +87,7 @@
 <!-- badges: start -->
 
 <blockquote>
-<p>Declarative, pipeable survey weighting in base R — from design weights to calibrated, model-assisted, variance-ready weights.</p>
+<p>Declarative, pipeable survey weighting in base R: from design weights to calibrated, model-assisted, variance-ready weights.</p>
 </blockquote>
 <p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
 <p>Where does it fit? <code>survey</code> and <code>srvyr</code> are the standard tools for <em>analysing</em> data once you already have weights. weightflow sits one step earlier: it <em>builds</em> those weights from the design base weights, making every adjustment (eligibility, nonresponse, calibration, trimming) an explicit, auditable step, and then hands the result to <code>survey</code>/<code>srvyr</code> for inference.</p>
@@ -93,9 +96,9 @@
 </h2>
 <ul>
 <li>
-<strong>A weighting recipe, not a black box.</strong> The whole process — eligibility, selection, nonresponse, calibration, trimming — is one explicit, auditable, pipeable object that you read top to bottom.</li>
+<strong>A weighting recipe, not a black box.</strong> The whole process (eligibility, selection, nonresponse, calibration, trimming) is one explicit, auditable, pipeable object that you read top to bottom.</li>
 <li>
-<strong>Flexible engines for nonresponse and outcome models.</strong> Response propensities and model-calibration outcomes can be fitted with logistic regression, CART, random forest or <strong>gradient boosting (xgboost)</strong> — same API, swap one argument.</li>
+<strong>Flexible engines for nonresponse and outcome models.</strong> Response propensities and model-calibration outcomes can be fitted with logistic regression, CART, random forest or <strong>gradient boosting (xgboost)</strong>: same API, swap one argument.</li>
 <li>
 <strong>Cross-fitting to tame overfitting.</strong> Flexible learners can overfit the propensity and blow up the weights; optional <strong>k-fold cross-fitting</strong> estimates each unit out-of-sample, with folds formed by cluster so there is no leakage.</li>
 <li>
@@ -106,7 +109,7 @@
 <strong>Recipe-aware variance.</strong> The bootstrap re-applies <em>every</em> step on each replicate, so the standard errors carry the variability of the whole cascade.</li>
 </ul>
 <blockquote>
-<p><strong>Development version.</strong> Several features shown on this site are in the development version (this repo) and not yet on CRAN — coming in <strong>0.2.0</strong>: gradient boosting &amp; k-fold cross-fitting, ridge calibration, Potter trimming, tidy data-frame totals (<code>count</code>), domain/partitioned calibration (<code>by</code>), the exponential raking distance (<code>calfun = "raking"</code>), external consistency totals for model calibration (<code>x_totals</code>), subsampling &gt;1 person per household (<code>n_selected</code>), the delete-a-PSU jackknife, R-indicators of response representativity, and the <code>disposition</code> example column. Install from GitHub to use them today; the classic API (raking, post-stratification, GREG, weighting-class/propensity nonresponse, bootstrap) is on CRAN and unchanged.</p>
+<p><strong>Development version.</strong> Several features shown on this site are in the development version (this repo) and not yet on CRAN, coming in <strong>0.2.0</strong>: gradient boosting &amp; k-fold cross-fitting, ridge calibration, Potter trimming, tidy data-frame totals (<code>count</code>), domain/partitioned calibration (<code>by</code>), the exponential raking distance (<code>calfun = "raking"</code>), external consistency totals for model calibration (<code>x_totals</code>), subsampling &gt;1 person per household (<code>n_selected</code>), the delete-a-PSU jackknife, R-indicators of response representativity, and the <code>disposition</code> example column. Install from GitHub to use them today; the classic API (raking, post-stratification, GREG, weighting-class/propensity nonresponse, bootstrap) is on CRAN and unchanged.</p>
 </blockquote>
 </div>
 <div class="section level2">
@@ -170,7 +173,7 @@
 <div class="section level3">
 <h3 id="machine-learning-propensities-xgboost">Machine-learning propensities (xgboost)<a class="anchor" aria-label="anchor" href="#machine-learning-propensities-xgboost"></a>
 </h3>
-<p>Estimate the response propensity with gradient boosting instead of logistic regression — useful when nonresponse depends on the covariates in nonlinear or interacting ways. The engine also drives the outcome models in <code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code>.</p>
+<p>Estimate the response propensity with gradient boosting instead of logistic regression, useful when nonresponse depends on the covariates in nonlinear or interacting ways. The engine also drives the outcome models in <code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
 <span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"boost"</span><span class="op">)</span></span></code></pre></div>
@@ -183,12 +186,12 @@
 <code class="sourceCode R"><span><span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
 <span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"boost"</span>,</span>
 <span>                 crossfit <span class="op">=</span> <span class="fl">5</span>, crossfit_seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-<p>In practice this is the difference between a stable adjustment and one dominated by a few extreme weights: on the bundled data, boosting without cross-fitting drives the design effect to ~2.4, while cross-fitting keeps it near 1.5.</p>
+<p>In practice this is the difference between a stable adjustment and one dominated by a few extreme weights: on the bundled data, boosting without cross-fitting inflates the design effect, while cross-fitting brings it back down (the <em>Machine learning, cross-fitting and robust calibration</em> article shows the two side by side).</p>
 </div>
 <div class="section level3">
 <h3 id="ridge-penalized-calibration">Ridge (penalized) calibration<a class="anchor" aria-label="anchor" href="#ridge-penalized-calibration"></a>
 </h3>
-<p>When you calibrate to many margins, forcing every constraint exactly can produce extreme weights. Ridge calibration relaxes the targets in a controlled way — a single, scale-free <code>penalty</code> trades a little accuracy on the totals for much steadier weights.</p>
+<p>When you calibrate to many margins, forcing every constraint exactly can produce extreme weights. Ridge calibration relaxes the targets in a controlled way: a single, scale-free <code>penalty</code> trades a little accuracy on the totals for much steadier weights.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>,</span>
 <span>               totals <span class="op">=</span> <span class="va">pop_totals</span>, penalty <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>   <span class="co"># smaller = more relaxation</span></span></code></pre></div>
@@ -203,7 +206,7 @@
 <div class="section level3">
 <h3 id="tidy-calibration-totals">Tidy calibration totals<a class="anchor" aria-label="anchor" href="#tidy-calibration-totals"></a>
 </h3>
-<p>Hand weightflow the population totals the way they actually arrive — a data frame (a census cross-tab, a projection, a spreadsheet) — instead of a fiddly model-matrix vector. Name the counts column with <code>count</code>; several category columns are crossed automatically, and weightflow builds the intercept and the dropped reference levels for you.</p>
+<p>Hand weightflow the population totals the way they actually arrive, as a data frame (a census cross-tab, a projection, a spreadsheet), instead of a fiddly model-matrix vector. Name the counts column with <code>count</code>; several category columns are crossed automatically, and weightflow builds the intercept and the dropped reference levels for you.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">region_sex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>, sex <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"poststratify"</span>, totals <span class="op">=</span> <span class="va">region_sex</span>, count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span></span></code></pre></div>
@@ -212,7 +215,7 @@
 <h3 id="domain-partitioned-calibration">Domain (partitioned) calibration<a class="anchor" aria-label="anchor" href="#domain-partitioned-calibration"></a>
 </h3>
 <p>Calibrate independently <em>within</em> each domain, each to its own totals, with one argument (<code>by</code>). The domain is just a column in the tidy totals, not a term in the formula, and it composes with <code>calfun</code>, <code>bounds</code>, <code>penalty</code> and the integrative cluster option.</p>
-<p>It earns its keep with a <strong>quantitative</strong> control total that differs by domain — awkward to express by hand, since it needs domain-by-covariate interactions. Here each region is calibrated to its sex counts <em>and</em> to its own income total:</p>
+<p>It earns its keep with a <strong>quantitative</strong> control total that differs by domain, awkward to express by hand, since it needs domain-by-covariate interactions. Here each region is calibrated to its sex counts <em>and</em> to its own income total:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sex_by_region</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">region</span>, sex <span class="op">=</span> <span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">income_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">income</span> <span class="op">~</span> <span class="va">region</span>, <span class="va">population</span>, <span class="va">sum</span><span class="op">)</span>   <span class="co"># region -&gt; income total</span></span>
@@ -232,7 +235,7 @@
 <div class="section level3">
 <h3 id="exponential-raking-calibration-distance">Exponential (raking) calibration distance<a class="anchor" aria-label="anchor" href="#exponential-raking-calibration-distance"></a>
 </h3>
-<p>A <code>calfun = "raking"</code> distance (g = exp(u)) keeps the calibrated weights positive without explicit bounds while still hitting the targets exactly — on categorical and continuous auxiliaries alike, and with the integrative option.</p>
+<p>A <code>calfun = "raking"</code> distance (g = exp(u)) keeps the calibrated weights positive without explicit bounds while still hitting the targets exactly, on categorical and continuous auxiliaries alike, and with the integrative option.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">income</span>,</span>
 <span>               totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">m_region</span>, income <span class="op">=</span> <span class="fl">1.2e6</span><span class="op">)</span>,</span>
@@ -260,7 +263,7 @@
 <div class="section level3">
 <h3 id="r-indicators-of-response-representativity">R-indicators of response representativity<a class="anchor" aria-label="anchor" href="#r-indicators-of-response-representativity"></a>
 </h3>
-<p>After a nonresponse adjustment, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="reference/report_weighting.html">report_weighting()</a></code> automatically report the R-indicator (Schouten, Cobben &amp; Bethlehem) plus the partial R-indicators — how representative the response is, and which variable drives the gap. No new function to call.</p>
+<p>After a nonresponse adjustment, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="reference/report_weighting.html">report_weighting()</a></code> automatically report the R-indicator (Schouten, Cobben &amp; Bethlehem) plus the partial R-indicators: how representative the response is, and which variable drives the gap. No new function to call.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># printed by summary() when the recipe adjusts for nonresponse:</span></span>
 <span><span class="co"># R-indicator (representativity of response): 0.890  (on region, sex)</span></span></code></pre></div>
@@ -323,7 +326,7 @@
 </tbody>
 </table>
 <p>Eligibility and response accept <strong>0/1 dummy columns</strong> or any logical condition.</p>
-<p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV^2) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors; <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained HTML report — pipeline diagram, variables used, per-stage summaries and per-step visuals — with no graphics device or server required.</p>
+<p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV^2) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors; <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained HTML report (pipeline diagram, variables used, per-stage summaries and per-step visuals) with no graphics device or server required.</p>
 <p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article). Once the weights are built, get design-based standard errors with a bootstrap that re-runs the <strong>whole recipe</strong> on each replicate:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">recipe</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
@@ -342,7 +345,7 @@
 <div class="section level2">
 <h2 id="extending">Extending<a class="anchor" aria-label="anchor" href="#extending"></a>
 </h2>
-<p><code>apply_step()</code> is the internal S3 generic behind each step. To add an adjustment, define a <code>step_*()</code> constructor (inert) and its <code>apply_step.&lt;class&gt;()</code> method — nothing else changes.</p>
+<p><code>apply_step()</code> is the internal S3 generic behind each step. To add an adjustment, define a <code>step_*()</code> constructor (inert) and its <code>apply_step.&lt;class&gt;()</code> method; nothing else changes.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
@@ -357,7 +360,7 @@
 <li>Sarndal, C.-E., &amp; Lundstrom, S. (2005). <em>Estimation in Surveys with Nonresponse</em>. Wiley.</li>
 <li>Little, R. J. A. (1986). Survey nonresponse adjustments for estimates of means. <em>International Statistical Review</em>, 54(2), 139–157.</li>
 <li>Breidt, F. J., &amp; Opsomer, J. D. (2017). Model-assisted survey estimation with modern prediction techniques. <em>Statistical Science</em>, 32(2), 190–205.</li>
-<li>Chernozhukov, V., et al. (2018). Double/debiased machine learning for treatment and structural parameters. <em>The Econometrics Journal</em>, 21(1), C1–C68. — <em>cross-fitting</em>.</li>
+<li>Chernozhukov, V., et al. (2018). Double/debiased machine learning for treatment and structural parameters. <em>The Econometrics Journal</em>, 21(1), C1–C68. <em>(cross-fitting)</em>.</li>
 </ul>
 <p><em>Calibration</em></p>
 <ul>
@@ -366,11 +369,11 @@
 <li>Deming, W. E., &amp; Stephan, F. F. (1940). On a least squares adjustment of a sampled frequency table. <em>Annals of Mathematical Statistics</em>, 11(4), 427–444.</li>
 <li>Lemaitre, G., &amp; Dufour, J. (1987). An integrated method for weighting persons and families. <em>Survey Methodology</em>, 13(2), 199–207.</li>
 <li>Wu, C., &amp; Sitter, R. R. (2001). A model-calibration approach to using complete auxiliary information from survey data. <em>JASA</em>, 96(453), 185–193.</li>
-<li>Bardsley, P., &amp; Chambers, R. L. (1984). Multipurpose estimation from unbalanced samples. <em>Applied Statistics</em>, 33(3), 290–299. — <em>ridge calibration</em>.</li>
+<li>Bardsley, P., &amp; Chambers, R. L. (1984). Multipurpose estimation from unbalanced samples. <em>Applied Statistics</em>, 33(3), 290–299. <em>(ridge calibration)</em>.</li>
 </ul>
 <p><em>Design effect and trimming</em></p>
 <ul>
-<li>Kish, L. (1965). <em>Survey Sampling</em>. Wiley. — and Kish, L. (1992). Weighting for unequal Pi. <em>Journal of Official Statistics</em>, 8(2), 183–200.</li>
+<li>Kish, L. (1965). <em>Survey Sampling</em>. Wiley; and Kish, L. (1992). Weighting for unequal Pi. <em>Journal of Official Statistics</em>, 8(2), 183–200.</li>
 <li>Potter, F. J. (1990). A study of procedures to identify and trim extreme sample weights. <em>Proc. ASA Survey Research Methods Section</em>, 225–230.</li>
 <li>Potter, F., &amp; Zheng, Y. (2015). Methods and issues in trimming extreme weights in sample surveys. <em>Proc. ASA Survey Research Methods Section</em>.</li>
 </ul>
@@ -439,7 +442,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
