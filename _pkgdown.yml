@@ -26,6 +26,10 @@ development:
   mode: auto
 
 articles:
+- title: Quick start
+  navbar: Quick start
+  contents:
+  - quickstart
 - title: Get started
   navbar: ~
   contents:

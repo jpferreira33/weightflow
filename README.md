@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
 
-> Declarative, pipeable survey weighting in base R — from design weights to
+> Declarative, pipeable survey weighting in base R: from design weights to
 > calibrated, model-assisted, variance-ready weights.
 
 **weightflow** builds survey weights by chaining hierarchical adjustments with a
@@ -24,12 +24,12 @@ and then hands the result to `survey`/`srvyr` for inference.
 
 ## What makes weightflow different
 
-- **A weighting recipe, not a black box.** The whole process — eligibility,
-  selection, nonresponse, calibration, trimming — is one explicit, auditable,
+- **A weighting recipe, not a black box.** The whole process (eligibility,
+  selection, nonresponse, calibration, trimming) is one explicit, auditable,
   pipeable object that you read top to bottom.
 - **Flexible engines for nonresponse and outcome models.** Response propensities
   and model-calibration outcomes can be fitted with logistic regression, CART,
-  random forest or **gradient boosting (xgboost)** — same API, swap one argument.
+  random forest or **gradient boosting (xgboost)**: same API, swap one argument.
 - **Cross-fitting to tame overfitting.** Flexible learners can overfit the
   propensity and blow up the weights; optional **k-fold cross-fitting** estimates
   each unit out-of-sample, with folds formed by cluster so there is no leakage.
@@ -42,7 +42,7 @@ and then hands the result to `survey`/`srvyr` for inference.
   replicate, so the standard errors carry the variability of the whole cascade.
 
 > **Development version.** Several features shown on this site are in the
-> development version (this repo) and not yet on CRAN — coming in **0.2.0**:
+> development version (this repo) and not yet on CRAN, coming in **0.2.0**:
 > gradient boosting & k-fold cross-fitting, ridge calibration, Potter trimming,
 > tidy data-frame totals (`count`), domain/partitioned calibration (`by`), the
 > exponential raking distance (`calfun = "raking"`), external consistency totals
@@ -126,7 +126,7 @@ reproduce classic survey weighting, and one argument switches the method on.
 ### Machine-learning propensities (xgboost)
 
 Estimate the response propensity with gradient boosting instead of logistic
-regression — useful when nonresponse depends on the covariates in nonlinear or
+regression, useful when nonresponse depends on the covariates in nonlinear or
 interacting ways. The engine also drives the outcome models in
 `step_model_calibration()`.
 
@@ -150,12 +150,14 @@ step_nonresponse(respondent = responded, method = "propensity",
 
 In practice this is the difference between a stable adjustment and one dominated
 by a few extreme weights: on the bundled data, boosting without cross-fitting
-drives the design effect to ~2.4, while cross-fitting keeps it near 1.5.
+inflates the design effect, while cross-fitting brings it back down (the
+*Machine learning, cross-fitting and robust calibration* article shows the two
+side by side).
 
 ### Ridge (penalized) calibration
 
 When you calibrate to many margins, forcing every constraint exactly can produce
-extreme weights. Ridge calibration relaxes the targets in a controlled way — a
+extreme weights. Ridge calibration relaxes the targets in a controlled way: a
 single, scale-free `penalty` trades a little accuracy on the totals for much
 steadier weights.
 
@@ -176,8 +178,8 @@ step_trim_weights(method = "potter")
 
 ### Tidy calibration totals
 
-Hand weightflow the population totals the way they actually arrive — a data frame
-(a census cross-tab, a projection, a spreadsheet) — instead of a fiddly
+Hand weightflow the population totals the way they actually arrive, as a data
+frame (a census cross-tab, a projection, a spreadsheet), instead of a fiddly
 model-matrix vector. Name the counts column with `count`; several category
 columns are crossed automatically, and weightflow builds the intercept and the
 dropped reference levels for you.
@@ -194,7 +196,7 @@ argument (`by`). The domain is just a column in the tidy totals, not a term in
 the formula, and it composes with `calfun`, `bounds`, `penalty` and the
 integrative cluster option.
 
-It earns its keep with a **quantitative** control total that differs by domain —
+It earns its keep with a **quantitative** control total that differs by domain,
 awkward to express by hand, since it needs domain-by-covariate interactions. Here
 each region is calibrated to its sex counts *and* to its own income total:
 
@@ -222,7 +224,7 @@ step_calibrate(method = "raking",
 ### Exponential (raking) calibration distance
 
 A `calfun = "raking"` distance (g = exp(u)) keeps the calibrated weights positive
-without explicit bounds while still hitting the targets exactly — on categorical
+without explicit bounds while still hitting the targets exactly, on categorical
 and continuous auxiliaries alike, and with the integrative option.
 
 ```r
@@ -261,7 +263,7 @@ jack_total(jk, "employed")
 
 After a nonresponse adjustment, `summary()` and `report_weighting()` automatically
 report the R-indicator (Schouten, Cobben & Bethlehem) plus the partial
-R-indicators — how representative the response is, and which variable drives the
+R-indicators: how representative the response is, and which variable drives the
 gap. No new function to call.
 
 ```r
@@ -290,8 +292,8 @@ Eligibility and response accept **0/1 dummy columns** or any logical condition.
 **Diagnostics and reporting**: `summary()` and `plot()` show the per-stage
 cascade with the **Kish design effect** (deff = 1 + CV^2) and effective sample
 size; `weight_factors()` returns the per-unit, per-step factors;
-`report_weighting()` writes a self-contained HTML report — pipeline diagram,
-variables used, per-stage summaries and per-step visuals — with no graphics
+`report_weighting()` writes a self-contained HTML report (pipeline diagram,
+variables used, per-stage summaries and per-step visuals) with no graphics
 device or server required.
 
 **Variance estimation** (see the *Variance estimation* article). Once the
@@ -326,7 +328,7 @@ and design weight, so the full pipeline and the variance methods run natively.
 
 `apply_step()` is the internal S3 generic behind each step. To add an
 adjustment, define a `step_*()` constructor (inert) and its
-`apply_step.<class>()` method — nothing else changes.
+`apply_step.<class>()` method; nothing else changes.
 
 ## References
 
@@ -340,7 +342,7 @@ adjustment, define a `step_*()` constructor (inert) and its
 - Sarndal, C.-E., & Lundstrom, S. (2005). *Estimation in Surveys with Nonresponse*. Wiley.
 - Little, R. J. A. (1986). Survey nonresponse adjustments for estimates of means. *International Statistical Review*, 54(2), 139–157.
 - Breidt, F. J., & Opsomer, J. D. (2017). Model-assisted survey estimation with modern prediction techniques. *Statistical Science*, 32(2), 190–205.
-- Chernozhukov, V., et al. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1–C68. — *cross-fitting*.
+- Chernozhukov, V., et al. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1–C68. *(cross-fitting)*.
 
 *Calibration*
 
@@ -349,11 +351,11 @@ adjustment, define a `step_*()` constructor (inert) and its
 - Deming, W. E., & Stephan, F. F. (1940). On a least squares adjustment of a sampled frequency table. *Annals of Mathematical Statistics*, 11(4), 427–444.
 - Lemaitre, G., & Dufour, J. (1987). An integrated method for weighting persons and families. *Survey Methodology*, 13(2), 199–207.
 - Wu, C., & Sitter, R. R. (2001). A model-calibration approach to using complete auxiliary information from survey data. *JASA*, 96(453), 185–193.
-- Bardsley, P., & Chambers, R. L. (1984). Multipurpose estimation from unbalanced samples. *Applied Statistics*, 33(3), 290–299. — *ridge calibration*.
+- Bardsley, P., & Chambers, R. L. (1984). Multipurpose estimation from unbalanced samples. *Applied Statistics*, 33(3), 290–299. *(ridge calibration)*.
 
 *Design effect and trimming*
 
-- Kish, L. (1965). *Survey Sampling*. Wiley. — and Kish, L. (1992). Weighting for unequal Pi. *Journal of Official Statistics*, 8(2), 183–200.
+- Kish, L. (1965). *Survey Sampling*. Wiley; and Kish, L. (1992). Weighting for unequal Pi. *Journal of Official Statistics*, 8(2), 183–200.
 - Potter, F. J. (1990). A study of procedures to identify and trim extreme sample weights. *Proc. ASA Survey Research Methods Section*, 225–230.
 - Potter, F., & Zheng, Y. (2015). Methods and issues in trimming extreme weights in sample surveys. *Proc. ASA Survey Research Methods Section*.
 

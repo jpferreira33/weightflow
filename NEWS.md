@@ -11,20 +11,20 @@ each replicate.
 
 ## Adjustment steps
 
-* `step_unknown_eligibility()` — redistribute the weight of unknown-eligibility
+* `step_unknown_eligibility()`: redistribute the weight of unknown-eligibility
   cases to the known ones (person- or household-level via `cluster`).
-* `step_drop_ineligible()` — zero out out-of-scope units.
-* `step_select_within()` — within-household selection (unequal `prob` or equal
+* `step_drop_ineligible()`: zero out out-of-scope units.
+* `step_select_within()`: within-household selection (unequal `prob` or equal
   `n_eligible`).
-* `step_nonresponse()` — weighting-class or propensity adjustment, at the person
+* `step_nonresponse()`: weighting-class or propensity adjustment, at the person
   or household level (`cluster`).
-* `step_calibrate()` — raking, post-stratification and linear/GREG calibration,
+* `step_calibrate()`: raking, post-stratification and linear/GREG calibration,
   with bounded (Deville-Särndal) and integrative (one weight per household)
   cluster options.
-* `step_model_calibration()` — Wu-Sitter model calibration.
-* `step_trim()`, `step_trim_weights()`, `step_round()`, `step_rescale()` —
+* `step_model_calibration()`: Wu-Sitter model calibration.
+* `step_trim()`, `step_trim_weights()`, `step_round()`, `step_rescale()`:
   trimming, rounding and rescaling.
-* `step_assert()` — quality checkpoint (deff, weight ratio, effective n).
+* `step_assert()`: quality checkpoint (deff, weight ratio, effective n).
 
 ## Inspection and reporting
 
