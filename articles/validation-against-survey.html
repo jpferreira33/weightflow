@@ -90,25 +90,88 @@
     
     
 <p>weightflow’s calibration is meant to reproduce the established
-results of the <code>survey</code> package on the methods they share
-(raking, post-stratification and linear GREG calibration) while adding
-the staged cascade (eligibility, nonresponse, selection) and a
-recipe-aware bootstrap on top. This vignette checks that agreement
-directly: on the same starting weights and the same control totals, the
-two packages return the same weights.</p>
-<p>To make every unit comparable one-to-one, the recipes below use
-<strong>only</strong> the calibration step (no dropping or nonresponse),
-so no rows are removed.</p>
+results of the <code>survey</code> package on every method they share,
+while adding the staged cascade (eligibility, nonresponse, selection)
+and a recipe-aware bootstrap on top. This vignette checks that agreement
+directly and visually: on the same starting weights and the same control
+totals, <strong>the two packages return the same weights</strong>
+for</p>
+<ul>
+<li>post-stratification, raking and linear (GREG) calibration;</li>
+<li>the three calibration <strong>distance functions</strong> (linear,
+raking/exponential, logit);</li>
+<li>
+<strong>integrative</strong> calibration (one weight per household);
+and</li>
+<li>
+<strong>domain</strong> (partitioned) calibration.</li>
+</ul>
+<p>Each method is shown with a scatter of the <strong>g-weights</strong>
+(adjustment factors, <code>g = final / base</code>) of the two packages
+against the <code>y = x</code> line; we also plot the
+<strong>distribution</strong> of those adjustment factors and close with
+a table of <strong>estimates</strong>. To make every unit comparable
+one-to-one, the recipes below use only the calibration step (no dropping
+or nonresponse), so no rows are removed.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="va">sample_survey</span></span>
-<span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">population</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">d</span>   <span class="op">&lt;-</span> <span class="va">sample_survey</span></span>
+<span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="va">population</span></span>
+<span></span>
+<span><span class="co"># a demographic breakdown gives the calibration more auxiliary variables</span></span>
+<span><span class="va">brk</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">30</span>, <span class="fl">45</span>, <span class="fl">60</span>, <span class="cn">Inf</span><span class="op">)</span>; <span class="va">lab</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"18-30"</span>, <span class="st">"31-45"</span>, <span class="st">"46-60"</span>, <span class="st">"60+"</span><span class="op">)</span></span>
+<span><span class="va">d</span><span class="op">$</span><span class="va">age_grp</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cut.html" class="external-link">cut</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">age</span>,   <span class="va">brk</span>, labels <span class="op">=</span> <span class="va">lab</span><span class="op">)</span></span>
+<span><span class="va">pop</span><span class="op">$</span><span class="va">age_grp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cut.html" class="external-link">cut</a></span><span class="op">(</span><span class="va">pop</span><span class="op">$</span><span class="va">age</span>, <span class="va">brk</span>, labels <span class="op">=</span> <span class="va">lab</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># tidy population margins reused throughout</span></span>
+<span><span class="va">reg_tab</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region  <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">sex_tab</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>sex     <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">age_tab</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>age_grp <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">age_grp</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># model-matrix totals for the region + sex + age-group calibration</span></span>
+<span><span class="va">totals</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>, <span class="va">pop</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># weightflow brand palette (from the pkgdown site)</span></span>
+<span><span class="va">wf_primary</span> <span class="op">&lt;-</span> <span class="st">"#3d3580"</span>; <span class="va">wf_violet</span> <span class="op">&lt;-</span> <span class="st">"#7a6ad0"</span></span>
+<span><span class="va">wf_green</span>   <span class="op">&lt;-</span> <span class="st">"#1d9e75"</span>; <span class="va">wf_amber</span>  <span class="op">&lt;-</span> <span class="st">"#c9822b"</span>; <span class="va">wf_grey</span> <span class="op">&lt;-</span> <span class="st">"#6b7280"</span></span>
+<span></span>
+<span><span class="va">theme_wf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span>base_size <span class="op">=</span> <span class="fl">11</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span></span>
+<span>      plot.title    <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>face <span class="op">=</span> <span class="st">"bold"</span>, colour <span class="op">=</span> <span class="va">wf_primary</span><span class="op">)</span>,</span>
+<span>      plot.subtitle <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>colour <span class="op">=</span> <span class="va">wf_grey</span>, size <span class="op">=</span> <span class="fl">9</span><span class="op">)</span>,</span>
+<span>      axis.title    <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>colour <span class="op">=</span> <span class="va">wf_grey</span><span class="op">)</span>,</span>
+<span>      legend.position <span class="op">=</span> <span class="st">"top"</span>,</span>
+<span>      panel.grid.minor <span class="op">=</span> <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Helper: numeric agreement + the OVERLAP of the two g-weight (adjustment factor,</span></span>
+<span><span class="co"># g = final / base) distributions. Because the two packages agree, the survey and</span></span>
+<span><span class="co"># weightflow densities land exactly on top of each other.</span></span>
+<span><span class="va">agree</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>                                   <span class="co"># collect max|diff| per method</span></span>
+<span></span>
+<span><span class="va">compare</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="va">label</span>, <span class="va">base</span> <span class="op">=</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">diff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">w_wf</span> <span class="op">-</span> <span class="va">w_sv</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">agree</span><span class="op">[[</span><span class="va">label</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;&lt;-</span> <span class="va">diff</span>                             <span class="co"># store for the final table</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">has_ggplot</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>package <span class="op">=</span> <span class="st">"survey"</span>,     g <span class="op">=</span> <span class="va">w_sv</span> <span class="op">/</span> <span class="va">base</span><span class="op">)</span>,</span>
+<span>               <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>package <span class="op">=</span> <span class="st">"weightflow"</span>, g <span class="op">=</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">base</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">g</span>, <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">g</span>, fill <span class="op">=</span> <span class="va">package</span>, colour <span class="op">=</span> <span class="va">package</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>      <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.4</span>, linewidth <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span></span>
+<span>      <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>survey <span class="op">=</span> <span class="va">wf_amber</span>, weightflow <span class="op">=</span> <span class="va">wf_violet</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>      <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_colour_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>survey <span class="op">=</span> <span class="va">wf_amber</span>, weightflow <span class="op">=</span> <span class="va">wf_violet</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>      <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="va">label</span>,</span>
+<span>                    subtitle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"g-weights overlap (survey vs weightflow) · max |w_wf - w_sv| = %.1e"</span>, <span class="va">diff</span><span class="op">)</span>,</span>
+<span>                    x <span class="op">=</span> <span class="st">"g (adjustment factor)"</span>, y <span class="op">=</span> <span class="st">"density"</span>, fill <span class="op">=</span> <span class="cn">NULL</span>, colour <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
+<span>      <span class="fu">theme_wf</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/invisible.html" class="external-link">invisible</a></span><span class="op">(</span><span class="va">diff</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="post-stratification">Post-stratification<a class="anchor" aria-label="anchor" href="#post-stratification"></a>
 </h2>
-<p>Post-stratifying to the population counts of <code>region</code>:
-each region’s weights are rescaled so the weighted count matches the
-known total.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<p>Post-stratifying to the joint population counts of
+<code>region</code> × <code>sex</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://r-survey.r-forge.r-project.org/survey/" class="external-link">survey</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; Loading required package: grid</span></span>
 <span><span class="co">#&gt; Loading required package: Matrix</span></span>
@@ -118,97 +181,232 @@ known total.</p>
 <span><span class="co">#&gt; The following object is masked from 'package:graphics':</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     dotchart</span></span>
+<span><span class="va">ps_tab</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">region</span>, sex <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># weightflow</span></span>
 <span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"poststratify"</span>,</span>
-<span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"poststratify"</span>, totals <span class="op">=</span> <span class="va">ps_tab</span>, count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
 <span></span>
-<span><span class="co"># survey</span></span>
 <span><span class="va">des</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">pw</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span>
-<span><span class="va">pr</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>                     Freq <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">des_ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/postStratify.html" class="external-link">postStratify</a></span><span class="op">(</span><span class="va">des</span>, <span class="op">~</span><span class="va">region</span>, <span class="va">pr</span><span class="op">)</span></span>
+<span><span class="va">des_ps</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/postStratify.html" class="external-link">postStratify</a></span><span class="op">(</span><span class="va">des</span>, <span class="op">~</span><span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>, <span class="va">ps_tab</span><span class="op">)</span></span>
 <span><span class="va">w_sv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_ps</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>max_abs_weight_diff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">w_wf</span> <span class="op">-</span> <span class="va">w_sv</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; max_abs_weight_diff </span></span>
-<span><span class="co">#&gt;                   0</span></span></code></pre></div>
+<span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Post-stratification (region x sex)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/poststratify-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="raking">Raking<a class="anchor" aria-label="anchor" href="#raking"></a>
 </h2>
-<p>Raking (iterative proportional fitting) to the <code>region</code>
-and <code>sex</code> margins. We tighten <code>survey</code>’s
-convergence so both solve the system to the same precision.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># weightflow</span></span>
-<span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>,</span>
-<span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>                                sex    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
-<span></span>
-<span><span class="co"># survey (tight epsilon so it fully converges, like weightflow)</span></span>
-<span><span class="va">des</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">pw</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span>
-<span><span class="va">ps</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>sex <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>                    Freq <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">des_rk</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/rake.html" class="external-link">rake</a></span><span class="op">(</span><span class="va">des</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">~</span><span class="va">region</span>, <span class="op">~</span><span class="va">sex</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">pr</span>, <span class="va">ps</span><span class="op">)</span>,</span>
-<span>               control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>epsilon <span class="op">=</span> <span class="fl">1e-10</span>, maxit <span class="op">=</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">w_sv</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_rk</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>max_abs_weight_diff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">w_wf</span> <span class="op">-</span> <span class="va">w_sv</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; max_abs_weight_diff </span></span>
-<span><span class="co">#&gt;        1.110972e-09</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="linear-greg-calibration">Linear (GREG) calibration<a class="anchor" aria-label="anchor" href="#linear-greg-calibration"></a>
-</h2>
-<p>Linear calibration to the totals of the design matrix of
-<code>~ region + sex</code>, including the intercept (the population
-size <code>N</code>).</p>
+<p>Raking (iterative proportional fitting) to the <code>region</code>,
+<code>sex</code> and <code>age_grp</code> margins. We tighten
+<code>survey</code>’s convergence so both solve to the same
+precision.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">totals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>, <span class="va">population</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># weightflow</span></span>
-<span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>, totals <span class="op">=</span> <span class="va">totals</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>, totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">reg_tab</span>, <span class="va">sex_tab</span>, <span class="va">age_tab</span><span class="op">)</span>,</span>
+<span>                 count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
 <span></span>
-<span><span class="co"># survey</span></span>
-<span><span class="va">des</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">pw</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span>
-<span><span class="va">des_cal</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/calibrate.html" class="external-link">calibrate</a></span><span class="op">(</span><span class="va">des</span>, <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>, population <span class="op">=</span> <span class="va">totals</span>, calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span></span>
-<span><span class="va">w_sv</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_cal</span><span class="op">)</span></span>
+<span><span class="va">des_rk</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/rake.html" class="external-link">rake</a></span><span class="op">(</span><span class="va">des</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">~</span><span class="va">region</span>, <span class="op">~</span><span class="va">sex</span>, <span class="op">~</span><span class="va">age_grp</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">reg_tab</span>, <span class="va">sex_tab</span>, <span class="va">age_tab</span><span class="op">)</span>,</span>
+<span>               control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>epsilon <span class="op">=</span> <span class="fl">1e-10</span>, maxit <span class="op">=</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">w_sv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_rk</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>max_abs_weight_diff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">w_wf</span> <span class="op">-</span> <span class="va">w_sv</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; max_abs_weight_diff </span></span>
-<span><span class="co">#&gt;        3.552714e-15</span></span></code></pre></div>
+<span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Raking (region + sex + age group)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/raking-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
-<h2 id="same-estimates">Same estimates<a class="anchor" aria-label="anchor" href="#same-estimates"></a>
+<h2 id="calibration-distances">Calibration distances<a class="anchor" aria-label="anchor" href="#calibration-distances"></a>
 </h2>
-<p>The agreement carries over to estimates. A calibrated total of a
-survey outcome matches between the two packages:</p>
+<p>Linear/GREG calibration to the totals of
+<code>~ region + sex + age_grp</code> can be solved with any of the
+three distance functions. weightflow’s <code>calfun</code> maps
+one-to-one onto <code>survey</code>’s <code>calfun</code>. We keep the
+g-weights from each to compare their distributions afterwards.</p>
+<div class="section level3">
+<h3 id="linear-chi-square-distance-the-greg-estimator">Linear (chi-square) distance – the GREG estimator<a class="anchor" aria-label="anchor" href="#linear-chi-square-distance-the-greg-estimator"></a>
+</h3>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>,</span>
-<span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>                                sex    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>,</span>
+<span>                 totals <span class="op">=</span> <span class="va">totals</span>, calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">total_wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span> <span class="op">*</span> <span class="va">d</span><span class="op">$</span><span class="va">employed</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
+<span><span class="va">w_sv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/calibrate.html" class="external-link">calibrate</a></span><span class="op">(</span><span class="va">des</span>, <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>, population <span class="op">=</span> <span class="va">totals</span>,</span>
+<span>                          calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">g_linear</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
+<span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: linear (GREG)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/greg-linear-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+</div>
+<div class="section level3">
+<h3 id="raking-exponential-distance-always-positive-weights">Raking (exponential) distance – always-positive weights<a class="anchor" aria-label="anchor" href="#raking-exponential-distance-always-positive-weights"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>,</span>
+<span>                 totals <span class="op">=</span> <span class="va">totals</span>, calfun <span class="op">=</span> <span class="st">"raking"</span>, maxit <span class="op">=</span> <span class="fl">500</span>, tol <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
+<span><span class="va">w_sv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/calibrate.html" class="external-link">calibrate</a></span><span class="op">(</span><span class="va">des</span>, <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>, population <span class="op">=</span> <span class="va">totals</span>,</span>
+<span>                          calfun <span class="op">=</span> <span class="st">"raking"</span>, maxit <span class="op">=</span> <span class="fl">500</span>, epsilon <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">g_raking</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
+<span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: raking (exponential)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/greg-raking-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+</div>
+<div class="section level3">
+<h3 id="logit-distance-bounded-g-weights">Logit distance – bounded g-weights<a class="anchor" aria-label="anchor" href="#logit-distance-bounded-g-weights"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bnds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>,</span>
+<span>                 totals <span class="op">=</span> <span class="va">totals</span>, calfun <span class="op">=</span> <span class="st">"logit"</span>, bounds <span class="op">=</span> <span class="va">bnds</span>,</span>
+<span>                 maxit <span class="op">=</span> <span class="fl">500</span>, tol <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
+<span><span class="va">w_sv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/calibrate.html" class="external-link">calibrate</a></span><span class="op">(</span><span class="va">des</span>, <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>, population <span class="op">=</span> <span class="va">totals</span>,</span>
+<span>                          calfun <span class="op">=</span> <span class="st">"logit"</span>, bounds <span class="op">=</span> <span class="va">bnds</span>, maxit <span class="op">=</span> <span class="fl">500</span>, epsilon <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">g_logit</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
+<span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: logit (bounded)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/greg-logit-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+</div>
+<div class="section level3">
+<h3 id="distribution-of-the-adjustment-factors">Distribution of the adjustment factors<a class="anchor" aria-label="anchor" href="#distribution-of-the-adjustment-factors"></a>
+</h3>
+<p>The distance function shapes how far the weights move. The linear
+distance is symmetric (and can dip below the dashed line at
+<code>g = 1</code>), raking keeps every weight positive, and logit is
+bounded by construction.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gdist</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>distance <span class="op">=</span> <span class="st">"linear"</span>, g <span class="op">=</span> <span class="va">g_linear</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>distance <span class="op">=</span> <span class="st">"raking"</span>, g <span class="op">=</span> <span class="va">g_raking</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>distance <span class="op">=</span> <span class="st">"logit"</span>,  g <span class="op">=</span> <span class="va">g_logit</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">gdist</span><span class="op">$</span><span class="va">distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">gdist</span><span class="op">$</span><span class="va">distance</span>, levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linear"</span>, <span class="st">"raking"</span>, <span class="st">"logit"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">des</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">pw</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span>
-<span><span class="va">des_rk</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/rake.html" class="external-link">rake</a></span><span class="op">(</span><span class="va">des</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">~</span><span class="va">region</span>, <span class="op">~</span><span class="va">sex</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">pr</span>, <span class="va">ps</span><span class="op">)</span>,</span>
+<span><span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">gdist</span>, <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">g</span>, fill <span class="op">=</span> <span class="va">distance</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_density.html" class="external-link">geom_density</a></span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0.4</span>, colour <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_vline</a></span><span class="op">(</span>xintercept <span class="op">=</span> <span class="fl">1</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, colour <span class="op">=</span> <span class="va">wf_grey</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>linear <span class="op">=</span> <span class="va">wf_primary</span>, raking <span class="op">=</span> <span class="va">wf_green</span>,</span>
+<span>                                        logit <span class="op">=</span> <span class="va">wf_amber</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">ggplot2</span><span class="fu">::</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>title <span class="op">=</span> <span class="st">"Distribution of adjustment factors"</span>,</span>
+<span>                subtitle <span class="op">=</span> <span class="st">"g = final / base, by calibration distance"</span>,</span>
+<span>                x <span class="op">=</span> <span class="st">"g (adjustment factor)"</span>, y <span class="op">=</span> <span class="st">"density"</span>, fill <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_wf</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/gdist-1.png" class="r-plt" alt="" width="720" style="display: block; margin: auto;"></p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="integrative-calibration-one-weight-per-household">Integrative calibration (one weight per household)<a class="anchor" aria-label="anchor" href="#integrative-calibration-one-weight-per-household"></a>
+</h2>
+<p>When every person in a household must carry the same weight,
+weightflow uses the Lemaitre-Dufour (1987) integrative method
+(<code>cluster = "household_id", equal_within_cluster = TRUE</code>).
+<code>survey</code> reaches the same result through
+<code>aggregate.stage</code> (Vanderhoeft 2001). The base weight
+<code>pw</code> is constant within household here, so the constraint is
+well defined.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>,</span>
+<span>                 totals <span class="op">=</span> <span class="va">totals</span>, cluster <span class="op">=</span> <span class="st">"household_id"</span>,</span>
+<span>                 equal_within_cluster <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
+<span></span>
+<span><span class="va">des_hh</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="op">~</span><span class="va">household_id</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">pw</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span>
+<span><span class="va">des_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/calibrate.html" class="external-link">calibrate</a></span><span class="op">(</span><span class="va">des_hh</span>, <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>, population <span class="op">=</span> <span class="va">totals</span>,</span>
+<span>                     calfun <span class="op">=</span> <span class="st">"linear"</span>, aggregate.stage <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">w_sv</span>    <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_int</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">within_hh</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span><span class="va">w_wf</span>, <span class="va">d</span><span class="op">$</span><span class="va">household_id</span>, <span class="kw">function</span><span class="op">(</span><span class="va">z</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"max within-household weight range (weightflow):"</span>, <span class="va">within_hh</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; max within-household weight range (weightflow): 0</span></span>
+<span></span>
+<span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Integrative (one weight per household)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/integrative-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+</div>
+<div class="section level2">
+<h2 id="domain-partitioned-calibration">Domain (partitioned) calibration<a class="anchor" aria-label="anchor" href="#domain-partitioned-calibration"></a>
+</h2>
+<p>weightflow can calibrate each domain independently to its own totals
+in a single call with <code>by =</code>. Here each region is calibrated
+to its own <code>sex</code> and <code>age_grp</code> distributions;
+<code>survey</code> reaches the same weights by calibrating one region
+at a time.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sex_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">region</span>, sex     <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">age_by_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">region</span>, age_grp <span class="op">=</span> <span class="va">pop</span><span class="op">$</span><span class="va">age_grp</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>,</span>
+<span>                 totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sex <span class="op">=</span> <span class="va">sex_by_region</span>, age_grp <span class="op">=</span> <span class="va">age_by_region</span><span class="op">)</span>,</span>
+<span>                 count <span class="op">=</span> <span class="st">"Freq"</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">w_wf</span> <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
+<span></span>
+<span><span class="va">w_sv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">d</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">r</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">idx</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">region</span> <span class="op">==</span> <span class="va">r</span><span class="op">)</span></span>
+<span>  <span class="va">des_r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>ids <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">pw</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">[</span><span class="va">idx</span>, <span class="op">]</span><span class="op">)</span></span>
+<span>  <span class="va">tot_r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/colSums-methods.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>, <span class="va">pop</span><span class="op">[</span><span class="va">pop</span><span class="op">$</span><span class="va">region</span> <span class="op">==</span> <span class="va">r</span>, <span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">w_sv</span><span class="op">[</span><span class="va">idx</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/calibrate.html" class="external-link">calibrate</a></span><span class="op">(</span><span class="va">des_r</span>, <span class="op">~</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age_grp</span>, population <span class="op">=</span> <span class="va">tot_r</span>,</span>
+<span>                                 calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Domain calibration (by region)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="validation-against-survey_files/figure-html/domain-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+</div>
+<div class="section level2">
+<h2 id="estimates-agree-too">Estimates agree too<a class="anchor" aria-label="anchor" href="#estimates-agree-too"></a>
+</h2>
+<p>Because the weights coincide, so do the estimates. Using the
+raking-calibrated weights, we estimate a survey outcome (respondent
+<code>age</code>) both ways and compare in a single table:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"raking"</span>, totals <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">reg_tab</span>, <span class="va">sex_tab</span>, <span class="va">age_tab</span><span class="op">)</span>,</span>
+<span>                 count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">w_wf</span>   <span class="op">&lt;-</span> <span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span></span>
+<span><span class="va">des_rk</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/rake.html" class="external-link">rake</a></span><span class="op">(</span><span class="va">des</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">~</span><span class="va">region</span>, <span class="op">~</span><span class="va">sex</span>, <span class="op">~</span><span class="va">age_grp</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">reg_tab</span>, <span class="va">sex_tab</span>, <span class="va">age_tab</span><span class="op">)</span>,</span>
 <span>               control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>epsilon <span class="op">=</span> <span class="fl">1e-10</span>, maxit <span class="op">=</span> <span class="fl">100</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">total_sv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/surveysummary.html" class="external-link">svytotal</a></span><span class="op">(</span><span class="op">~</span><span class="va">employed</span>, <span class="va">des_rk</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>weightflow <span class="op">=</span> <span class="va">total_wf</span>, survey <span class="op">=</span> <span class="va">total_sv</span>, difference <span class="op">=</span> <span class="va">total_wf</span> <span class="op">-</span> <span class="va">total_sv</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   weightflow       survey   difference </span></span>
-<span><span class="co">#&gt; 1.084772e+03 1.084772e+03 3.450396e-09</span></span></code></pre></div>
+<span><span class="va">est</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  quantity   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean(age)"</span>, <span class="st">"total(age)"</span><span class="op">)</span>,</span>
+<span>  weightflow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">age</span>, <span class="va">w_wf</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">w_wf</span> <span class="op">*</span> <span class="va">d</span><span class="op">$</span><span class="va">age</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  survey     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/surveysummary.html" class="external-link">svymean</a></span><span class="op">(</span><span class="op">~</span><span class="va">age</span>, <span class="va">des_rk</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                 <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/surveysummary.html" class="external-link">svytotal</a></span><span class="op">(</span><span class="op">~</span><span class="va">age</span>, <span class="va">des_rk</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">est</span><span class="op">$</span><span class="va">difference</span> <span class="op">&lt;-</span> <span class="va">est</span><span class="op">$</span><span class="va">weightflow</span> <span class="op">-</span> <span class="va">est</span><span class="op">$</span><span class="va">survey</span></span>
+<span><span class="va">est</span></span>
+<span><span class="co">#&gt;     quantity   weightflow       survey    difference</span></span>
+<span><span class="co">#&gt; 1  mean(age)     42.38993     42.38993 -4.130882e-10</span></span>
+<span><span class="co">#&gt; 2 total(age) 190542.74882 190542.74882 -1.856853e-06</span></span></code></pre></div>
+<p>The design-based standard errors (from <code>survey</code>, or from
+weightflow’s recipe-aware bootstrap) are the subject of the <em>Variance
+estimation</em> article; here the point is that the calibrated point
+estimates are the same.</p>
+</div>
+<div class="section level2">
+<h2 id="agreement-summary">Agreement summary<a class="anchor" aria-label="anchor" href="#agreement-summary"></a>
+</h2>
+<p>Across every method and distance, weightflow reproduces
+<code>survey</code> to numerical tolerance. The closed-form methods
+(post-stratification, linear) agree to machine precision; the iterative
+ones (raking, logit, integrative) agree to the shared convergence
+tolerance.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">agree</span><span class="op">)</span>, `max abs weight difference` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="va">agree</span><span class="op">)</span>,</span>
+<span>           check.names <span class="op">=</span> <span class="cn">FALSE</span>, row.names <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="co">#&gt;                                   method max abs weight difference</span></span>
+<span><span class="co">#&gt; 1     Post-stratification (region x sex)              1.776357e-15</span></span>
+<span><span class="co">#&gt; 2      Raking (region + sex + age group)              7.927345e-08</span></span>
+<span><span class="co">#&gt; 3                Distance: linear (GREG)              3.552714e-15</span></span>
+<span><span class="co">#&gt; 4         Distance: raking (exponential)              9.016554e-08</span></span>
+<span><span class="co">#&gt; 5              Distance: logit (bounded)              2.999771e-07</span></span>
+<span><span class="co">#&gt; 6 Integrative (one weight per household)              8.348877e-14</span></span>
+<span><span class="co">#&gt; 7         Domain calibration (by region)              1.776357e-15</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="what-weightflow-adds">What weightflow adds<a class="anchor" aria-label="anchor" href="#what-weightflow-adds"></a>
@@ -218,11 +416,12 @@ weightflow returns exactly what <code>survey</code> does. On top of that
 shared core, weightflow contributes the <strong>staged cascade</strong>
 (unknown eligibility, ineligible dropping, within-household selection,
 and person- or household-level nonresponse, each as a pipeable step with
-diagnostics) and a <strong>bootstrap that re-applies the whole
-recipe</strong> on each replicate, so the variance reflects every
-adjustment (see the <em>Variance estimation</em> article). For
-design-based inference you can always export the final weights back to
-<code>survey</code>/<code>srvyr</code>.</p>
+diagnostics), the <strong>tidy totals</strong> and
+<strong>domain</strong> interfaces shown above, and a <strong>bootstrap
+that re-applies the whole recipe</strong> on each replicate, so the
+variance reflects every adjustment (see the <em>Variance estimation</em>
+article). For design-based inference you can always export the final
+weights back to <code>survey</code>/<code>srvyr</code>. ```</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
