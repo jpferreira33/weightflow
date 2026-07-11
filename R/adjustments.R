@@ -696,19 +696,25 @@ apply_step.step_calibrate <- function(step, data, w) {
       cl <- as.character(data[[step$cluster]])[active]
       if (anyNA(cl))
         stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
-      hh <- unique(cl)
-      Wh <- as.numeric(tapply(d, cl, mean)[hh])           # household weight
-      Sh <- rowsum(X, group = cl)[hh, , drop = FALSE]     # household aux. sums
+      # Lemaitre-Dufour: replace each person's auxiliaries by the HOUSEHOLD MEAN
+      # and calibrate at the person level, so all members share one weight. The
+      # per-household mass is the household's total base weight (sum over persons),
+      # i.e. the penalty scales with household size. This matches survey's
+      # aggregate.stage (Vanderhoeft 2001), ReGenesees and Statistics Canada's GES.
+      hh   <- unique(cl)
+      n_h  <- as.numeric(tapply(d, cl, length)[hh])       # persons per household
+      Wsum <- as.numeric(tapply(d, cl, sum)[hh])          # total base weight in household
+      Xbar <- rowsum(X, group = cl)[hh, , drop = FALSE] / n_h   # household MEANS
       if (!use_ds) {
-        A <- t(Sh) %*% (Wh * Sh)
+        A <- t(Xbar) %*% (Wsum * Xbar)
         if (!is.null(step$penalty)) A <- A + .ridge_diag(step$penalty, cn, A)
-        lambda <- .solve_calib(A, Tvec - colSums(Wh * Sh))
-        gh     <- as.numeric(1 + Sh %*% lambda)
+        lambda <- .solve_calib(A, Tvec - colSums(Wsum * Xbar))
+        gh     <- as.numeric(1 + Xbar %*% lambda)
       } else {
-        gh <- .calib_ds(Sh, Wh, Tvec, step$calfun, step$bounds, step$maxit)
+        gh <- .calib_ds(Xbar, Wsum, Tvec, step$calfun, step$bounds, step$maxit)
       }
       names(gh) <- hh
-      new_w[active] <- as.numeric(Wh)[match(cl, hh)] * gh[cl]
+      new_w[active] <- d * gh[cl]          # each person: own base weight x household g-factor
       g          <- gh
       note_clust <- sprintf("; one weight per '%s' (integrative)", step$cluster)
     }
@@ -981,21 +987,24 @@ apply_step.step_model_calibration <- function(step, data, w) {
     new_w[active] <- d * g
     note_clust <- ""
   } else {
-    # Integrative calibration: one weight per cluster (sum Z by household)
+    # Integrative calibration (Lemaitre-Dufour 1987): household-MEAN replacement,
+    # person-level calibration -> one weight per household (matches survey's
+    # aggregate.stage / Vanderhoeft 2001, ReGenesees and Statistics Canada's GES).
     if (!step$cluster %in% names(data))
       stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
     cl <- as.character(data[[step$cluster]])[active]
     if (anyNA(cl))
       stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
-    hh <- unique(cl)
-    Wh <- tapply(d, cl, mean)[hh]                  # household weight (one per household)
-    Sh <- rowsum(Z, group = cl)[hh, , drop = FALSE] # sum of Z by household
-    A      <- t(Sh) %*% (as.numeric(Wh) * Sh)
-    rhs    <- Tvec - colSums(as.numeric(Wh) * Sh)
+    hh   <- unique(cl)
+    n_h  <- as.numeric(tapply(d, cl, length)[hh])   # persons per household
+    Wsum <- as.numeric(tapply(d, cl, sum)[hh])      # total base weight in household
+    Xbar <- rowsum(Z, group = cl)[hh, , drop = FALSE] / n_h  # household MEANS of Z
+    A      <- t(Xbar) %*% (Wsum * Xbar)
+    rhs    <- Tvec - colSums(Wsum * Xbar)
     lambda <- .solve_calib(A, rhs)
-    gh     <- as.numeric(1 + Sh %*% lambda)
+    gh     <- as.numeric(1 + Xbar %*% lambda)
     names(gh) <- hh
-    new_w[active] <- as.numeric(Wh[cl]) * gh[cl]   # household_weight * household_factor
+    new_w[active] <- d * gh[cl]                     # own base weight x household g-factor
     g <- gh
     note_clust <- sprintf("; one weight per '%s' (integrative)", step$cluster)
   }

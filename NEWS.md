@@ -1,3 +1,17 @@
+# weightflow (development version)
+
+## Bug fixes
+
+* `step_calibrate(equal_within_cluster = TRUE)` now implements the genuine
+  Lemaitre-Dufour (1987) integrative method: each unit's auxiliaries are
+  replaced by their household mean before a person-level calibration, so the
+  per-household penalty scales with household size. This matches `survey`'s
+  `calibrate(aggregate.stage = )` (Vanderhoeft 2001), ReGenesees and Statistics
+  Canada's GES. The previous implementation used a household-level distance
+  (summed auxiliaries, uniform per-household penalty), a different (non-standard)
+  method. Integrative-calibration weights will change; totals are still met
+  exactly and weights remain constant within household.
+
 # weightflow 0.1.0
 
 First release.
