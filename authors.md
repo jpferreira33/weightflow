@@ -10,13 +10,13 @@ Source:
 [`DESCRIPTION`](https://github.com/jpferreira33/weightflow/blob/master/DESCRIPTION)
 
 Ferreira J (2026). *weightflow: Declarative API for Staged Survey
-Weights*. R package version 0.1.0,
+Weights*. R package version 0.2.0,
 <https://github.com/jpferreira33/weightflow>.
 
     @Manual{,
       title = {weightflow: Declarative API for Staged Survey Weights},
       author = {Juan Pablo Ferreira},
       year = {2026},
-      note = {R package version 0.1.0},
+      note = {R package version 0.2.0},
       url = {https://github.com/jpferreira33/weightflow},
     }
