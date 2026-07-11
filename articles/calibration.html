@@ -377,7 +377,7 @@ single weight per cluster that still meets the population totals.</p>
 <span><span class="co"># every member of a household shares one weight</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span>, <span class="va">sample_survey</span><span class="op">$</span><span class="va">household_id</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 23.26389</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 21.71654</span></span></code></pre></div>
 <p>The maximum within-household spread is zero: the weight is constant
 inside each household, while the region and sex totals are still
 reproduced.</p>

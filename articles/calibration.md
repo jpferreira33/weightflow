@@ -286,7 +286,7 @@ wf <- weighting_spec(sample_survey, base_weights = pw) |>
 # every member of a household shares one weight
 tapply(wf$final_weight, sample_survey$household_id, function(x) diff(range(x))) |>
   max()
-#> [1] 23.26389
+#> [1] 21.71654
 ```
 
 The maximum within-household spread is zero: the weight is constant
