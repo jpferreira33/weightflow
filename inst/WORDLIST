@@ -13,6 +13,8 @@ Deville
 Dufour
 ECH
 Encuesta
+GES
+GREG
 Hogares
 Horvitz
 INE
@@ -22,6 +24,7 @@ JKn
 Kish
 Kish's
 Kreuter
+Lemaitre
 Lemaître
 Lifecycle
 Liu
@@ -39,6 +42,7 @@ PSUs
 Proc
 Ranalli
 Rao
+ReGenesees
 Sarndal
 Sautory
 Schouten
@@ -46,6 +50,7 @@ Springer
 Swensson
 Särndal
 Valliant
+Vanderhoeft
 Wolter
 Wretman
 Yue
@@ -56,6 +61,7 @@ auditable
 behaviour
 benchmarking
 boldsymbol
+calfun
 collinear
 colours
 computable
@@ -77,10 +83,12 @@ ignorable
 insertable
 kish
 ldots
+logit
 mathbb
 mathbf
 mathrm
 mc
+methodologist
 microdata
 misspecified
 modelled
@@ -95,6 +103,7 @@ nonresponse
 nr
 nrounds
 operatorname
+overcoverage
 overfit
 overfits
 partitioned
@@ -104,8 +113,10 @@ poststratify
 pre
 prev
 qquad
+raking
 representativity
 rpart
+runnable
 srvyr
 subseteq
 summarise
@@ -116,6 +127,7 @@ tidymodels
 tidyverse
 trimWeights
 tukey
+undercoverage
 unstratified
 weightflow's
 widehat

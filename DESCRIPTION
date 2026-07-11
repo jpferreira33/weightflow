@@ -1,6 +1,6 @@
 Package: weightflow
 Title: Declarative API for Staged Survey Weights
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy", role = c("aut", "cre"))
 Description: Builds survey weights from design base weights by chaining
     hierarchical adjustments (unknown eligibility, nonresponse and calibration)
@@ -17,6 +17,7 @@ Language: en-US
 Depends: R (>= 4.1.0)
 Imports: stats, utils, graphics
 Suggests: 
+    MASS,
     rpart,
     ranger,
     testthat (>= 3.0.0),
