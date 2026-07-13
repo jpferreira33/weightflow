@@ -24,6 +24,10 @@ is unchanged, and existing code keeps working.
 * Suggested packages (survey, srvyr, xgboost, ranger, rpart, ...) are only used
   conditionally, via requireNamespace() and testthat::skip_if_not_installed().
 * Snapshot, scale and spelling tests are skipped on CRAN.
+* A local `R CMD check` occasionally reports a NOTE "checking for future file
+  timestamps ... unable to verify current time". This is environmental (the
+  check machine could not reach the time server) and is unrelated to the
+  package; it does not occur on CRAN.
 * Should the incoming check flag possibly misspelled words in DESCRIPTION:
   "Deville", "Rao" and "Sarndal" are author surnames in the cited references;
   "nonresponse" and "pipeable" are standard survey-methodology / R terms. All
