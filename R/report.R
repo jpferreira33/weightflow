@@ -302,9 +302,15 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
       else "<tr><td class='muted' colspan='2'>defaults only</td></tr>"
     note <- attr(s$diagnostics, "note")
     it   <- attr(s$diagnostics, "iterations")
+    al   <- s$alerts
+    alerts_html <- if (!is.null(al) && length(al))
+      paste0("<div class='alert'><strong>Quality alerts</strong><ul>",
+             paste0("<li>", vapply(al, .html_escape, character(1)), "</li>", collapse = ""),
+             "</ul></div>") else ""
     extra <- paste0(
       if (!is.null(it)) sprintf("<p class='muted'>converged/iterated in %d iterations</p>", it) else "",
-      if (!is.null(note)) sprintf("<p class='note'>%s</p>", .html_escape(note)) else "")
+      if (!is.null(note)) sprintf("<p class='note'>%s</p>", .html_escape(note)) else "",
+      alerts_html)
     de1 <- design_effect(h[[i]]); de2 <- design_effect(h[[i + 1L]])
     viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]]) else ""
     ri_step <- if (i == nr_last && !is.null(ri)) .ri_block(ri) else ""
@@ -331,6 +337,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
     R.version$major, R.version$minor)
 
   drift <- .calibration_drift(object)
+  wdist <- .weight_distribution_html(fin)
 
   html <- sprintf("<!DOCTYPE html><html><head><meta charset='utf-8'>
 <title>weightflow report</title>%s</head><body>
@@ -341,11 +348,12 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
 <h2>Pipeline</h2>%s
 <p class='muted'>Variables used:</p>%s
 <h2>Per-stage summary</h2>%s
+<h2>Weight distribution (final)</h2>%s
 <h2>Steps</h2>%s
 %s
 <p class='foot'>deff = Kish design effect (1 + CV&sup2;). This report shows weights only; for inference use the 'survey' package.</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), prov, cards, diagram, vars_chips, .df_to_html(stab), steps_html, drift)
+    length(object$steps), prov, cards, diagram, vars_chips, .df_to_html(stab), wdist, steps_html, drift)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
@@ -356,6 +364,31 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
   sprintf("<div class='metric'><div class='mv'>%s</div><div class='ml'>%s</div></div>",
           value, label)
 
+# Distribution summary of the final weights: min, p1, median, p99, max, the
+# max/min ratio, and counts of negative, sub-1 and extreme weights. Manuals ask
+# for the shape of the distribution, not only the CV. "Extreme" uses 4x the
+# median as a convention; adjust to your trimming bounds.
+.weight_distribution_html <- function(fin) {
+  wnz <- fin[fin > 0]
+  if (!length(wnz)) return("<p class='muted'>No positive weights.</p>")
+  qs  <- as.numeric(stats::quantile(wnz, c(0.01, 0.5, 0.99)))
+  med <- qs[2]
+  row <- function(k, v) sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>", k, v)
+  rows <- paste0(
+    row("min", sprintf("%.3f", min(wnz))),
+    row("p1", sprintf("%.3f", qs[1])),
+    row("median", sprintf("%.3f", med)),
+    row("p99", sprintf("%.3f", qs[3])),
+    row("max", sprintf("%.3f", max(wnz))),
+    row("max/min ratio", sprintf("%.1f", max(wnz) / min(wnz))),
+    row("negative weights", sprintf("%d", sum(fin < 0))),
+    row("weights &lt; 1", sprintf("%d", sum(fin > 0 & fin < 1))),
+    row("extreme (&gt; 4&times; median)", sprintf("%d", sum(wnz > 4 * med))))
+  paste0("<table class='params'>", rows, "</table>",
+         "<p class='muted'>Extreme = final weight above 4&times; the median ",
+         "(a convention; adjust to your trimming bounds).</p>")
+}
+
 .report_css <- function() "<style>
 :root{--ink:#1a1a2e;--mut:#6b7280;--line:#e5e7eb;--accent:#3b5bdb;--bg:#f7f7fb}
 *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
@@ -363,6 +396,8 @@ color:var(--ink);max-width:980px;margin:32px auto;padding:0 20px;background:#fff
 h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
 h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}
 .muted{color:var(--mut);font-size:13px}.note{color:var(--accent);font-size:13px;margin:6px 0 0}
+.alert{margin:8px 0 0;padding:8px 12px;border-left:3px solid #d97706;background:#fffbeb;border-radius:6px;font-size:13px}
+.alert strong{color:#b45309;display:block;margin-bottom:4px}.alert ul{margin:0;padding-left:18px}
 .prov{color:var(--mut);font-size:12px;margin:0 0 10px}
 code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:13px}
 .cards{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}

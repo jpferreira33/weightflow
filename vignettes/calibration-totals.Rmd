@@ -12,15 +12,6 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(weightflow)
 ```
 
-> **Development version.** Several features shown here are in the development
-> version of weightflow (GitHub) and not yet on CRAN: the tidy data-frame totals
-> (`count`), domain/partitioned calibration (`by`), the exponential raking
-> distance (`calfun = "raking"`), ridge/penalized calibration (`penalty`), and
-> external consistency totals for model calibration (`x_totals`). Install with
-> `remotes::install_github("jpferreira33/weightflow")`. The classic API (raking,
-> post-stratification, GREG, the `margins`/`totals` vector inputs, and the
-> integrative `cluster` option) is on CRAN and unchanged.
-
 Calibration adjusts the weights so that the weighted sample reproduces known
 population totals of auxiliary variables. In practice those totals almost always
 arrive as a **table**: a census cross-tabulation, a projection, a spreadsheet

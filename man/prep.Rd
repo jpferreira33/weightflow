@@ -4,10 +4,23 @@
 \alias{prep}
 \title{Estimate the weighting cascade}
 \usage{
-prep(spec)
+prep(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
+
+\item{min_cell_n}{integer. Minimum number of cases per adjustment cell
+(weighting class, poststratum). Cells below this raise a (non-fatal)
+warning recommending collapsing or switching to raking. Default 30,
+following Kalton and Flores-Cervantes (2003). Set to NULL to disable.}
+
+\item{max_factor}{numeric. Adjustment factor above which a cell is flagged
+as excessive. Default 2.5. Set to NULL to disable.}
+
+\item{warn}{logical. If TRUE, the quality alerts are also raised as R
+warnings during prep(). Default FALSE: alerts are always computed, stored
+on the object (\verb{$alerts}) and shown in the HTML report, but not raised as
+warnings, so they do not flood bootstrap/jackknife replicate fits.}
 }
 \value{
 a "prepped_weighting_spec" object.

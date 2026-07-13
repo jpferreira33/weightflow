@@ -17,3 +17,5 @@
 ^ech_data$
 ^vignettes/articles$
 ^respaldos$
+\.DS_Store$
+^\.Rhistory$

@@ -17,12 +17,6 @@ library(weightflow)
 > reasoning behind each adjustment, read
 > [*Staged survey weighting: the adjustment logic*](weightflow.html).
 
-> **Development version.** The cascade shown here is on CRAN. Two conveniences
-> used below are development-version only (GitHub): the tidy data-frame
-> calibration totals (`count = "Freq"`) and the R-indicator line that
-> `summary()` prints after a nonresponse step. Install with
-> `remotes::install_github("jpferreira33/weightflow")`.
-
 ## The problem is not the weights
 
 Every survey organization has weighting scripts. They grow over time, absorb new
