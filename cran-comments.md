@@ -2,6 +2,14 @@
 
 0 errors | 0 warnings | 0 notes
 
+## Resubmission
+
+This resubmits 0.2.0 after the incoming pretest reported two NOTEs on Debian
+about multi-threaded examples and tests (CPU time more than 2.5x elapsed).
+The optional ML engines (ranger, xgboost) now run single-threaded by default,
+and the heavier gradient-boosting example is wrapped in \donttest{}. The
+Windows pretest was OK.
+
 ## Submission
 
 This is an update (0.2.0) of an existing CRAN package (weightflow 0.1.0). It adds

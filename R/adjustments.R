@@ -134,6 +134,11 @@
 # classification (objective "binary:logistic", returns P(class = 1)).
 # xgboost works on numeric matrices, so the design matrix is built with
 # model.matrix from the same formula, dropping the intercept column.
+# Number of threads for the optional ML engines (ranger, xgboost). Defaults to
+# 1 for reproducibility and to respect CRAN's check limits; users can raise it
+# with options(weightflow.num_threads = n).
+.wf_threads <- function() max(1L, as.integer(getOption("weightflow.num_threads", 1L)))
+
 .xgb_fit_predict <- function(formula, train, y, w, newdatas, classification,
                              nrounds = 150L, max_depth = 4L, eta = 0.1) {
   if (!requireNamespace("xgboost", quietly = TRUE))
@@ -147,8 +152,8 @@
   obj <- if (classification) "binary:logistic" else "reg:squarederror"
   dtr <- xgboost::xgb.DMatrix(data = Xtr, label = as.numeric(y), weight = w)
   fit <- xgboost::xgb.train(params = list(objective = obj, max_depth = max_depth,
-                                          eta = eta), data = dtr,
-                            nrounds = nrounds, verbose = 0)
+                                          eta = eta, nthread = .wf_threads()),
+                            data = dtr, nrounds = nrounds, verbose = 0)
   cols <- colnames(Xtr)
   lapply(newdatas, function(nd) {
     Mn <- mm(nd)
@@ -234,11 +239,13 @@
       stop("engine = 'forest' requires the 'ranger' package.")
     if (is_class) {
       train[[yname]] <- factor(train[[yname]]); lev <- levels(train[[yname]])
-      fit <- ranger::ranger(f, data = train, probability = TRUE, case.weights = w)
+      fit <- ranger::ranger(f, data = train, probability = TRUE, case.weights = w,
+                            num.threads = .wf_threads())
       return(lapply(newdatas, function(nd)
         as.numeric(stats::predict(fit, data = nd)$predictions[, lev[length(lev)]])))
     }
-    fit <- ranger::ranger(f, data = train, case.weights = w)
+    fit <- ranger::ranger(f, data = train, case.weights = w,
+                          num.threads = .wf_threads())
     return(lapply(newdatas, function(nd) as.numeric(stats::predict(fit, data = nd)$predictions)))
   }
 
@@ -289,7 +296,8 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
       if (!requireNamespace("ranger", quietly = TRUE))
         stop("engine = 'forest' requires the 'ranger' package (install.packages('ranger')).")
       dtr$.y <- factor(dtr$.y, levels = c(0, 1))
-      fit <- ranger::ranger(f, data = dtr, probability = TRUE, case.weights = wtr)
+      fit <- ranger::ranger(f, data = dtr, probability = TRUE, case.weights = wtr,
+                            num.threads = .wf_threads())
       as.numeric(stats::predict(fit, data = dte)$predictions[, "1"])
     } else if (engine == "boost") {
       y01 <- as.integer(as.character(dtr$.y) == "1" | dtr$.y == 1)

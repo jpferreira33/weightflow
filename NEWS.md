@@ -106,6 +106,11 @@
 
 ## Bug fixes
 
+* The optional machine-learning engines (`engine = "forest"` via ranger,
+  `engine = "boost"` via xgboost) now run single-threaded by default, for
+  reproducibility and to respect CRAN's check limits. Set
+  `options(weightflow.num_threads = n)` to use `n` threads.
+
 * `report_weighting()` now flags calibration steps that did not converge. When a
   raking, linear or bounded calibration stops without satisfying the requested
   totals (the same condition that already prints a console warning), the HTML
