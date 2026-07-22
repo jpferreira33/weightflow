@@ -302,15 +302,28 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE) {
       else "<tr><td class='muted' colspan='2'>defaults only</td></tr>"
     note <- attr(s$diagnostics, "note")
     it   <- attr(s$diagnostics, "iterations")
+    cv   <- attr(s$diagnostics, "converged")
     al   <- s$alerts
     alerts_html <- if (!is.null(al) && length(al))
       paste0("<div class='alert'><strong>Quality alerts</strong><ul>",
              paste0("<li>", vapply(al, .html_escape, character(1)), "</li>", collapse = ""),
              "</ul></div>") else ""
+    conv_html <- if (identical(cv, FALSE))
+      paste0("<div class='alert'><strong>Did not converge</strong>",
+             "<p>The calibration stopped without satisfying all margins",
+             if (!is.null(it)) sprintf(" (after %d iterations)", it) else "",
+             ". The returned weights do not fully reproduce the requested totals. ",
+             "Increase <code>maxit</code> or check that the margins are ",
+             "mutually consistent.</p></div>") else ""
+    iter_html <- if (!is.null(it)) {
+      if (identical(cv, FALSE))
+        sprintf("<p class='muted'>stopped after %d iterations (did not converge)</p>", it)
+      else sprintf("<p class='muted'>converged in %d iterations</p>", it)
+    } else ""
     extra <- paste0(
-      if (!is.null(it)) sprintf("<p class='muted'>converged/iterated in %d iterations</p>", it) else "",
+      iter_html,
       if (!is.null(note)) sprintf("<p class='note'>%s</p>", .html_escape(note)) else "",
-      alerts_html)
+      conv_html, alerts_html)
     de1 <- design_effect(h[[i]]); de2 <- design_effect(h[[i + 1L]])
     viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]]) else ""
     ri_step <- if (i == nr_last && !is.null(ri)) .ri_block(ri) else ""

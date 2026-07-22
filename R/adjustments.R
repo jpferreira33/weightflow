@@ -123,7 +123,9 @@
   if (!ok)
     warning("Bounded calibration did not fully converge (bounds may be infeasible).",
             call. = FALSE)
-  Ffun(as.numeric(Xs %*% lambda))
+  out <- Ffun(as.numeric(Xs %*% lambda))
+  attr(out, "converged") <- ok
+  out
 }
 
 
@@ -676,6 +678,7 @@ apply_step.step_calibrate <- function(step, data, w) {
       stop("`penalty` (ridge) is only available for unbounded linear ",
            "calibration (calfun = \"linear\" without bounds).")
 
+    ds_converged <- TRUE
     if (!step$equal_within_cluster) {
       # --- unit-level ---
       if (!use_ds) {
@@ -685,6 +688,7 @@ apply_step.step_calibrate <- function(step, data, w) {
         g      <- as.numeric(1 + X %*% lambda)
       } else {
         g <- .calib_ds(X, d, Tvec, step$calfun, step$bounds, step$maxit)
+        ds_converged <- isTRUE(attr(g, "converged"))
       }
       new_w[active] <- d * g
       note_clust <- ""
@@ -712,6 +716,7 @@ apply_step.step_calibrate <- function(step, data, w) {
         gh     <- as.numeric(1 + Xbar %*% lambda)
       } else {
         gh <- .calib_ds(Xbar, Wsum, Tvec, step$calfun, step$bounds, step$maxit)
+        ds_converged <- isTRUE(attr(gh, "converged"))
       }
       names(gh) <- hh
       new_w[active] <- d * gh[cl]          # each person: own base weight x household g-factor
@@ -723,10 +728,12 @@ apply_step.step_calibrate <- function(step, data, w) {
     achieved <- colSums(new_w[active] * X)
     # Check that the calibration constraints are satisfied (unless ridge, where
     # relaxation is intentional, or bounded, which has its own convergence warn).
+    conv_ok <- TRUE
     if (is.null(step$penalty) && !truncated) {
       rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
       off <- which(rel_dev > 1e-6)
-      if (length(off) > 0L)
+      if (length(off) > 0L) {
+        conv_ok <- FALSE
         warning(sprintf(
           paste0("Linear calibration did not fully satisfy the constraints for: ",
                  "%s. The achieved totals differ from the targets (max relative ",
@@ -734,11 +741,15 @@ apply_step.step_calibrate <- function(step, data, w) {
                  "or an ill-conditioned system; check the auxiliary variables."),
           paste(utils::head(cn[off], 10L), collapse = ", "), max(rel_dev)),
           call. = FALSE)
+      }
+    } else if (truncated) {
+      conv_ok <- ds_converged
     }
     diag <- data.frame(variable = cn, target = Tvec,
                        achieved = round(achieved, 2), stringsAsFactors = FALSE)
     if (!is.null(step$penalty))
       diag$deviation <- round(achieved - Tvec, 2)
+    attr(diag, "converged") <- conv_ok
     bnote <- if (use_ds)
       sprintf(" [calfun = %s%s]", step$calfun,
               if (!is.null(step$bounds)) sprintf(", bounds (%.2f, %.2f)",
@@ -1028,6 +1039,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
   diag <- data.frame(constraint = colnames(Z), type = type,
                      target = round(Tvec, 2), achieved = round(achieved, 2),
                      stringsAsFactors = FALSE)
+  attr(diag, "converged") <- (length(off) == 0L)
   attr(diag, "note") <- sprintf("g (calibration factor) in [%.3f, %.3f]%s",
                                 min(g), max(g), note_clust)
   list(weights = new_w, diagnostics = diag)
