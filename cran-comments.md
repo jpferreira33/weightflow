@@ -4,9 +4,13 @@
 
 ## Submission
 
-This is a feature update (0.2.0) of an existing CRAN package (weightflow 0.1.0).
-All changes are additive and backward-compatible: the previously published API
-is unchanged, and existing code keeps working.
+This is an update (0.2.0) of an existing CRAN package (weightflow 0.1.0). It adds
+new features and fixes two bugs: `report_weighting()` now flags calibration
+steps that did not converge, and `step_calibrate(equal_within_cluster = TRUE)`
+now implements the standard Lemaitre-Dufour integrative method (one weight per
+household). There are no changes to the published API; existing code runs
+unchanged, though integrative-calibration weights differ from 0.1.0, as
+documented in NEWS.
 
 ## Test environments
 
