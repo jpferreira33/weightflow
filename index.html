@@ -108,9 +108,6 @@
 <li>
 <strong>Recipe-aware variance.</strong> The bootstrap re-applies <em>every</em> step on each replicate, so the standard errors carry the variability of the whole cascade.</li>
 </ul>
-<blockquote>
-<p><strong>Development version.</strong> Several features shown on this site are in the development version (this repo) and not yet on CRAN, coming in <strong>0.2.0</strong>: gradient boosting &amp; k-fold cross-fitting, ridge calibration, Potter trimming, tidy data-frame totals (<code>count</code>), domain/partitioned calibration (<code>by</code>), the exponential raking distance (<code>calfun = "raking"</code>), external consistency totals for model calibration (<code>x_totals</code>), subsampling &gt;1 person per household (<code>n_selected</code>), the delete-a-PSU jackknife, R-indicators of response representativity, and the <code>disposition</code> example column. Install from GitHub to use them today; the classic API (raking, post-stratification, GREG, weighting-class/propensity nonresponse, bootstrap) is on CRAN and unchanged.</p>
-</blockquote>
 </div>
 <div class="section level2">
 <h2 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
@@ -125,9 +122,7 @@
 <code class="sourceCode R"><span><span class="co"># From CRAN</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"weightflow"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Development version (adds the Highlights below: tidy totals, domain</span></span>
-<span><span class="co"># calibration, raking distance, x_totals, jackknife, R-indicators, boosting,</span></span>
-<span><span class="co"># cross-fitting, ridge and Potter)</span></span>
+<span><span class="co"># Development version (latest changes)</span></span>
 <span><span class="co"># install.packages("remotes")</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"jpferreira33/weightflow"</span><span class="op">)</span></span></code></pre></div>
 </div>

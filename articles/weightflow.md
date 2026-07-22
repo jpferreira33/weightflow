@@ -1,12 +1,5 @@
 # Staged survey weighting: the adjustment logic
 
-> **Development version.** The whole cascade shown here is on CRAN. The
-> only development-version element is the R-indicator line that
-> [`summary()`](https://rdrr.io/r/base/summary.html) prints after a
-> nonresponse step (representativity of response); it needs no extra
-> code. Install with
-> `remotes::install_github("jpferreira33/weightflow")` to see it.
-
 Survey weights are the fundamental input used to produce population
 estimates from sample data. Let $`U={1,\ldots,N}`$ denote the target
 population and let $`y_i`$ be the value of a study variable for unit

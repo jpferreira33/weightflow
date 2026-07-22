@@ -63,7 +63,7 @@ weights. Each step multiplies the current weight by its adjustment factor.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prep</span><span class="op">(</span><span class="va">spec</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prep</span><span class="op">(</span><span class="va">spec</span>, min_cell_n <span class="op">=</span> <span class="fl">30</span>, max_factor <span class="op">=</span> <span class="fl">2.5</span>, warn <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -72,6 +72,25 @@ weights. Each step multiplies the current weight by its adjustment factor.</p>
 
 <dl><dt id="arg-spec">spec<a class="anchor" aria-label="anchor" href="#arg-spec"></a></dt>
 <dd><p>a weighting_spec.</p></dd>
+
+
+<dt id="arg-min-cell-n">min_cell_n<a class="anchor" aria-label="anchor" href="#arg-min-cell-n"></a></dt>
+<dd><p>integer. Minimum number of cases per adjustment cell
+(weighting class, poststratum). Cells below this raise a (non-fatal)
+warning recommending collapsing or switching to raking. Default 30,
+following Kalton and Flores-Cervantes (2003). Set to NULL to disable.</p></dd>
+
+
+<dt id="arg-max-factor">max_factor<a class="anchor" aria-label="anchor" href="#arg-max-factor"></a></dt>
+<dd><p>numeric. Adjustment factor above which a cell is flagged
+as excessive. Default 2.5. Set to NULL to disable.</p></dd>
+
+
+<dt id="arg-warn">warn<a class="anchor" aria-label="anchor" href="#arg-warn"></a></dt>
+<dd><p>logical. If TRUE, the quality alerts are also raised as R
+warnings during prep(). Default FALSE: alerts are always computed, stored
+on the object (<code>$alerts</code>) and shown in the HTML report, but not raised as
+warnings, so they do not flood bootstrap/jackknife replicate fits.</p></dd>
 
 </dl></div>
     <div class="section level2">

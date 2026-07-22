@@ -39,19 +39,6 @@ for inference.
   each replicate, so the standard errors carry the variability of the
   whole cascade.
 
-> **Development version.** Several features shown on this site are in
-> the development version (this repo) and not yet on CRAN, coming in
-> **0.2.0**: gradient boosting & k-fold cross-fitting, ridge
-> calibration, Potter trimming, tidy data-frame totals (`count`),
-> domain/partitioned calibration (`by`), the exponential raking distance
-> (`calfun = "raking"`), external consistency totals for model
-> calibration (`x_totals`), subsampling \>1 person per household
-> (`n_selected`), the delete-a-PSU jackknife, R-indicators of response
-> representativity, and the `disposition` example column. Install from
-> GitHub to use them today; the classic API (raking,
-> post-stratification, GREG, weighting-class/propensity nonresponse,
-> bootstrap) is on CRAN and unchanged.
-
 ## How it works
 
 weightflow expresses the whole weighting process as a sequence of
@@ -68,9 +55,7 @@ process](reference/figures/flow-diagram.png)
 # From CRAN
 install.packages("weightflow")
 
-# Development version (adds the Highlights below: tidy totals, domain
-# calibration, raking distance, x_totals, jackknife, R-indicators, boosting,
-# cross-fitting, ridge and Potter)
+# Development version (latest changes)
 # install.packages("remotes")
 remotes::install_github("jpferreira33/weightflow")
 ```

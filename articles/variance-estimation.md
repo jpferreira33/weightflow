@@ -1,15 +1,5 @@
 # Variance estimation
 
-> **Development version.** The PSU bootstrap (method 1) and the
-> survey/srvyr bridges are on CRAN. The delete-a-PSU **jackknife**
-> (method 3,
-> [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
-> /
-> [`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md))
-> is in the development version (GitHub) and ships in **0.2.0**. Install
-> with `remotes::install_github("jpferreira33/weightflow")` to use it
-> today.
-
 weightflow computes weights and also estimates their variances. This
 vignette shows a few ways to obtain standard errors from a weightflow
 recipe, and how they relate: a recipe-aware bootstrap, a survey-package

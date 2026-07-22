@@ -2,100 +2,7 @@
 
 ## weightflow 0.2.0
 
-### Bug fixes
-
-- `step_calibrate(equal_within_cluster = TRUE)` now implements the
-  genuine Lemaitre-Dufour (1987) integrative method: each unit’s
-  auxiliaries are replaced by their household mean before a person-level
-  calibration, so the per-household penalty scales with household size.
-  This matches `survey`’s `calibrate(aggregate.stage = )` (Vanderhoeft
-  2001), ReGenesees and Statistics Canada’s GES. The previous
-  implementation used a household-level distance (summed auxiliaries,
-  uniform per-household penalty), a different (non-standard) method.
-  Integrative-calibration weights will change; totals are still met
-  exactly and weights remain constant within household.
-
-## weightflow 0.1.0
-
-CRAN release: 2026-06-30
-
-First release.
-
-A dependency-free, pipeable API to compute survey weights from design
-base weights through a chain of hierarchical adjustment stages. Build a
-recipe lazily, estimate it with
-[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md),
-and extract the weights with
-[`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md).
-Separating *define* from *apply* makes the whole process reproducible
-and auditable, and lets the bootstrap re-run the entire cascade on each
-replicate.
-
-### Adjustment steps
-
-- [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md):
-  redistribute the weight of unknown-eligibility cases to the known ones
-  (person- or household-level via `cluster`).
-- [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md):
-  zero out out-of-scope units.
-- [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md):
-  within-household selection (unequal `prob` or equal `n_eligible`).
-- [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md):
-  weighting-class or propensity adjustment, at the person or household
-  level (`cluster`).
-- [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md):
-  raking, post-stratification and linear/GREG calibration, with bounded
-  (Deville-Särndal) and integrative (one weight per household) cluster
-  options.
-- [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md):
-  Wu-Sitter model calibration.
-- [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
-  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
-  [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
-  [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md):
-  trimming, rounding and rescaling.
-- [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md):
-  quality checkpoint (deff, weight ratio, effective n).
-
-### Inspection and reporting
-
-- [`summary()`](https://rdrr.io/r/base/summary.html),
-  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
-  [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
-  for per-stage diagnostics.
-- [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
-  for the Kish design effect and effective sample size.
-- [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
-  builds a self-contained HTML report with a pipeline diagram, the
-  variables used, per-stage summaries and per-step visuals.
-
-### Variance estimation
-
-- [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
-  resamples PSUs within strata (Rao-Wu rescaling) and re-applies the
-  whole recipe on each replicate, so the replicate weights carry the
-  variability of every adjustment.
-- [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
-  and
-  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
-  return the estimate, standard error and CI.
-- [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md),
-  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  and
-  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
-  bridge to the `survey` and `srvyr` packages for design-based
-  inference.
-
-### Data
-
-- Bundled example datasets `population`, `sample_survey` (take-all
-  roster) and `sample_one` (multistage select-one design), all with
-  stratum, PSU and design weight.
-
-### Development version
-
-The following are available in the development version on GitHub and are
-planned for a future CRAN release:
+### New features
 
 - **Tidy population totals for
   [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md).**
@@ -192,16 +99,6 @@ planned for a future CRAN release:
   computed on the auxiliaries of the nonresponse step and needs no new
   function or user action; recipes without a nonresponse step are
   unaffected.
-- **New `disposition` column in the `sample_one` example data.** A
-  single factor with the full field disposition (eligible respondent,
-  eligible nonrespondent, household nonresponse, ineligible, unknown
-  eligibility), recoded from the existing indicator columns (which are
-  kept). It gives a tidy single-column view of the dispositions and can
-  be used directly via logical conditions in the steps.
-- **New vignette “Preparing the sample: eligibility and response before
-  weighting”**, on how the input sample should be classified (the
-  disposition tree), how it is sized (eligibility and response
-  inflation) and how the dispositions map to the adjustment steps.
 - **Machine-learning response propensities** (CART, random forest and
   gradient boosting via `xgboost`) for
   [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
@@ -213,6 +110,118 @@ planned for a future CRAN release:
   with many auxiliaries.
 - **Potter MSE-optimal trimming** (`method = "potter"`), a data-driven
   cutoff.
+- **Quality alerts in
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md).**
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+  now computes non-fatal quality alerts and stores them on the prepped
+  object (`$alerts`) and per step: negative or sub-1 weights and
+  g-factors outside the Deville-Särndal bounds `[0.1, 10]` after
+  calibration, small adjustment cells (new `min_cell_n`, default 30,
+  following Kalton and Flores-Cervantes 2003) and excessive adjustment
+  factors (new `max_factor`, default 2.5). Alerts always appear in the
+  HTML report; set `prep(warn = TRUE)` to also raise them as R warnings.
+- **Weight distribution and alerts in
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md).**
+  The report gains a “Weight distribution (final)” summary (min, p1,
+  median, p99, max, max/min ratio, and counts of negative, sub-1 and
+  extreme weights) and a per-step “Quality alerts” block.
+- **New `disposition` column in the `sample_one` example data.** A
+  single factor with the full field disposition (eligible respondent,
+  eligible nonrespondent, household nonresponse, ineligible, unknown
+  eligibility), recoded from the existing indicator columns (which are
+  kept). It gives a tidy single-column view of the dispositions and can
+  be used directly via logical conditions in the steps.
+- **New vignette “Preparing the sample: eligibility and response before
+  weighting”**, on how the input sample should be classified (the
+  disposition tree), how it is sized (eligibility and response
+  inflation) and how the dispositions map to the adjustment steps.
 
-Install with `remotes::install_github("jpferreira33/weightflow")` to use
-them today.
+### Bug fixes
+
+- `step_calibrate(equal_within_cluster = TRUE)` now implements the
+  genuine Lemaitre-Dufour (1987) integrative method: each unit’s
+  auxiliaries are replaced by their household mean before a person-level
+  calibration, so the per-household penalty scales with household size.
+  This matches `survey`’s `calibrate(aggregate.stage = )` (Vanderhoeft
+  2001), ReGenesees and Statistics Canada’s GES. The previous
+  implementation used a household-level distance (summed auxiliaries,
+  uniform per-household penalty), a different (non-standard) method.
+  Integrative-calibration weights will change; totals are still met
+  exactly and weights remain constant within household.
+
+## weightflow 0.1.0
+
+CRAN release: 2026-06-30
+
+First release.
+
+A dependency-free, pipeable API to compute survey weights from design
+base weights through a chain of hierarchical adjustment stages. Build a
+recipe lazily, estimate it with
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md),
+and extract the weights with
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md).
+Separating *define* from *apply* makes the whole process reproducible
+and auditable, and lets the bootstrap re-run the entire cascade on each
+replicate.
+
+### Adjustment steps
+
+- [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md):
+  redistribute the weight of unknown-eligibility cases to the known ones
+  (person- or household-level via `cluster`).
+- [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md):
+  zero out out-of-scope units.
+- [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md):
+  within-household selection (unequal `prob` or equal `n_eligible`).
+- [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md):
+  weighting-class or propensity adjustment, at the person or household
+  level (`cluster`).
+- [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md):
+  raking, post-stratification and linear/GREG calibration, with bounded
+  (Deville-Särndal) and integrative (one weight per household) cluster
+  options.
+- [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md):
+  Wu-Sitter model calibration.
+- [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+  [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+  [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md):
+  trimming, rounding and rescaling.
+- [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md):
+  quality checkpoint (deff, weight ratio, effective n).
+
+### Inspection and reporting
+
+- [`summary()`](https://rdrr.io/r/base/summary.html),
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
+  for per-stage diagnostics.
+- [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
+  for the Kish design effect and effective sample size.
+- [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+  builds a self-contained HTML report with a pipeline diagram, the
+  variables used, per-stage summaries and per-step visuals.
+
+### Variance estimation
+
+- [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  resamples PSUs within strata (Rao-Wu rescaling) and re-applies the
+  whole recipe on each replicate, so the replicate weights carry the
+  variability of every adjustment.
+- [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  and
+  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  return the estimate, standard error and CI.
+- [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md),
+  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  and
+  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
+  bridge to the `survey` and `srvyr` packages for design-based
+  inference.
+
+### Data
+
+- Bundled example datasets `population`, `sample_survey` (take-all
+  roster) and `sample_one` (multistage select-one design), all with
+  stratum, PSU and design weight.

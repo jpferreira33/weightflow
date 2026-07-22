@@ -6,14 +6,6 @@
 > weighting: the adjustment
 > logic*](https://jpferreira33.github.io/weightflow/articles/weightflow.md).
 
-> **Development version.** The cascade shown here is on CRAN. Two
-> conveniences used below are development-version only (GitHub): the
-> tidy data-frame calibration totals (`count = "Freq"`) and the
-> R-indicator line that
-> [`summary()`](https://rdrr.io/r/base/summary.html) prints after a
-> nonresponse step. Install with
-> `remotes::install_github("jpferreira33/weightflow")`.
-
 ## The problem is not the weights
 
 Every survey organization has weighting scripts. They grow over time,

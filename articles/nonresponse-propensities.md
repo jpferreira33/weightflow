@@ -1,14 +1,5 @@
 # Nonresponse: weighting classes and propensities
 
-> **Development version.** The gradient-boosting engine
-> (`engine = "boost"`) and k-fold cross-fitting (`crossfit`) shown here
-> are in the development version of weightflow (GitHub) and not yet on
-> CRAN; so is the R-indicator line that
-> [`summary()`](https://rdrr.io/r/base/summary.html) prints. Install
-> with `remotes::install_github("jpferreira33/weightflow")`. Weighting
-> classes and the logit/tree/forest propensity engines are on CRAN and
-> unchanged.
-
 Nonresponse adjustment inflates the weights of respondents so they also
 represent the nonrespondents.
 [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)

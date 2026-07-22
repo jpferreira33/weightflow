@@ -1,14 +1,5 @@
 # Machine learning, cross-fitting and robust calibration
 
-> **Development version.** The methods in this article (gradient
-> boosting via `engine = "boost"`, k-fold cross-fitting via `crossfit`,
-> ridge/penalized calibration via `penalty`, and Potter MSE-optimal
-> trimming via `method = "potter"`) are in the development version of
-> weightflow (GitHub) and not yet on CRAN. Install with
-> `remotes::install_github("jpferreira33/weightflow")`. The classic
-> tools (weighting classes, logit/tree/forest propensities, raking,
-> bounds) are on CRAN and unchanged.
-
 The *Get started* article builds a weighting recipe with classical
 tools: weighting classes for nonresponse, raking for calibration, a
 fixed-fence trim. This article covers the methods that go one step

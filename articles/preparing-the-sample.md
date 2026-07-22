@@ -1,13 +1,5 @@
 # Preparing the sample: eligibility and response before weighting
 
-> **Development version.** The `disposition` example column used
-> throughout this article is in the development version of weightflow
-> (GitHub) and not yet on CRAN; the same goes for the R-indicator line
-> that [`summary()`](https://rdrr.io/r/base/summary.html) prints.
-> Install with `remotes::install_github("jpferreira33/weightflow")`. The
-> adjustment steps and the indicator columns (`unknown_elig`,
-> `ineligible`, `hh_responded`, `responded`) are on CRAN and unchanged.
-
 Weighting starts before any factor is computed: with a clean
 classification of **what each sampled case is**. Every record drawn from
 the frame has to be placed in one of a few mutually exclusive
