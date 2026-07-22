@@ -15,8 +15,7 @@ documented in NEWS.
 ## Test environments
 
 * local macOS, R 4.5
-* win-builder: R-devel, R-release and R-oldrelease
-* R-hub: linux, macos, macos-arm64, m1-san and windows (all R-devel)
+* win-builder: R-devel and R-release (Status: OK)
 * GitHub Actions: ubuntu / macOS / windows (R-oldrel, R-release, R-devel)
 
 ## Notes
