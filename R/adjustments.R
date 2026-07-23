@@ -123,7 +123,9 @@
   if (!ok)
     warning("Bounded calibration did not fully converge (bounds may be infeasible).",
             call. = FALSE)
-  Ffun(as.numeric(Xs %*% lambda))
+  out <- Ffun(as.numeric(Xs %*% lambda))
+  attr(out, "converged") <- ok
+  out
 }
 
 
@@ -132,6 +134,11 @@
 # classification (objective "binary:logistic", returns P(class = 1)).
 # xgboost works on numeric matrices, so the design matrix is built with
 # model.matrix from the same formula, dropping the intercept column.
+# Number of threads for the optional ML engines (ranger, xgboost). Defaults to
+# 1 for reproducibility and to respect CRAN's check limits; users can raise it
+# with options(weightflow.num_threads = n).
+.wf_threads <- function() max(1L, as.integer(getOption("weightflow.num_threads", 1L)))
+
 .xgb_fit_predict <- function(formula, train, y, w, newdatas, classification,
                              nrounds = 150L, max_depth = 4L, eta = 0.1) {
   if (!requireNamespace("xgboost", quietly = TRUE))
@@ -145,8 +152,8 @@
   obj <- if (classification) "binary:logistic" else "reg:squarederror"
   dtr <- xgboost::xgb.DMatrix(data = Xtr, label = as.numeric(y), weight = w)
   fit <- xgboost::xgb.train(params = list(objective = obj, max_depth = max_depth,
-                                          eta = eta), data = dtr,
-                            nrounds = nrounds, verbose = 0)
+                                          eta = eta, nthread = .wf_threads()),
+                            data = dtr, nrounds = nrounds, verbose = 0)
   cols <- colnames(Xtr)
   lapply(newdatas, function(nd) {
     Mn <- mm(nd)
@@ -232,11 +239,13 @@
       stop("engine = 'forest' requires the 'ranger' package.")
     if (is_class) {
       train[[yname]] <- factor(train[[yname]]); lev <- levels(train[[yname]])
-      fit <- ranger::ranger(f, data = train, probability = TRUE, case.weights = w)
+      fit <- ranger::ranger(f, data = train, probability = TRUE, case.weights = w,
+                            num.threads = .wf_threads())
       return(lapply(newdatas, function(nd)
         as.numeric(stats::predict(fit, data = nd)$predictions[, lev[length(lev)]])))
     }
-    fit <- ranger::ranger(f, data = train, case.weights = w)
+    fit <- ranger::ranger(f, data = train, case.weights = w,
+                          num.threads = .wf_threads())
     return(lapply(newdatas, function(nd) as.numeric(stats::predict(fit, data = nd)$predictions)))
   }
 
@@ -287,7 +296,8 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
       if (!requireNamespace("ranger", quietly = TRUE))
         stop("engine = 'forest' requires the 'ranger' package (install.packages('ranger')).")
       dtr$.y <- factor(dtr$.y, levels = c(0, 1))
-      fit <- ranger::ranger(f, data = dtr, probability = TRUE, case.weights = wtr)
+      fit <- ranger::ranger(f, data = dtr, probability = TRUE, case.weights = wtr,
+                            num.threads = .wf_threads())
       as.numeric(stats::predict(fit, data = dte)$predictions[, "1"])
     } else if (engine == "boost") {
       y01 <- as.integer(as.character(dtr$.y) == "1" | dtr$.y == 1)
@@ -676,6 +686,7 @@ apply_step.step_calibrate <- function(step, data, w) {
       stop("`penalty` (ridge) is only available for unbounded linear ",
            "calibration (calfun = \"linear\" without bounds).")
 
+    ds_converged <- TRUE
     if (!step$equal_within_cluster) {
       # --- unit-level ---
       if (!use_ds) {
@@ -685,6 +696,7 @@ apply_step.step_calibrate <- function(step, data, w) {
         g      <- as.numeric(1 + X %*% lambda)
       } else {
         g <- .calib_ds(X, d, Tvec, step$calfun, step$bounds, step$maxit)
+        ds_converged <- isTRUE(attr(g, "converged"))
       }
       new_w[active] <- d * g
       note_clust <- ""
@@ -712,6 +724,7 @@ apply_step.step_calibrate <- function(step, data, w) {
         gh     <- as.numeric(1 + Xbar %*% lambda)
       } else {
         gh <- .calib_ds(Xbar, Wsum, Tvec, step$calfun, step$bounds, step$maxit)
+        ds_converged <- isTRUE(attr(gh, "converged"))
       }
       names(gh) <- hh
       new_w[active] <- d * gh[cl]          # each person: own base weight x household g-factor
@@ -723,10 +736,12 @@ apply_step.step_calibrate <- function(step, data, w) {
     achieved <- colSums(new_w[active] * X)
     # Check that the calibration constraints are satisfied (unless ridge, where
     # relaxation is intentional, or bounded, which has its own convergence warn).
+    conv_ok <- TRUE
     if (is.null(step$penalty) && !truncated) {
       rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
       off <- which(rel_dev > 1e-6)
-      if (length(off) > 0L)
+      if (length(off) > 0L) {
+        conv_ok <- FALSE
         warning(sprintf(
           paste0("Linear calibration did not fully satisfy the constraints for: ",
                  "%s. The achieved totals differ from the targets (max relative ",
@@ -734,11 +749,15 @@ apply_step.step_calibrate <- function(step, data, w) {
                  "or an ill-conditioned system; check the auxiliary variables."),
           paste(utils::head(cn[off], 10L), collapse = ", "), max(rel_dev)),
           call. = FALSE)
+      }
+    } else if (truncated) {
+      conv_ok <- ds_converged
     }
     diag <- data.frame(variable = cn, target = Tvec,
                        achieved = round(achieved, 2), stringsAsFactors = FALSE)
     if (!is.null(step$penalty))
       diag$deviation <- round(achieved - Tvec, 2)
+    attr(diag, "converged") <- conv_ok
     bnote <- if (use_ds)
       sprintf(" [calfun = %s%s]", step$calfun,
               if (!is.null(step$bounds)) sprintf(", bounds (%.2f, %.2f)",
@@ -1028,6 +1047,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
   diag <- data.frame(constraint = colnames(Z), type = type,
                      target = round(Tvec, 2), achieved = round(achieved, 2),
                      stringsAsFactors = FALSE)
+  attr(diag, "converged") <- (length(off) == 0L)
   attr(diag, "note") <- sprintf("g (calibration factor) in [%.3f, %.3f]%s",
                                 min(g), max(g), note_clust)
   list(weights = new_w, diagnostics = diag)

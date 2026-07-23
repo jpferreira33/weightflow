@@ -106,6 +106,18 @@
 
 ## Bug fixes
 
+* The optional machine-learning engines (`engine = "forest"` via ranger,
+  `engine = "boost"` via xgboost) now run single-threaded by default, for
+  reproducibility and to respect CRAN's check limits. Set
+  `options(weightflow.num_threads = n)` to use `n` threads.
+
+* `report_weighting()` now flags calibration steps that did not converge. When a
+  raking, linear or bounded calibration stops without satisfying the requested
+  totals (the same condition that already prints a console warning), the HTML
+  report shows a "Did not converge" alert on that step and no longer states that
+  the step converged. Previously the report always reported convergence,
+  regardless of the actual result.
+
 * `step_calibrate(equal_within_cluster = TRUE)` now implements the genuine
   Lemaitre-Dufour (1987) integrative method: each unit's auxiliaries are
   replaced by their household mean before a person-level calibration, so the
