@@ -128,11 +128,48 @@ test_that("sample-level coincidence holds on bundled sample_survey across calfun
   }
 })
 
-test_that("integrative and (for now) unsupported options are rejected at build time", {
+test_that("equal_within_cluster without cluster is rejected at build time", {
   expect_error(
     weighting_spec(data.frame(a = 1, resp = TRUE, pw = 1), base_weights = pw) |>
       step_nonresponse(respondent = resp, method = "calibration", formula = ~ a,
-                       equal_within_cluster = TRUE, cluster = "a"),
-    "not yet available"
+                       equal_within_cluster = TRUE),
+    "requires .cluster."
   )
+})
+
+test_that("integrative nonresponse calibration keeps weights constant within household", {
+  # Household design (constant base weight within household), household-level
+  # nonresponse, person-level auxiliaries. Integrative calibration must give one
+  # weight per responding household AND still reproduce the R+NR totals.
+  set.seed(31)
+  n_hh  <- 400
+  sizes <- sample(1:4, n_hh, replace = TRUE)
+  hh    <- rep(seq_len(n_hh), sizes)
+  N     <- length(hh)
+  dat   <- data.frame(
+    hh  = hh,
+    sex = factor(sample(c("F", "M"),      N, replace = TRUE)),
+    reg = factor(sample(c("a", "b", "c"), N, replace = TRUE)),
+    pw  = 10                                   # equal base weight (household design)
+  )
+  resp_hh        <- runif(n_hh) < 0.7          # whole household responds or not
+  dat$responded  <- resp_hh[dat$hh]
+
+  fit <- weighting_spec(dat, base_weights = pw) |>
+    step_nonresponse(respondent = responded, method = "calibration",
+                     formula = ~ sex + reg, cluster = "hh",
+                     equal_within_cluster = TRUE) |>
+    prep()
+  w <- collect_weights(fit, drop_zero = FALSE)$.weight
+
+  # (a) one weight per responding household (constant within household)
+  act <- w > 0
+  const <- tapply(w[act], dat$hh[act], function(z) diff(range(z)))
+  expect_true(all(const < 1e-6))
+  # (b) nonresponding households dropped
+  expect_true(all(w[!dat$responded] == 0))
+  # (c) R+NR sample totals of the auxiliaries preserved
+  X     <- stats::model.matrix(~ sex + reg, dat)
+  T_RNR <- colSums(dat$pw * X)
+  expect_equal(unname(colSums(w * X)), unname(T_RNR), tolerance = 1e-6)
 })

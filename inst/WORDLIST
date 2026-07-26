@@ -14,6 +14,7 @@ Dufour
 ECH
 Encuesta
 Estevao
+Folsom
 GES
 GREG
 Hogares
@@ -48,6 +49,7 @@ ReGenesees
 Sarndal
 Sautory
 Schouten
+Singh
 Springer
 Swensson
 Särndal
@@ -111,6 +113,7 @@ overfits
 partitioned
 pipeable
 poisson
+poststratification
 poststratify
 poststratum
 pre
@@ -129,6 +132,7 @@ th
 tidymodels
 tidyverse
 trimWeights
+trimcal
 tukey
 undercoverage
 unstratified

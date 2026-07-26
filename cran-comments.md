@@ -8,7 +8,11 @@ This is an update (0.3.0) of an existing CRAN package (weightflow 0.2.0). It add
 new features and fixes one bug:
 
 * `step_nonresponse()` gains `method = "calibration"`, the calibration (two-phase)
-  approach to nonresponse adjustment (Sarndal & Lundstrom 2005).
+  approach to nonresponse adjustment (Sarndal & Lundstrom 2005), including an
+  integrative (one weight per household) variant via `equal_within_cluster`.
+* New `step_trim_calibrated()`: range-restricted, totals-preserving trimming of
+  calibrated weights (Folsom & Singh 2000), with a unit-level and an integrative
+  (one factor per household) variant.
 * `step_trim_weights()` gains a `redistribute` argument; the new `"uniform"`
   option reproduces `survey::trimWeights()` exactly.
 * Bug fix: `step_trim_weights()` now trims negative weights (a lower floor

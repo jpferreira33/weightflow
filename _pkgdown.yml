@@ -75,6 +75,7 @@ reference:
   - step_model_calibration
   - step_trim
   - step_trim_weights
+  - step_trim_calibrated
   - step_round
   - step_rescale
   - step_assert

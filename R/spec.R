@@ -219,7 +219,10 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   household (household auxiliaries), predicting the household response. The
 #'   resulting factor is assigned to every member; nonresponding households go to
 #'   zero. As always, only active units (weight > 0) take part, so units already
-#'   dropped (unknown eligibility, ineligible) are excluded automatically.
+#'   dropped (unknown eligibility, ineligible) are excluded automatically. For
+#'   `method = "calibration"`, `cluster` is used together with
+#'   `equal_within_cluster = TRUE` for integrative (one weight per household)
+#'   calibration.
 #' @param totals (method = "calibration") calibration targets. NULL (default)
 #'   calibrates the respondents to the R+NR design-weighted totals of `formula`
 #'   at that stage (the two-phase / sample-level case; Sarndal & Lundstrom 2005);
@@ -233,8 +236,11 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   on the calibration factor, to keep the nonresponse factors positive.
 #' @param penalty (method = "calibration", unbounded) NULL or positive cost(s)
 #'   for ridge (penalized) calibration.
-#' @param equal_within_cluster (method = "calibration") logical. Integrative
-#'   (one factor per `cluster`) calibration; planned for a later increment.
+#' @param equal_within_cluster (method = "calibration") logical. If TRUE,
+#'   integrative (Lemaitre-Dufour) nonresponse calibration: the responding
+#'   members of a household (`cluster`) share a single calibration factor, so
+#'   the adjustment keeps the weights constant within household. Requires
+#'   `cluster`. FALSE (default) calibrates each responding unit on its own.
 #' @param maxit,tol (method = "calibration") convergence control for the bounded
 #'   or exponential-distance calibration solver.
 #' @examples
@@ -305,9 +311,8 @@ step_nonresponse <- function(spec, respondent,
       if (!is.numeric(penalty) || any(penalty <= 0))
         stop("`penalty` must be a positive scalar or a positive named vector.")
     }
-    if (isTRUE(equal_within_cluster))
-      stop("Integrative nonresponse calibration (equal_within_cluster) is not ",
-           "yet available; coming in a later 0.3.0 increment.")
+    if (isTRUE(equal_within_cluster) && is.null(cluster))
+      stop("equal_within_cluster = TRUE requires `cluster` (the household id).")
   }
 
   mode   <- if (is.null(num_classes)) "1/p per unit" else
@@ -320,6 +325,7 @@ step_nonresponse <- function(spec, respondent,
               det  <- calfun                       # linear / raking / logit distance
               if (calfun != "logit" && !is.null(bounds)) det <- paste0(det, ", bounded")
               if (!is.null(penalty)) det <- paste0(det, ", ridge")
+              if (isTRUE(equal_within_cluster)) det <- paste0(det, ", integrative")
               sprintf("nonresponse (calibration: %s, %s)", det, tlab)
             }
             else sprintf("nonresponse (weighting class%s)", lvl)
@@ -946,6 +952,99 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
       maxit        = maxit
     ),
     class = c("step_trim_weights", "weighting_step")
+  )
+  .add_step(spec, step)
+}
+
+# --- Optional step: trimmed (range-restricted) calibration -----------------
+
+#' Trimmed calibration (range-restricted, totals-preserving)
+#'
+#' Trims already-calibrated weights into an absolute interval `[lower, upper]`
+#' **while preserving the calibration totals** of `formula`. Unlike
+#' `step_trim_weights()` (which caps and then redistributes the trimmed mass, so
+#' the calibration constraints are broken), this is a bounded re-calibration: it
+#' finds the weights closest to the incoming ones that both lie in
+#' `[lower, upper]` and still reproduce the totals the incoming weights achieve
+#' (the generalized exponential method of Folsom & Singh 2000). The
+#' absolute-weight bound is imposed as a per-unit
+#' factor bound `w_new / w in [lower/w, upper/w]` on top of the incoming weights,
+#' using the range-restricted Euclidean distance (`calfun = "linear"`, the
+#' default) or the multiplicative one (`calfun = "raking"`). Weights
+#' inside the range that are not needed to restore the totals stay put; the
+#' out-of-range ones saturate at their bound and the rest move as little as
+#' possible. If the range is too tight to preserve every total, the totals that
+#' cannot be met are relaxed and a warning is raised.
+#'
+#' This step is meant to run **after** a `step_calibrate()`: it acts on the
+#' positive incoming weights and leaves dropped units (weight 0) alone.
+#'
+#' @param spec a weighting_spec.
+#' @param formula the auxiliaries whose calibration totals must be preserved
+#'   (right-hand side only), e.g. `~ region + age_group`. Usually the same
+#'   formula used in the preceding `step_calibrate()`.
+#' @param lower,upper numeric. Absolute bounds on the trimmed weight. At least
+#'   one must be supplied; the other defaults to no bound. For positive variance,
+#'   use a positive `lower`.
+#' @param calfun distance function: "linear" (default; the range-restricted
+#'   Euclidean distance) or "raking" (the multiplicative distance, which keeps
+#'   the adjustment factors positive).
+#' @param cluster character or NULL. Cluster (e.g. household) id column, for
+#'   integrative trimming (with `equal_within_cluster = TRUE`).
+#' @param equal_within_cluster logical. If TRUE, integrative trimming: one
+#'   trimming factor per `cluster`, so weights stay constant within household.
+#'   The incoming weights must already be constant within cluster (e.g. from
+#'   `step_calibrate(equal_within_cluster = TRUE)`); the absolute bound then
+#'   applies to that common household weight. Requires `cluster`. FALSE
+#'   (default) trims each unit on its own.
+#' @param maxit integer. Maximum iterations for the bounded solver.
+#' @param tol numeric. Convergence tolerance for the bounded solver.
+#' @examples
+#' # calibrate, then trim the calibrated weights into [50, 400] without breaking
+#' # the region/sex totals
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_calibrate(method = "raking",
+#'                  margins = list(region = c(table(population$region)),
+#'                                 sex    = c(table(population$sex)))) |>
+#'   step_trim_calibrated(~ region + sex, lower = 50, upper = 400) |>
+#'   prep()
+#' @references
+#' Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model for
+#' sampling weight calibration for extreme values, nonresponse, and
+#' poststratification. *ASA Proceedings of the Section on Survey Research
+#' Methods*, 598-603.
+#' @return The input `weighting_spec` with this step appended to its recipe. The
+#'   step is recorded only; it is evaluated when `prep()` is called.
+step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
+                                 calfun = c("linear", "raking"),
+                                 cluster = NULL, equal_within_cluster = FALSE,
+                                 maxit = 100L, tol = 1e-7) {
+  calfun <- match.arg(calfun)
+  if (missing(formula) || !inherits(formula, "formula"))
+    stop("`formula` must be a formula naming the auxiliaries to preserve, ",
+         "e.g. ~ region + age_group.")
+  if (is.null(lower) && is.null(upper))
+    stop("Supply at least one of `lower` / `upper` (the absolute weight bounds).")
+  if (!is.null(lower) && !is.null(upper) && lower >= upper)
+    stop("`lower` must be strictly below `upper`.")
+  if (isTRUE(equal_within_cluster) && is.null(cluster))
+    stop("equal_within_cluster = TRUE requires `cluster` (the household id).")
+  step <- structure(
+    list(
+      label   = sprintf("trimmed calibration [%s, %s]%s",
+                        if (is.null(lower)) "-Inf" else format(lower),
+                        if (is.null(upper)) "Inf"  else format(upper),
+                        if (isTRUE(equal_within_cluster)) " (integrative)" else ""),
+      formula = formula,
+      lower   = lower,
+      upper   = upper,
+      calfun  = calfun,
+      cluster = cluster,
+      equal_within_cluster = equal_within_cluster,
+      maxit   = maxit,
+      tol     = tol
+    ),
+    class = c("step_trim_calibrated", "weighting_step")
   )
   .add_step(spec, step)
 }

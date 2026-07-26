@@ -62,7 +62,10 @@ the cells, and in "propensity" the model is fitted with one row per
 household (household auxiliaries), predicting the household response. The
 resulting factor is assigned to every member; nonresponding households go to
 zero. As always, only active units (weight > 0) take part, so units already
-dropped (unknown eligibility, ineligible) are excluded automatically.}
+dropped (unknown eligibility, ineligible) are excluded automatically. For
+\code{method = "calibration"}, \code{cluster} is used together with
+\code{equal_within_cluster = TRUE} for integrative (one weight per household)
+calibration.}
 
 \item{crossfit}{integer or NULL. If given (number of folds K >= 2), the
 propensity is estimated by K-fold cross-fitting: for each fold the model is
@@ -93,8 +96,11 @@ on the calibration factor, to keep the nonresponse factors positive.}
 \item{penalty}{(method = "calibration", unbounded) NULL or positive cost(s)
 for ridge (penalized) calibration.}
 
-\item{equal_within_cluster}{(method = "calibration") logical. Integrative
-(one factor per \code{cluster}) calibration; planned for a later increment.}
+\item{equal_within_cluster}{(method = "calibration") logical. If TRUE,
+integrative (Lemaitre-Dufour) nonresponse calibration: the responding
+members of a household (\code{cluster}) share a single calibration factor, so
+the adjustment keeps the weights constant within household. Requires
+\code{cluster}. FALSE (default) calibrates each responding unit on its own.}
 
 \item{maxit, tol}{(method = "calibration") convergence control for the bounded
 or exponential-distance calibration solver.}

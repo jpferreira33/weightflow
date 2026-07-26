@@ -13,10 +13,31 @@
   categorical auxiliaries, the distance `calfun` (linear/raking/logit), `bounds`
   and `penalty` (ridge) all carry over from `step_calibrate()`. The sample-level
   target is recomputed inside each bootstrap/jackknife replicate, so the two-phase
-  variance is captured by the recipe-aware machinery. `method = "weighting_class"`
-  remains the post-stratification (joint-cell) special case; the marginal (IPF via
-  `margins`) and integrative (one weight per cluster) variants are planned for a
-  later 0.3.0 increment.
+  variance is captured by the recipe-aware machinery. With
+  `equal_within_cluster = TRUE` (and a `cluster`) the adjustment is integrative
+  (Lemaitre-Dufour): the responding members of a household share a single
+  calibration factor, so nonresponse calibration keeps the weights constant
+  within household, as in a household survey. `method = "weighting_class"`
+  remains the post-stratification (joint-cell) special case; the marginal
+  (IPF via `margins`) variant is planned for a later 0.3.0 increment.
+
+* **`step_trim_calibrated()`: trimmed (range-restricted) calibration.** Trims
+  already-calibrated weights into an absolute interval `[lower, upper]` while
+  **preserving the calibration totals**, unlike `step_trim_weights()` which caps
+  and redistributes (breaking the constraints). It is a bounded re-calibration
+  (the generalized exponential method of Folsom & Singh 2000): the targets to
+  preserve are the totals the incoming weights already
+  achieve, and the absolute-weight bound becomes a per-unit factor bound
+  `w_new / w in [lower/w, upper/w]`, solved with the range-restricted Euclidean
+  distance (`calfun = "linear"`, the default) or the multiplicative one
+  (`"raking"`). Weights inside the range stay put; out-of-range ones saturate at
+  their bound and the rest move minimally to restore every total. If the range
+  is infeasible, the unmet totals are relaxed and a warning is raised. It reuses
+  the bounded-calibration solver, now able to take per-unit bounds. With
+  `equal_within_cluster = TRUE` (and a `cluster`) the trimming is integrative:
+  one factor per household, so weights that were constant within household stay
+  constant (the household-level analogue of `survey`'s `aggregate.stage`
+  calibration).
 
 * **`redistribute` argument for `step_trim_weights()`.** The trimmed mass can now
   be shared among the untrimmed units either in proportion to their weights
@@ -158,8 +179,8 @@
   Lemaitre-Dufour (1987) integrative method: each unit's auxiliaries are
   replaced by their household mean before a person-level calibration, so the
   per-household penalty scales with household size. This matches `survey`'s
-  `calibrate(aggregate.stage = )` (Vanderhoeft 2001), ReGenesees and Statistics
-  Canada's GES. The previous implementation used a household-level distance
+  `calibrate(aggregate.stage = )` (Vanderhoeft 2001) to machine precision.
+  The previous implementation used a household-level distance
   (summed auxiliaries, uniform per-household penalty), a different (non-standard)
   method. Integrative-calibration weights will change; totals are still met
   exactly and weights remain constant within household.

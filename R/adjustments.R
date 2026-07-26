@@ -72,8 +72,16 @@
 # construction). With bounds, linear/raking are clamped (truncated distance).
 .calib_ds <- function(X, d, Tvec, calfun = "linear", bounds = NULL,
                       maxit = 100L, tol = 1e-7) {
-  L <- if (is.null(bounds)) -Inf else bounds[1]
-  U <- if (is.null(bounds)) Inf  else bounds[2]
+  # `bounds` may be a length-2 vector c(L, U) (global, the usual case) or an
+  # n x 2 matrix of per-unit bounds cbind(L_k, U_k) (used by trimmed
+  # calibration, where the absolute-weight bound w in [w_l, w_u] becomes a
+  # per-unit factor bound). L and U then broadcast element-wise below.
+  if (is.matrix(bounds)) {
+    L <- bounds[, 1]; U <- bounds[, 2]
+  } else {
+    L <- if (is.null(bounds)) -Inf else bounds[1]
+    U <- if (is.null(bounds)) Inf  else bounds[2]
+  }
   CLZ <- 500                                # clamp for exp() to avoid overflow
 
   if (calfun == "logit") {
@@ -549,10 +557,34 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
   # --- solve on respondents only, drop nonrespondents ---
   Xr  <- Xall[resp_e, , drop = FALSE]
   dr  <- w[eligible][resp_e]
-  sol <- .solve_calibration(Xr, dr, Tvec, step$calfun, step$bounds,
-                            step$penalty, step$maxit)
-  g   <- sol$g
-  new_w[elig_idx[resp_e]]  <- dr * g
+  if (!step$equal_within_cluster) {
+    # unit-level: one calibration factor per responding unit
+    sol <- .solve_calibration(Xr, dr, Tvec, step$calfun, step$bounds,
+                              step$penalty, step$maxit)
+    g   <- sol$g
+    new_w[elig_idx[resp_e]] <- dr * g
+    note_clust <- ""
+  } else {
+    # integrative (Lemaitre-Dufour): one weight per cluster among the
+    # respondents. Replace each responding unit's auxiliaries by the mean over
+    # its responding household members and calibrate at unit level, so all
+    # responding members of a household share one calibration factor.
+    if (!step$cluster %in% names(data))
+      stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
+    clr <- as.character(data[[step$cluster]])[eligible][resp_e]
+    if (anyNA(clr))
+      stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
+    hh   <- unique(clr)
+    n_h  <- as.numeric(tapply(dr, clr, length)[hh])          # responding members
+    Wsum <- as.numeric(tapply(dr, clr, sum)[hh])             # base weight in household
+    Xbar <- rowsum(Xr, group = clr)[hh, , drop = FALSE] / n_h  # household MEANS
+    sol  <- .solve_calibration(Xbar, Wsum, Tvec, step$calfun, step$bounds,
+                               step$penalty, step$maxit)
+    gh   <- sol$g; names(gh) <- hh
+    g    <- gh
+    new_w[elig_idx[resp_e]] <- dr * gh[clr]                  # own weight x household factor
+    note_clust <- sprintf("; one weight per '%s' (integrative)", step$cluster)
+  }
   new_w[elig_idx[!resp_e]] <- 0
 
   # --- diagnostics (same conventions as step_calibrate) ---
@@ -579,8 +611,8 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
   else ""
   rnote <- if (!is.null(step$penalty)) " [ridge: constraints relaxed, not exact]" else ""
   attr(diag, "note") <- sprintf(
-    "nonresponse calibration to %s totals; g in [%.3f, %.3f]%s%s",
-    tlab, min(g), max(g), bnote, rnote)
+    "nonresponse calibration to %s totals; g in [%.3f, %.3f]%s%s%s",
+    tlab, min(g), max(g), bnote, rnote, note_clust)
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -806,7 +838,8 @@ apply_step.step_calibrate <- function(step, data, w) {
       # and calibrate at the person level, so all members share one weight. The
       # per-household mass is the household's total base weight (sum over persons),
       # i.e. the penalty scales with household size. This matches survey's
-      # aggregate.stage (Vanderhoeft 2001), ReGenesees and Statistics Canada's GES.
+      # aggregate.stage (Vanderhoeft 2001), to machine precision. (ReGenesees
+      # implements a different integrative variant, so it need not agree.)
       hh   <- unique(cl)
       n_h  <- as.numeric(tapply(d, cl, length)[hh])       # persons per household
       Wsum <- as.numeric(tapply(d, cl, sum)[hh])          # total base weight in household
@@ -1097,7 +1130,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
   } else {
     # Integrative calibration (Lemaitre-Dufour 1987): household-MEAN replacement,
     # person-level calibration -> one weight per household (matches survey's
-    # aggregate.stage / Vanderhoeft 2001, ReGenesees and Statistics Canada's GES).
+    # aggregate.stage / Vanderhoeft 2001; ReGenesees uses a different variant).
     if (!step$cluster %in% names(data))
       stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
     cl <- as.character(data[[step$cluster]])[active]
@@ -1253,6 +1286,104 @@ apply_step.step_trim_weights <- function(step, data, w) {
     stringsAsFactors = FALSE
   )
   attr(diag, "iterations") <- it
+  list(weights = new_w, diagnostics = diag)
+}
+
+# --- Trimmed (range-restricted) calibration --------------------------------
+# Trim the incoming (calibration) weights to an absolute interval [lower, upper]
+# WHILE PRESERVING the calibration totals of `formula`. This is not a clip: it is
+# a bounded re-calibration (Folsom & Singh 2000, GEM). The targets to preserve
+# are the totals the incoming weights already achieve
+# (T = sum_k w_k x_k), and the absolute-weight bound w_k in [lower, upper] is
+# imposed as a per-unit factor bound f_k = w_k^new / w_k in [lower/w_k, upper/w_k]
+# on top of the incoming weights, using the range-restricted Euclidean distance
+# (calfun = "linear", the default) or the multiplicative one ("raking").
+# Units within range and not needed to restore the totals stay put (f_k ~ 1);
+# out-of-range units saturate at their bound and the rest move minimally.
+apply_step.step_trim_calibrated <- function(step, data, w) {
+  active <- w > 0                      # only positive calibration weights
+  if (!any(active)) return(list(weights = w, diagnostics = NULL))
+  new_w <- w
+  d     <- w[active]                   # incoming weights = base for this step
+
+  dd <- data[active, , drop = FALSE]
+  X  <- stats::model.matrix(step$formula, data = dd)
+  if (nrow(X) != length(d) || anyNA(X))
+    stop("Auxiliaries in `formula` have missing values in the active sample; ",
+         "trimmed calibration needs them observed for every unit being trimmed.")
+  cn <- colnames(X)
+
+  # Totals to PRESERVE: the ones the incoming weights already reproduce.
+  Tvec <- colSums(d * X)
+
+  lower <- if (is.null(step$lower)) -Inf else step$lower
+  upper <- if (is.null(step$upper))  Inf else step$upper
+  if (lower >= upper)
+    stop("`lower` must be strictly below `upper`.")
+  n_below <- sum(d < lower)
+  n_above <- sum(d > upper)
+
+  # Absolute-weight bound -> factor bound. Always bounded, so go straight to the
+  # Deville-Sarndal iterative solver (honouring this step's own maxit/tol).
+  if (!step$equal_within_cluster) {
+    # unit level: per-unit factor bound f_k in [lower/w_k, upper/w_k]
+    bnd  <- cbind(lower / d, upper / d)
+    gsol <- .calib_ds(X, d, Tvec, calfun = step$calfun, bounds = bnd,
+                      maxit = step$maxit, tol = step$tol)
+    f    <- as.numeric(gsol)
+    note_clust <- ""
+  } else {
+    # integrative: one factor per cluster (Lemaitre-Dufour household means). The
+    # incoming weights are constant within household, so the person-weight bound
+    # w = d*f in [lower, upper] becomes a per-household factor bound on the common
+    # household weight d_h = Wsum_h / n_h.
+    if (!step$cluster %in% names(data))
+      stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
+    cl <- as.character(data[[step$cluster]])[active]
+    if (anyNA(cl))
+      stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
+    hh    <- unique(cl)
+    n_h   <- as.numeric(tapply(d, cl, length)[hh])
+    Wsum  <- as.numeric(tapply(d, cl, sum)[hh])
+    Xbar  <- rowsum(X, group = cl)[hh, , drop = FALSE] / n_h
+    d_h   <- Wsum / n_h                                  # common household weight
+    bnd_h <- cbind(lower / d_h, upper / d_h)
+    gsol  <- .calib_ds(Xbar, Wsum, Tvec, calfun = step$calfun, bounds = bnd_h,
+                       maxit = step$maxit, tol = step$tol)
+    fh    <- as.numeric(gsol); names(fh) <- hh
+    f     <- fh[cl]
+    note_clust <- sprintf("; one factor per '%s' (integrative)", step$cluster)
+  }
+  new_w[active] <- d * f
+
+  # --- diagnostics ---
+  wa       <- new_w[active]
+  achieved <- colSums(wa * X)
+  rel_dev  <- abs(achieved - Tvec) / (abs(Tvec) + 1)
+  conv_ok  <- isTRUE(attr(gsol, "converged")) && max(rel_dev) <= 1e-6
+  if (!conv_ok)
+    warning(sprintf(paste0("Trimmed calibration could not both stay within ",
+      "[%s, %s] and preserve every total (max relative deviation = %.2e). ",
+      "The range may be infeasible; widen the bounds or relax the constraints."),
+      format(lower), format(upper), max(rel_dev)), call. = FALSE)
+  fin         <- c(lower, upper); fin <- fin[is.finite(fin)]
+  tolb        <- 1e-6 * max(abs(fin), 1)          # scale from the finite bound(s)
+  n_at_lower  <- if (is.finite(lower)) sum(abs(wa - lower) <= tolb) else 0L
+  n_at_upper  <- if (is.finite(upper)) sum(abs(wa - upper) <= tolb) else 0L
+  diag <- data.frame(variable = cn, target = round(Tvec, 2),
+                     achieved = round(achieved, 2), stringsAsFactors = FALSE)
+  attr(diag, "converged") <- conv_ok
+  attr(diag, "note") <- sprintf(
+    paste0("trimmed calibration to [%s, %s] (calfun = %s); %d weights raised to ",
+           "lower, %d capped at upper; f (adjustment) in [%.3f, %.3f]%s"),
+    format(lower), format(upper), step$calfun, n_at_lower, n_at_upper,
+    min(f), max(f), note_clust)
+  attr(diag, "trim") <- data.frame(
+    lower = lower, upper = upper, calfun = step$calfun,
+    n_below_before = n_below, n_above_before = n_above,
+    n_at_lower = n_at_lower, n_at_upper = n_at_upper,
+    sum_before = round(sum(d), 2), sum_after = round(sum(wa), 2),
+    stringsAsFactors = FALSE)
   list(weights = new_w, diagnostics = diag)
 }
 
