@@ -172,9 +172,11 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'
 #' Inflates the weights of respondents to represent the nonrespondents, under the
 #' assumption that response is ignorable given the information used. The response
-#' propensity can be estimated by weighting classes (cells) or by a model
+#' propensity can be estimated by weighting classes (cells), by a model
 #' ("propensity"), with engines ranging from logistic regression to machine
-#' learning (regression tree, random forest, gradient boosting). Optional
+#' learning (regression tree, random forest, gradient boosting), or the
+#' adjustment can be made by calibrating the respondents to auxiliary totals
+#' ("calibration", the two-phase / Sarndal-Lundstrom approach). Optional
 #' K-fold cross-fitting estimates the propensity out-of-sample to avoid the
 #' overfitting that flexible engines can introduce. The adjustment can be applied
 #' at the person or, via `cluster`, the household level.
@@ -183,7 +185,9 @@ step_drop_ineligible <- function(spec, ineligible) {
 #' @param respondent a 0/1 dummy column (1 = responded) or any logical condition
 #'   (unquoted) TRUE for respondents. Eligible cases that are not respondents
 #'   are treated as nonresponse.
-#' @param method "weighting_class" (cells) or "propensity" (predictive model).
+#' @param method "weighting_class" (cells), "propensity" (predictive model) or
+#'   "calibration" (calibrate the respondents to auxiliary totals; two-phase /
+#'   Sarndal-Lundstrom).
 #' @param by character. Adjustment cells for method = "weighting_class".
 #' @param formula predictor formula (right-hand side only), e.g. ~ age + region,
 #'   used when method = "propensity".
@@ -216,6 +220,23 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   resulting factor is assigned to every member; nonresponding households go to
 #'   zero. As always, only active units (weight > 0) take part, so units already
 #'   dropped (unknown eligibility, ineligible) are excluded automatically.
+#' @param totals (method = "calibration") calibration targets. NULL (default)
+#'   calibrates the respondents to the R+NR design-weighted totals of `formula`
+#'   at that stage (the two-phase / sample-level case; Sarndal & Lundstrom 2005);
+#'   a named vector or a tidy `totals`/`count` input (as in `step_calibrate()`)
+#'   calibrates to population totals instead.
+#' @param count (method = "calibration", tidy `totals`) string naming the counts
+#'   column of the totals data frame(s).
+#' @param calfun (method = "calibration") distance function for the calibration
+#'   factor: "linear", "raking" or "logit", as in `step_calibrate(method = "linear")`.
+#' @param bounds (method = "calibration") numeric c(L, U) with L < 1 < U. Bounds
+#'   on the calibration factor, to keep the nonresponse factors positive.
+#' @param penalty (method = "calibration", unbounded) NULL or positive cost(s)
+#'   for ridge (penalized) calibration.
+#' @param equal_within_cluster (method = "calibration") logical. Integrative
+#'   (one factor per `cluster`) calibration; planned for a later increment.
+#' @param maxit,tol (method = "calibration") convergence control for the bounded
+#'   or exponential-distance calibration solver.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class",
@@ -243,23 +264,64 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'     prep()
 #' }
 #' }
+#'
+#' # nonresponse by calibration (two-phase): calibrate the respondents to the
+#' # R+NR design-weighted totals of the auxiliaries at that stage, so their
+#' # estimates reproduce the pre-nonresponse ones (Sarndal & Lundstrom 2005)
+#' weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_nonresponse(respondent = responded, method = "calibration",
+#'                    formula = ~ region + sex) |>
+#'   prep()
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_nonresponse <- function(spec, respondent,
-                             method = c("weighting_class", "propensity"),
+                             method = c("weighting_class", "propensity", "calibration"),
                              by = NULL, formula = NULL,
                              engine = c("logit", "tree", "forest", "boost"),
                              num_classes = 5L, cluster = NULL,
-                             crossfit = NULL, crossfit_seed = NULL) {
+                             crossfit = NULL, crossfit_seed = NULL,
+                             totals = NULL, count = NULL,
+                             calfun = c("linear", "logit", "raking"),
+                             bounds = NULL, penalty = NULL,
+                             equal_within_cluster = FALSE,
+                             maxit = 50L, tol = 1e-6) {
   method <- match.arg(method)
   engine <- match.arg(engine)
+  calfun <- match.arg(calfun)
   if (!is.null(crossfit) && (!is.numeric(crossfit) || crossfit < 2))
     stop("`crossfit` must be NULL or an integer >= 2 (number of folds).")
+
+  if (method == "calibration") {
+    # Calibration approach to nonresponse (two-phase; Sarndal & Lundstrom 2005).
+    if (is.null(formula))
+      stop("nonresponse method = 'calibration' requires `formula` (the auxiliaries).")
+    if (calfun == "logit" && is.null(bounds))
+      stop("calfun = 'logit' requires `bounds` = c(L, U).")
+    if (!is.null(bounds) && (length(bounds) != 2L || bounds[1] >= 1 || bounds[2] <= 1))
+      stop("`bounds` must be c(L, U) with L < 1 < U.")
+    if (!is.null(penalty)) {
+      if (!is.null(bounds) || calfun == "logit")
+        stop("`penalty` (ridge) cannot be combined with bounded calibration.")
+      if (!is.numeric(penalty) || any(penalty <= 0))
+        stop("`penalty` must be a positive scalar or a positive named vector.")
+    }
+    if (isTRUE(equal_within_cluster))
+      stop("Integrative nonresponse calibration (equal_within_cluster) is not ",
+           "yet available; coming in a later 0.3.0 increment.")
+  }
+
   mode   <- if (is.null(num_classes)) "1/p per unit" else
             sprintf("%d classes", num_classes)
   lvl    <- if (is.null(cluster)) "" else sprintf(", by %s", cluster)
   label  <- if (method == "propensity")
               sprintf("nonresponse (propensity: %s, %s%s)", engine, mode, lvl)
+            else if (method == "calibration") {
+              tlab <- if (is.null(totals)) "sample-level" else "population"
+              det  <- calfun                       # linear / raking / logit distance
+              if (calfun != "logit" && !is.null(bounds)) det <- paste0(det, ", bounded")
+              if (!is.null(penalty)) det <- paste0(det, ", ridge")
+              sprintf("nonresponse (calibration: %s, %s)", det, tlab)
+            }
             else sprintf("nonresponse (weighting class%s)", lvl)
   step <- structure(
     list(
@@ -272,7 +334,15 @@ step_nonresponse <- function(spec, respondent,
       num_classes = num_classes,
       cluster     = cluster,
       crossfit      = if (is.null(crossfit)) NULL else as.integer(crossfit),
-      crossfit_seed = crossfit_seed
+      crossfit_seed = crossfit_seed,
+      totals      = totals,
+      count       = count,
+      calfun      = calfun,
+      bounds      = bounds,
+      penalty     = penalty,
+      equal_within_cluster = equal_within_cluster,
+      maxit       = maxit,
+      tol         = tol
     ),
     class = c("step_nonresponse", "weighting_step")
   )
@@ -822,10 +892,13 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #' Automatic weight trimming (survey-style)
 #'
 #' Caps weights into `[lower, upper]` and redistributes the change among the
-#' untrimmed units to preserve the total, mirroring survey::trimWeights().
-#' By default no weight may fall below 1, and the upper cap is chosen by an
-#' automatic rule: the Tukey far-out fence (Q3 + 3*IQR) or, with
-#' `method = "potter"`, Potter's MSE-optimal cutoff.
+#' untrimmed units to preserve the total. With `redistribute = "uniform"` the
+#' change is shared equally among the untrimmed units (and cases already trimmed
+#' are never reused), exactly mirroring survey::trimWeights(); the default
+#' `"proportional"` shares it in proportion to the untrimmed weights, keeping
+#' their relative sizes. By default no weight may fall below 1, and the upper
+#' cap is chosen by an automatic rule: the Tukey far-out fence (Q3 + 3*IQR) or,
+#' with `method = "potter"`, Potter's MSE-optimal cutoff.
 #'
 #' @param spec a weighting_spec.
 #' @param lower numeric. Lower floor (default 1: no weight below 1).
@@ -836,6 +909,10 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #'   which over a grid of candidate cutoffs minimizes an estimate of bias^2 +
 #'   variance and so balances the bias of trimming against the variance from
 #'   extreme weights). Ignored when `upper` is supplied.
+#' @param redistribute how the trimmed mass is shared among the untrimmed units:
+#'   "proportional" (default; in proportion to their weights, preserving relative
+#'   sizes) or "uniform" (an equal amount to each untrimmed unit, and units
+#'   already trimmed are not reused, exactly reproducing survey::trimWeights()).
 #' @param strict logical. If TRUE (default), iterate cap+redistribution until no
 #'   weight is outside `[lower, upper]` (like survey's strict = TRUE). If FALSE, a
 #'   single pass (redistribution may push some weights slightly past the cap).
@@ -853,17 +930,20 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim_weights <- function(spec, lower = 1, upper = NULL,
                               method = c("tukey", "potter"),
+                              redistribute = c("proportional", "uniform"),
                               strict = TRUE, maxit = 50L) {
-  method <- match.arg(method)
+  method       <- match.arg(method)
+  redistribute <- match.arg(redistribute)
   step <- structure(
     list(
       label  = if (method == "potter") "auto weight trimming (Potter MSE)"
                else "auto weight trimming",
-      lower  = lower,
-      upper  = upper,
-      method = method,
-      strict = strict,
-      maxit  = maxit
+      lower        = lower,
+      upper        = upper,
+      method       = method,
+      redistribute = redistribute,
+      strict       = strict,
+      maxit        = maxit
     ),
     class = c("step_trim_weights", "weighting_step")
   )

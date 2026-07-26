@@ -1,3 +1,39 @@
+# weightflow 0.3.0
+
+## New features
+
+* **Nonresponse by calibration (two-phase).** `step_nonresponse()` gains
+  `method = "calibration"`: instead of weighting classes or inverse propensities,
+  it adjusts for nonresponse by calibrating the respondents' weights to auxiliary
+  totals (Lundstrom & Sarndal 1999; Sarndal & Lundstrom 2005). With
+  `totals = NULL` (default) the targets are the R+NR design-weighted totals at that
+  stage, so the calibrated respondent estimates reproduce the pre-nonresponse
+  cascade estimates exactly (the two-phase / sample-level case, Estevao & Sarndal
+  2002); supply `totals` to calibrate to population totals instead. Continuous and
+  categorical auxiliaries, the distance `calfun` (linear/raking/logit), `bounds`
+  and `penalty` (ridge) all carry over from `step_calibrate()`. The sample-level
+  target is recomputed inside each bootstrap/jackknife replicate, so the two-phase
+  variance is captured by the recipe-aware machinery. `method = "weighting_class"`
+  remains the post-stratification (joint-cell) special case; the marginal (IPF via
+  `margins`) and integrative (one weight per cluster) variants are planned for a
+  later 0.3.0 increment.
+
+* **`redistribute` argument for `step_trim_weights()`.** The trimmed mass can now
+  be shared among the untrimmed units either in proportion to their weights
+  (`"proportional"`, the default, keeps their relative sizes) or in equal amounts
+  (`"uniform"`, the same amount to each untrimmed unit, with already-trimmed cases
+  not reused). The `"uniform"` option reproduces `survey::trimWeights()` exactly,
+  for bit-for-bit agreement when a weighting pipeline is validated against
+  `survey`.
+
+## Bug fixes
+
+* **`step_trim_weights()` now trims negative weights.** It previously acted only
+  on positive weights (`w > 0`), so negative weights produced by unbounded linear
+  calibration were left untouched by a lower floor. It now trims every non-zero
+  weight, flooring negatives to `lower`, while still leaving dropped units (weight
+  exactly 0) alone. Recipes without negative weights are unaffected.
+
 # weightflow 0.2.0
 
 ## New features
@@ -108,7 +144,7 @@
 
 * The optional machine-learning engines (`engine = "forest"` via ranger,
   `engine = "boost"` via xgboost) now run single-threaded by default, for
-  reproducibility and to respect CRAN's check limits. Set
+  reproducibility and to respect the core limits applied in CRAN checks. Set
   `options(weightflow.num_threads = n)` to use `n` threads.
 
 * `report_weighting()` now flags calibration steps that did not converge. When a

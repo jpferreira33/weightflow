@@ -31,7 +31,8 @@
     error = function(e) NULL)
   if (is.null(resp) || length(resp) != nrow(data)) return(NULL)
 
-  aux <- if (identical(step$method, "propensity") && !is.null(step$formula))
+  aux <- if (step$method %in% c("propensity", "calibration") &&
+             !is.null(step$formula))
            all.vars(step$formula) else step$by
   aux <- intersect(aux, names(data))
   if (!length(aux)) return(NULL)

@@ -2,35 +2,34 @@
 
 0 errors | 0 warnings | 0 notes
 
-## Resubmission
-
-This resubmits 0.2.0 after the incoming pretest reported two NOTEs on Debian
-about multi-threaded examples and tests (CPU time more than 2.5x elapsed).
-The optional ML engines (ranger, xgboost) now run single-threaded by default,
-and the heavier gradient-boosting example is wrapped in \donttest{}. The
-Windows pretest was OK.
-
 ## Submission
 
-This is an update (0.2.0) of an existing CRAN package (weightflow 0.1.0). It adds
-new features and fixes two bugs: `report_weighting()` now flags calibration
-steps that did not converge, and `step_calibrate(equal_within_cluster = TRUE)`
-now implements the standard Lemaitre-Dufour integrative method (one weight per
-household). There are no changes to the published API; existing code runs
-unchanged, though integrative-calibration weights differ from 0.1.0, as
-documented in NEWS.
+This is an update (0.3.0) of an existing CRAN package (weightflow 0.2.0). It adds
+new features and fixes one bug:
+
+* `step_nonresponse()` gains `method = "calibration"`, the calibration (two-phase)
+  approach to nonresponse adjustment (Sarndal & Lundstrom 2005).
+* `step_trim_weights()` gains a `redistribute` argument; the new `"uniform"`
+  option reproduces `survey::trimWeights()` exactly.
+* Bug fix: `step_trim_weights()` now trims negative weights (a lower floor
+  previously left negative weights, which unbounded linear calibration can
+  produce, untouched).
+
+There are no changes to the published API; existing code runs unchanged (the
+trimming default is `redistribute = "proportional"`, which preserves the previous
+behaviour on non-negative weights).
 
 ## Test environments
 
 * local macOS, R 4.5
-* win-builder: R-devel and R-release (Status: OK)
+* win-builder: R-devel and R-release
 * GitHub Actions: ubuntu / macOS / windows (R-oldrel, R-release, R-devel)
 
 ## Notes
 
-* All examples run. Two examples are wrapped in \donttest{} because they open a
-  browser / write a report (`report_weighting`) or use a suggested package
-  (`collect_replicate_weights`); none use \dontrun{}.
+* All examples run. A few examples are wrapped in \donttest{} because they open a
+  browser / write a report (`report_weighting`) or use a suggested package;
+  none use \dontrun{}.
 * All exported functions and methods document their return value with \value{}.
 * Suggested packages (survey, srvyr, xgboost, ranger, rpart, ...) are only used
   conditionally, via requireNamespace() and testthat::skip_if_not_installed().

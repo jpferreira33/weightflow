@@ -7,14 +7,22 @@
 step_nonresponse(
   spec,
   respondent,
-  method = c("weighting_class", "propensity"),
+  method = c("weighting_class", "propensity", "calibration"),
   by = NULL,
   formula = NULL,
   engine = c("logit", "tree", "forest", "boost"),
   num_classes = 5L,
   cluster = NULL,
   crossfit = NULL,
-  crossfit_seed = NULL
+  crossfit_seed = NULL,
+  totals = NULL,
+  count = NULL,
+  calfun = c("linear", "logit", "raking"),
+  bounds = NULL,
+  penalty = NULL,
+  equal_within_cluster = FALSE,
+  maxit = 50L,
+  tol = 1e-06
 )
 }
 \arguments{
@@ -24,7 +32,9 @@ step_nonresponse(
 (unquoted) TRUE for respondents. Eligible cases that are not respondents
 are treated as nonresponse.}
 
-\item{method}{"weighting_class" (cells) or "propensity" (predictive model).}
+\item{method}{"weighting_class" (cells), "propensity" (predictive model) or
+"calibration" (calibrate the respondents to auxiliary totals; two-phase /
+Sarndal-Lundstrom).}
 
 \item{by}{character. Adjustment cells for method = "weighting_class".}
 
@@ -64,6 +74,30 @@ correlated units stay together). NULL (default) fits and predicts in-sample.}
 
 \item{crossfit_seed}{integer or NULL. Seed for reproducible fold assignment
 when \code{crossfit} is used.}
+
+\item{totals}{(method = "calibration") calibration targets. NULL (default)
+calibrates the respondents to the R+NR design-weighted totals of \code{formula}
+at that stage (the two-phase / sample-level case; Sarndal & Lundstrom 2005);
+a named vector or a tidy \code{totals}/\code{count} input (as in \code{step_calibrate()})
+calibrates to population totals instead.}
+
+\item{count}{(method = "calibration", tidy \code{totals}) string naming the counts
+column of the totals data frame(s).}
+
+\item{calfun}{(method = "calibration") distance function for the calibration
+factor: "linear", "raking" or "logit", as in \code{step_calibrate(method = "linear")}.}
+
+\item{bounds}{(method = "calibration") numeric c(L, U) with L < 1 < U. Bounds
+on the calibration factor, to keep the nonresponse factors positive.}
+
+\item{penalty}{(method = "calibration", unbounded) NULL or positive cost(s)
+for ridge (penalized) calibration.}
+
+\item{equal_within_cluster}{(method = "calibration") logical. Integrative
+(one factor per \code{cluster}) calibration; planned for a later increment.}
+
+\item{maxit, tol}{(method = "calibration") convergence control for the bounded
+or exponential-distance calibration solver.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The
@@ -72,9 +106,11 @@ step is recorded only; it is evaluated when \code{prep()} is called.
 \description{
 Inflates the weights of respondents to represent the nonrespondents, under the
 assumption that response is ignorable given the information used. The response
-propensity can be estimated by weighting classes (cells) or by a model
+propensity can be estimated by weighting classes (cells), by a model
 ("propensity"), with engines ranging from logistic regression to machine
-learning (regression tree, random forest, gradient boosting). Optional
+learning (regression tree, random forest, gradient boosting), or the
+adjustment can be made by calibrating the respondents to auxiliary totals
+("calibration", the two-phase / Sarndal-Lundstrom approach). Optional
 K-fold cross-fitting estimates the propensity out-of-sample to avoid the
 overfitting that flexible engines can introduce. The adjustment can be applied
 at the person or, via \code{cluster}, the household level.
@@ -106,4 +142,12 @@ if (requireNamespace("xgboost", quietly = TRUE)) {
     prep()
 }
 }
+
+# nonresponse by calibration (two-phase): calibrate the respondents to the
+# R+NR design-weighted totals of the auxiliaries at that stage, so their
+# estimates reproduce the pre-nonresponse ones (Sarndal & Lundstrom 2005)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "calibration",
+                   formula = ~ region + sex) |>
+  prep()
 }
