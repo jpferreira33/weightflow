@@ -168,6 +168,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> 
 
 # gradient boosting engine (requires the 'xgboost' package)
+# \donttest{
 if (requireNamespace("xgboost", quietly = TRUE)) {
   weighting_spec(sample_survey, base_weights = pw) |>
     step_nonresponse(respondent = responded, method = "propensity",
@@ -192,4 +193,5 @@ if (requireNamespace("xgboost", quietly = TRUE)) {
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
 #> improve with trimming.
 #> 
+# }
 ```

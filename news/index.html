@@ -54,7 +54,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0" id="weightflow-020">weightflow 0.2.0<a class="anchor" aria-label="anchor" href="#weightflow-020"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.0" id="weightflow-020">weightflow 0.2.0<a class="anchor" aria-label="anchor" href="#weightflow-020"></a></h2><p class="text-muted">CRAN release: 2026-07-22</p>
 <div class="section level3">
 <h3 id="new-features-0-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-0-2-0"></a></h3>
 <ul><li>
@@ -97,8 +97,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-0-2-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-0"></a></h3>
-<ul><li>
-<code>step_calibrate(equal_within_cluster = TRUE)</code> now implements the genuine Lemaitre-Dufour (1987) integrative method: each unit’s auxiliaries are replaced by their household mean before a person-level calibration, so the per-household penalty scales with household size. This matches <code>survey</code>’s <code>calibrate(aggregate.stage = )</code> (Vanderhoeft 2001), ReGenesees and Statistics Canada’s GES. The previous implementation used a household-level distance (summed auxiliaries, uniform per-household penalty), a different (non-standard) method. Integrative-calibration weights will change; totals are still met exactly and weights remain constant within household.</li>
+<ul><li><p>The optional machine-learning engines (<code>engine = "forest"</code> via ranger, <code>engine = "boost"</code> via xgboost) now run single-threaded by default, for reproducibility and to respect CRAN’s check limits. Set <code>options(weightflow.num_threads = n)</code> to use <code>n</code> threads.</p></li>
+<li><p><code><a href="../reference/report_weighting.html">report_weighting()</a></code> now flags calibration steps that did not converge. When a raking, linear or bounded calibration stops without satisfying the requested totals (the same condition that already prints a console warning), the HTML report shows a “Did not converge” alert on that step and no longer states that the step converged. Previously the report always reported convergence, regardless of the actual result.</p></li>
+<li><p><code>step_calibrate(equal_within_cluster = TRUE)</code> now implements the genuine Lemaitre-Dufour (1987) integrative method: each unit’s auxiliaries are replaced by their household mean before a person-level calibration, so the per-household penalty scales with household size. This matches <code>survey</code>’s <code>calibrate(aggregate.stage = )</code> (Vanderhoeft 2001), ReGenesees and Statistics Canada’s GES. The previous implementation used a household-level distance (summed auxiliaries, uniform per-household penalty), a different (non-standard) method. Integrative-calibration weights will change; totals are still met exactly and weights remain constant within household.</p></li>
 </ul></div>
 </div>
     <div class="section level2">
