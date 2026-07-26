@@ -25,8 +25,20 @@
 #' @param strata,psu column names of the stratum and the PSU. If `psu` is NULL
 #'   each unit is its own PSU; if `strata` is NULL a single stratum is assumed.
 #' @param m PSUs drawn per stratum (default `n - 1`).
+#' @param lonely_psu how to treat strata with a single PSU (which a
+#'   with-replacement bootstrap cannot resample): "certainty" (default) treats
+#'   them as self-representing, so they contribute no bootstrap variance, and
+#'   warns; "collapse" merges the single-PSU strata into a pseudo-stratum (with
+#'   the smallest other stratum if there is only one), so they are resampled and
+#'   do contribute a (conservative) variance. For full control, build your own
+#'   collapsed stratum column and pass it as `strata`.
 #' @param seed optional RNG seed.
-#' @param progress print progress every 25 replicates.
+#' @param cores number of parallel workers for the replicates (default 1 =
+#'   serial). With `cores > 1` the replicate re-preps run in parallel via
+#'   `parallel::mclapply` (forking; on Windows it falls back to serial). Results
+#'   are identical to the serial run: the resampling is drawn up front with the
+#'   seed and only the deterministic re-prep is parallelised.
+#' @param progress print progress every 25 replicates (serial only).
 #' @return An object of class `weightflow_boot` with the `replicates` matrix
 #'   (units x replicates), the point `weights`, and the design metadata.
 #' @examples
@@ -38,15 +50,19 @@
 #' boot_total(boot, "responded")
 #' @export
 bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
-                              psu = NULL, m = NULL, seed = NULL, progress = TRUE) {
+                              psu = NULL, m = NULL,
+                              lonely_psu = c("certainty", "collapse"),
+                              seed = NULL, cores = 1L, progress = TRUE) {
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
+  lonely_psu <- match.arg(lonely_psu)
   data <- object$data
   bw   <- object$base_weights
   spec <- structure(list(data = data, base_weights = bw, steps = object$steps),
                     class = "weighting_spec")
   point <- if (!is.null(object$final_weight)) object$final_weight else prep(spec)$final_weight
-  n <- nrow(data)
+  n   <- nrow(data)
+  bw0 <- data[[bw]]
 
   st <- if (is.null(strata)) rep("1", n) else {
     if (!strata %in% names(data)) stop(sprintf("Strata column '%s' not found.", strata))
@@ -56,12 +72,16 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     if (!psu %in% names(data)) stop(sprintf("PSU column '%s' not found.", psu))
     as.character(data[[psu]])
   }
+  if (lonely_psu == "collapse") st <- .collapse_lonely(st, cl)
+  hs <- unique(st)
   if (!is.null(seed)) set.seed(seed)
 
-  reps      <- matrix(NA_real_, nrow = n, ncol = replicates)
-  hs        <- unique(st)
+  # --- Phase 1 (serial, uses the RNG): draw every resampling factor vector and a
+  # per-replicate seed. This is the ONLY random part; capturing it up front makes
+  # the parallel run bit-identical to the serial one and reproducible via `seed`.
   singleton <- character(0)
-  failed    <- 0L
+  facs   <- vector("list", replicates)
+  rseeds <- sample.int(.Machine$integer.max, replicates)
   for (b in seq_len(replicates)) {
     fac <- numeric(n)
     for (h in hs) {
@@ -75,15 +95,25 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
       names(lam) <- psus
       fac[idx] <- lam[cl[idx]]
     }
-    spec$data[[bw]] <- data[[bw]] * fac
-    fw <- tryCatch(prep(spec)$final_weight, error = function(e) { rep(NA_real_, n) })
-    if (anyNA(fw)) failed <- failed + 1L
-    reps[, b] <- fw
-    if (progress && b %% 25L == 0L) message("  bootstrap replicate ", b, "/", replicates)
+    facs[[b]] <- fac
   }
+
+  # --- Phase 2 (serial or parallel): re-prep each replicate. Pure deterministic
+  # computation given (fac, seed), so it parallelises cleanly.
+  one_rep <- function(b) {
+    set.seed(rseeds[b])                       # only matters if a step is stochastic
+    sp <- spec; sp$data[[bw]] <- bw0 * facs[[b]]
+    tryCatch(prep(sp)$final_weight, error = function(e) rep(NA_real_, n))
+  }
+  fw_list <- .par_lapply(seq_len(replicates), one_rep, cores = cores,
+                         progress = progress, label = "bootstrap")
+  reps   <- do.call(cbind, fw_list)
+  failed <- sum(vapply(fw_list, anyNA, logical(1)))
+
   if (length(singleton))
     warning("Strata with a single PSU were not resampled (no bootstrap variance there): ",
-            paste(unique(singleton), collapse = ", "))
+            paste(unique(singleton), collapse = ", "),
+            ". Use lonely_psu = \"collapse\" to give them a (conservative) variance.")
   if (failed > 0L)
     warning(failed, " replicate(s) failed to converge and were set to NA.")
 
@@ -91,6 +121,40 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
                  strata = strata, psu = psu, R = replicates,
                  base_weights = bw),
             class = "weightflow_boot")
+}
+
+# Merge single-PSU strata into a pseudo-stratum so a with-replacement bootstrap
+# (or delete-a-PSU jackknife) can resample them. With >= 2 lonely strata they are
+# pooled together; with exactly one, it is merged with the smallest other stratum.
+# Best-effort: if only one stratum exists overall, it is left unchanged.
+.collapse_lonely <- function(st, cl) {
+  st    <- as.character(st)
+  npsu  <- tapply(cl, st, function(z) length(unique(z)))
+  lonely <- names(npsu)[npsu < 2L]
+  if (length(lonely) == 0L) return(st)
+  new <- st
+  if (length(lonely) >= 2L) {
+    new[st %in% lonely] <- "__collapsed__"
+  } else {
+    others <- npsu[setdiff(names(npsu), lonely)]
+    if (length(others) == 0L) return(st)          # single stratum overall
+    target <- names(others)[which.min(others)]
+    new[st %in% c(lonely, target)] <- paste0("__collapsed_", target)
+  }
+  new
+}
+
+# Apply `fun` over `x`, serially (cores = 1) or forking with parallel::mclapply
+# (cores > 1). Kept dependency-free: `parallel` is a base R package.
+.par_lapply <- function(x, fun, cores = 1L, progress = FALSE, label = "") {
+  cores <- max(1L, as.integer(cores))
+  if (cores > 1L && requireNamespace("parallel", quietly = TRUE)) {
+    return(parallel::mclapply(x, fun, mc.cores = cores, mc.preschedule = TRUE))
+  }
+  lapply(x, function(i) {
+    if (progress && i %% 25L == 0L) message("  ", label, " replicate ", i, "/", length(x))
+    fun(i)
+  })
 }
 
 #' @export
@@ -173,7 +237,14 @@ boot_mean <- function(boot, variable)
 #'   Pass the recipe *before* `prep()`: the jackknife preps it once per replicate.
 #' @param strata name of the stratum column, or NULL for a single stratum.
 #' @param psu name of the PSU column, or NULL to delete one unit at a time.
-#' @param progress print progress every 25 replicates.
+#' @param lonely_psu how to treat strata with a single PSU: "certainty"
+#'   (default) skips them (no variance) and warns; "collapse" merges them into a
+#'   pseudo-stratum so they yield delete-a-PSU replicates.
+#' @param cores number of parallel workers for the replicates (default 1 =
+#'   serial). With `cores > 1` the replicate re-preps run in parallel via
+#'   `parallel::mclapply` (forking; serial on Windows). For a deterministic
+#'   recipe the result is identical to the serial run.
+#' @param progress print progress every 25 replicates (serial only).
 #' @return An object of class `weightflow_jack` with the `replicates` matrix
 #'   (units x replicates), the point `weights`, the per-replicate stratum and
 #'   stratum size (used by `jackknife_estimate()`), and the design metadata.
@@ -184,15 +255,19 @@ boot_mean <- function(boot, variable)
 #' jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 #' jack_total(jk, "employed")
 #' @export
-jackknife_weights <- function(object, strata = NULL, psu = NULL, progress = TRUE) {
+jackknife_weights <- function(object, strata = NULL, psu = NULL,
+                              lonely_psu = c("certainty", "collapse"),
+                              cores = 1L, progress = TRUE) {
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
+  lonely_psu <- match.arg(lonely_psu)
   data <- object$data
   bw   <- object$base_weights
   spec <- structure(list(data = data, base_weights = bw, steps = object$steps),
                     class = "weighting_spec")
   point <- if (!is.null(object$final_weight)) object$final_weight else prep(spec)$final_weight
-  n <- nrow(data)
+  n   <- nrow(data)
+  bw0 <- data[[bw]]
 
   st <- if (is.null(strata)) rep("1", n) else {
     if (!strata %in% names(data)) stop(sprintf("Strata column '%s' not found.", strata))
@@ -202,6 +277,7 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL, progress = TRUE
     if (!psu %in% names(data)) stop(sprintf("PSU column '%s' not found.", psu))
     as.character(data[[psu]])
   }
+  if (lonely_psu == "collapse") st <- .collapse_lonely(st, cl)
 
   # one replicate per PSU, in strata with >= 2 PSUs
   rep_stratum <- character(0); rep_psu <- character(0); rep_nh <- integer(0)
@@ -217,23 +293,24 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL, progress = TRUE
   if (R == 0L)
     stop("No stratum has >= 2 PSUs; the jackknife has no replicates.")
 
-  reps   <- matrix(NA_real_, nrow = n, ncol = R)
-  failed <- 0L
-  for (r in seq_len(R)) {
+  one_rep <- function(r) {
     h <- rep_stratum[r]; nh <- rep_nh[r]
     fac <- rep(1, n)
     in_h <- st == h
-    fac[in_h & cl == rep_psu[r]] <- 0            # delete this PSU
+    fac[in_h & cl == rep_psu[r]] <- 0             # delete this PSU
     fac[in_h & cl != rep_psu[r]] <- nh / (nh - 1) # inflate the rest of the stratum
-    spec$data[[bw]] <- data[[bw]] * fac
-    fw <- tryCatch(prep(spec)$final_weight, error = function(e) rep(NA_real_, n))
-    if (anyNA(fw)) failed <- failed + 1L
-    reps[, r] <- fw
-    if (progress && r %% 25L == 0L) message("  jackknife replicate ", r, "/", R)
+    sp <- spec; sp$data[[bw]] <- bw0 * fac
+    tryCatch(prep(sp)$final_weight, error = function(e) rep(NA_real_, n))
   }
+  fw_list <- .par_lapply(seq_len(R), one_rep, cores = cores,
+                         progress = progress, label = "jackknife")
+  reps   <- do.call(cbind, fw_list)
+  failed <- sum(vapply(fw_list, anyNA, logical(1)))
+
   if (length(singleton))
     warning("Strata with a single PSU contribute no jackknife variance: ",
-            paste(unique(singleton), collapse = ", "))
+            paste(unique(singleton), collapse = ", "),
+            ". Use lonely_psu = \"collapse\" to include them.")
   if (failed > 0L)
     warning(failed, " replicate(s) failed and were set to NA.")
 

@@ -39,6 +39,16 @@
   constant (the household-level analogue of `survey`'s `aggregate.stage`
   calibration).
 
+* **Lonely-PSU handling and parallelism in the replicate-variance functions.**
+  `bootstrap_weights()` and `jackknife_weights()` gain a `lonely_psu` argument:
+  `"certainty"` (default) keeps the previous behaviour (single-PSU strata are
+  self-representing, contribute no variance, and warn), while `"collapse"` merges
+  single-PSU strata into a pseudo-stratum so they are resampled and yield a
+  (conservative) variance instead of zero. Both functions also gain a `cores`
+  argument: with `cores > 1` the per-replicate re-preps run in parallel via
+  `parallel::mclapply` (forking; serial on Windows). The resampling is drawn up
+  front from the `seed`, so the parallel run is bit-identical to the serial one.
+
 * **`redistribute` argument for `step_trim_weights()`.** The trimmed mass can now
   be shared among the untrimmed units either in proportion to their weights
   (`"proportional"`, the default, keeps their relative sizes) or in equal amounts

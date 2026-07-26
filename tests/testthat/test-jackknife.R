@@ -80,3 +80,19 @@ test_that("a single-PSU stratum contributes no variance and warns", {
     "single PSU"
   )
 })
+
+test_that("jackknife lonely_psu = 'collapse' includes the single-PSU stratum", {
+  dat <- data.frame(
+    stratum = c(rep("A", 4), rep("B", 2), "C"),
+    psu = c("A_1", "A_1", "A_2", "A_2", "B_1", "B_2", "C_1"),
+    y = c(1, 0, 1, 1, 0, 1, 1), w = rep(2, 7))
+  spec <- weighting_spec(dat, base_weights = w)
+
+  expect_warning(
+    jk1 <- jackknife_weights(spec, strata = "stratum", psu = "psu", progress = FALSE),
+    "single PSU")
+  jk2 <- jackknife_weights(spec, strata = "stratum", psu = "psu",
+                           lonely_psu = "collapse", progress = FALSE)
+  expect_gt(jk2$R, jk1$R)                 # the collapsed stratum adds replicates
+  expect_true(is.finite(jack_total(jk2, "y")$se))
+})

@@ -4,7 +4,14 @@
 \alias{jackknife_weights}
 \title{Delete-a-PSU jackknife replicate weights that re-apply the recipe}
 \usage{
-jackknife_weights(object, strata = NULL, psu = NULL, progress = TRUE)
+jackknife_weights(
+  object,
+  strata = NULL,
+  psu = NULL,
+  lonely_psu = c("certainty", "collapse"),
+  cores = 1L,
+  progress = TRUE
+)
 }
 \arguments{
 \item{object}{a weighting_spec (inert recipe) or a prepped weighting_spec.
@@ -14,7 +21,16 @@ Pass the recipe \emph{before} \code{prep()}: the jackknife preps it once per rep
 
 \item{psu}{name of the PSU column, or NULL to delete one unit at a time.}
 
-\item{progress}{print progress every 25 replicates.}
+\item{lonely_psu}{how to treat strata with a single PSU: "certainty"
+(default) skips them (no variance) and warns; "collapse" merges them into a
+pseudo-stratum so they yield delete-a-PSU replicates.}
+
+\item{cores}{number of parallel workers for the replicates (default 1 =
+serial). With \code{cores > 1} the replicate re-preps run in parallel via
+\code{parallel::mclapply} (forking; serial on Windows). For a deterministic
+recipe the result is identical to the serial run.}
+
+\item{progress}{print progress every 25 replicates (serial only).}
 }
 \value{
 An object of class \code{weightflow_jack} with the \code{replicates} matrix

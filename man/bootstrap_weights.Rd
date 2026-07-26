@@ -10,7 +10,9 @@ bootstrap_weights(
   strata = NULL,
   psu = NULL,
   m = NULL,
+  lonely_psu = c("certainty", "collapse"),
   seed = NULL,
+  cores = 1L,
   progress = TRUE
 )
 }
@@ -24,9 +26,23 @@ each unit is its own PSU; if \code{strata} is NULL a single stratum is assumed.}
 
 \item{m}{PSUs drawn per stratum (default \code{n - 1}).}
 
+\item{lonely_psu}{how to treat strata with a single PSU (which a
+with-replacement bootstrap cannot resample): "certainty" (default) treats
+them as self-representing, so they contribute no bootstrap variance, and
+warns; "collapse" merges the single-PSU strata into a pseudo-stratum (with
+the smallest other stratum if there is only one), so they are resampled and
+do contribute a (conservative) variance. For full control, build your own
+collapsed stratum column and pass it as \code{strata}.}
+
 \item{seed}{optional RNG seed.}
 
-\item{progress}{print progress every 25 replicates.}
+\item{cores}{number of parallel workers for the replicates (default 1 =
+serial). With \code{cores > 1} the replicate re-preps run in parallel via
+\code{parallel::mclapply} (forking; on Windows it falls back to serial). Results
+are identical to the serial run: the resampling is drawn up front with the
+seed and only the deterministic re-prep is parallelised.}
+
+\item{progress}{print progress every 25 replicates (serial only).}
 }
 \value{
 An object of class \code{weightflow_boot} with the \code{replicates} matrix

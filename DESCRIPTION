@@ -15,7 +15,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US
 Depends: R (>= 4.1.0)
-Imports: stats, utils, graphics
+Imports: stats, utils, graphics, parallel
 Suggests: 
     MASS,
     rpart,
