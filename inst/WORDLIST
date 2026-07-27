@@ -5,6 +5,7 @@ Bardsley
 Bethlehem
 Biometrika
 Breidt
+CASRO
 CMD
 Chernozhukov
 Cobben
@@ -12,11 +13,14 @@ Dever
 Deville
 Dufour
 ECH
+ESMS
+ESQRS
 Encuesta
 Estevao
 Folsom
 GES
 GREG
+GSBPM
 Hogares
 Horvitz
 INE
@@ -46,6 +50,7 @@ Proc
 Ranalli
 Rao
 ReGenesees
+Recognised
 Sarndal
 Sautory
 Schouten
@@ -74,6 +79,7 @@ de
 debiased
 deff
 diag
+disposition
 doi
 el
 eligibles
@@ -83,6 +89,8 @@ eta
 frac
 ggplot
 glm
+grey
+gridlines
 ignorable
 insertable
 kish

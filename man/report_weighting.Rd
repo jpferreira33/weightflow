@@ -4,7 +4,15 @@
 \alias{report_weighting}
 \title{Build a nice HTML report of the weighting recipe}
 \usage{
-report_weighting(object, file = NULL, open = TRUE, plots = TRUE)
+report_weighting(
+  object,
+  file = NULL,
+  open = TRUE,
+  plots = TRUE,
+  narrative = TRUE,
+  lang = c("en", "es"),
+  metadata = NULL
+)
 }
 \arguments{
 \item{object}{a prepped object (output of prep()).}
@@ -15,6 +23,21 @@ report_weighting(object, file = NULL, open = TRUE, plots = TRUE)
 
 \item{plots}{logical; add per-step plots (weight before-vs-after scatter and
 adjustment-factor histogram). Uses ggplot2 if installed, else base graphics.}
+
+\item{narrative}{logical; add an auto-generated methodological narrative -- an
+executive summary at the top and a natural-language paragraph on each step
+explaining what was done and why (built from the step's own parameters and
+diagnostics), in the spirit of a GSBPM / ESQRS methodological report.}
+
+\item{lang}{language of the narrative: "en" (default) or "es".}
+
+\item{metadata}{optional named list of reference metadata (SIMS / ESMS
+concepts) shown as a header card, e.g. \code{survey}, \code{reference_period},
+\code{geography}, \code{producer}, \code{author}, \code{contact}, \code{frame}, \code{totals_source},
+\code{totals_date}, \code{version}, \code{confidentiality}, \code{notes}. Recognised keys get a
+proper label; any other key is shown as given. \code{survey} is also woven into
+the executive summary. \code{totals_source}/\code{totals_date} document where the
+calibration control totals come from and their reference date.}
 }
 \value{
 (invisibly) the path to the HTML file.

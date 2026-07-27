@@ -49,6 +49,41 @@
   `parallel::mclapply` (forking; serial on Windows). The resampling is drawn up
   front from the `seed`, so the parallel run is bit-identical to the serial one.
 
+* **Automatic methodological narrative in `report_weighting()` (GSBPM / ESQRS
+  style).** With `narrative = TRUE` (default) the HTML report now reads like a
+  methodological quality report: an auto-generated executive summary at the top
+  (the cascade in prose plus the headline design effect, effective n and
+  R-indicator), and a natural-language paragraph on each step explaining what was
+  done and why, built from the step's own parameters and diagnostics (method,
+  engine, auxiliaries, distance, bounds, integrative/ridge options, the
+  R-indicator and its leading partials, the change in Kish design effect, ...).
+  A new `lang` argument produces the narrative in English (`"en"`, default) or
+  Spanish (`"es"`). Set `narrative = FALSE` for the previous, tables-only report.
+  A new `metadata` argument (a named list) adds a reference-metadata header card
+  aligned to the ESS SIMS / ESMS concepts and GSBPM sub-process 5.6 (statistical
+  operation, reference period, geographic coverage, producer, author, contact,
+  sampling frame, the source and reference date of the calibration control
+  totals, version, confidentiality, notes); `survey` is also woven into the
+  executive summary.
+
+* **Fieldwork outcome rates (AAPOR) in `report_weighting()`.** When the recipe
+  includes eligibility / nonresponse steps, the report now shows a "Fieldwork
+  outcomes" card near the top that reconstructs the disposition of every case
+  (ineligible / out of scope, unknown eligibility, eligible respondent, eligible
+  nonrespondent) and reports the eligibility rate `e`, the e-adjusted response
+  rate (AAPOR Standard Definitions RR3 = R / (R + NR + e&middot;U)) and the
+  nonresponse rate, both unweighted and weighted by the base (design) weights.
+  `e` uses the proportional (CASRO) allocation of the unknown-eligibility cases.
+  The card is bilingual and is omitted when the recipe has no nonresponse step.
+
+* **`report_weighting()` restyled to the package identity.** The HTML report now
+  uses the weightflow palette (violet accent, lavender plot points, brand amber
+  for quality alerts) and neutral grey for the "no change" reference lines in the
+  per-step scatter and histogram (previously red, which read as an alert). The
+  per-step plots are also polished: faint gridlines, thinner axes with short
+  ticks, and a `y = x` / `factor = 1` label on the reference line. Still pure
+  inline SVG (no graphics device, no new dependencies).
+
 * **`redistribute` argument for `step_trim_weights()`.** The trimmed mass can now
   be shared among the untrimmed units either in proportion to their weights
   (`"proportional"`, the default, keeps their relative sizes) or in equal amounts
