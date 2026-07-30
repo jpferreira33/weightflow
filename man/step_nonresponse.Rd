@@ -11,6 +11,7 @@ step_nonresponse(
   by = NULL,
   formula = NULL,
   engine = c("logit", "tree", "forest", "boost"),
+  weight_model = TRUE,
   num_classes = 5L,
   cluster = NULL,
   crossfit = NULL,
@@ -49,6 +50,14 @@ needed if you pick that engine. The flexible learners run with fixed default
 settings and their hyperparameters are not currently exposed: "tree" and
 "forest" use the 'rpart' and 'ranger' defaults, and "boost" uses xgboost
 with nrounds = 150, max_depth = 4 and eta = 0.1.}
+
+\item{weight_model}{logical. Only for method = "propensity": whether to fit
+the response-propensity model with the incoming (design) weights (\code{TRUE},
+the default) or unweighted (\code{FALSE}). Fitting unweighted can reduce the
+variance of the propensity estimates when the weights are unrelated to
+response given the model covariates, at the cost of possible bias if they
+are (Little & Vartivarian 2003). The 1/p (or class) adjustment always uses
+the design weights; only the model fit is affected.}
 
 \item{num_classes}{integer or NULL. Controls how propensities are used:
 an integer forms that many propensity classes (cell adjustment within each

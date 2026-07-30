@@ -199,6 +199,13 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   settings and their hyperparameters are not currently exposed: "tree" and
 #'   "forest" use the 'rpart' and 'ranger' defaults, and "boost" uses xgboost
 #'   with nrounds = 150, max_depth = 4 and eta = 0.1.
+#' @param weight_model logical. Only for method = "propensity": whether to fit
+#'   the response-propensity model with the incoming (design) weights (`TRUE`,
+#'   the default) or unweighted (`FALSE`). Fitting unweighted can reduce the
+#'   variance of the propensity estimates when the weights are unrelated to
+#'   response given the model covariates, at the cost of possible bias if they
+#'   are (Little & Vartivarian 2003). The 1/p (or class) adjustment always uses
+#'   the design weights; only the model fit is affected.
 #' @param num_classes integer or NULL. Controls how propensities are used:
 #'   an integer forms that many propensity classes (cell adjustment within each
 #'   class); NULL applies the direct factor 1/p to each unit.
@@ -284,6 +291,7 @@ step_nonresponse <- function(spec, respondent,
                              method = c("weighting_class", "propensity", "calibration"),
                              by = NULL, formula = NULL,
                              engine = c("logit", "tree", "forest", "boost"),
+                             weight_model = TRUE,
                              num_classes = 5L, cluster = NULL,
                              crossfit = NULL, crossfit_seed = NULL,
                              totals = NULL, count = NULL,
@@ -319,7 +327,8 @@ step_nonresponse <- function(spec, respondent,
             sprintf("%d classes", num_classes)
   lvl    <- if (is.null(cluster)) "" else sprintf(", by %s", cluster)
   label  <- if (method == "propensity")
-              sprintf("nonresponse (propensity: %s, %s%s)", engine, mode, lvl)
+              sprintf("nonresponse (propensity: %s, %s%s%s)", engine, mode, lvl,
+                      if (isTRUE(weight_model)) "" else ", unweighted model")
             else if (method == "calibration") {
               tlab <- if (is.null(totals)) "sample-level" else "population"
               det  <- calfun                       # linear / raking / logit distance
@@ -337,6 +346,7 @@ step_nonresponse <- function(spec, respondent,
       by          = by,
       formula     = formula,
       engine      = engine,
+      weight_model = isTRUE(weight_model),
       num_classes = num_classes,
       cluster     = cluster,
       crossfit      = if (is.null(crossfit)) NULL else as.integer(crossfit),

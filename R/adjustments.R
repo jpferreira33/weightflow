@@ -472,7 +472,9 @@ apply_step.step_select_within <- function(step, data, w) {
     if (is.null(step$formula)) stop("method = 'propensity' requires `formula`.")
     ddh    <- data[idx_el[match(hhn, cl)], , drop = FALSE]   # one row per household
     ddh$.y <- as.integer(resp_h)
-    p      <- .estimate_propensity(step$engine, step$formula, ddh, Wh,
+    mw     <- if (is.null(step$weight_model) || isTRUE(step$weight_model)) Wh
+              else rep(1, length(Wh))
+    p      <- .estimate_propensity(step$engine, step$formula, ddh, mw,
                                    crossfit = step$crossfit, seed = step$crossfit_seed)
     if (is.null(step$num_classes)) {
       factor_h <- ifelse(resp_h, 1 / p, 0)
@@ -658,7 +660,9 @@ apply_step.step_nonresponse <- function(step, data, w) {
   dd      <- data[eligible, , drop = FALSE]
   dd$.y   <- as.integer(respondent[eligible])
   cl_cf   <- if (!is.null(step$cluster)) as.character(data[[step$cluster]][eligible]) else NULL
-  p       <- .estimate_propensity(step$engine, step$formula, dd, w[eligible],
+  mw      <- if (is.null(step$weight_model) || isTRUE(step$weight_model)) w[eligible]
+             else rep(1, sum(eligible))
+  p       <- .estimate_propensity(step$engine, step$formula, dd, mw,
                                   crossfit = step$crossfit, cluster_id = cl_cf,
                                   seed = step$crossfit_seed)
   idx_el  <- which(eligible)

@@ -101,10 +101,28 @@
   '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="9">%s</svg>',
   w, h, body)
 
+# Deterministic thinning for the scatter (rendering only). Keeps both tails on
+# each axis (smallest/largest weights before and after) and the largest
+# departures from y = x, then systematically thins the dense core. Reproducible
+# across runs and never drops the outliers. Returns indices into x/y.
+.thin_scatter <- function(x, y, cap = 3000L) {
+  if (length(x) <= cap) return(seq_along(x))
+  d   <- abs(y - x)
+  ne  <- min(100L, length(x))
+  ext <- unique(c(order(x)[seq_len(ne)], order(x, decreasing = TRUE)[seq_len(ne)],
+                  order(y)[seq_len(ne)], order(y, decreasing = TRUE)[seq_len(ne)],
+                  order(d, decreasing = TRUE)[seq_len(min(200L, length(x)))]))
+  rest  <- setdiff(seq_along(x), ext)
+  nthin <- max(0L, cap - length(ext))
+  thin  <- if (nthin > 0L && length(rest) > 0L)
+    rest[round(seq.int(1, length(rest), length.out = min(nthin, length(rest))))] else integer(0)
+  unique(c(ext, thin))
+}
+
 # Scatter of weight before (x) vs after (y), with a y = x reference line.
-.svg_scatter <- function(x, y, w = 330, h = 215) {
+.svg_scatter <- function(x, y, w = 330, h = 215, cap = 3000L) {
   ml <- 46; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
-  if (length(x) > 800) { i <- sample(length(x), 800); x <- x[i]; y <- y[i] }
+  i <- .thin_scatter(x, y, cap); x <- x[i]; y <- y[i]
   xr <- range(x); yr <- range(c(y, x))
   if (diff(xr) == 0) xr <- xr + c(-1, 1)
   if (diff(yr) == 0) yr <- yr + c(-1, 1)

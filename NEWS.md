@@ -2,6 +2,14 @@
 
 ## New features
 
+* **Unweighted propensity models.** `step_nonresponse(method = "propensity")`
+  gains `weight_model` (default `TRUE`). With `FALSE` the response-propensity
+  model is fit unweighted, so the design weights enter only the 1/p (or class)
+  adjustment and not the model fit -- useful when the weights are unrelated to
+  response given the covariates (Little & Vartivarian 2003). Works at unit and
+  household (cluster) level and across all engines. Thanks to Andrés Gutiérrez
+  (ECLAC - Statistics Division) for the suggestion.
+
 * **Nonresponse by calibration (two-phase).** `step_nonresponse()` gains
   `method = "calibration"`: instead of weighting classes or inverse propensities,
   it adjusts for nonresponse by calibrating the respondents' weights to auxiliary
@@ -99,6 +107,18 @@
   calibration were left untouched by a lower floor. It now trims every non-zero
   weight, flooring negatives to `lower`, while still leaving dropped units (weight
   exactly 0) alone. Recipes without negative weights are unaffected.
+
+## Bug fixes
+
+* **Reproducible report scatter plots.** The weight before/after scatter in
+  `report_weighting()` subsampled points at random (without a seed) when a step
+  had more than 800 units, so the plotted cloud changed between renders even
+  though the weights were identical. It now uses a deterministic thinning
+  (`.thin_scatter()`): all points are drawn up to `cap = 3000`, and above that
+  the plot always keeps both tails on each axis (smallest/largest weights before
+  and after) and the largest departures from the y = x line, then systematically
+  thins the dense core. The scatter is now identical across runs and never drops
+  the outliers.
 
 # weightflow 0.2.0
 

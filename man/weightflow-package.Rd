@@ -34,5 +34,10 @@ Authors:
   \item Juan Pablo Ferreira \email{juanpablo.ferreira@fcea.edu.uy}
 }
 
+Other contributors:
+\itemize{
+  \item Andrés Gutiérrez (\href{https://orcid.org/0009-0007-2918-1932}{ORCID}) (affiliation: ECLAC - Statistics Division) [contributor]
+}
+
 }
 \keyword{internal}
