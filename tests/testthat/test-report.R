@@ -33,6 +33,9 @@ test_that("report renders all optional cards (English, defaults)", {
                                         totals_source = "Register"))
   expect_match(html, "Fieldwork outcomes")          # AAPOR card
   expect_match(html, "AAPOR Standard Definitions")  # AAPOR footnote
+  expect_match(html, "AAPOR RR1")                   # cota conservadora (todos los U)
+  expect_match(html, "AAPOR RR3, CASRO")            # e-ajustada
+  expect_match(html, "AAPOR RR5")                   # cota menos conservadora (U excluidos)
   expect_match(html, "Reference metadata")          # metadata card
   expect_match(html, "Test Survey")                 # metadata woven in
   expect_match(html, "Executive summary")           # narrative on by default

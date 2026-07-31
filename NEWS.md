@@ -80,9 +80,25 @@
   (ineligible / out of scope, unknown eligibility, eligible respondent, eligible
   nonrespondent) and reports the eligibility rate `e`, the e-adjusted response
   rate (AAPOR Standard Definitions RR3 = R / (R + NR + e&middot;U)) and the
-  nonresponse rate, both unweighted and weighted by the base (design) weights.
+  nonresponse rate, both unweighted and weighted by the base (design) weights. The card now
+  reports the response rate in three AAPOR variants, from most to least
+  conservative in how unknown-eligibility cases (U) are treated: RR1 (all U
+  eligible, R/(R+NR+U)), RR3 (CASRO, e-adjusted, R/(R+NR+e&middot;U)) and RR5
+  (U excluded, R/(R+NR)), so RR1 <= RR3 <= RR5 bracket the rate (Valliant,
+  Dever & Kreuter 2018, ch. 6).
   `e` uses the proportional (CASRO) allocation of the unknown-eligibility cases.
   The card is bilingual and is omitted when the recipe has no nonresponse step.
+
+* **Calibration diagnostics show relative deviations.** Any per-step
+  diagnostics table with target/achieved totals (calibration, nonresponse
+  calibration, trimmed calibration) now includes a relative-difference column,
+  100 &times; (achieved &minus; target) / target, so a residual gap is read as a
+  percentage rather than only in absolute units.
+
+* **"Points of attention" panel in `report_weighting()`.** The executive summary
+  now aggregates, at the top, any step that did not converge or raised a quality
+  alert, each with a short conservative recommendation (e.g. relax the bounds or
+  increase `maxit`). Nothing is shown when the cascade is clean.
 
 * **`report_weighting()` restyled to the package identity.** The HTML report now
   uses the weightflow palette (violet accent, lavender plot points, brand amber

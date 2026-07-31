@@ -51,6 +51,21 @@
   out
 }
 
+# If a diagnostics table has target/achieved columns, insert a relative-%
+# difference column right after 'achieved' (100 * (achieved - target)/target).
+.with_reldiff <- function(df, lang) {
+  if (is.null(df) || !is.data.frame(df) ||
+      !all(c("target", "achieved") %in% names(df))) return(df)
+  tt  <- suppressWarnings(as.numeric(as.character(df$target)))
+  aa  <- suppressWarnings(as.numeric(as.character(df$achieved)))
+  rel <- 100 * (aa - tt) / tt
+  nm  <- .t("rel. diff (%)", "dif. rel. (%)", lang)
+  df[[nm]] <- ifelse(is.finite(rel), sprintf("%+.2f%%", rel), "-")
+  new <- setdiff(names(df), nm)
+  ord <- append(new, nm, after = match("achieved", new))
+  df[, ord, drop = FALSE]
+}
+
 # data.frame -> HTML table
 .df_to_html <- function(df) {
   if (is.null(df) || !nrow(df)) return("<p class='muted'>no diagnostics</p>")
@@ -477,6 +492,29 @@
           .t("Executive summary", "Resumen ejecutivo", lang), body)
 }
 
+# Aggregates non-convergence and quality alerts across steps into a top panel
+# with conservative, templated recommendations. Empty string when all clear.
+.attention_panel <- function(object, lang) {
+  items <- character(0)
+  for (i in seq_along(object$steps)) {
+    st  <- object$steps[[i]]
+    lbl <- .html_escape(st$label)
+    if (identical(attr(st$diagnostics, "converged"), FALSE))
+      items <- c(items, .t(
+        sprintf("<strong>Step %d (%s)</strong> did not converge &mdash; relax the bounds or increase <code>maxit</code>, and check that the margins are mutually consistent.", i, lbl),
+        sprintf("<strong>Paso %d (%s)</strong> no convergi\u00f3 &mdash; relaje las cotas o aumente <code>maxit</code>, y verifique que los m\u00e1rgenes sean consistentes entre s\u00ed.", i, lbl), lang))
+    al <- st$alerts
+    if (!is.null(al) && length(al))
+      for (a in al)
+        items <- c(items, sprintf("<strong>%s %d (%s)</strong>: %s",
+                                  .t("Step", "Paso", lang), i, lbl, .html_escape(a)))
+  }
+  if (!length(items)) return("")
+  sprintf("<div class='exec attention'><h4>%s</h4><ul>%s</ul></div>",
+          .t("Points of attention", "Puntos de atenci\u00f3n", lang),
+          paste0("<li>", items, "</li>", collapse = ""))
+}
+
 # Fieldwork outcome rates (AAPOR Standard Definitions). From the recipe's
 # eligibility / nonresponse steps we reconstruct the disposition of every case
 # -- ineligible (out of scope), unknown eligibility, eligible respondent,
@@ -513,10 +551,12 @@
             R = sum(bw[R]), NR = sum(bw[NR]))
   rate <- function(r, nr, ne, u) {
     known <- r + nr
-    e  <- if (known + ne > 0) known / (known + ne) else NA_real_
-    den <- r + nr + (if (is.na(e)) 0 else e) * u
-    rr <- if (den > 0) r / den else NA_real_
-    c(e = e, rr = rr, nrr = 1 - rr)
+    e   <- if (known + ne > 0) known / (known + ne) else NA_real_
+    ee  <- if (is.na(e)) 0 else e
+    rr_all <- if (r + nr + u > 0)      r / (r + nr + u)      else NA_real_  # RR1: todos los U elegibles
+    rr_e   <- if (r + nr + ee * u > 0) r / (r + nr + ee * u) else NA_real_  # RR3/CASRO: fraccion e*U
+    rr_no  <- if (r + nr > 0)          r / (r + nr)          else NA_real_  # RR5: U excluidos
+    c(e = e, rr_all = rr_all, rr_e = rr_e, rr_no = rr_no, nrr = 1 - rr_e)
   }
   ru <- rate(cnt[["R"]],  cnt[["NR"]],  cnt[["NE"]],  cnt[["U"]])
   rw <- rate(wsum[["R"]], wsum[["NR"]], wsum[["NE"]], wsum[["U"]])
@@ -524,12 +564,14 @@
   f0  <- function(x) format(round(x), big.mark = ",")
   pct <- function(x) sprintf("%.1f%%", 100 * x / cnt[["T"]])
   prr <- function(x) if (is.na(x)) "&ndash;" else sprintf("%.1f%%", 100 * x)
+  sym <- function(lbl, sy) sprintf(
+    "%s <span class='muted' style='font-family:ui-monospace,Menlo,monospace'>(%s)</span>", lbl, sy)
   lab <- list(
-    T  = .t("Total sample (issued cases)", "Muestra total (casos emitidos)", lang),
-    NE = .t("Ineligible / out of scope", "Inelegibles / fuera de alcance", lang),
-    U  = .t("Unknown eligibility", "Elegibilidad desconocida", lang),
-    R  = .t("Eligible respondents", "Elegibles respondentes", lang),
-    NR = .t("Eligible nonrespondents", "Elegibles no respondentes", lang))
+    T  = sym(.t("Total sample (issued cases)", "Muestra total (casos emitidos)", lang), "n"),
+    NE = sym(.t("Ineligible / out of scope", "Inelegibles / fuera de alcance", lang), "NE"),
+    U  = sym(.t("Unknown eligibility", "Elegibilidad desconocida", lang), "U"),
+    R  = sym(.t("Eligible respondents", "Elegibles respondentes", lang), "R"),
+    NR = sym(.t("Eligible nonrespondents", "Elegibles no respondentes", lang), "NR"))
   arows <- paste(vapply(c("T", "NE", "U", "R", "NR"), function(k)
     sprintf("<tr><td class='k'>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'>%s</td></tr>",
             lab[[k]], f0(cnt[[k]]),
@@ -538,13 +580,25 @@
   rrow <- function(name, u, w)
     sprintf("<tr><td class='k'>%s</td><td class='r'>%s</td><td class='r'>%s</td></tr>",
             name, prr(u), prr(w))
+  fx <- function(f) sprintf(
+    "<div class='muted' style='font-weight:400;font-family:ui-monospace,Menlo,monospace;margin-top:2px'>%s</div>", f)
   rrows <- paste0(
-    rrow(.t("Eligibility rate (e)", "Tasa de elegibilidad (e)", lang), ru[["e"]], rw[["e"]]),
-    rrow(.t("Response rate (AAPOR RR3, e-adjusted)", "Tasa de respuesta (AAPOR RR3, ajustada por e)", lang), ru[["rr"]], rw[["rr"]]),
-    rrow(.t("Nonresponse rate", "Tasa de no respuesta", lang), ru[["nrr"]], rw[["nrr"]]))
+    rrow(paste0(.t("Eligibility rate (e)", "Tasa de elegibilidad (e)", lang),
+                fx("e = (R + NR) / (R + NR + NE)")), ru[["e"]], rw[["e"]]),
+    rrow(paste0(.t("Response rate &mdash; all unknowns eligible (AAPOR RR1)",
+                   "Tasa de respuesta &mdash; todos los desconocidos elegibles (AAPOR RR1)", lang),
+                fx("RR1 = R / (R + NR + U)")), ru[["rr_all"]], rw[["rr_all"]]),
+    rrow(paste0(.t("Response rate &mdash; e-adjusted (AAPOR RR3, CASRO)",
+                   "Tasa de respuesta &mdash; ajustada por e (AAPOR RR3, CASRO)", lang),
+                fx("RR3 = R / (R + NR + e&middot;U)")), ru[["rr_e"]], rw[["rr_e"]]),
+    rrow(paste0(.t("Response rate &mdash; unknowns excluded (AAPOR RR5)",
+                   "Tasa de respuesta &mdash; desconocidos excluidos (AAPOR RR5)", lang),
+                fx("RR5 = R / (R + NR)")), ru[["rr_no"]], rw[["rr_no"]]),
+    rrow(.t("Nonresponse rate (1 &minus; RR3)", "Tasa de no respuesta (1 &minus; RR3)", lang),
+         ru[["nrr"]], rw[["nrr"]]))
   foot <- .t(
-    "AAPOR Standard Definitions: e is the eligibility rate among cases of known eligibility (proportional / CASRO allocation) and RR3 = R / (R + NR + e&middot;U). The weighted column uses the base (design) weights.",
-    "AAPOR Standard Definitions: e es la tasa de elegibilidad entre casos de elegibilidad conocida (asignaci\u00f3n proporcional / CASRO) y RR3 = R / (R + NR + e&middot;U). La columna ponderada usa el peso base (de dise\u00f1o).",
+    "Symbols: R = eligible respondents, NR = eligible nonrespondents, NE = ineligibles, U = unknown eligibility, n = total (the disposition counts above; the weighted column uses their base-weighted sums). AAPOR Standard Definitions. e is the eligibility rate among cases of known eligibility (proportional / CASRO allocation). The response rate is shown in three variants, from most to least conservative by how the unknown-eligibility cases (U) are treated: RR1 counts all U as eligible, R / (R + NR + U); RR3 counts the estimated fraction e&middot;U (CASRO), R / (R + NR + e&middot;U); RR5 excludes U, R / (R + NR). Thus RR1 &le; RR3 &le; RR5 (no partials are distinguished, so RR1=RR2, RR3=RR4, RR5=RR6). The weighted column uses the base (design) weights.",
+    "S\u00edmbolos: R = elegibles respondentes, NR = elegibles no respondentes, NE = inelegibles, U = elegibilidad desconocida, n = total (los conteos de la tabla de arriba; la columna ponderada usa sus sumas ponderadas por el peso base). AAPOR Standard Definitions. e es la tasa de elegibilidad entre casos de elegibilidad conocida (asignaci\u00f3n proporcional / CASRO). La tasa de respuesta se muestra en tres variantes, de la m\u00e1s a la menos conservadora seg\u00fan c\u00f3mo se tratan los casos de elegibilidad desconocida (U): RR1 cuenta todos los U como elegibles, R / (R + NR + U); RR3 cuenta la fracci\u00f3n estimada e&middot;U (CASRO), R / (R + NR + e&middot;U); RR5 excluye los U, R / (R + NR). As\u00ed RR1 &le; RR3 &le; RR5 (no se distinguen parciales, por lo que RR1=RR2, RR3=RR4, RR5=RR6). La columna ponderada usa el peso base (de dise\u00f1o).",
     lang)
   sprintf("<div class='meta racct'><h4>%s</h4>
     <table class='params'><thead><tr><th>%s</th><th class='r'>%s</th><th class='r'>%%</th><th class='r'>%s</th></tr></thead><tbody>%s</tbody></table>
@@ -655,6 +709,25 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     n_eff    = vapply(h, function(w) round(design_effect(w)$n_eff), numeric(1)),
     row.names = NULL)
 
+  # Per-stage table with readable, self-explanatory headers (not raw column names)
+  stab_html <- local({
+    hdr <- c(.t("Stage", "Etapa", lang),
+             .t("Active units (n)", "Unidades activas (n)", lang),
+             .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
+             .t("CV of weights", "CV de los pesos", lang),
+             .t("Kish deff", "deff de Kish", lang),
+             .t("Effective n (n_eff)", "n efectivo (n_eff)", lang))
+    hd  <- paste0("<th>", hdr, "</th>", collapse = "")
+    num <- function(x) format(x, big.mark = ",")
+    d3  <- function(x) formatC(x, format = "f", digits = 3)
+    rows <- vapply(seq_len(nrow(stab)), function(i) sprintf(
+      "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+      .html_escape(stab$stage[i]), num(stab$n_active[i]), num(stab$sum_wts[i]),
+      d3(stab$cv[i]), d3(stab$deff[i]), num(stab$n_eff[i])), character(1))
+    sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+            hd, paste(rows, collapse = ""))
+  })
+
   # R-indicator, shown inside the LAST nonresponse step (it is computed from that
   # step's auxiliaries), not as a separate top-level section.
   ri      <- .r_indicator(object)
@@ -706,7 +779,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
        <div><h4>Diagnostics</h4>%s%s
        <p class='muted'>Kish deff %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p>%s</div></div>%s</div>",
       i, .html_escape(s$label), narr, paste(prows, collapse = ""),
-      .df_to_html(s$diagnostics), extra,
+      .df_to_html(.with_reldiff(s$diagnostics, lang)), extra,
       de1$deff, de2$deff, format(round(de1$n_eff), big.mark = ","),
       format(round(de2$n_eff), big.mark = ","), ri_step,
       if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else ""))
@@ -725,9 +798,14 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   drift <- .calibration_drift(object)
   wdist <- .weight_distribution_html(fin)
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
+  exec  <- paste0(exec, .attention_panel(object, lang))
   meta_html <- .metadata_card(metadata, lang)
   racct <- .response_account(object, lang)
 
+  foot_txt <- .t(
+    "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; is the Kish effective sample size; deff = 1 + CV&sup2; = n / n_eff is the Kish design effect (n = active units). This report shows the weights only; for design-based inference (standard errors, confidence intervals) use the 'survey' or 'srvyr' package.",
+    "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; es el tama\u00f1o de muestra efectivo de Kish; deff = 1 + CV&sup2; = n / n_eff es el efecto de dise\u00f1o de Kish (n = unidades activas). Este reporte muestra solo los pesos; para inferencia basada en el dise\u00f1o (errores est\u00e1ndar, intervalos de confianza) us\u00e1 el paquete 'survey' o 'srvyr'.",
+    lang)
   html <- sprintf("<!DOCTYPE html><html><head><meta charset='utf-8'>
 <title>weightflow report</title>%s</head><body>
 <h1>weightflow &mdash; weighting recipe</h1>
@@ -743,9 +821,9 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 <h2>Weight distribution (final)</h2>%s
 <h2>Steps</h2>%s
 %s
-<p class='foot'>deff = Kish design effect (1 + CV&sup2;). This report shows weights only; for inference use the 'survey' package.</p>
+<p class='foot'>%s</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), prov, meta_html, cards, racct, exec, diagram, vars_chips, .df_to_html(stab), wdist, steps_html, drift)
+    length(object$steps), prov, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, wdist, steps_html, drift, foot_txt)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
@@ -790,7 +868,7 @@ h4{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;c
 .muted{color:var(--mut);font-size:13px}.note{color:var(--accent);font-size:13px;margin:6px 0 0}
 .methodological-note{margin:2px 0 12px;padding:10px 14px;background:#f6f5fb;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.6;color:#33334d}
 .exec{margin:16px 0 4px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:12px}
-.exec h4{margin:0 0 6px}.exec p{margin:0;font-size:14px;line-height:1.6;color:var(--ink)}
+.exec h4{margin:0 0 6px}.attention h4{color:#b45309}.attention ul{margin:6px 0 0;padding-left:18px;font-size:14px;line-height:1.6;color:var(--ink)}.exec p{margin:0;font-size:14px;line-height:1.6;color:var(--ink)}
 .meta{margin:12px 0;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:12px}
 .meta h4{margin:0 0 8px}.meta table{margin:0}.meta td.k{color:var(--mut);width:42%;font-weight:600}
 .alert{margin:8px 0 0;padding:8px 12px;border-left:3px solid #e8941f;background:#fdf4e6;border-radius:6px;font-size:13px}
@@ -803,6 +881,7 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:13px}
 table{border-collapse:collapse;width:100%;font-size:13px;margin:4px 0}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.stagetbl th{text-transform:none;letter-spacing:normal;font-size:11.5px}
 .params td.k{color:var(--mut);width:42%;font-weight:600}
 .racct td.r,.racct th.r{text-align:right;font-variant-numeric:tabular-nums;width:auto}.racct td.k{font-weight:600;color:var(--ink)}
 .step{border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0;box-shadow:0 1px 2px rgba(0,0,0,.03)}
