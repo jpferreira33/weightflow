@@ -305,7 +305,7 @@
 
 # A vertical flow diagram of the pipeline (base -> steps -> final), with the
 # variables each step used shown as chips. Pure HTML/CSS (no graphics device).
-.pipeline_diagram <- function(object) {
+.pipeline_diagram <- function(object, lang) {
   nodes <- sprintf(
     "<div class='node node-end'><div class='nl'>Base weights</div><div class='nv'><code>%s</code></div></div>",
     .html_escape(object$base_weights))
@@ -313,7 +313,7 @@
     s <- object$steps[[i]]
     nodes <- c(nodes, sprintf(
       "<div class='node'><div class='nl'><span class='num'>%d</span>%s</div>%s</div>",
-      i, .html_escape(s$label), .chips(.step_vars(s))))
+      i, .step_short(s, lang), .chips(.step_vars(s))))
   }
   nodes <- c(nodes,
     "<div class='node node-end'><div class='nl'>Final weights</div><div class='nv'><code>.weight</code></div></div>")
@@ -349,6 +349,22 @@
      sprintf("El efecto de dise\u00f1o de Kish pas\u00f3 de %.3f a %.3f.", de1$deff, de2$deff), lang)
 
 # A short human phrase for a step, used in the executive summary.
+.aux_vars <- function(step) {
+  if (!is.null(step$margins) && length(step$margins) && !is.null(names(step$margins)))
+    return(names(step$margins))
+  if (!is.null(step$formula)) {
+    tl <- tryCatch(attr(stats::terms(step$formula), "term.labels"), error = function(e) character(0))
+    return(tl)
+  }
+  character(0)
+}
+.vars_phrase <- function(v, lang) {
+  v <- vapply(v[nzchar(v)], .html_escape, "")
+  if (!length(v)) return("")
+  if (length(v) == 1L) return(unname(v))
+  paste0(paste(v[-length(v)], collapse = ", "), " ", .t("and", "y", lang), " ", v[length(v)])
+}
+
 .step_short <- function(step, lang) {
   if (inherits(step, "step_unknown_eligibility"))
     return(.t("unknown-eligibility adjustment", "ajuste por elegibilidad desconocida", lang))
@@ -356,20 +372,33 @@
     return(.t("removal of ineligible units", "eliminaci\u00f3n de unidades no elegibles", lang))
   if (inherits(step, "step_select_within"))
     return(.t("within-household selection", "selecci\u00f3n dentro del hogar", lang))
-  if (inherits(step, "step_nonresponse"))
-    return(switch(step$method %||% "weighting_class",
+  if (inherits(step, "step_nonresponse")) {
+    m <- step$method %||% "weighting_class"
+    if (identical(m, "calibration")) {
+      vp <- .vars_phrase(.aux_vars(step), lang)
+      return(if (nzchar(vp))
+        .t(sprintf("nonresponse calibration to %s", vp),
+           sprintf("calibraci\u00f3n de no respuesta a %s", vp), lang)
+        else .t("nonresponse adjustment (calibration)",
+                "ajuste por no respuesta (calibraci\u00f3n)", lang))
+    }
+    return(switch(m,
       weighting_class = .t("nonresponse adjustment (weighting classes)",
                            "ajuste por no respuesta (clases de ponderaci\u00f3n)", lang),
       propensity = .t(sprintf("nonresponse adjustment (propensity, %s)", step$engine),
-                      sprintf("ajuste por no respuesta (propensi\u00f3n, %s)", step$engine), lang),
-      calibration = .t("nonresponse adjustment (calibration)",
-                       "ajuste por no respuesta (calibraci\u00f3n)", lang)))
-  if (inherits(step, "step_calibrate"))
-    return(.t("calibration to population totals", "calibraci\u00f3n a totales poblacionales", lang))
+                      sprintf("ajuste por no respuesta (propensi\u00f3n, %s)", step$engine), lang)))
+  }
+  if (inherits(step, "step_calibrate")) {
+    vp <- .vars_phrase(.aux_vars(step), lang); greg <- identical(step$method, "linear")
+    return(if (nzchar(vp))
+      .t(sprintf("%scalibration to %s", if (greg) "GREG " else "", vp),
+         sprintf("calibraci\u00f3n %sa %s", if (greg) "GREG " else "", vp), lang)
+      else .t("calibration to population totals", "calibraci\u00f3n a totales poblacionales", lang))
+  }
   if (inherits(step, "step_model_calibration"))
     return(.t("model-assisted calibration", "calibraci\u00f3n asistida por modelo", lang))
   if (inherits(step, "step_trim_calibrated"))
-    return(.t("range-restricted trimming", "recorte con restricci\u00f3n de rango", lang))
+    return(.t("calibration-preserving trimming", "recorte que preserva la calibraci\u00f3n", lang))
   if (inherits(step, "step_trim_weights"))
     return(.t("weight trimming", "recorte de pesos", lang))
   if (inherits(step, "step_round"))  return(.t("rounding", "redondeo", lang))
@@ -855,7 +884,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     if (nrow(stab) < 2L) "" else {
       dd <- diff(stab$deff); dc <- diff(stab$cv)
       tot <- sum(abs(dd)); share <- if (tot > 0) 100 * abs(dd) / tot else rep(0, length(dd))
-      lab  <- vapply(object$steps, function(s) s$label, "")
+      lab  <- vapply(object$steps, function(s) .step_short(s, lang), "")
       imax <- if (any(dd > 0)) which.max(dd) else 0L
       eff  <- function(j) {
         x <- dd[j]
@@ -875,7 +904,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
                              .t("Effect", "Efecto", lang)), "</th>", collapse = "")
       rows <- vapply(seq_along(dd), function(j) sprintf(
         "<tr><td>%s</td><td>%s</td><td>%s</td><td>%.0f%%</td><td>%s</td></tr>",
-        .html_escape(lab[j]), cell(dd[j]), sprintf("%+.3f", dc[j]), share[j], eff(j)),
+        lab[j], cell(dd[j]), sprintf("%+.3f", dc[j]), share[j], eff(j)),
         character(1))
       nr <- nrow(stab)
       t_deff <- stab$deff[nr] - stab$deff[1]; t_cv <- stab$cv[nr] - stab$cv[1]
@@ -947,14 +976,14 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
        <div class='cols'><div><h4>Requested</h4><table class='params'>%s</table></div>
        <div><h4>Diagnostics</h4>%s%s
        <p class='muted'>Kish deff %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p>%s</div></div>%s</div>",
-      i, .html_escape(s$label), narr, paste(prows, collapse = ""),
+      i, .step_short(s, lang), narr, paste(prows, collapse = ""),
       .df_to_html(.with_reldiff(s$diagnostics, lang)), extra,
       de1$deff, de2$deff, format(round(de1$n_eff), big.mark = ","),
       format(round(de2$n_eff), big.mark = ","), ri_step,
       if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else ""))
   }
 
-  diagram <- .pipeline_diagram(object)
+  diagram <- .pipeline_diagram(object, lang)
   allvars <- unique(c(object$base_weights, unlist(lapply(object$steps, .step_vars))))
   vars_chips <- .chips(allvars)
 

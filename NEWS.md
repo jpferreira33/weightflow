@@ -2,6 +2,13 @@
 
 ## New features
 
+* **More descriptive step names and context-aware alerts in the report.** The
+  HTML report now labels calibration steps by their auxiliaries (e.g. "GREG
+  calibration to region, sex and age") in the diagram, step cards and impact
+  table, and the low-cell-count alert tailors its advice to the step type
+  (collapsing cells for unknown-eligibility; collapsing or switching to raking
+  for post-stratification / weighting classes).
+
 * **Per-step impact table, status checklist and completion line in
   `report_weighting()`.** The per-stage section adds a per-step impact table: the
   change in Kish deff and CV versus the previous stage, each step's share of the

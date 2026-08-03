@@ -45,7 +45,8 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     cell_step <- inherits(steps[[i]], c("step_nonresponse", "step_unknown_eligibility",
                                         "step_calibrate"))
     alerts <- .wf_alerts(w_before, w, res$diagnostics, is_calib, cell_step,
-                         min_cell_n = min_cell_n, max_factor = max_factor)
+                         min_cell_n = min_cell_n, max_factor = max_factor,
+                         step_class = step_cls)
     if (length(alerts)) {
       steps[[i]]$alerts <- alerts
       tagged <- sprintf("[%s] %s", step_cls, alerts)
@@ -83,7 +84,7 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
 # ---------------------------------------------------------------------------
 .wf_alerts <- function(w_before, w_after, diag, is_calib, cell_step = FALSE,
                        min_cell_n = 30, max_factor = 2.5,
-                       g_lower = 0.1, g_upper = 10) {
+                       g_lower = 0.1, g_upper = 10, step_class = NULL) {
   msgs <- character(0)
 
   if (isTRUE(is_calib)) {
@@ -127,12 +128,15 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
       if (length(ncol_name) >= 1L) {
         cnt <- suppressWarnings(as.numeric(diag[[ncol_name[1]]]))
         few <- which(is.finite(cnt) & cnt < min_cell_n)
-        if (length(few) > 0)
+        if (length(few) > 0) {
+          advice <- if (identical(step_class, "step_unknown_eligibility"))
+            "consider collapsing cells (a coarser grouping)."
+          else "consider collapsing cells or switching to raking."
           msgs <- c(msgs, sprintf(
             paste0("%d cell(s) with fewer than %d cases (smallest observed %d). ",
-                   "Kalton and Flores-Cervantes (2003) recommend at least 30 per ",
-                   "cell; consider collapsing cells or switching to raking."),
-            length(few), as.integer(min_cell_n), as.integer(min(cnt[few]))))
+                   "Kalton and Flores-Cervantes (2003) recommend at least 30 per cell; %s"),
+            length(few), as.integer(min_cell_n), as.integer(min(cnt[few])), advice))
+        }
       }
     }
   }
