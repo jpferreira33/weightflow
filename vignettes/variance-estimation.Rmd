@@ -165,6 +165,19 @@ bootstrap, the replicate weights bridge to survey/srvyr through
 `as_svrepdesign(jk)`, so any estimand or domain can be estimated downstream with
 the recipe's uncertainty built in.
 
+### Lonely PSUs and parallel replicates
+
+Strata with a single PSU carry no within-stratum resampling information. By
+default (`lonely_psu = "certainty"`) they are treated as self-representing and
+contribute no variance (a warning is issued). Setting `lonely_psu = "collapse"`
+merges the single-PSU strata into a pseudo-stratum so they are resampled and
+yield a conservative variance instead of zero.
+
+Both `bootstrap_weights()` and `jackknife_weights()` also take `cores`: with
+`cores > 1` the per-replicate re-preps run in parallel (forking, so serial on
+Windows). The resampling is drawn up front from `seed`, so the parallel run is
+identical to the serial one.
+
 ## Which one to use
 
 Use the **recipe-aware bootstrap** (method 1, in any of its three forms) when

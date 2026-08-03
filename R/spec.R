@@ -200,7 +200,7 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   "forest" use the 'rpart' and 'ranger' defaults, and "boost" uses xgboost
 #'   with nrounds = 150, max_depth = 4 and eta = 0.1.
 #' @param weight_model logical. Only for method = "propensity": whether to fit
-#'   the response-propensity model with the incoming (design) weights (`TRUE`,
+#'   the response-propensity model with the incoming weights (`TRUE`,
 #'   the default) or unweighted (`FALSE`). Fitting unweighted can reduce the
 #'   variance of the propensity estimates when the weights are unrelated to
 #'   response given the model covariates, at the cost of possible bias if they

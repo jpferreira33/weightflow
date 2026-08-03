@@ -1,0 +1,105 @@
+---
+title: "Documenting and auditing the weights: the quality report"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Documenting and auditing the weights: the quality report}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(weightflow)
+```
+
+`report_weighting()` turns a prepped recipe into a single, self-contained HTML
+report that documents how the weights were built and how they behave. It follows
+the logic of an official-statistics quality report (GSBPM sub-process 5.6 and the
+ESS SIMS/ESMS metadata concepts) and needs no external dependency: every plot is
+inline SVG, so the file opens anywhere and can be archived or emailed as is.
+
+## A recipe and the report
+
+We build a short cascade on the bundled `sample_survey` and generate the report.
+Passing `open = FALSE` writes the file without launching a browser, which is what
+you want inside a script; the function returns the path invisibly.
+
+```{r report}
+fit <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex)))) |>
+  prep()
+
+path <- report_weighting(fit, open = FALSE)
+```
+
+Open `path` in a browser to see the report. The rest of this vignette describes
+what each part of it says.
+
+## What the report contains
+
+The report is a sequence of cards, in reading order.
+
+Executive summary. A prose summary of the cascade with the headline design
+effect, effective sample size and R-indicator, a plain-language interpretation of
+the final design effect, and a status checklist (convergence, extreme weights,
+replicate weights, alerts). Anything that needs attention (for example a step
+that did not converge, or a quality alert) is collected here.
+
+Fieldwork outcomes (AAPOR). When the recipe has eligibility or nonresponse
+steps, a card reconstructs the disposition of every case (ineligible, unknown
+eligibility, eligible respondent, eligible nonrespondent) and reports the
+eligibility rate together with the response rate in three AAPOR variants, from
+the most to the least conservative treatment of the unknown-eligibility cases
+(RR1, RR3/CASRO, RR5), both unweighted and base-weighted.
+
+Per-stage summary. A table with the active units, sum of weights, CV, Kish
+design effect and effective sample size at each stage; an inline chart of the
+design effect across stages; and a per-step impact table (the change in deff and
+CV at each step and its share of the total change).
+
+Weight distribution and per-step detail. The distribution of the final weights,
+and a collapsible section with one card per step: the requested parameters, the
+diagnostics (for calibration, the target and achieved totals with their relative
+difference), and a before/after scatter of the weights.
+
+## Reference metadata
+
+The `metadata` argument adds a header card aligned to the SIMS/ESMS concepts.
+Recognised keys get a proper label; any other key is shown as given.
+
+```{r metadata}
+path <- report_weighting(
+  fit, open = FALSE,
+  metadata = list(
+    survey           = "Living Conditions Survey (illustrative)",
+    reference_period = "2024",
+    geography        = "National",
+    producer         = "National Statistical Office",
+    frame            = "Master sample of dwellings",
+    totals_source    = "Population projections (2023)",
+    totals_date      = "2024-06-30"))
+```
+
+## Language and the variance card
+
+The narrative is available in English (`lang = "en"`, the default) or Spanish
+(`lang = "es"`). If you also computed replicate weights, pass them through
+`replicates` to add a card documenting the variance replication design: method,
+number of replicates, strata and PSUs per stratum, lonely-PSU handling, cores and
+run time, with a note when few PSUs per stratum favour the jackknife.
+
+```{r variance-card, eval = FALSE}
+spec <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region")
+jk <- jackknife_weights(spec, strata = "region", psu = "psu")
+report_weighting(prep(spec), replicates = jk, lang = "es", open = FALSE)
+```
+
+The variance card documents the design of the replication. The standard errors,
+CVs and confidence intervals of specific estimates are computed downstream with
+the `survey` or `srvyr` package (see the Variance estimation article).

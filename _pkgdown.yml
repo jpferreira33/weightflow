@@ -43,6 +43,10 @@ articles:
   - calibration-totals
   - model-calibration
   - advanced-methods
+- title: Reporting
+  navbar: Reporting
+  contents:
+  - quality-report
 - title: Case study
   navbar: Case study
   contents:

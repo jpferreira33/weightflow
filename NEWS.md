@@ -37,7 +37,7 @@
 
 * **Unweighted propensity models.** `step_nonresponse(method = "propensity")`
   gains `weight_model` (default `TRUE`). With `FALSE` the response-propensity
-  model is fit unweighted, so the design weights enter only the 1/p (or class)
+  model is fit unweighted, so the incoming weights enter only the 1/p (or class)
   adjustment and not the model fit -- useful when the weights are unrelated to
   response given the covariates (Little & Vartivarian 2003). Works at unit and
   household (cluster) level and across all engines. Thanks to Andrés Gutiérrez
