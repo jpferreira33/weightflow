@@ -1,6 +1,6 @@
 Package: weightflow
 Title: Declarative API for Staged Survey Weights
-Version: 0.3.0
+Version: 1.0.0
 Authors@R: c(
     person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy",
            role = c("aut", "cre")),

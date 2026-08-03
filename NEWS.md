@@ -1,4 +1,4 @@
-# weightflow 0.3.0
+# weightflow 1.0.0
 
 ## New features
 
