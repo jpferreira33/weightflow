@@ -10,8 +10,8 @@ Authors@R: c(
 Description: Builds survey weights from design base weights by chaining the
     stages of a weighting workflow (unknown-eligibility redistribution,
     nonresponse adjustment, calibration to known population totals, and weight
-    trimming) through a declarative, pipeable, 'tidymodels'-style API.
-    Nonresponse can be handled by weighting classes, by response-propensity
+    trimming) through a declarative, pipeable, 'tidymodels'-style API, with
+    nonresponse handled by weighting classes, by response-propensity
     models fitted with logistic regression or machine-learning learners (trees,
     random forests and gradient boosting), or by calibration. Calibration
     follows Deville and Sarndal (1992) <doi:10.2307/2290268>, and a
@@ -24,8 +24,7 @@ Description: Builds survey weights from design base weights by chaining the
     replicate weights carry the variability of every adjustment. A
     self-contained HTML report documents each step with diagnostics, and the
     weights bridge to the 'survey' and 'srvyr' packages for design-based
-    inference. The framework is described in Ferreira (2026)
-    <doi:10.48550/arXiv.2607.08491>.
+    inference.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US
