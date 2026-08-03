@@ -7,6 +7,7 @@ bibentry(
   year          = "2026",
   eprint        = "2607.08491",
   archivePrefix = "arXiv",
+  doi           = "10.48550/arXiv.2607.08491",
   url           = "https://arxiv.org/abs/2607.08491",
   note          = "arXiv preprint arXiv:2607.08491",
   textVersion   = paste(

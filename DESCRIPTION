@@ -25,7 +25,7 @@ Description: Builds survey weights from design base weights by chaining the
     self-contained HTML report documents each step with diagnostics, and the
     weights bridge to the 'survey' and 'srvyr' packages for design-based
     inference. The framework is described in Ferreira (2026)
-    <arXiv:2607.08491>.
+    <doi:10.48550/arXiv.2607.08491>.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US
