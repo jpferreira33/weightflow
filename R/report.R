@@ -131,9 +131,20 @@
                         sx(seq_len(n)), sy(y)), collapse = "")
   xtk  <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#6b7280">%s</text>',
                         sx(seq_len(n)), mt + ph + 16, .html_escape(disp)), collapse = "")
+  dd <- diff(y); ann <- ""
+  if (length(dd) && any(dd > 0)) {
+    ii  <- which.max(dd) + 1L
+    ann <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="12" fill="#b45309">&#9650;</text>',
+                   sx(ii), sy(y[ii]) - 7)
+  }
+  if (length(dd) && min(dd) < -0.0005) {
+    jj  <- which.min(dd) + 1L
+    ann <- paste0(ann, sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="12" fill="#065f46">&#9660;</text>',
+                               sx(jj), sy(y[jj]) + 16))
+  }
   paste0('<svg viewBox="0 0 ', w, ' ', h,
          '" width="100%" font-family="-apple-system,Segoe UI,Roboto,sans-serif">',
-         grid, ytk, line, dots, xtk, '</svg>')
+         grid, ytk, line, dots, xtk, ann, '</svg>')
 }
 
 .svg_frame <- function(body, w, h) sprintf(
@@ -539,6 +550,41 @@
           paste0("<li>", items, "</li>", collapse = ""))
 }
 
+# Truthful status checklist (green when OK, amber when not) for the summary.
+.status_checklist <- function(object, de_f, fin, replicates, lang) {
+  nonconv <- sum(vapply(object$steps, function(s)
+    identical(attr(s$diagnostics, "converged"), FALSE), logical(1)))
+  nalert  <- sum(vapply(object$steps, function(s)
+    !is.null(s$alerts) && length(s$alerts) > 0L, logical(1)))
+  pos <- fin[fin > 0]; med <- stats::median(pos); n_ext <- sum(pos > 4 * med)
+  has_rep <- !is.null(replicates) &&
+             inherits(replicates, c("weightflow_boot", "weightflow_jack"))
+  item <- function(ok, txt) sprintf("<li><span class='%s'>%s</span> %s</li>",
+    if (ok) "ok" else "no", if (ok) "&#10003;" else "&#10007;", txt)
+  items <- c(
+    item(nonconv == 0L, if (nonconv == 0L)
+      .t("All calibration steps converged.", "Todos los pasos de calibraci\u00f3n convergieron.", lang)
+      else .t(sprintf("%d step(s) did not converge.", nonconv),
+              sprintf("%d paso(s) no convergieron.", nonconv), lang)),
+    item(TRUE, .t(sprintf("Final Kish design effect = %.3f (effective n = %s).",
+                          de_f$deff, format(round(de_f$n_eff), big.mark = ",")),
+                  sprintf("Efecto de dise\u00f1o de Kish final = %.3f (n efectivo = %s).",
+                          de_f$deff, format(round(de_f$n_eff), big.mark = ",")), lang)),
+    item(n_ext == 0L, if (n_ext == 0L)
+      .t("No extreme weights (above 4x the median).", "Sin pesos extremos (mayores a 4x la mediana).", lang)
+      else .t(sprintf("%d extreme weight(s) above 4x the median.", n_ext),
+              sprintf("%d peso(s) extremo(s) por encima de 4x la mediana.", n_ext), lang)),
+    item(has_rep, if (has_rep)
+      .t("Replicate weights for variance created.", "Pesos r\u00e9plica para la varianza creados.", lang)
+      else .t("Replicate weights not created (add bootstrap/jackknife for variance).",
+              "Sin pesos r\u00e9plica (agregue bootstrap/jackknife para la varianza).", lang)))
+  if (nalert > 0L)
+    items <- c(items, item(FALSE, .t(sprintf("%d step(s) raised quality alerts (see below).", nalert),
+                                     sprintf("%d paso(s) con alertas de calidad (ver abajo).", nalert), lang)))
+  sprintf("<div class='exec'><h4>%s</h4><ul class='chk'>%s</ul></div>",
+          .t("Status", "Estado", lang), paste(items, collapse = ""))
+}
+
 # Optional card: replication design for variance (from a weightflow_boot /
 # weightflow_jack object passed via `replicates`). Reads only stored metadata.
 .replication_card <- function(rep, lang) {
@@ -805,9 +851,50 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
             hd, paste(rows, collapse = ""))
   })
-  stab_html <- paste0(stab_html,
+  imp_html <- local({
+    if (nrow(stab) < 2L) "" else {
+      dd <- diff(stab$deff); dc <- diff(stab$cv)
+      tot <- sum(abs(dd)); share <- if (tot > 0) 100 * abs(dd) / tot else rep(0, length(dd))
+      lab  <- vapply(object$steps, function(s) s$label, "")
+      imax <- if (any(dd > 0)) which.max(dd) else 0L
+      eff  <- function(j) {
+        x <- dd[j]
+        if (round(x, 3) == 0) .t("negligible impact", "impacto insignificante", lang)
+        else if (x < 0) {
+          if (grepl("trim", lab[j], ignore.case = TRUE))
+            .t("recovers efficiency (trimming)", "recupera eficiencia (recorte)", lang)
+          else .t("recovers efficiency", "recupera eficiencia", lang)
+        } else if (j == imax)
+          .t("largest increase in variability", "mayor aumento de variabilidad", lang)
+        else .t("increases variability", "aumenta la variabilidad", lang)
+      }
+      cell <- function(v) sprintf("<span class='%s'>%+.3f</span>",
+                                  if (v > 0.001) "cell-warn" else if (v < -0.001) "cell-ok" else "", v)
+      hd <- paste0("<th>", c(.t("Step", "Paso", lang), "&Delta; deff", "&Delta; CV",
+                             .t("Contribution to deff change", "Contribuci\u00f3n al cambio del deff", lang),
+                             .t("Effect", "Efecto", lang)), "</th>", collapse = "")
+      rows <- vapply(seq_along(dd), function(j) sprintf(
+        "<tr><td>%s</td><td>%s</td><td>%s</td><td>%.0f%%</td><td>%s</td></tr>",
+        .html_escape(lab[j]), cell(dd[j]), sprintf("%+.3f", dc[j]), share[j], eff(j)),
+        character(1))
+      nr <- nrow(stab)
+      t_deff <- stab$deff[nr] - stab$deff[1]; t_cv <- stab$cv[nr] - stab$cv[1]
+      t_neff <- if (stab$n_eff[1] > 0) 100 * (stab$n_eff[nr] - stab$n_eff[1]) / stab$n_eff[1] else NA_real_
+      total_row <- sprintf(
+        "<tr style='font-weight:600;border-top:2px solid var(--line)'><td>%s</td><td>%s</td><td>%s</td><td></td><td>%s</td></tr>",
+        .t("Total (base &rarr; final)", "Total (base &rarr; final)", lang),
+        cell(t_deff), sprintf("%+.3f", t_cv),
+        if (is.na(t_neff)) "" else .t(sprintf("effective sample %+.0f%%", t_neff),
+                                      sprintf("muestra efectiva %+.0f%%", t_neff), lang))
+      sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s%s</tbody></table>",
+              .t("Impact of each weighting step (change vs the previous stage)",
+                 "Impacto de cada paso de ponderaci\u00f3n (cambio respecto de la etapa anterior)", lang),
+              hd, paste(rows, collapse = ""), total_row)
+    }
+  })
+  stab_html <- paste0(stab_html, imp_html,
     sprintf("<p class='muted'>%s</p>",
-            .t("Kish design effect by stage (0 = base, 1..k as in the table above)", "Efecto de dise\u00f1o de Kish por etapa (base y 1..k seg\u00fan la tabla de arriba)", lang)),
+            .t("Kish design effect by stage (0 = base, 1..k as in the table above); &#9650; largest increase, &#9660; recovered efficiency", "Efecto de dise\u00f1o de Kish por etapa (base y 1..k seg\u00fan la tabla de arriba); &#9650; mayor aumento, &#9660; eficiencia recuperada", lang)),
     .svg_evolution(stab$stage, stab$deff))
 
   # R-indicator, shown inside the LAST nonresponse step (it is computed from that
@@ -880,6 +967,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   drift <- .calibration_drift(object)
   wdist <- .weight_distribution_html(fin)
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
+  exec  <- paste0(exec, .status_checklist(object, de_f, object$final_weight, replicates, lang))
   exec  <- paste0(exec, .attention_panel(object, lang))
   imsg  <- if (de_f$deff < 1.2)
              .t("weight variability is low.", "la variabilidad de los pesos es baja.", lang)
@@ -902,6 +990,26 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   meta_html <- .metadata_card(metadata, lang)
   racct <- .response_account(object, lang)
 
+  done_txt <- local({
+    ns  <- length(object$steps)
+    ncv <- sum(vapply(object$steps, function(st)
+      identical(attr(st$diagnostics, "converged"), FALSE), logical(1)))
+    nal <- sum(vapply(object$steps, function(st)
+      !is.null(st$alerts) && length(st$alerts) > 0L, logical(1)))
+    nis <- ncv + nal
+    lead <- if (nis == 0L)
+      .t("Recipe completed successfully.", "Receta completada con \u00e9xito.", lang)
+    else .t(sprintf("Recipe completed with %d point(s) of attention.", nis),
+            sprintf("Receta completada con %d punto(s) de atenci\u00f3n.", nis), lang)
+    it <- c(sprintf("%d %s", ns, .t("weighting steps", "pasos de ponderaci\u00f3n", lang)))
+    if (ncv == 0L) it <- c(it, .t("calibration constraints preserved",
+                                  "restricciones de calibraci\u00f3n preservadas", lang))
+    if (!is.null(replicates)) it <- c(it, .t("replicate weights created",
+                                             "pesos r\u00e9plica creados", lang))
+    it <- c(it, .t("report generated", "reporte generado", lang))
+    sprintf("<p class='done'><strong>%s</strong> &nbsp; %s</p>",
+            lead, paste(it, collapse = " &middot; "))
+  })
   foot_txt <- .t(
     "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; is the Kish effective sample size; deff = 1 + CV&sup2; = n / n_eff is the Kish design effect (n = active units). This report shows the weights only; for design-based inference (standard errors, confidence intervals) use the 'survey' or 'srvyr' package.",
     "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; es el tama\u00f1o de muestra efectivo de Kish; deff = 1 + CV&sup2; = n / n_eff es el efecto de dise\u00f1o de Kish (n = unidades activas). Este reporte muestra solo los pesos; para inferencia basada en el dise\u00f1o (errores est\u00e1ndar, intervalos de confianza) us\u00e1 el paquete 'survey' o 'srvyr'.",
@@ -926,9 +1034,10 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 %s
 </details>
 %s
+%s
 <p class='foot'>%s</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), prov, toc_html, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, repl_html, wdist, .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang), steps_html, drift, foot_txt)
+    length(object$steps), prov, toc_html, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, repl_html, wdist, .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang), steps_html, drift, done_txt, foot_txt)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
@@ -1009,5 +1118,5 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .chips{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
 .chip{background:#efecf8;color:var(--accent);border:1px solid #ddd6f0;border-radius:999px;
 padding:1px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
-.foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}.cell-ok{background:#ecfdf5;color:#065f46;padding:1px 6px;border-radius:4px}.cell-warn{background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px}.toc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 16px;margin:12px 0 4px;font-size:13px}.toc a{color:var(--accent);text-decoration:none}details.steps>summary{cursor:pointer;font-size:13px;color:var(--accent);margin:6px 0;list-style:none}details.steps>summary::-webkit-details-marker{display:none}
+.foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}.cell-ok{background:#ecfdf5;color:#065f46;padding:1px 6px;border-radius:4px}.cell-warn{background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px}.toc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 16px;margin:12px 0 4px;font-size:13px}.toc a{color:var(--accent);text-decoration:none}details.steps>summary{cursor:pointer;font-size:13px;color:var(--accent);margin:6px 0;list-style:none}details.steps>summary::-webkit-details-marker{display:none}.chk{list-style:none;padding-left:0;margin:6px 0;font-size:14px}.chk li{margin:3px 0}.chk .ok{color:#065f46;font-weight:600}.chk .no{color:#b45309;font-weight:600}.done{margin-top:20px;padding:12px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--ink)}
 </style>"

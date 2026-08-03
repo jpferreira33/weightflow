@@ -41,6 +41,10 @@ test_that("report renders all optional cards (English, defaults)", {
   expect_match(html, "details class='steps'", fixed = TRUE)  # collapsible detail
   expect_match(html, "Kish design effect by stage", fixed = TRUE)  # deff evolution chart
   expect_match(html, "Interpretation:", fixed = TRUE)  # auto interpretation
+  expect_match(html, "Impact of each weighting step", fixed = TRUE)  # impact table
+  expect_match(html, "class='chk'", fixed = TRUE)      # status checklist
+  expect_match(html, "class='done'", fixed = TRUE)     # completion line
+  expect_match(html, "Recipe completed", fixed = TRUE)
   expect_match(html, "Reference metadata")          # metadata card
   expect_match(html, "Test Survey")                 # metadata woven in
   expect_match(html, "Executive summary")           # narrative on by default

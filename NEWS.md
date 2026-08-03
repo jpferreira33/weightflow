@@ -2,6 +2,16 @@
 
 ## New features
 
+* **Per-step impact table, status checklist and completion line in
+  `report_weighting()`.** The per-stage section adds a per-step impact table: the
+  change in Kish deff and CV versus the previous stage, each step's share of the
+  total |change in deff|, and whether it increases variance or recovers
+  efficiency (factual decomposition and sign, with no arbitrary magnitude
+  cut-offs, since none are established in the literature). The executive summary
+  gains a truthful status checklist (convergence, final design effect, extreme
+  weights, replicate weights, alerts), and the report closes with a completion
+  line ("successfully", or "with N points of attention").
+
 * **Richer, still self-contained `report_weighting()` HTML.** Adds a navigation
   menu (anchor links to each section), a Kish design-effect evolution chart
   across stages (inline SVG), conditional colouring of the per-stage
