@@ -36,6 +36,11 @@ test_that("report renders all optional cards (English, defaults)", {
   expect_match(html, "AAPOR RR1")                   # cota conservadora (todos los U)
   expect_match(html, "AAPOR RR3, CASRO")            # e-ajustada
   expect_match(html, "AAPOR RR5")                   # cota menos conservadora (U excluidos)
+  expect_match(html, "class='toc'", fixed = TRUE)  # nav menu
+  expect_match(html, "id='steps'", fixed = TRUE)    # section anchors
+  expect_match(html, "details class='steps'", fixed = TRUE)  # collapsible detail
+  expect_match(html, "Kish design effect by stage", fixed = TRUE)  # deff evolution chart
+  expect_match(html, "Interpretation:", fixed = TRUE)  # auto interpretation
   expect_match(html, "Reference metadata")          # metadata card
   expect_match(html, "Test Survey")                 # metadata woven in
   expect_match(html, "Executive summary")           # narrative on by default

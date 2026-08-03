@@ -2,6 +2,22 @@
 
 ## New features
 
+* **Richer, still self-contained `report_weighting()` HTML.** Adds a navigation
+  menu (anchor links to each section), a Kish design-effect evolution chart
+  across stages (inline SVG), conditional colouring of the per-stage
+  design-effect cells, a plain-language interpretation of the final design
+  effect, and a collapsible per-step detail section (native `<details>`). No new
+  dependencies and no JavaScript.
+
+* **Replication-design card in `report_weighting()`.** A new `replicates`
+  argument accepts a `weightflow_boot` / `weightflow_jack` object and adds a
+  card documenting the variance replication design: method (bootstrap Rao-Wu /
+  JKn / JK1), number of replicates, strata and mean PSUs per stratum, lonely-PSU
+  handling, seed, cores and run time, with an attention note when few PSUs per
+  stratum favour JKn. `bootstrap_weights()` and `jackknife_weights()` now record
+  this design metadata (including elapsed time and cores) in their returned
+  object.
+
 * **Unweighted propensity models.** `step_nonresponse(method = "propensity")`
   gains `weight_model` (default `TRUE`). With `FALSE` the response-propensity
   model is fit unweighted, so the design weights enter only the 1/p (or class)

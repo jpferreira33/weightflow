@@ -56,6 +56,7 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
   lonely_psu <- match.arg(lonely_psu)
+  t0 <- Sys.time()
   data <- object$data
   bw   <- object$base_weights
   spec <- structure(list(data = data, base_weights = bw, steps = object$steps),
@@ -119,7 +120,9 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
 
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = replicates,
-                 base_weights = bw),
+                 base_weights = bw, method = "bootstrap", lonely_psu = lonely_psu,
+                 seed = seed, cores = as.integer(cores),
+                 elapsed = as.numeric(difftime(Sys.time(), t0, units = "secs"))),
             class = "weightflow_boot")
 }
 
@@ -261,6 +264,7 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
   lonely_psu <- match.arg(lonely_psu)
+  t0 <- Sys.time()
   data <- object$data
   bw   <- object$base_weights
   spec <- structure(list(data = data, base_weights = bw, steps = object$steps),
@@ -316,7 +320,10 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
 
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = R,
-                 rep_stratum = rep_stratum, rep_nh = rep_nh, base_weights = bw),
+                 rep_stratum = rep_stratum, rep_nh = rep_nh, base_weights = bw,
+                 method = "jackknife", lonely_psu = lonely_psu,
+                 cores = as.integer(cores),
+                 elapsed = as.numeric(difftime(Sys.time(), t0, units = "secs"))),
             class = "weightflow_jack")
 }
 

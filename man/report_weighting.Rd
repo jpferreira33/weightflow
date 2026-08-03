@@ -11,7 +11,8 @@ report_weighting(
   plots = TRUE,
   narrative = TRUE,
   lang = c("en", "es"),
-  metadata = NULL
+  metadata = NULL,
+  replicates = NULL
 )
 }
 \arguments{
@@ -38,6 +39,12 @@ concepts) shown as a header card, e.g. \code{survey}, \code{reference_period},
 proper label; any other key is shown as given. \code{survey} is also woven into
 the executive summary. \code{totals_source}/\code{totals_date} document where the
 calibration control totals come from and their reference date.}
+
+\item{replicates}{optional \code{weightflow_boot} or \code{weightflow_jack} object
+(from \code{bootstrap_weights()} / \code{jackknife_weights()}). If given, a
+"Replication design for variance" card documents the method, number of
+replicates, strata / PSU structure, lonely-PSU handling, seed, cores and
+run time, and warns when few PSUs per stratum favour JKn.}
 }
 \value{
 (invisibly) the path to the HTML file.

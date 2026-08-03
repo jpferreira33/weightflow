@@ -112,6 +112,30 @@
   paste0(grid, paste(axln, collapse = ""), tick, xtk, ytk, xl, yl)
 }
 
+.svg_evolution <- function(labels, y, w = 640L, h = 190L) {
+  n <- length(y); if (n < 2L) return("")
+  disp <- ifelse(seq_len(n) == 1L, "base", as.character(seq_len(n) - 1L))  # base,1,2,...
+  ml <- 48; mr <- 14; mt <- 12; mb <- 34; pw <- w - ml - mr; ph <- h - mt - mb
+  yr <- range(y); if (diff(yr) == 0) yr <- yr + c(-0.05, 0.05)
+  pad <- diff(yr) * 0.10; yr <- yr + c(-pad, pad)          # aire arriba/abajo
+  sx <- function(i) ml + (i - 1) / (n - 1) * pw
+  sy <- function(v) mt + ph - (v - yr[1]) / diff(yr) * ph
+  yt <- pretty(yr, 3)
+  grid <- paste(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#eef" stroke-width="1"/>',
+                        ml, sy(yt), ml + pw, sy(yt)), collapse = "")
+  ytk  <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">%.3f</text>',
+                        ml - 6, sy(yt) + 3, yt), collapse = "")
+  d    <- paste(sprintf("%.1f %.1f", sx(seq_len(n)), sy(y)), collapse = " L ")
+  line <- sprintf('<path d="M %s" fill="none" stroke="#3d3580" stroke-width="2"/>', d)
+  dots <- paste(sprintf('<circle cx="%.1f" cy="%.1f" r="3" fill="#3d3580"/>',
+                        sx(seq_len(n)), sy(y)), collapse = "")
+  xtk  <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#6b7280">%s</text>',
+                        sx(seq_len(n)), mt + ph + 16, .html_escape(disp)), collapse = "")
+  paste0('<svg viewBox="0 0 ', w, ' ', h,
+         '" width="100%" font-family="-apple-system,Segoe UI,Roboto,sans-serif">',
+         grid, ytk, line, dots, xtk, '</svg>')
+}
+
 .svg_frame <- function(body, w, h) sprintf(
   '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="9">%s</svg>',
   w, h, body)
@@ -515,6 +539,53 @@
           paste0("<li>", items, "</li>", collapse = ""))
 }
 
+# Optional card: replication design for variance (from a weightflow_boot /
+# weightflow_jack object passed via `replicates`). Reads only stored metadata.
+.replication_card <- function(rep, lang) {
+  if (is.null(rep) || !inherits(rep, c("weightflow_boot", "weightflow_jack")))
+    return("")
+  is_jack <- inherits(rep, "weightflow_jack")
+  method <- if (is_jack)
+    (if (!is.null(rep$strata))
+       .t("Jackknife (delete-a-PSU, JKn)", "Jackknife (borra-una-UPM, JKn)", lang)
+     else .t("Jackknife (JK1)", "Jackknife (JK1)", lang))
+    else .t("Bootstrap (Rao-Wu rescaling)", "Bootstrap (reescalado Rao-Wu)", lang)
+  d  <- rep$data
+  st <- if (is.null(rep$strata)) rep("1", nrow(d)) else as.character(d[[rep$strata]])
+  cl <- if (is.null(rep$psu)) as.character(seq_len(nrow(d))) else as.character(d[[rep$psu]])
+  nstr     <- length(unique(st))
+  pps      <- tapply(cl, st, function(z) length(unique(z)))
+  lonely_n <- sum(pps < 2L)
+  secs <- rep$elapsed
+  tfmt <- if (is.null(secs) || is.na(secs)) "-" else
+    if (secs < 90) sprintf("%.1f s", secs) else sprintf("%.1f min", secs / 60)
+  na  <- function(x) if (is.null(x) || (length(x) == 1L && is.na(x))) "-" else as.character(x)
+  kv  <- function(k, v) sprintf("<tr><td class='k'>%s</td><td class='r'>%s</td></tr>", k, v)
+  body <- paste0(
+    kv(.t("Method", "M\u00e9todo", lang), method),
+    kv(.t("Replicates (B)", "R\u00e9plicas (B)", lang), format(rep$R, big.mark = ",")),
+    kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
+    kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
+    kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
+    kv(.t("Recipe-aware", "Recipe-aware", lang),
+       .t("yes (whole cascade re-run per replicate)", "s\u00ed (toda la cascada por r\u00e9plica)", lang)),
+    if (!is_jack) kv(.t("Seed", "Semilla", lang), na(rep$seed)) else "",
+    kv(.t("Cores", "Cores", lang), na(rep$cores)),
+    kv(.t("Run time", "Tiempo de ejecuci\u00f3n", lang), tfmt))
+  warn <- if (lonely_n > 0L || mean(pps) < 3) sprintf(
+    "<div class='alert'><strong>%s</strong><p>%s</p></div>",
+    .t("Point of attention", "Punto de atenci\u00f3n", lang),
+    .t(sprintf("%d stratum/strata have a single PSU; with few PSUs per stratum prefer JKn over the rescaling bootstrap, which underestimates the variance.", lonely_n),
+       sprintf("%d estrato(s) con una sola UPM; con pocas UPM por estrato conviene JKn sobre el bootstrap de reescalado, que subestima la varianza.", lonely_n), lang)) else ""
+  sprintf(
+    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s<p class='note'>%s</p></div>",
+    .t("Replication design for variance", "Dise\u00f1o de replicaci\u00f3n para la varianza", lang),
+    body, warn,
+    .t("Replicate weights carry the variability of every adjustment. For standard errors, CV and confidence intervals of specific estimates, use these weights with the 'survey' or 'srvyr' package.",
+       "Los pesos r\u00e9plica arrastran la variabilidad de cada ajuste. Para errores est\u00e1ndar, CV e intervalos de confianza de estimaciones concretas, us\u00e1 estos pesos con 'survey' o 'srvyr'.", lang))
+}
+
+
 # Fieldwork outcome rates (AAPOR Standard Definitions). From the recipe's
 # eligibility / nonresponse steps we reconstruct the disposition of every case
 # -- ineligible (out of scope), unknown eligibility, eligible respondent,
@@ -668,6 +739,11 @@
 #'   proper label; any other key is shown as given. `survey` is also woven into
 #'   the executive summary. `totals_source`/`totals_date` document where the
 #'   calibration control totals come from and their reference date.
+#' @param replicates optional `weightflow_boot` or `weightflow_jack` object
+#'   (from `bootstrap_weights()` / `jackknife_weights()`). If given, a
+#'   "Replication design for variance" card documents the method, number of
+#'   replicates, strata / PSU structure, lonely-PSU handling, seed, cores and
+#'   run time, and warns when few PSUs per stratum favour JKn.
 #' @return (invisibly) the path to the HTML file.
 #' @examples
 #' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
@@ -680,7 +756,7 @@
 #' }
 report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
                              narrative = TRUE, lang = c("en", "es"),
-                             metadata = NULL) {
+                             metadata = NULL, replicates = NULL) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first; report_weighting() needs a prepped recipe.")
   lang <- match.arg(lang)
@@ -720,13 +796,19 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     hd  <- paste0("<th>", hdr, "</th>", collapse = "")
     num <- function(x) format(x, big.mark = ",")
     d3  <- function(x) formatC(x, format = "f", digits = 3)
+    dcell <- function(v) sprintf("<span class='%s'>%s</span>",
+                                 if (v > 1.3) "cell-warn" else "cell-ok", d3(v))
     rows <- vapply(seq_len(nrow(stab)), function(i) sprintf(
       "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
       .html_escape(stab$stage[i]), num(stab$n_active[i]), num(stab$sum_wts[i]),
-      d3(stab$cv[i]), d3(stab$deff[i]), num(stab$n_eff[i])), character(1))
+      d3(stab$cv[i]), dcell(stab$deff[i]), num(stab$n_eff[i])), character(1))
     sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
             hd, paste(rows, collapse = ""))
   })
+  stab_html <- paste0(stab_html,
+    sprintf("<p class='muted'>%s</p>",
+            .t("Kish design effect by stage (0 = base, 1..k as in the table above)", "Efecto de dise\u00f1o de Kish por etapa (base y 1..k seg\u00fan la tabla de arriba)", lang)),
+    .svg_evolution(stab$stage, stab$deff))
 
   # R-indicator, shown inside the LAST nonresponse step (it is computed from that
   # step's auxiliaries), not as a separate top-level section.
@@ -799,6 +881,24 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   wdist <- .weight_distribution_html(fin)
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
   exec  <- paste0(exec, .attention_panel(object, lang))
+  imsg  <- if (de_f$deff < 1.2)
+             .t("weight variability is low.", "la variabilidad de los pesos es baja.", lang)
+           else if (de_f$deff < 1.4)
+             .t("the efficiency loss is moderate.", "la p\u00e9rdida de eficiencia es moderada.", lang)
+           else .t("consider reviewing the calibration or the trimming bounds.",
+                   "conviene revisar la calibraci\u00f3n o las cotas de recorte.", lang)
+  exec  <- paste0(exec, sprintf("<div class='exec'><p>%s</p></div>", .t(
+    sprintf("Interpretation: the Kish design effect is %.3f (effective sample %s); %s",
+            de_f$deff, format(round(de_f$n_eff), big.mark = ","), imsg),
+    sprintf("Interpretaci\u00f3n: el efecto de dise\u00f1o de Kish es %.3f (muestra efectiva %s); %s",
+            de_f$deff, format(round(de_f$n_eff), big.mark = ","), imsg), lang)))
+  repl_html <- .replication_card(replicates, lang)
+  toc_html <- sprintf(
+    "<div class='toc'><strong>%s</strong> <a href='#pipeline'>%s</a> &middot; <a href='#stages'>%s</a> &middot; <a href='#weights'>%s</a> &middot; <a href='#steps'>%s</a></div>",
+    .t("Jump to:", "Ir a:", lang), .t("Pipeline", "Pipeline", lang),
+    .t("Per-stage summary", "Resumen por etapa", lang),
+    .t("Weight distribution", "Distribuci\u00f3n de pesos", lang),
+    .t("Steps", "Pasos", lang))
   meta_html <- .metadata_card(metadata, lang)
   racct <- .response_account(object, lang)
 
@@ -812,18 +912,23 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 <p class='muted'>Base weights: <code>%s</code> &nbsp;|&nbsp; %d steps</p>
 <p class='prov'>%s</p>
 %s
+%s
 <div class='cards'>%s</div>
 %s
 %s
-<h2>Pipeline</h2>%s
+<h2 id='pipeline'>Pipeline</h2>%s
 <p class='muted'>Variables used:</p>%s
-<h2>Per-stage summary</h2>%s
-<h2>Weight distribution (final)</h2>%s
-<h2>Steps</h2>%s
+<h2 id='stages'>Per-stage summary</h2>%s
+%s
+<h2 id='weights'>Weight distribution (final)</h2>%s
+<h2 id='steps'>Steps</h2>
+<details class='steps' open><summary>%s</summary>
+%s
+</details>
 %s
 <p class='foot'>%s</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), prov, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, wdist, steps_html, drift, foot_txt)
+    length(object$steps), prov, toc_html, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, repl_html, wdist, .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang), steps_html, drift, foot_txt)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
@@ -904,5 +1009,5 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .chips{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
 .chip{background:#efecf8;color:var(--accent);border:1px solid #ddd6f0;border-radius:999px;
 padding:1px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
-.foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
+.foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}.cell-ok{background:#ecfdf5;color:#065f46;padding:1px 6px;border-radius:4px}.cell-warn{background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px}.toc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 16px;margin:12px 0 4px;font-size:13px}.toc a{color:var(--accent);text-decoration:none}details.steps>summary{cursor:pointer;font-size:13px;color:var(--accent);margin:6px 0;list-style:none}details.steps>summary::-webkit-details-marker{display:none}
 </style>"
