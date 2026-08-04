@@ -12,7 +12,8 @@ report_weighting(
   narrative = TRUE,
   lang = c("en", "es"),
   metadata = NULL,
-  replicates = NULL
+  replicates = NULL,
+  domains = NULL
 )
 }
 \arguments{
@@ -45,6 +46,12 @@ calibration control totals come from and their reference date.}
 "Replication design for variance" card documents the method, number of
 replicates, strata / PSU structure, lonely-PSU handling, seed, cores and
 run time, and warns when few PSUs per stratum favour JKn.}
+
+\item{domains}{optional one-sided formula of grouping variables for a
+per-domain reliability card. Each term becomes one table (\code{+} = separate
+tables, \code{:} = crossed), showing the active n, sum of weights, CV, Kish
+design effect and effective sample size within each domain. E.g.
+\code{domains = ~ region + region:sex}.}
 }
 \value{
 (invisibly) the path to the HTML file.

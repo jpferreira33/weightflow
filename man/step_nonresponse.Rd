@@ -52,7 +52,7 @@ settings and their hyperparameters are not currently exposed: "tree" and
 with nrounds = 150, max_depth = 4 and eta = 0.1.}
 
 \item{weight_model}{logical. Only for method = "propensity": whether to fit
-the response-propensity model with the incoming (design) weights (\code{TRUE},
+the response-propensity model with the incoming weights (\code{TRUE},
 the default) or unweighted (\code{FALSE}). Fitting unweighted can reduce the
 variance of the propensity estimates when the weights are unrelated to
 response given the model covariates, at the cost of possible bias if they

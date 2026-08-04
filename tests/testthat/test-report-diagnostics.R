@@ -29,3 +29,16 @@ test_that(".attention_panel surfaces non-convergence and alerts, empty when clea
   clean <- list(steps = list(list(label = "calibrate", diagnostics = ok, alerts = NULL)))
   expect_identical(weightflow:::.attention_panel(clean, "en"), "")
 })
+
+test_that(".domain_reliability: one table per formula term, empty for NULL", {
+  obj <- list(
+    data = data.frame(region = rep(c("N", "S"), each = 50),
+                      sex    = rep(c("F", "M"), 50)),
+    final_weight = runif(100, 0.5, 2))
+  n_tab <- function(h) length(gregexpr("<table", h, fixed = TRUE)[[1]])
+  expect_match(weightflow:::.domain_reliability(obj, ~ region, "en"),
+               "Domain reliability")
+  expect_equal(n_tab(weightflow:::.domain_reliability(obj, ~ region + sex, "en")), 2L)
+  expect_equal(n_tab(weightflow:::.domain_reliability(obj, ~ region:sex, "en")), 1L)
+  expect_identical(weightflow:::.domain_reliability(obj, NULL, "en"), "")
+})

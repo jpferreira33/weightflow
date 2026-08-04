@@ -2,6 +2,13 @@
 
 ## New features
 
+* **Per-domain reliability card in `report_weighting()`.** A new `domains`
+  argument (a one-sided formula) adds a card with the active n, sum of weights,
+  CV, Kish design effect and effective sample size within each domain, so
+  small-area reliability is visible at a glance. Each formula term is one table
+  (`+` for separate tables, `:` for a crossing), e.g.
+  `domains = ~ region + region:sex`.
+
 * **More descriptive step names and context-aware alerts in the report.** The
   HTML report now labels calibration steps by their auxiliaries (e.g. "GREG
   calibration to region, sex and age") in the diagram, step cards and impact

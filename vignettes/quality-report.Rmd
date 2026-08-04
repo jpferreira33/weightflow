@@ -56,7 +56,7 @@ boot <- bootstrap_weights(recipe, replicates = 15, strata = "region",
                           psu = "psu", seed = 1, progress = FALSE)
 
 path <- report_weighting(
-  fit, replicates = boot, open = FALSE,
+  fit, replicates = boot, domains = ~ region, open = FALSE,
   metadata = list(
     survey           = "Living Conditions Survey (illustrative)",
     reference_period = "2024",
@@ -105,6 +105,10 @@ Per-stage summary. A table with the active units, sum of weights, CV, Kish
 design effect and effective sample size at each stage; an inline chart of the
 design effect across stages; and a per-step impact table (the change in deff and
 CV at each step and its share of the total change).
+
+Domain reliability. Because `domains = ~ region` was supplied, a card shows the
+active n, CV, design effect and effective sample size within each region, so
+thin domains (small effective n) are visible.
 
 Replication design. Because replicate weights were passed through `replicates`,
 a card documents the variance design: method, number of replicates, strata and

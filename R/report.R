@@ -614,6 +614,52 @@
           .t("Status", "Estado", lang), paste(items, collapse = ""))
 }
 
+# Optional card: per-domain reliability. `domains` is a formula whose terms
+# become one table each ("+" = separate tables, ":" = crossed). Each table shows
+# n, sum of weights, CV, Kish deff and effective n within the domain.
+.domain_reliability <- function(object, domains, lang) {
+  if (is.null(domains)) return("")
+  tl <- tryCatch(attr(stats::terms(stats::as.formula(domains)), "term.labels"),
+                 error = function(e) character(0))
+  if (!length(tl)) return("")
+  d   <- object$data
+  fin <- object$final_weight
+  d3  <- function(x) formatC(x, format = "f", digits = 3)
+  num <- function(x) format(round(x), big.mark = ",")
+  dcell <- function(v) if (is.na(v)) "&ndash;" else
+    sprintf("<span class='%s'>%s</span>", if (v > 1.3) "cell-warn" else "cell-ok", d3(v))
+  hd <- paste0("<th>", c(.t("Domain", "Dominio", lang),
+                         .t("Active units (n)", "Unidades activas (n)", lang),
+                         .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
+                         .t("CV of weights", "CV de los pesos", lang),
+                         .t("Kish deff", "deff de Kish", lang),
+                         .t("Effective n (n_eff)", "n efectivo (n_eff)", lang)),
+               "</th>", collapse = "")
+  tables <- character(0)
+  for (term in tl) {
+    vars <- strsplit(term, ":", fixed = TRUE)[[1]]
+    if (!all(vars %in% names(d))) next
+    g <- interaction(lapply(vars, function(v) as.character(d[[v]])),
+                     drop = TRUE, sep = " \u00d7 ")
+    rows <- vapply(levels(g), function(l) {
+      idx <- which(g == l)
+      de  <- design_effect(fin[idx])
+      sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+              .html_escape(l), num(de$n), num(sum(fin[idx])),
+              if (is.na(de$cv)) "&ndash;" else d3(de$cv), dcell(de$deff), num(de$n_eff))
+    }, character(1))
+    tables <- c(tables, sprintf(
+      "<p class='muted'>%s <code>%s</code></p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+      .t("By", "Por", lang), .html_escape(term), hd, paste(rows, collapse = "")))
+  }
+  if (!length(tables)) return("")
+  sprintf("<div class='meta'><h4>%s</h4>%s<p class='note'>%s</p></div>",
+          .t("Domain reliability", "Fiabilidad por dominio", lang),
+          paste(tables, collapse = ""),
+          .t("Effective sample size and design effect within each domain; domains with a small effective n yield less reliable estimates.",
+             "Tama\u00f1o de muestra efectivo y efecto de dise\u00f1o dentro de cada dominio; los dominios con n efectivo chico dan estimaciones menos confiables.", lang))
+}
+
 # Optional card: replication design for variance (from a weightflow_boot /
 # weightflow_jack object passed via `replicates`). Reads only stored metadata.
 .replication_card <- function(rep, lang) {
@@ -819,6 +865,11 @@
 #'   "Replication design for variance" card documents the method, number of
 #'   replicates, strata / PSU structure, lonely-PSU handling, seed, cores and
 #'   run time, and warns when few PSUs per stratum favour JKn.
+#' @param domains optional one-sided formula of grouping variables for a
+#'   per-domain reliability card. Each term becomes one table (`+` = separate
+#'   tables, `:` = crossed), showing the active n, sum of weights, CV, Kish
+#'   design effect and effective sample size within each domain. E.g.
+#'   `domains = ~ region + region:sex`.
 #' @return (invisibly) the path to the HTML file.
 #' @examples
 #' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
@@ -831,7 +882,7 @@
 #' }
 report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
                              narrative = TRUE, lang = c("en", "es"),
-                             metadata = NULL, replicates = NULL) {
+                             metadata = NULL, replicates = NULL, domains = NULL) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first; report_weighting() needs a prepped recipe.")
   lang <- match.arg(lang)
@@ -1010,6 +1061,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     sprintf("Interpretaci\u00f3n: el efecto de dise\u00f1o de Kish es %.3f (muestra efectiva %s); %s",
             de_f$deff, format(round(de_f$n_eff), big.mark = ","), imsg), lang)))
   repl_html <- .replication_card(replicates, lang)
+  domain_html <- .domain_reliability(object, domains, lang)
   toc_html <- sprintf(
     "<div class='toc'><strong>%s</strong> <a href='#pipeline'>%s</a> &middot; <a href='#stages'>%s</a> &middot; <a href='#weights'>%s</a> &middot; <a href='#steps'>%s</a></div>",
     .t("Jump to:", "Ir a:", lang), .t("Pipeline", "Pipeline", lang),
@@ -1057,6 +1109,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 <p class='muted'>Variables used:</p>%s
 <h2 id='stages'>Per-stage summary</h2>%s
 %s
+%s
 <h2 id='weights'>Weight distribution (final)</h2>%s
 <h2 id='steps'>Steps</h2>
 <details class='steps' open><summary>%s</summary>
@@ -1066,7 +1119,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 %s
 <p class='foot'>%s</p>
 </body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), prov, toc_html, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, repl_html, wdist, .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang), steps_html, drift, done_txt, foot_txt)
+    length(object$steps), prov, toc_html, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, repl_html, domain_html, wdist, .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang), steps_html, drift, done_txt, foot_txt)
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
