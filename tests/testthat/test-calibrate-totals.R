@@ -85,7 +85,7 @@ test_that("raking (tidy) list of margins equals the classic margins", {
   expect_equal(w_tidy, w_classic, tolerance = 1e-6)
 })
 
-test_that("raking (tidy) warns on mutually inconsistent margins", {
+test_that("raking (tidy) reconciles mutually inconsistent margins to the largest N", {
   set.seed(4)
   n   <- 300
   dat <- data.frame(sex    = sample(c("M", "F"), n, TRUE),
@@ -93,20 +93,15 @@ test_that("raking (tidy) warns on mutually inconsistent margins", {
                     pw     = runif(n, 1, 5))
   m_sex    <- data.frame(sex = c("M", "F"), Freq = c(600, 400))       # N = 1000
   m_region <- data.frame(region = c("N", "S"), Freq = c(550, 550))    # N = 1100
-  # inconsistent margins raise the consistency warning (and, because they cannot
-  # be satisfied jointly, also a non-convergence warning); check the first one.
-  ws <- character(0)
-  withCallingHandlers(
-    weighting_spec(dat, base_weights = pw) |>
+  # inconsistent margins are no longer fatal: the largest N is kept and the
+  # others rescaled so the calibration closes, reported through a message().
+  expect_message(
+    fit <- weighting_spec(dat, base_weights = pw) |>
       step_calibrate(method = "raking",
                      totals = list(m_sex, m_region), count = "Freq") |>
       prep(),
-    warning = function(w) {
-      ws <<- c(ws, conditionMessage(w))
-      invokeRestart("muffleWarning")
-    }
-  )
-  expect_true(any(grepl("same population size", ws)))
+    "same population size")
+  expect_equal(sum(fit$final_weight), 1100, tolerance = 1e-3)
 })
 
 test_that("linear (tidy) equals the classic model.matrix totals vector", {

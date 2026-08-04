@@ -891,6 +891,7 @@ apply_step.step_calibrate <- function(step, data, w) {
     if (!is.null(step$penalty))
       diag$deviation <- round(achieved - Tvec, 2)
     attr(diag, "converged") <- conv_ok
+    attr(diag, "reconcile") <- attr(totvec, "reconcile")
     bnote <- if (use_ds)
       sprintf(" [calfun = %s%s]", step$calfun,
               if (!is.null(step$bounds)) sprintf(", bounds (%.2f, %.2f)",
@@ -1443,6 +1444,42 @@ apply_step.step_rescale <- function(step, data, w) {
 #   - Rule 1: cells in the sample but not in `totals` -> error (conceptual)
 #   - Rule 2: cells in `totals` but not in the sample -> warning, calibrate anyway
 # Returns list(cells, vars, sample_key, note).
+# =========================================================================
+# Reconcile tidy control totals that do not all sum to the same N
+# =========================================================================
+# When the tidy margins/totals do not sum to a common population size N, keep
+# the LARGEST as the reference and rescale the others proportionally. Only the
+# internal distribution of each margin matters to raking/GREG, so proportional
+# rescaling lets the tidy interface always CLOSE (instead of erroring or, for
+# raking, failing to converge). The adjustment is reported so the user can
+# review the control totals. `Ns` is a named numeric vector (one N per margin).
+# Returns list(target, factors, note); note is NULL when the Ns already agree.
+.reconcile_margin_N <- function(Ns) {
+  Ns <- Ns[!is.na(Ns)]
+  if (is.null(names(Ns)))
+    names(Ns) <- paste("margin", seq_along(Ns))
+  target  <- max(Ns)
+  factors <- target / Ns
+  changed <- which(abs(Ns - target) > 1e-9 * target)
+  note <- NULL
+  if (length(changed) > 0L) {
+    lead   <- names(Ns)[which.max(Ns)]
+    detail <- paste(sprintf("'%s' %s -> %s (x%.4f)",
+                            names(Ns)[changed],
+                            format(round(Ns[changed]), big.mark = ","),
+                            format(round(target),      big.mark = ","),
+                            factors[changed]),
+                    collapse = "; ")
+    note <- sprintf(paste0(
+      "The control totals did not all sum to the same population size. ",
+      "Kept the largest, N = %s (from '%s'), and rescaled the others so the ",
+      "calibration closes: %s. Each margin's internal distribution is preserved; ",
+      "review the control totals if this difference was not expected."),
+      format(round(target), big.mark = ","), lead, detail)
+  }
+  list(target = target, factors = factors, note = note)
+}
+
 .prep_poststrata <- function(totals, count, data, active) {
 
   totals <- as.data.frame(totals, stringsAsFactors = FALSE)
@@ -1581,14 +1618,12 @@ apply_step.step_rescale <- function(step, data, w) {
   new_w <- w
 
   Ns <- vapply(margins_prep, function(m) sum(m$cells$.Freq), numeric(1))
-  if (length(Ns) > 1L && diff(range(Ns)) > tol * max(Ns)) {
-    warning(sprintf(
-      paste0("The margin totals do not all sum to the same population size ",
-             "(margin Ns: %s). Raking may not converge; each margin should sum ",
-             "to the same N."),
-      paste(format(round(Ns), big.mark = ","), collapse = ", ")),
-      call. = FALSE)
-  }
+  names(Ns) <- vapply(margins_prep, function(m) paste(m$vars, collapse = " x "),
+                      character(1))
+  rec <- .reconcile_margin_N(Ns)
+  if (!is.null(rec$note)) message(rec$note)     # informative, never fatal (warn=2)
+  for (i in seq_along(margins_prep))          # rescale each margin to the common N
+    margins_prep[[i]]$cells$.Freq <- margins_prep[[i]]$cells$.Freq * rec$factors[i]
 
   it <- 0L; maxdiff <- Inf
   while (it < maxit && maxdiff >= tol) {
@@ -1637,6 +1672,7 @@ apply_step.step_rescale <- function(step, data, w) {
   diag <- do.call(rbind, diag)
   attr(diag, "iterations") <- it
   attr(diag, "converged")  <- (maxdiff < tol)
+  if (!is.null(rec$note)) attr(diag, "reconcile") <- rec$note
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -1675,20 +1711,17 @@ apply_step.step_rescale <- function(step, data, w) {
   X  <- stats::model.matrix(formula, data = data[active, , drop = FALSE])
   cn <- colnames(X)
 
-  # population size N from any categorical margin (they must agree)
+  # population size N: if the categorical margins disagree, reconcile them to
+  # the LARGEST (the intercept is that N; each margin is rescaled below).
   Ns <- vapply(totals, function(t) {
     if (is.data.frame(t)) sum(as.numeric(t[[count]])) else NA_real_
   }, numeric(1))
-  Ns <- Ns[!is.na(Ns)]
-  if (length(Ns) == 0L)
+  if (all(is.na(Ns)))
     stop(paste0("At least one categorical target (a data frame) is required to ",
                 "determine the population size N for the intercept."))
-  if (diff(range(Ns)) > 1e-6 * max(Ns))
-    warning(sprintf(
-      "Categorical margins do not all sum to the same N (%s). Using the first.",
-      paste(format(round(Ns), big.mark = ","), collapse = ", ")),
-      call. = FALSE)
-  N <- Ns[1]
+  rec <- .reconcile_margin_N(Ns[!is.na(Ns)])
+  if (!is.null(rec$note)) message(rec$note)     # informative, never fatal (warn=2)
+  N <- rec$target
 
   Tvec <- stats::setNames(rep(NA_real_, length(cn)), cn)
   if ("(Intercept)" %in% cn) Tvec["(Intercept)"] <- N
@@ -1704,7 +1737,8 @@ apply_step.step_rescale <- function(step, data, w) {
         stop(sprintf(paste0("The totals data frame for '%s' must have exactly ",
                             "one category column plus the counts column."), v))
       levels_v <- as.character(t[[lev_col]])
-      counts_v <- as.numeric(t[[count]])
+      sc       <- if (!is.null(rec$factors[[v]])) rec$factors[[v]] else 1
+      counts_v <- as.numeric(t[[count]]) * sc
       for (j in seq_along(levels_v)) {
         col <- paste0(v, levels_v[j])
         if (col %in% cn) Tvec[col] <- counts_v[j]
@@ -1730,5 +1764,6 @@ apply_step.step_rescale <- function(step, data, w) {
              "(all categories for factors, a number for continuous)."),
       paste(missing, collapse = ", ")))
 
+  if (!is.null(rec$note)) attr(Tvec, "reconcile") <- rec$note
   Tvec
 }

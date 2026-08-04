@@ -2,45 +2,20 @@
 
 ## New features
 
-* **Per-domain reliability card in `report_weighting()`.** A new `domains`
-  argument (a one-sided formula) adds a card with the active n, sum of weights,
-  CV, Kish design effect and effective sample size within each domain, so
-  small-area reliability is visible at a glance. Each formula term is one table
-  (`+` for separate tables, `:` for a crossing), e.g.
-  `domains = ~ region + region:sex`.
-
-* **More descriptive step names and context-aware alerts in the report.** The
-  HTML report now labels calibration steps by their auxiliaries (e.g. "GREG
-  calibration to region, sex and age") in the diagram, step cards and impact
-  table, and the low-cell-count alert tailors its advice to the step type
-  (collapsing cells for unknown-eligibility; collapsing or switching to raking
-  for post-stratification / weighting classes).
-
-* **Per-step impact table, status checklist and completion line in
-  `report_weighting()`.** The per-stage section adds a per-step impact table: the
-  change in Kish deff and CV versus the previous stage, each step's share of the
-  total |change in deff|, and whether it increases variance or recovers
-  efficiency (factual decomposition and sign, with no arbitrary magnitude
-  cut-offs, since none are established in the literature). The executive summary
-  gains a truthful status checklist (convergence, final design effect, extreme
-  weights, replicate weights, alerts), and the report closes with a completion
-  line ("successfully", or "with N points of attention").
-
-* **Richer, still self-contained `report_weighting()` HTML.** Adds a navigation
-  menu (anchor links to each section), a Kish design-effect evolution chart
-  across stages (inline SVG), conditional colouring of the per-stage
-  design-effect cells, a plain-language interpretation of the final design
-  effect, and a collapsible per-step detail section (native `<details>`). No new
-  dependencies and no JavaScript.
-
-* **Replication-design card in `report_weighting()`.** A new `replicates`
-  argument accepts a `weightflow_boot` / `weightflow_jack` object and adds a
-  card documenting the variance replication design: method (bootstrap Rao-Wu /
-  JKn / JK1), number of replicates, strata and mean PSUs per stratum, lonely-PSU
-  handling, seed, cores and run time, with an attention note when few PSUs per
-  stratum favour JKn. `bootstrap_weights()` and `jackknife_weights()` now record
-  this design metadata (including elapsed time and cores) in their returned
-  object.
+* **Tidy control totals that disagree on N now reconcile instead of failing.**
+  When the tidy `totals` given to `step_calibrate()` do not all sum to the same
+  population size (typical rounding of independently produced control totals),
+  the largest margin is kept as the reference N and the others are rescaled
+  proportionally, so their internal distribution is preserved and the
+  calibration always closes. This applies to both `method = "raking"` (which
+  previously could fail to converge) and `method = "linear"` / GREG (which
+  previously used the first margin silently). The adjustment is reported through
+  a message (informative, never fatal, so it is safe under
+  `options(warn = 2)`) and is carried into `report_weighting()`, where it appears
+  in the points-of-attention panel and the calibration step card listing every
+  rescaled margin and the common N, so control-total mismatches are surfaced for
+  review rather than hidden. This keeps the tidy interface usable without the
+  manual dropping of a category that a design matrix would otherwise require.
 
 * **Unweighted propensity models.** `step_nonresponse(method = "propensity")`
   gains `weight_model` (default `TRUE`). With `FALSE` the response-propensity
@@ -97,57 +72,6 @@
   `parallel::mclapply` (forking; serial on Windows). The resampling is drawn up
   front from the `seed`, so the parallel run is bit-identical to the serial one.
 
-* **Automatic methodological narrative in `report_weighting()` (GSBPM / ESQRS
-  style).** With `narrative = TRUE` (default) the HTML report now reads like a
-  methodological quality report: an auto-generated executive summary at the top
-  (the cascade in prose plus the headline design effect, effective n and
-  R-indicator), and a natural-language paragraph on each step explaining what was
-  done and why, built from the step's own parameters and diagnostics (method,
-  engine, auxiliaries, distance, bounds, integrative/ridge options, the
-  R-indicator and its leading partials, the change in Kish design effect, ...).
-  A new `lang` argument produces the narrative in English (`"en"`, default) or
-  Spanish (`"es"`). Set `narrative = FALSE` for the previous, tables-only report.
-  A new `metadata` argument (a named list) adds a reference-metadata header card
-  aligned to the ESS SIMS / ESMS concepts and GSBPM sub-process 5.6 (statistical
-  operation, reference period, geographic coverage, producer, author, contact,
-  sampling frame, the source and reference date of the calibration control
-  totals, version, confidentiality, notes); `survey` is also woven into the
-  executive summary.
-
-* **Fieldwork outcome rates (AAPOR) in `report_weighting()`.** When the recipe
-  includes eligibility / nonresponse steps, the report now shows a "Fieldwork
-  outcomes" card near the top that reconstructs the disposition of every case
-  (ineligible / out of scope, unknown eligibility, eligible respondent, eligible
-  nonrespondent) and reports the eligibility rate `e`, the e-adjusted response
-  rate (AAPOR Standard Definitions RR3 = R / (R + NR + e&middot;U)) and the
-  nonresponse rate, both unweighted and weighted by the base (design) weights. The card now
-  reports the response rate in three AAPOR variants, from most to least
-  conservative in how unknown-eligibility cases (U) are treated: RR1 (all U
-  eligible, R/(R+NR+U)), RR3 (CASRO, e-adjusted, R/(R+NR+e&middot;U)) and RR5
-  (U excluded, R/(R+NR)), so RR1 <= RR3 <= RR5 bracket the rate (Valliant,
-  Dever & Kreuter 2018, ch. 6).
-  `e` uses the proportional (CASRO) allocation of the unknown-eligibility cases.
-  The card is bilingual and is omitted when the recipe has no nonresponse step.
-
-* **Calibration diagnostics show relative deviations.** Any per-step
-  diagnostics table with target/achieved totals (calibration, nonresponse
-  calibration, trimmed calibration) now includes a relative-difference column,
-  100 &times; (achieved &minus; target) / target, so a residual gap is read as a
-  percentage rather than only in absolute units.
-
-* **"Points of attention" panel in `report_weighting()`.** The executive summary
-  now aggregates, at the top, any step that did not converge or raised a quality
-  alert, each with a short conservative recommendation (e.g. relax the bounds or
-  increase `maxit`). Nothing is shown when the cascade is clean.
-
-* **`report_weighting()` restyled to the package identity.** The HTML report now
-  uses the weightflow palette (violet accent, lavender plot points, brand amber
-  for quality alerts) and neutral grey for the "no change" reference lines in the
-  per-step scatter and histogram (previously red, which read as an alert). The
-  per-step plots are also polished: faint gridlines, thinner axes with short
-  ticks, and a `y = x` / `factor = 1` label on the reference line. Still pure
-  inline SVG (no graphics device, no new dependencies).
-
 * **`redistribute` argument for `step_trim_weights()`.** The trimmed mass can now
   be shared among the untrimmed units either in proportion to their weights
   (`"proportional"`, the default, keeps their relative sizes) or in equal amounts
@@ -155,6 +79,42 @@
   not reused). The `"uniform"` option reproduces `survey::trimWeights()` exactly,
   for bit-for-bit agreement when a weighting pipeline is validated against
   `survey`.
+
+* **`report_weighting()` is now a full methodological quality report (GSBPM 5.6
+  / ESS style).** With `narrative = TRUE` (default) the HTML report reads like an
+  official quality report: an auto-generated executive summary (the cascade in
+  prose plus the headline design effect, effective n and R-indicator) and a
+  natural-language paragraph on each step built from its own parameters and
+  diagnostics, in English or Spanish (new `lang`). A new `metadata` argument adds
+  a reference-metadata header card aligned to the ESS SIMS / ESMS concepts and
+  GSBPM sub-process 5.6 (operation, reference period, coverage, producer,
+  contact, sampling frame, the source and date of the control totals, version,
+  confidentiality). When the recipe has eligibility / nonresponse steps, a
+  "Fieldwork outcomes" card reconstructs every case's disposition and reports the
+  AAPOR response rate in three variants, from most to least conservative in how
+  unknown-eligibility cases are treated, RR1 <= RR3 (CASRO, e-adjusted) <= RR5,
+  weighted and unweighted (Valliant, Dever & Kreuter 2018, ch. 6). The executive
+  summary also aggregates a "Points of attention" panel (steps that did not
+  converge or raised an alert, each with a short recommendation), a truthful
+  status checklist (convergence, final design effect, extreme and replicate
+  weights, alerts) and a completion line; calibration steps get descriptive names
+  by their auxiliaries and a relative-deviation column on their target/achieved
+  tables. Set `narrative = FALSE` for the previous tables-only report.
+
+* **New analytical cards, charts and navigation in `report_weighting()`.** A
+  per-domain reliability card (new `domains` one-sided formula: active n, sum of
+  weights, CV, Kish design effect and effective n within each domain, one table
+  per term, `+` separate and `:` crossed). A per-step impact table (the change in
+  Kish deff and CV versus the previous stage, each step's share of the total
+  |deff change|, and whether it adds variance or recovers efficiency). A Kish
+  design-effect evolution chart across stages. A replication-design card (new
+  `replicates`, a `weightflow_boot` / `weightflow_jack` object: method,
+  replicates, strata, mean PSUs per stratum, lonely-PSU handling, seed, cores and
+  run time); `bootstrap_weights()` and `jackknife_weights()` now record this
+  metadata. Plus a navigation menu, conditional colouring of the design-effect
+  cells, a plain-language interpretation of the final design effect, collapsible
+  per-step details, and a restyle to the package identity. Still pure inline SVG,
+  no JavaScript and no new dependencies.
 
 ## Bug fixes
 

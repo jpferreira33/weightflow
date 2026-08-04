@@ -87,6 +87,11 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
                        g_lower = 0.1, g_upper = 10, step_class = NULL) {
   msgs <- character(0)
 
+  # Control totals that did not sum to a common N and were reconciled: surface
+  # what happened / what was done in the quality report (attention panel + card).
+  rec <- attr(diag, "reconcile")
+  if (!is.null(rec) && nzchar(rec)) msgs <- c(msgs, rec)
+
   if (isTRUE(is_calib)) {
     neg <- sum(w_after < 0, na.rm = TRUE)
     if (neg > 0)
