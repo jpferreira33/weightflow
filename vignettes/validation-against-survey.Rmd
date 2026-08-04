@@ -302,6 +302,34 @@ data.frame(method = names(agree), `max abs weight difference` = unname(agree),
            check.names = FALSE, row.names = NULL)
 ```
 
+## Trimmed calibration matches ReGenesees
+
+Range-restricted trimming of calibrated weights (`step_trim_calibrated()`) also
+agrees with an established reference: ReGenesees `trimcal()`. Both take absolute
+bounds on the final weight (weightflow `lower`/`upper`, ReGenesees `w.range`),
+trim to that range while preserving the calibration totals, and return the same
+solution. On a calibration to `~ sex + age` trimmed to a fixed interval, the two
+agree to machine precision (maximum absolute weight difference about 1e-8,
+correlation 1), with both preserving the population totals. The comparison is not
+run here because ReGenesees is not a dependency; the script
+`trim_calibrated_vs_regenesees.R` reproduces it.
+
+```{r trimcal-regenesees, eval = FALSE}
+# weightflow
+w_wf <- muestra |>
+  weighting_spec(base_weights = pw) |>
+  step_calibrate(method = "linear", formula = ~ sex + age, totals = pop_tot) |>
+  step_trim_calibrated(~ sex + age, lower = lo, upper = up, calfun = "linear") |>
+  prep() |> collect_weights(drop_zero = FALSE)
+
+# ReGenesees
+des   <- ReGenesees::e.svydesign(data = muestra, ids = ~ id, weights = ~ pw)
+templ <- ReGenesees::fill.template(universe = universo,
+           template = ReGenesees::pop.template(des, calmodel = ~ sex + age))
+cal   <- ReGenesees::e.calibrate(des, df.population = templ, calfun = "linear")
+w_rg  <- weights(ReGenesees::trimcal(cal, w.range = c(lo, up)))
+```
+
 ## What weightflow adds
 
 The point of agreement is trust: where the methods overlap, weightflow returns

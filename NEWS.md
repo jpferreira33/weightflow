@@ -151,13 +151,18 @@
 
 ## Bug fixes
 
+* **Cross-fitting no longer errors in a fresh session.** With a `crossfit_seed`,
+  `step_nonresponse()` and `step_model_calibration()` saved and restored the
+  global RNG state but assumed `.Random.seed` already existed, which fails in a
+  session that has not yet drawn a random number (e.g. a vignette build). The
+  state is now saved only when present and unset again otherwise.
+
 * **`step_trim_weights()` now trims negative weights.** It previously acted only
   on positive weights (`w > 0`), so negative weights produced by unbounded linear
   calibration were left untouched by a lower floor. It now trims every non-zero
   weight, flooring negatives to `lower`, while still leaving dropped units (weight
   exactly 0) alone. Recipes without negative weights are unaffected.
 
-## Bug fixes
 
 * **Reproducible report scatter plots.** The weight before/after scatter in
   `report_weighting()` subsampled points at random (without a seed) when a step

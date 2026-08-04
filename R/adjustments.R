@@ -203,8 +203,15 @@
 # `fit_predict(train_idx, newdata_idx_list)` must fit on rows `train_idx` and
 # return a list of prediction vectors, one per element of `newdata_idx_list`.
 .crossfit_predict <- function(n, K, cluster_id = NULL, seed = NULL, fit_predict) {
-  if (!is.null(seed)) { old <- .Random.seed; on.exit({.Random.seed <<- old});
-                        set.seed(seed) }
+  if (!is.null(seed)) {
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      old <- get(".Random.seed", envir = globalenv())
+      on.exit(assign(".Random.seed", old, envir = globalenv()))
+    } else {
+      on.exit(rm(".Random.seed", envir = globalenv()))   # was unset (fresh session)
+    }
+    set.seed(seed)
+  }
   if (is.null(cluster_id)) {
     fold <- sample(rep_len(seq_len(K), n))
   } else {                                   # assign whole clusters to folds
