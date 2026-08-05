@@ -8,7 +8,17 @@ and opens it in the browser.
 ## Usage
 
 ``` r
-report_weighting(object, file = NULL, open = TRUE, plots = TRUE)
+report_weighting(
+  object,
+  file = NULL,
+  open = TRUE,
+  plots = TRUE,
+  narrative = TRUE,
+  lang = c("en", "es"),
+  metadata = NULL,
+  replicates = NULL,
+  domains = NULL
+)
 ```
 
 ## Arguments
@@ -30,6 +40,48 @@ report_weighting(object, file = NULL, open = TRUE, plots = TRUE)
   logical; add per-step plots (weight before-vs-after scatter and
   adjustment-factor histogram). Uses ggplot2 if installed, else base
   graphics.
+
+- narrative:
+
+  logical; add an auto-generated methodological narrative – an executive
+  summary at the top and a natural-language paragraph on each step
+  explaining what was done and why (built from the step's own parameters
+  and diagnostics), in the spirit of a GSBPM / ESQRS methodological
+  report.
+
+- lang:
+
+  language of the narrative: "en" (default) or "es".
+
+- metadata:
+
+  optional named list of reference metadata (SIMS / ESMS concepts) shown
+  as a header card, e.g. `survey`, `reference_period`, `geography`,
+  `producer`, `author`, `contact`, `frame`, `totals_source`,
+  `totals_date`, `version`, `confidentiality`, `notes`. Recognised keys
+  get a proper label; any other key is shown as given. `survey` is also
+  woven into the executive summary. `totals_source`/`totals_date`
+  document where the calibration control totals come from and their
+  reference date.
+
+- replicates:
+
+  optional `weightflow_boot` or `weightflow_jack` object (from
+  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  /
+  [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)).
+  If given, a "Replication design for variance" card documents the
+  method, number of replicates, strata / PSU structure, lonely-PSU
+  handling, seed, cores and run time, and warns when few PSUs per
+  stratum favour JKn.
+
+- domains:
+
+  optional one-sided formula of grouping variables for a per-domain
+  reliability card. Each term becomes one table (`+` = separate tables,
+  `:` = crossed), showing the active n, sum of weights, CV, Kish design
+  effect and effective sample size within each domain. E.g.
+  `domains = ~ region + region:sex`.
 
 ## Value
 

@@ -1,4 +1,4 @@
-# Nonresponse: weighting classes and propensities
+# Nonresponse: weighting classes, propensities and calibration
 
 Nonresponse adjustment inflates the weights of respondents so they also
 represent the nonrespondents.
@@ -253,6 +253,32 @@ The *Machine learning, cross-fitting and robust calibration* article
 develops the boosting engine and cross-fitting in full, with a worked
 comparison of the design effect with and without cross-fitting.
 
+### Weighting the propensity model
+
+By default the propensity model is fitted using the weights that enter
+the step, that is, the base design weights or the weights already
+adjusted by earlier steps in the cascade (unknown eligibility, an
+earlier nonresponse stage). Setting `weight_model = FALSE` fits it
+unweighted, so those incoming weights enter only the $`1/\hat\phi_i`$
+adjustment and not the model fit. Fitting unweighted can lower the
+variance of the propensity estimates when the incoming weights are
+unrelated to response given the covariates, at the cost of possible bias
+if they are related (Little and Vartivarian 2003). Only the model fit
+changes; the adjustment always uses the incoming weights.
+
+``` r
+
+f <- function(wm) weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   formula = ~ region + sex + age, engine = "logit",
+                   num_classes = NULL, weight_model = wm) |>
+  prep()
+c(weighted   = design_effect(f(TRUE)$final_weight)$deff,
+  unweighted = design_effect(f(FALSE)$final_weight)$deff)
+#>   weighted unweighted 
+#>   1.021551   1.022794
+```
+
 ## Person or household level
 
 Nonresponse can occur at the person level (within a reached household)
@@ -276,6 +302,88 @@ household auxiliaries and a whole-household outcome call for `cluster`;
 person-level auxiliaries within reached households do not. Note that the
 effective sample size drops more at the household level, since
 households (not persons) are the independent units being adjusted.
+
+## Nonresponse by calibration
+
+A third route calibrates the respondents’ weights so that, over the
+auxiliaries, they reproduce the totals the active units (respondents and
+nonrespondents) carried before the step. With `method = "calibration"`
+and `totals = NULL` (the default) the targets are those incoming,
+design-weighted totals, so the adjustment is the two-phase, sample-level
+calibration estimator (Sarndal and Lundstrom 2005): the calibrated
+respondent estimates reproduce the pre-nonresponse cascade estimates
+exactly. Supply `totals` to calibrate to external population totals
+instead.
+
+``` r
+
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "calibration",
+                   formula = ~ region + sex) |>
+  prep()
+summary(wf)
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (calibration: linear, sample-level)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                     stage n_active sum_wts cv_wts deff_kish n_eff
+#>                      base      467    4371  0.236     1.056   442
+#>  stage_1_step_nonresponse      270    4371  0.146     1.021   264
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+#> --- Step 1: nonresponse (calibration: linear, sample-level) ---
+#>     variable    target achieved
+#>  (Intercept) 4370.8333  4370.83
+#>  regionSouth 1210.0000  1210.00
+#>   regionEast  800.0000   800.00
+#>   regionWest  873.3333   873.33
+#>         sexM 2284.1667  2284.17
+#> nonresponse calibration to sample-level totals; g in [1.491, 1.950] 
+#> Kish deff: 1.056 -> 1.021   |   n_eff: 442 -> 264
+#> 
+#> R-indicator (representativity of response): 0.890  (on region, sex)
+```
+
+Validation. The respondents, reweighted, reproduce the auxiliary totals
+of all active units before the step:
+
+``` r
+
+X      <- model.matrix(~ region + sex, sample_survey)
+resp   <- sample_survey$responded == 1
+before <- colSums(sample_survey$pw * X)               # respondents + nonrespondents
+after  <- colSums(wf$final_weight[resp] * X[resp, ])  # respondents, calibrated
+round(rbind(before, after, diff = after - before), 4)
+#>        (Intercept) regionSouth regionEast regionWest     sexM
+#> before    4370.833        1210        800   873.3333 2284.167
+#> after     4370.833        1210        800   873.3333 2284.167
+#> diff         0.000           0          0     0.0000    0.000
+```
+
+The distance (`calfun`), `bounds` and ridge `penalty` carry over from
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md).
+With `equal_within_cluster = TRUE` and a `cluster` the adjustment is
+integrative: the responding members of a household share one calibration
+factor, so the weights stay constant within household.
+
+``` r
+
+wf <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "calibration",
+                   formula = ~ region, cluster = "household_id",
+                   equal_within_cluster = TRUE) |>
+  prep()
+design_effect(wf$final_weight)$deff
+#> [1] 1.020774
+```
 
 ## Which to use
 

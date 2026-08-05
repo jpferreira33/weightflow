@@ -39,6 +39,8 @@ The staged adjustments, applied in the order you pipe them.
   : Trim extreme weights
 - [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
   : Automatic weight trimming (survey-style)
+- [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+  : Trimmed calibration (range-restricted, totals-preserving)
 - [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md)
   : Round the final weights
 - [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md)

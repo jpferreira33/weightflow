@@ -98,13 +98,13 @@ deviation across the $`B`$ replicates,
 
 boot_mean(boot,  "income")     # mean income
 #>   estimate       se ci_lower ci_upper
-#> 1 21615.21 872.7788 19904.59 23325.82
+#> 1 21615.21 880.2396 19889.97 23340.45
 boot_total(boot, "employed")   # total employed
 #>   estimate       se ci_lower ci_upper
-#> 1 1927.219 140.9421 1650.978 2203.461
+#> 1 1927.219 145.0374 1642.951 2211.487
 boot_mean(boot,  "employed")   # employment rate
 #>    estimate         se  ci_lower  ci_upper
-#> 1 0.4287473 0.03102821 0.3679331 0.4895615
+#> 1 0.4287473 0.03211239 0.3658082 0.4916864
 ```
 
 For any other statistic, pass a function of the weights and the data to
@@ -116,8 +116,8 @@ bootstrap_estimate(boot, function(w, d) {
   ok <- !is.na(d$income) & w > 0
   stats::median(rep(d$income[ok], times = round(w[ok])))   # weighted median (approx.)
 })
-#>   estimate     se ci_lower ci_upper
-#> 1    18136 930.15 16312.94 19959.06
+#>   estimate       se ci_lower ci_upper
+#> 1    18136 973.0253 16228.91 20043.09
 ```
 
 ## Method 2: hand the weights to the survey package
@@ -143,7 +143,7 @@ survey, feed it the bootstrap replicate weights from method 1:
 rep_des <- as_svrepdesign(boot)
 survey::svymean(~income, rep_des, na.rm = TRUE)
 #>         mean     SE
-#> income 21615 872.78
+#> income 21615 880.24
 ```
 
 This matches `boot_mean(boot, "income")` exactly, because
@@ -167,7 +167,7 @@ srvyr::summarise(d_rep, mean_income = srvyr::survey_mean(income, na.rm = TRUE))
 #> # A tibble: 1 × 2
 #>   mean_income mean_income_se
 #>         <dbl>          <dbl>
-#> 1      21615.           873.
+#> 1      21615.           880.
 ```
 
 ## Method 3: a delete-a-PSU jackknife that re-applies the recipe
@@ -202,6 +202,23 @@ For a total it matches `survey`’s replicate jackknife exactly. As with
 the bootstrap, the replicate weights bridge to survey/srvyr through
 `as_svrepdesign(jk)`, so any estimand or domain can be estimated
 downstream with the recipe’s uncertainty built in.
+
+### Lonely PSUs and parallel replicates
+
+Strata with a single PSU carry no within-stratum resampling information.
+By default (`lonely_psu = "certainty"`) they are treated as
+self-representing and contribute no variance (a warning is issued).
+Setting `lonely_psu = "collapse"` merges the single-PSU strata into a
+pseudo-stratum so they are resampled and yield a conservative variance
+instead of zero.
+
+Both
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+and
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+also take `cores`: with `cores > 1` the per-replicate re-preps run in
+parallel (forking, so serial on Windows). The resampling is drawn up
+front from `seed`, so the parallel run is identical to the serial one.
 
 ## Which one to use
 

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -24,11 +24,14 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
-    <li><a class="dropdown-item" href="articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
+    <li><a class="dropdown-item" href="articles/nonresponse-propensities.html">Nonresponse: weighting classes, propensities and calibration</a></li>
     <li><a class="dropdown-item" href="articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
+    <li><a class="dropdown-item" href="articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
@@ -56,25 +59,29 @@
       <h2>Authors</h2>
 
       <ul class="list-unstyled"><li>
-          <p><strong>Juan Pablo Ferreira</strong>. Author, maintainer.
+          <p><strong>Juan Pablo Ferreira</strong>. Author, maintainer. <a href="https://orcid.org/0000-0002-1884-8187" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
           </p>
+        </li>
+        <li>
+          <p><strong>Andrés Gutiérrez</strong>. Contributor. <a href="https://orcid.org/0009-0007-2918-1932" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>
+          <br><small>ECLAC - Statistics Division</small></p>
         </li>
       </ul></div>
 
     <div class="section level2">
       <h2 id="citation">Citation</h2>
-      <p><small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/master/DESCRIPTION" class="external-link"><code>DESCRIPTION</code></a></small></p>
+      <p><small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/master/inst/CITATION" class="external-link"><code>inst/CITATION</code></a></small></p>
 
-      <p>Ferreira J (2026).
-<em>weightflow: Declarative API for Staged Survey Weights</em>.
-R package version 0.2.0, <a href="https://github.com/jpferreira33/weightflow" class="external-link">https://github.com/jpferreira33/weightflow</a>.
-</p>
-      <pre>@Manual{,
-  title = {weightflow: Declarative API for Staged Survey Weights},
+      <p>Ferreira, J. P. (2026). weightflow: reproducible, recipe-aware survey weighting for official statistics in R. arXiv preprint arXiv:2607.08491. https://arxiv.org/abs/2607.08491</p>
+      <pre>@Misc{,
+  title = {weightflow: reproducible, recipe-aware survey weighting for official statistics in R},
   author = {Juan Pablo Ferreira},
   year = {2026},
-  note = {R package version 0.2.0},
-  url = {https://github.com/jpferreira33/weightflow},
+  eprint = {2607.08491},
+  archiveprefix = {arXiv},
+  doi = {10.48550/arXiv.2607.08491},
+  url = {https://arxiv.org/abs/2607.08491},
+  note = {arXiv preprint arXiv:2607.08491},
 }</pre>
     </div>
 

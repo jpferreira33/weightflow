@@ -15,7 +15,9 @@ bootstrap_weights(
   strata = NULL,
   psu = NULL,
   m = NULL,
+  lonely_psu = c("certainty", "collapse"),
   seed = NULL,
+  cores = 1L,
   progress = TRUE
 )
 ```
@@ -39,13 +41,33 @@ bootstrap_weights(
 
   PSUs drawn per stratum (default `n - 1`).
 
+- lonely_psu:
+
+  how to treat strata with a single PSU (which a with-replacement
+  bootstrap cannot resample): "certainty" (default) treats them as
+  self-representing, so they contribute no bootstrap variance, and
+  warns; "collapse" merges the single-PSU strata into a pseudo-stratum
+  (with the smallest other stratum if there is only one), so they are
+  resampled and do contribute a (conservative) variance. For full
+  control, build your own collapsed stratum column and pass it as
+  `strata`.
+
 - seed:
 
   optional RNG seed.
 
+- cores:
+
+  number of parallel workers for the replicates (default 1 = serial).
+  With `cores > 1` the replicate re-preps run in parallel via
+  [`parallel::mclapply`](https://rdrr.io/r/parallel/mclapply.html)
+  (forking; on Windows it falls back to serial). Results are identical
+  to the serial run: the resampling is drawn up front with the seed and
+  only the deterministic re-prep is parallelised.
+
 - progress:
 
-  print progress every 25 replicates.
+  print progress every 25 replicates (serial only).
 
 ## Value
 
@@ -72,5 +94,5 @@ boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
 #>   bootstrap replicate 50/50
 boot_total(boot, "responded")
 #>   estimate      se ci_lower ci_upper
-#> 1 2663.277 99.4537 2468.351 2858.203
+#> 1 2663.277 90.4319 2486.034  2840.52
 ```

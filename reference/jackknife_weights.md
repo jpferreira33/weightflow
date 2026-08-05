@@ -9,7 +9,14 @@ but with the delete-a-PSU jackknife instead of a resampling bootstrap).
 ## Usage
 
 ``` r
-jackknife_weights(object, strata = NULL, psu = NULL, progress = TRUE)
+jackknife_weights(
+  object,
+  strata = NULL,
+  psu = NULL,
+  lonely_psu = c("certainty", "collapse"),
+  cores = 1L,
+  progress = TRUE
+)
 ```
 
 ## Arguments
@@ -29,9 +36,23 @@ jackknife_weights(object, strata = NULL, psu = NULL, progress = TRUE)
 
   name of the PSU column, or NULL to delete one unit at a time.
 
+- lonely_psu:
+
+  how to treat strata with a single PSU: "certainty" (default) skips
+  them (no variance) and warns; "collapse" merges them into a
+  pseudo-stratum so they yield delete-a-PSU replicates.
+
+- cores:
+
+  number of parallel workers for the replicates (default 1 = serial).
+  With `cores > 1` the replicate re-preps run in parallel via
+  [`parallel::mclapply`](https://rdrr.io/r/parallel/mclapply.html)
+  (forking; serial on Windows). For a deterministic recipe the result is
+  identical to the serial run.
+
 - progress:
 
-  print progress every 25 replicates.
+  print progress every 25 replicates (serial only).
 
 ## Value
 

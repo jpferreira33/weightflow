@@ -3,9 +3,11 @@
 Inflates the weights of respondents to represent the nonrespondents,
 under the assumption that response is ignorable given the information
 used. The response propensity can be estimated by weighting classes
-(cells) or by a model ("propensity"), with engines ranging from logistic
+(cells), by a model ("propensity"), with engines ranging from logistic
 regression to machine learning (regression tree, random forest, gradient
-boosting). Optional K-fold cross-fitting estimates the propensity
+boosting), or the adjustment can be made by calibrating the respondents
+to auxiliary totals ("calibration", the two-phase / Sarndal-Lundstrom
+approach). Optional K-fold cross-fitting estimates the propensity
 out-of-sample to avoid the overfitting that flexible engines can
 introduce. The adjustment can be applied at the person or, via
 `cluster`, the household level.
@@ -16,14 +18,23 @@ introduce. The adjustment can be applied at the person or, via
 step_nonresponse(
   spec,
   respondent,
-  method = c("weighting_class", "propensity"),
+  method = c("weighting_class", "propensity", "calibration"),
   by = NULL,
   formula = NULL,
   engine = c("logit", "tree", "forest", "boost"),
+  weight_model = TRUE,
   num_classes = 5L,
   cluster = NULL,
   crossfit = NULL,
-  crossfit_seed = NULL
+  crossfit_seed = NULL,
+  totals = NULL,
+  count = NULL,
+  calfun = c("linear", "logit", "raking"),
+  bounds = NULL,
+  penalty = NULL,
+  equal_within_cluster = FALSE,
+  maxit = 50L,
+  tol = 1e-06
 )
 ```
 
@@ -41,7 +52,9 @@ step_nonresponse(
 
 - method:
 
-  "weighting_class" (cells) or "propensity" (predictive model).
+  "weighting_class" (cells), "propensity" (predictive model) or
+  "calibration" (calibrate the respondents to auxiliary totals;
+  two-phase / Sarndal-Lundstrom).
 
 - by:
 
@@ -64,6 +77,16 @@ step_nonresponse(
   defaults, and "boost" uses xgboost with nrounds = 150, max_depth = 4
   and eta = 0.1.
 
+- weight_model:
+
+  logical. Only for method = "propensity": whether to fit the
+  response-propensity model with the incoming weights (`TRUE`, the
+  default) or unweighted (`FALSE`). Fitting unweighted can reduce the
+  variance of the propensity estimates when the weights are unrelated to
+  response given the model covariates, at the cost of possible bias if
+  they are (Little & Vartivarian 2003). The 1/p (or class) adjustment
+  always uses the design weights; only the model fit is affected.
+
 - num_classes:
 
   integer or NULL. Controls how propensities are used: an integer forms
@@ -81,7 +104,10 @@ step_nonresponse(
   response. The resulting factor is assigned to every member;
   nonresponding households go to zero. As always, only active units
   (weight \> 0) take part, so units already dropped (unknown
-  eligibility, ineligible) are excluded automatically.
+  eligibility, ineligible) are excluded automatically. For
+  `method = "calibration"`, `cluster` is used together with
+  `equal_within_cluster = TRUE` for integrative (one weight per
+  household) calibration.
 
 - crossfit:
 
@@ -98,6 +124,50 @@ step_nonresponse(
 
   integer or NULL. Seed for reproducible fold assignment when `crossfit`
   is used.
+
+- totals:
+
+  (method = "calibration") calibration targets. NULL (default)
+  calibrates the respondents to the R+NR design-weighted totals of
+  `formula` at that stage (the two-phase / sample-level case; Sarndal &
+  Lundstrom 2005); a named vector or a tidy `totals`/`count` input (as
+  in
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md))
+  calibrates to population totals instead.
+
+- count:
+
+  (method = "calibration", tidy `totals`) string naming the counts
+  column of the totals data frame(s).
+
+- calfun:
+
+  (method = "calibration") distance function for the calibration factor:
+  "linear", "raking" or "logit", as in
+  `step_calibrate(method = "linear")`.
+
+- bounds:
+
+  (method = "calibration") numeric c(L, U) with L \< 1 \< U. Bounds on
+  the calibration factor, to keep the nonresponse factors positive.
+
+- penalty:
+
+  (method = "calibration", unbounded) NULL or positive cost(s) for ridge
+  (penalized) calibration.
+
+- equal_within_cluster:
+
+  (method = "calibration") logical. If TRUE, integrative
+  (Lemaitre-Dufour) nonresponse calibration: the responding members of a
+  household (`cluster`) share a single calibration factor, so the
+  adjustment keeps the weights constant within household. Requires
+  `cluster`. FALSE (default) calibrates each responding unit on its own.
+
+- maxit, tol:
+
+  (method = "calibration") convergence control for the bounded or
+  exponential-distance calibration solver.
 
 ## Value
 
@@ -187,11 +257,36 @@ if (requireNamespace("xgboost", quietly = TRUE)) {
 #> Stage summary:
 #>                     stage n_active sum_wts cv_wts deff_kish n_eff
 #>                      base      467    4371  0.236     1.056   442
-#>  stage_1_step_nonresponse      270    4371  0.252     1.063   254
+#>  stage_1_step_nonresponse      270    4371  0.236     1.056   256
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
 #> improve with trimming.
 #> 
 # }
+
+# nonresponse by calibration (two-phase): calibrate the respondents to the
+# R+NR design-weighted totals of the auxiliaries at that stage, so their
+# estimates reproduce the pre-nonresponse ones (Sarndal & Lundstrom 2005)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "calibration",
+                   formula = ~ region + sex) |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (calibration: linear, sample-level)
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                     stage n_active sum_wts cv_wts deff_kish n_eff
+#>                      base      467    4371  0.236     1.056   442
+#>  stage_1_step_nonresponse      270    4371  0.146     1.021   264
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
 ```

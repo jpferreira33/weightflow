@@ -14,8 +14,8 @@
 
 - [Preparing the sample: eligibility and response before
   weighting](https://jpferreira33.github.io/weightflow/articles/preparing-the-sample.md):
-- [Nonresponse: weighting classes and
-  propensities](https://jpferreira33.github.io/weightflow/articles/nonresponse-propensities.md):
+- [Nonresponse: weighting classes, propensities and
+  calibration](https://jpferreira33.github.io/weightflow/articles/nonresponse-propensities.md):
 - [Calibration: raking, post-stratification and
   GREG](https://jpferreira33.github.io/weightflow/articles/calibration.md):
 - [Ways to specify calibration
@@ -24,6 +24,11 @@
   weighting)](https://jpferreira33.github.io/weightflow/articles/model-calibration.md):
 - [Machine learning, cross-fitting and robust
   calibration](https://jpferreira33.github.io/weightflow/articles/advanced-methods.md):
+
+### Reporting
+
+- [Documenting and auditing the weights: the quality
+  report](https://jpferreira33.github.io/weightflow/articles/quality-report.md):
 
 ### Case study
 

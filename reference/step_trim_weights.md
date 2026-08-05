@@ -1,10 +1,14 @@
 # Automatic weight trimming (survey-style)
 
 Caps weights into `[lower, upper]` and redistributes the change among
-the untrimmed units to preserve the total, mirroring
-survey::trimWeights(). By default no weight may fall below 1, and the
-upper cap is chosen by an automatic rule: the Tukey far-out fence (Q3 +
-3\*IQR) or, with `method = "potter"`, Potter's MSE-optimal cutoff.
+the untrimmed units to preserve the total. With
+`redistribute = "uniform"` the change is shared equally among the
+untrimmed units (and cases already trimmed are never reused), exactly
+mirroring survey::trimWeights(); the default `"proportional"` shares it
+in proportion to the untrimmed weights, keeping their relative sizes. By
+default no weight may fall below 1, and the upper cap is chosen by an
+automatic rule: the Tukey far-out fence (Q3 + 3\*IQR) or, with
+`method = "potter"`, Potter's MSE-optimal cutoff.
 
 ## Usage
 
@@ -14,6 +18,7 @@ step_trim_weights(
   lower = 1,
   upper = NULL,
   method = c("tukey", "potter"),
+  redistribute = c("proportional", "uniform"),
   strict = TRUE,
   maxit = 50L
 )
@@ -41,6 +46,14 @@ step_trim_weights(
   over a grid of candidate cutoffs minimizes an estimate of bias^2 +
   variance and so balances the bias of trimming against the variance
   from extreme weights). Ignored when `upper` is supplied.
+
+- redistribute:
+
+  how the trimmed mass is shared among the untrimmed units:
+  "proportional" (default; in proportion to their weights, preserving
+  relative sizes) or "uniform" (an equal amount to each untrimmed unit,
+  and units already trimmed are not reused, exactly reproducing
+  survey::trimWeights()).
 
 - strict:
 

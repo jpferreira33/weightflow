@@ -35,3 +35,8 @@ Useful links:
 Authors:
 
 - Juan Pablo Ferreira <juanpablo.ferreira@fcea.edu.uy>
+
+Other contributors:
+
+- Andrés Gutiérrez ([ORCID](https://orcid.org/0009-0007-2918-1932))
+  (affiliation: ECLAC - Statistics Division) \[contributor\]

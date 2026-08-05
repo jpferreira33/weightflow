@@ -15,7 +15,7 @@ variability introduced by each weighting stage."><meta property="og:image" conte
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,11 +32,14 @@ variability introduced by each weighting stage."><meta property="og:image" conte
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
-    <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
+    <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes, propensities and calibration</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
+    <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
@@ -78,7 +81,9 @@ variability introduced by each weighting stage.</p>
 <span>  strata <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  psu <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  m <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  lonely_psu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"certainty"</span>, <span class="st">"collapse"</span><span class="op">)</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cores <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -104,12 +109,30 @@ each unit is its own PSU; if <code>strata</code> is NULL a single stratum is ass
 <dd><p>PSUs drawn per stratum (default <code>n - 1</code>).</p></dd>
 
 
+<dt id="arg-lonely-psu">lonely_psu<a class="anchor" aria-label="anchor" href="#arg-lonely-psu"></a></dt>
+<dd><p>how to treat strata with a single PSU (which a
+with-replacement bootstrap cannot resample): "certainty" (default) treats
+them as self-representing, so they contribute no bootstrap variance, and
+warns; "collapse" merges the single-PSU strata into a pseudo-stratum (with
+the smallest other stratum if there is only one), so they are resampled and
+do contribute a (conservative) variance. For full control, build your own
+collapsed stratum column and pass it as <code>strata</code>.</p></dd>
+
+
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
 <dd><p>optional RNG seed.</p></dd>
 
 
+<dt id="arg-cores">cores<a class="anchor" aria-label="anchor" href="#arg-cores"></a></dt>
+<dd><p>number of parallel workers for the replicates (default 1 =
+serial). With <code>cores &gt; 1</code> the replicate re-preps run in parallel via
+<code><a href="https://rdrr.io/r/parallel/mclapply.html" class="external-link">parallel::mclapply</a></code> (forking; on Windows it falls back to serial). Results
+are identical to the serial run: the resampling is drawn up front with the
+seed and only the deterministic re-prep is parallelised.</p></dd>
+
+
 <dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
-<dd><p>print progress every 25 replicates.</p></dd>
+<dd><p>print progress every 25 replicates (serial only).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -137,7 +160,7 @@ each unit is its own PSU; if <code>strata</code> is NULL a single stratum is ass
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   bootstrap replicate 50/50</span>
 <span class="r-in"><span><span class="fu"><a href="bootstrap_estimate.html">boot_total</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"responded"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   estimate      se ci_lower ci_upper</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 2663.277 99.4537 2468.351 2858.203</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 2663.277 90.4319 2486.034  2840.52</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

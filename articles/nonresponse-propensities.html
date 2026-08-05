@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Nonresponse: weighting classes and propensities • weightflow</title>
+<title>Nonresponse: weighting classes, propensities and calibration • weightflow</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Nonresponse: weighting classes and propensities">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Nonresponse: weighting classes, propensities and calibration">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -46,11 +46,14 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
-    <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
+    <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes, propensities and calibration</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
+    <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
@@ -80,7 +83,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Nonresponse: weighting classes and propensities</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Nonresponse: weighting classes, propensities and calibration</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/master/vignettes/nonresponse-propensities.Rmd" class="external-link"><code>vignettes/nonresponse-propensities.Rmd</code></a></small>
@@ -330,6 +333,31 @@ article develops the boosting engine and cross-fitting in full, with a
 worked comparison of the design effect with and without
 cross-fitting.</p>
 </div>
+<div class="section level3">
+<h3 id="weighting-the-propensity-model">Weighting the propensity model<a class="anchor" aria-label="anchor" href="#weighting-the-propensity-model"></a>
+</h3>
+<p>By default the propensity model is fitted using the weights that
+enter the step, that is, the base design weights or the weights already
+adjusted by earlier steps in the cascade (unknown eligibility, an
+earlier nonresponse stage). Setting <code>weight_model = FALSE</code>
+fits it unweighted, so those incoming weights enter only the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">1/\hat\phi_i</annotation></semantics></math>
+adjustment and not the model fit. Fitting unweighted can lower the
+variance of the propensity estimates when the incoming weights are
+unrelated to response given the covariates, at the cost of possible bias
+if they are related (Little and Vartivarian 2003). Only the model fit
+changes; the adjustment always uses the incoming weights.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">wm</span><span class="op">)</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
+<span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"logit"</span>,</span>
+<span>                   num_classes <span class="op">=</span> <span class="cn">NULL</span>, weight_model <span class="op">=</span> <span class="va">wm</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>weighted   <span class="op">=</span> <span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span>,</span>
+<span>  unweighted <span class="op">=</span> <span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   weighted unweighted </span></span>
+<span><span class="co">#&gt;   1.021551   1.022794</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="person-or-household-level">Person or household level<a class="anchor" aria-label="anchor" href="#person-or-household-level"></a>
@@ -340,7 +368,7 @@ reached). The <code>cluster</code> argument moves the adjustment to the
 household: each household counts once with its weight, and the
 redistribution (or the propensity model) is done over households, then
 assigned to their members.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="st">"region"</span>, cluster <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -353,6 +381,79 @@ household auxiliaries and a whole-household outcome call for
 do not. Note that the effective sample size drops more at the household
 level, since households (not persons) are the independent units being
 adjusted.</p>
+</div>
+<div class="section level2">
+<h2 id="nonresponse-by-calibration">Nonresponse by calibration<a class="anchor" aria-label="anchor" href="#nonresponse-by-calibration"></a>
+</h2>
+<p>A third route calibrates the respondents’ weights so that, over the
+auxiliaries, they reproduce the totals the active units (respondents and
+nonrespondents) carried before the step. With
+<code>method = "calibration"</code> and <code>totals = NULL</code> (the
+default) the targets are those incoming, design-weighted totals, so the
+adjustment is the two-phase, sample-level calibration estimator (Sarndal
+and Lundstrom 2005): the calibrated respondent estimates reproduce the
+pre-nonresponse cascade estimates exactly. Supply <code>totals</code> to
+calibrate to external population totals instead.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"calibration"</span>,</span>
+<span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">wf</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; == Weighting specification (weightflow) ==</span></span>
+<span><span class="co">#&gt; Data    : 467 cases</span></span>
+<span><span class="co">#&gt; Base wts: pw</span></span>
+<span><span class="co">#&gt; Steps   :</span></span>
+<span><span class="co">#&gt;   1. nonresponse (calibration: linear, sample-level)</span></span>
+<span><span class="co">#&gt; Status  : estimated (prep)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Stage summary:</span></span>
+<span><span class="co">#&gt;                     stage n_active sum_wts cv_wts deff_kish n_eff</span></span>
+<span><span class="co">#&gt;                      base      467    4371  0.236     1.056   442</span></span>
+<span><span class="co">#&gt;  stage_1_step_nonresponse      270    4371  0.146     1.021   264</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);</span></span>
+<span><span class="co">#&gt; n_eff = n_active / deff_kish. Both worsen with each adjustment and</span></span>
+<span><span class="co">#&gt; improve with trimming.</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; --- Step 1: nonresponse (calibration: linear, sample-level) ---</span></span>
+<span><span class="co">#&gt;     variable    target achieved</span></span>
+<span><span class="co">#&gt;  (Intercept) 4370.8333  4370.83</span></span>
+<span><span class="co">#&gt;  regionSouth 1210.0000  1210.00</span></span>
+<span><span class="co">#&gt;   regionEast  800.0000   800.00</span></span>
+<span><span class="co">#&gt;   regionWest  873.3333   873.33</span></span>
+<span><span class="co">#&gt;         sexM 2284.1667  2284.17</span></span>
+<span><span class="co">#&gt; nonresponse calibration to sample-level totals; g in [1.491, 1.950] </span></span>
+<span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.021   |   n_eff: 442 -&gt; 264</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.890  (on region, sex)</span></span></code></pre></div>
+<p>Validation. The respondents, reweighted, reproduce the auxiliary
+totals of all active units before the step:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">X</span>      <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span>, <span class="va">sample_survey</span><span class="op">)</span></span>
+<span><span class="va">resp</span>   <span class="op">&lt;-</span> <span class="va">sample_survey</span><span class="op">$</span><span class="va">responded</span> <span class="op">==</span> <span class="fl">1</span></span>
+<span><span class="va">before</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">sample_survey</span><span class="op">$</span><span class="va">pw</span> <span class="op">*</span> <span class="va">X</span><span class="op">)</span>               <span class="co"># respondents + nonrespondents</span></span>
+<span><span class="va">after</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span><span class="op">[</span><span class="va">resp</span><span class="op">]</span> <span class="op">*</span> <span class="va">X</span><span class="op">[</span><span class="va">resp</span>, <span class="op">]</span><span class="op">)</span>  <span class="co"># respondents, calibrated</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">before</span>, <span class="va">after</span>, diff <span class="op">=</span> <span class="va">after</span> <span class="op">-</span> <span class="va">before</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="co">#&gt;        (Intercept) regionSouth regionEast regionWest     sexM</span></span>
+<span><span class="co">#&gt; before    4370.833        1210        800   873.3333 2284.167</span></span>
+<span><span class="co">#&gt; after     4370.833        1210        800   873.3333 2284.167</span></span>
+<span><span class="co">#&gt; diff         0.000           0          0     0.0000    0.000</span></span></code></pre></div>
+<p>The distance (<code>calfun</code>), <code>bounds</code> and ridge
+<code>penalty</code> carry over from <code><a href="../reference/step_calibrate.html">step_calibrate()</a></code>. With
+<code>equal_within_cluster = TRUE</code> and a <code>cluster</code> the
+adjustment is integrative: the responding members of a household share
+one calibration factor, so the weights stay constant within
+household.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"calibration"</span>,</span>
+<span>                   formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span>, cluster <span class="op">=</span> <span class="st">"household_id"</span>,</span>
+<span>                   equal_within_cluster <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="va">wf</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span></span>
+<span><span class="co">#&gt; [1] 1.020774</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="which-to-use">Which to use<a class="anchor" aria-label="anchor" href="#which-to-use"></a>

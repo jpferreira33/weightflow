@@ -35,9 +35,18 @@ for inference.
   auxiliaries.
 - **Principled trimming.** The usual far-out fence, plus **Potter’s
   MSE-optimal cutoff**, chosen from the data instead of by hand.
-- **Recipe-aware variance.** The bootstrap re-applies *every* step on
-  each replicate, so the standard errors carry the variability of the
-  whole cascade.
+- **Trimmed calibration that keeps the totals.** Bound the weights into
+  a fixed range as a range-restricted *re-calibration*, so trimming no
+  longer breaks the calibration you just did (unlike
+  cap-and-redistribute).
+- **Recipe-aware variance.** The bootstrap and jackknife re-apply
+  *every* step on each replicate, so the standard errors carry the
+  variability of the whole cascade, with lonely-PSU handling and
+  parallel `cores`.
+- **A full methodological quality report.** One call writes a
+  self-contained, bilingual (EN/ES) HTML report: the cascade in prose,
+  AAPOR fieldwork rates, per-domain reliability, the replication design,
+  a per-step impact table and a points-of-attention panel.
 
 ## How it works
 
@@ -114,18 +123,21 @@ The methods below are what set weightflow apart. Each is opt-in: the
 defaults reproduce classic survey weighting, and one argument switches
 the method on.
 
-### Machine-learning propensities (xgboost)
+### Machine-learning propensities
 
-Estimate the response propensity with gradient boosting instead of
-logistic regression, useful when nonresponse depends on the covariates
-in nonlinear or interacting ways. The engine also drives the outcome
-models in
+Estimate the response propensity with a machine-learning learner instead
+of logistic regression, useful when nonresponse depends on the
+covariates in nonlinear or interacting ways. Four engines behind the
+same API, swap one argument: `"logit"` (logistic regression, base R),
+`"tree"` (CART, via `rpart`), `"forest"` (random forest, via `ranger`)
+and `"boost"` (gradient boosting, via `xgboost`). The same engines drive
+the outcome models in
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).
 
 ``` r
 
 step_nonresponse(respondent = responded, method = "propensity",
-                 formula = ~ region + sex + age, engine = "boost")
+                 formula = ~ region + sex + age, engine = "forest")
 ```
 
 ### Cross-fitting (k-fold)
@@ -148,6 +160,21 @@ dominated by a few extreme weights: on the bundled data, boosting
 without cross-fitting inflates the design effect, while cross-fitting
 brings it back down (the *Machine learning, cross-fitting and robust
 calibration* article shows the two side by side).
+
+### Nonresponse by calibration (two-phase)
+
+Adjust for nonresponse by calibrating the respondents to auxiliary
+totals instead of weighting classes or inverse propensities. With
+`totals = NULL` it reproduces the pre-nonresponse cascade estimates
+exactly (the two-phase case); and when you do use a propensity model, it
+can be fit **unweighted** (`weight_model = FALSE`) when the weights are
+unrelated to response given the covariates.
+
+``` r
+
+step_nonresponse(respondent = responded, method = "calibration",
+                 formula = ~ region + sex)
+```
 
 ### Ridge (penalized) calibration
 
@@ -173,6 +200,23 @@ bias of trimming against the variance from extreme weights.
 step_trim_weights(method = "potter")
 ```
 
+### Trimmed calibration that preserves the totals
+
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
+caps and redistributes, which quietly breaks the calibration you just
+did.
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+instead pulls the weights into `[lower, upper]` as a **bounded
+re-calibration** (the generalized exponential method of Folsom & Singh),
+so every calibration total is still met after trimming. Bounds can
+differ by subgroup (`by`), and there is an integrative (one factor per
+household) variant.
+
+``` r
+
+step_trim_calibrated(~ region + sex, lower = 20, upper = 400)
+```
+
 ### Tidy calibration totals
 
 Hand weightflow the population totals the way they actually arrive, as a
@@ -186,6 +230,11 @@ builds the intercept and the dropped reference levels for you.
 region_sex <- as.data.frame(table(region = population$region, sex = population$sex))
 step_calibrate(method = "poststratify", totals = region_sex, count = "Freq")
 ```
+
+When several margins disagree on the population total (a common rounding
+artefact of independently produced control totals), weightflow
+reconciles them to a common N and reports the adjustment, instead of
+failing or silently picking one.
 
 ### Domain (partitioned) calibration
 
@@ -281,6 +330,42 @@ variable drives the gap. No new function to call.
 # R-indicator (representativity of response): 0.890  (on region, sex)
 ```
 
+### A methodological quality report (HTML)
+
+[`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+turns a fitted recipe into one self-contained, **bilingual (EN/ES)**
+HTML report, aligned to GSBPM sub-process 5.6 and the ESS quality
+concepts, that reads like an official quality report rather than a dump
+of numbers. No graphics device, no server, no JavaScript. In a single
+call it assembles:
+
+- an **executive narrative**: the cascade explained in prose, the
+  headline design effect and effective n, a truthful status checklist
+  and a completion line;
+- a **reference-metadata** header (operation, reference period,
+  producer, frame, source and date of the control totals);
+- **AAPOR fieldwork outcome rates**: the full case disposition and the
+  response rate in three variants (RR1 ≤ RR3 ≤ RR5), unweighted and
+  base-weighted;
+- **per-domain reliability** (`domains =`): active n, sum of weights,
+  CV, Kish design effect and effective n within each domain or crossing;
+- the **replication design** (`replicates =`): method, replicates,
+  strata, PSUs, lonely-PSU handling, seed, cores and run time;
+- a **per-step impact table** (each step’s change in deff and CV), the
+  weight distribution, per-step visuals, and a **points-of-attention**
+  panel.
+
+``` r
+
+report_weighting(fitted, lang = "es",
+                 domains    = ~ region + region:sex,   # per-domain reliability card
+                 replicates = boot,                     # the replication-design card
+                 metadata   = list(survey = "Encuesta de Hogares",
+                                   reference_period = "2024"))
+```
+
+See the *Quality report* article for a full example.
+
 ## What it does
 
 **Adjustment steps**, applied in the order you pipe them:
@@ -290,10 +375,11 @@ variable drives the gap. No new function to call.
 | [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md) | Redistribute unknown-eligibility cases among the known ones (person- or household-level via `cluster`). |
 | [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md) | Zero out out-of-scope units. |
 | [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md) | Within-household selection (unequal `prob` or equal `n_eligible`). |
-| [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md) | Weighting classes or propensity (logit / CART / random forest / **xgboost**), with optional **k-fold cross-fitting**, person- or household-level. |
-| [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md) | Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (one weight per household), and **ridge (penalized)** options. |
+| [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md) | Weighting classes, response-propensity (logit / CART / random forest / **xgboost**, optional **k-fold cross-fitting**, weighted or **unweighted** model), or **two-phase calibration**; person- or household-level. |
+| [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md) | Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (one weight per household), **ridge (penalized)** and **domain (`by`)** options. |
 | [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md) | Wu-Sitter model calibration with working models for the outcomes (any engine, with cross-fitting). |
-| [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md), [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md) | Manual or automatic trimming (Tukey fence or **Potter MSE-optimal**), insertable anywhere. |
+| [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md), [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md) | Manual or automatic trimming (Tukey fence or **Potter MSE-optimal**), with proportional or uniform redistribution, insertable anywhere. |
+| [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md) | **Trimmed (range-restricted) calibration**: bound the weights into `[lower, upper]` while **preserving the calibration totals** (Folsom-Singh), with per-subgroup bounds and an integrative option. |
 | [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md), [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md) | Integer rounding and rescaling to a size or total. |
 | [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md) | Quality checkpoint on deff, weight ratio or effective n. |
 
@@ -306,11 +392,15 @@ condition.
 per-stage cascade with the **Kish design effect** (deff = 1 + CV^2) and
 effective sample size;
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
-returns the per-unit, per-step factors;
+returns the per-unit, per-step factors. And
 [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
-writes a self-contained HTML report (pipeline diagram, variables used,
-per-stage summaries and per-step visuals) with no graphics device or
-server required.
+writes a self-contained, **bilingual (EN/ES)** HTML quality report,
+aligned to GSBPM 5.6 and the ESS quality concepts, with no graphics
+device or server required: an auto-generated methodological narrative, a
+reference-metadata header, **AAPOR fieldwork outcome rates**
+(RR1/RR3/RR5), **per-domain reliability**, the **replication design**, a
+**per-step impact table**, weight-distribution diagnostics, per-step
+visuals and a **points-of-attention** panel.
 
 **Variance estimation** (see the *Variance estimation* article). Once
 the weights are built, get design-based standard errors with a bootstrap
@@ -318,7 +408,8 @@ that re-runs the **whole recipe** on each replicate:
 
 ``` r
 
-boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu")
+boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu",
+                          lonely_psu = "collapse", cores = 4)   # collapse + parallel
 boot_mean(boot, "income")           # estimate, SE and 95% CI
 
 # hand the replicate weights to survey / srvyr for the rest of the analysis
@@ -390,6 +481,10 @@ adjustment, define a `step_*()` constructor (inert) and its
 - Bardsley, P., & Chambers, R. L. (1984). Multipurpose estimation from
   unbalanced samples. *Applied Statistics*, 33(3), 290–299. *(ridge
   calibration)*.
+- Folsom, R. E., & Singh, A. C. (2000). The generalized exponential
+  model for sampling weight calibration for extreme values, nonresponse,
+  and poststratification. *Proc. ASA Survey Research Methods Section*,
+  598–603. *(trimmed calibration)*.
 
 *Design effect and trimming*
 

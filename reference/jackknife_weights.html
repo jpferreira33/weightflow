@@ -15,7 +15,7 @@ resampling bootstrap)."><meta property="og:image" content="https://jpferreira33.
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,11 +32,14 @@ resampling bootstrap)."><meta property="og:image" content="https://jpferreira33.
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>The weighting cascade</h6></li>
     <li><a class="dropdown-item" href="../articles/preparing-the-sample.html">Preparing the sample: eligibility and response before weighting</a></li>
-    <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes and propensities</a></li>
+    <li><a class="dropdown-item" href="../articles/nonresponse-propensities.html">Nonresponse: weighting classes, propensities and calibration</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
+    <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
@@ -72,7 +75,14 @@ resampling bootstrap).</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">jackknife_weights</span><span class="op">(</span><span class="va">object</span>, strata <span class="op">=</span> <span class="cn">NULL</span>, psu <span class="op">=</span> <span class="cn">NULL</span>, progress <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">jackknife_weights</span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  strata <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  psu <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  lonely_psu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"certainty"</span>, <span class="st">"collapse"</span><span class="op">)</span>,</span>
+<span>  cores <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -92,8 +102,21 @@ Pass the recipe <em>before</em> <code><a href="prep.html">prep()</a></code>: the
 <dd><p>name of the PSU column, or NULL to delete one unit at a time.</p></dd>
 
 
+<dt id="arg-lonely-psu">lonely_psu<a class="anchor" aria-label="anchor" href="#arg-lonely-psu"></a></dt>
+<dd><p>how to treat strata with a single PSU: "certainty"
+(default) skips them (no variance) and warns; "collapse" merges them into a
+pseudo-stratum so they yield delete-a-PSU replicates.</p></dd>
+
+
+<dt id="arg-cores">cores<a class="anchor" aria-label="anchor" href="#arg-cores"></a></dt>
+<dd><p>number of parallel workers for the replicates (default 1 =
+serial). With <code>cores &gt; 1</code> the replicate re-preps run in parallel via
+<code><a href="https://rdrr.io/r/parallel/mclapply.html" class="external-link">parallel::mclapply</a></code> (forking; serial on Windows). For a deterministic
+recipe the result is identical to the serial run.</p></dd>
+
+
 <dt id="arg-progress">progress<a class="anchor" aria-label="anchor" href="#arg-progress"></a></dt>
-<dd><p>print progress every 25 replicates.</p></dd>
+<dd><p>print progress every 25 replicates (serial only).</p></dd>
 
 </dl></div>
     <div class="section level2">

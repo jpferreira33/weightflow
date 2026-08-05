@@ -11,6 +11,7 @@
 <url><loc>https://jpferreira33.github.io/weightflow/articles/model-calibration.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/articles/nonresponse-propensities.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/articles/preparing-the-sample.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/articles/quality-report.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/articles/quickstart.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/articles/validation-against-survey.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/articles/variance-estimation.html</loc></url>
@@ -42,6 +43,7 @@
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_round.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_select_within.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_trim.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_trim_weights.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/summary.prepped_weighting_spec.html</loc></url>

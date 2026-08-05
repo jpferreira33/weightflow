@@ -245,6 +245,69 @@ fixed, conservative rule, while Potter searches for the cutoff that
 minimizes estimated MSE, often more aggressive, capping a few more
 weights when that lowers the overall error.
 
+### Redistributing the trimmed mass
+
+The weight removed by capping is shared among the untrimmed units. With
+`redistribute = "proportional"` (the default) they keep their relative
+sizes; with `redistribute = "uniform"` each untrimmed unit receives the
+same amount, which reproduces
+[`survey::trimWeights()`](https://rdrr.io/pkg/survey/man/trimWeights.html)
+exactly.
+
+## Calibration-preserving trimming
+
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
+caps extreme weights and redistributes the excess, which breaks any
+calibration the recipe had achieved.
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+instead trims the already-calibrated weights into an absolute interval
+`[lower, upper]` while preserving the calibration totals (a bounded
+re-calibration, the generalized exponential method of Folsom and Singh
+2000). Weights inside the interval stay put; out-of-range ones saturate
+at their bound and the rest move minimally so that every total is still
+met.
+
+``` r
+
+recipe <- base |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = c("region", "sex")) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region))))
+
+pre <- prep(recipe)
+w   <- collect_weights(pre, drop_zero = FALSE)$.weight
+w   <- w[w > 0]
+lo  <- as.numeric(quantile(w, 0.05)); up <- as.numeric(quantile(w, 0.95))
+
+trimmed <- recipe |>
+  step_trim_calibrated(~ region, lower = lo, upper = up) |>
+  prep()
+```
+
+The region totals are still met after the trim (the differences are
+zero), whereas the weights now sit inside the interval:
+
+``` r
+
+Xr     <- model.matrix(~ region, sample_one)
+w_cal  <- collect_weights(pre, drop_zero = FALSE)$.weight
+w_trim <- trimmed$final_weight
+round(rbind(after_calibration = colSums(w_cal  * Xr),
+            after_trim        = colSums(w_trim * Xr),
+            difference        = colSums((w_trim - w_cal) * Xr)), 6)
+#>                   (Intercept) regionSouth regionEast regionWest
+#> after_calibration        4495        1250        927        748
+#> after_trim               4495        1250        927        748
+#> difference                  0           0          0          0
+range(w_trim[w_trim > 0])
+#> [1]  6.649002 50.461100
+```
+
+With `equal_within_cluster = TRUE` and a `cluster`, the trimming is
+integrative: one factor per household, so weights that were constant
+within household stay constant.
+
 ## Putting it together
 
 These methods compose like any other step, and the recipe-aware

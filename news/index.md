@@ -1,5 +1,212 @@
 # Changelog
 
+## weightflow 1.0.0.9000 (development version)
+
+### New features
+
+- **Differentiated (per-subgroup) trimming.**
+  [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+  gains a `by` argument: `lower` / `upper` may now be a single number
+  (same bound for every unit) or a named vector of bounds per subgroup
+  (names = the `by` group levels), so each subgroup is trimmed to its
+  own absolute bounds while the preserved totals of `formula` stay
+  global. Thanks to Andrés Gutiérrez (ECLAC - Statistics Division) for
+  the request.
+
+### Bug fixes
+
+- **`step_trim(reference = "median", by = )` now uses each group’s own
+  median.** The median (or mean) threshold was previously computed once
+  over the whole sample and only the redistribution of the trimmed
+  excess was grouped by `by`; the cap is now computed within each `by`
+  group, so a differentiated trim uses each subgroup’s own median. Runs
+  with `by = NULL` are unaffected (one group, the whole sample).
+
+## weightflow 1.0.0
+
+CRAN release: 2026-08-04
+
+### New features
+
+- **Tidy control totals that disagree on N now reconcile instead of
+  failing.** When the tidy `totals` given to
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+  do not all sum to the same population size (typical rounding of
+  independently produced control totals), the largest margin is kept as
+  the reference N and the others are rescaled proportionally, so their
+  internal distribution is preserved and the calibration always closes.
+  This applies to both `method = "raking"` (which previously could fail
+  to converge) and `method = "linear"` / GREG (which previously used the
+  first margin silently). The adjustment is reported through a message
+  (informative, never fatal, so it is safe under `options(warn = 2)`)
+  and is carried into
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md),
+  where it appears in the points-of-attention panel and the calibration
+  step card listing every rescaled margin and the common N, so
+  control-total mismatches are surfaced for review rather than hidden.
+  This keeps the tidy interface usable without the manual dropping of a
+  category that a design matrix would otherwise require.
+
+- **Unweighted propensity models.**
+  `step_nonresponse(method = "propensity")` gains `weight_model`
+  (default `TRUE`). With `FALSE` the response-propensity model is fit
+  unweighted, so the incoming weights enter only the 1/p (or class)
+  adjustment and not the model fit – useful when the weights are
+  unrelated to response given the covariates (Little & Vartivarian
+  2003). Works at unit and household (cluster) level and across all
+  engines. Thanks to Andrés Gutiérrez (ECLAC - Statistics Division) for
+  the suggestion.
+
+- **Nonresponse by calibration (two-phase).**
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  gains `method = "calibration"`: instead of weighting classes or
+  inverse propensities, it adjusts for nonresponse by calibrating the
+  respondents’ weights to auxiliary totals (Lundstrom & Sarndal 1999;
+  Sarndal & Lundstrom 2005). With `totals = NULL` (default) the targets
+  are the R+NR design-weighted totals at that stage, so the calibrated
+  respondent estimates reproduce the pre-nonresponse cascade estimates
+  exactly (the two-phase / sample-level case, Estevao & Sarndal 2002);
+  supply `totals` to calibrate to population totals instead. Continuous
+  and categorical auxiliaries, the distance `calfun`
+  (linear/raking/logit), `bounds` and `penalty` (ridge) all carry over
+  from
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md).
+  The sample-level target is recomputed inside each bootstrap/jackknife
+  replicate, so the two-phase variance is captured by the recipe-aware
+  machinery. With `equal_within_cluster = TRUE` (and a `cluster`) the
+  adjustment is integrative (Lemaitre-Dufour): the responding members of
+  a household share a single calibration factor, so nonresponse
+  calibration keeps the weights constant within household, as in a
+  household survey. `method = "weighting_class"` remains the
+  post-stratification (joint-cell) special case; the marginal (IPF via
+  `margins`) variant is planned for a later 0.3.0 increment.
+
+- **[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md):
+  trimmed (range-restricted) calibration.** Trims already-calibrated
+  weights into an absolute interval `[lower, upper]` while **preserving
+  the calibration totals**, unlike
+  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
+  which caps and redistributes (breaking the constraints). It is a
+  bounded re-calibration (the generalized exponential method of Folsom &
+  Singh 2000): the targets to preserve are the totals the incoming
+  weights already achieve, and the absolute-weight bound becomes a
+  per-unit factor bound `w_new / w in [lower/w, upper/w]`, solved with
+  the range-restricted Euclidean distance (`calfun = "linear"`, the
+  default) or the multiplicative one (`"raking"`). Weights inside the
+  range stay put; out-of-range ones saturate at their bound and the rest
+  move minimally to restore every total. If the range is infeasible, the
+  unmet totals are relaxed and a warning is raised. It reuses the
+  bounded-calibration solver, now able to take per-unit bounds. With
+  `equal_within_cluster = TRUE` (and a `cluster`) the trimming is
+  integrative: one factor per household, so weights that were constant
+  within household stay constant (the household-level analogue of
+  `survey`’s `aggregate.stage` calibration).
+
+- **Lonely-PSU handling and parallelism in the replicate-variance
+  functions.**
+  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  and
+  [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+  gain a `lonely_psu` argument: `"certainty"` (default) keeps the
+  previous behaviour (single-PSU strata are self-representing,
+  contribute no variance, and warn), while `"collapse"` merges
+  single-PSU strata into a pseudo-stratum so they are resampled and
+  yield a (conservative) variance instead of zero. Both functions also
+  gain a `cores` argument: with `cores > 1` the per-replicate re-preps
+  run in parallel via
+  [`parallel::mclapply`](https://rdrr.io/r/parallel/mclapply.html)
+  (forking; serial on Windows). The resampling is drawn up front from
+  the `seed`, so the parallel run is bit-identical to the serial one.
+
+- **`redistribute` argument for
+  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md).**
+  The trimmed mass can now be shared among the untrimmed units either in
+  proportion to their weights (`"proportional"`, the default, keeps
+  their relative sizes) or in equal amounts (`"uniform"`, the same
+  amount to each untrimmed unit, with already-trimmed cases not reused).
+  The `"uniform"` option reproduces
+  [`survey::trimWeights()`](https://rdrr.io/pkg/survey/man/trimWeights.html)
+  exactly, for bit-for-bit agreement when a weighting pipeline is
+  validated against `survey`.
+
+- **[`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+  is now a full methodological quality report (GSBPM 5.6 / ESS style).**
+  With `narrative = TRUE` (default) the HTML report reads like an
+  official quality report: an auto-generated executive summary (the
+  cascade in prose plus the headline design effect, effective n and
+  R-indicator) and a natural-language paragraph on each step built from
+  its own parameters and diagnostics, in English or Spanish (new
+  `lang`). A new `metadata` argument adds a reference-metadata header
+  card aligned to the ESS SIMS / ESMS concepts and GSBPM sub-process 5.6
+  (operation, reference period, coverage, producer, contact, sampling
+  frame, the source and date of the control totals, version,
+  confidentiality). When the recipe has eligibility / nonresponse steps,
+  a “Fieldwork outcomes” card reconstructs every case’s disposition and
+  reports the AAPOR response rate in three variants, from most to least
+  conservative in how unknown-eligibility cases are treated, RR1 \<= RR3
+  (CASRO, e-adjusted) \<= RR5, weighted and unweighted (Valliant, Dever
+  & Kreuter 2018, ch. 6). The executive summary also aggregates a
+  “Points of attention” panel (steps that did not converge or raised an
+  alert, each with a short recommendation), a truthful status checklist
+  (convergence, final design effect, extreme and replicate weights,
+  alerts) and a completion line; calibration steps get descriptive names
+  by their auxiliaries and a relative-deviation column on their
+  target/achieved tables. Set `narrative = FALSE` for the previous
+  tables-only report.
+
+- **New analytical cards, charts and navigation in
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md).**
+  A per-domain reliability card (new `domains` one-sided formula: active
+  n, sum of weights, CV, Kish design effect and effective n within each
+  domain, one table per term, `+` separate and `:` crossed). A per-step
+  impact table (the change in Kish deff and CV versus the previous
+  stage, each step’s share of the total \|deff change\|, and whether it
+  adds variance or recovers efficiency). A Kish design-effect evolution
+  chart across stages. A replication-design card (new `replicates`, a
+  `weightflow_boot` / `weightflow_jack` object: method, replicates,
+  strata, mean PSUs per stratum, lonely-PSU handling, seed, cores and
+  run time);
+  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  and
+  [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+  now record this metadata. Plus a navigation menu, conditional
+  colouring of the design-effect cells, a plain-language interpretation
+  of the final design effect, collapsible per-step details, and a
+  restyle to the package identity. Still pure inline SVG, no JavaScript
+  and no new dependencies.
+
+### Bug fixes
+
+- **Cross-fitting no longer errors in a fresh session.** With a
+  `crossfit_seed`,
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  and
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
+  saved and restored the global RNG state but assumed `.Random.seed`
+  already existed, which fails in a session that has not yet drawn a
+  random number (e.g. a vignette build). The state is now saved only
+  when present and unset again otherwise.
+
+- **[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
+  now trims negative weights.** It previously acted only on positive
+  weights (`w > 0`), so negative weights produced by unbounded linear
+  calibration were left untouched by a lower floor. It now trims every
+  non-zero weight, flooring negatives to `lower`, while still leaving
+  dropped units (weight exactly 0) alone. Recipes without negative
+  weights are unaffected.
+
+- **Reproducible report scatter plots.** The weight before/after scatter
+  in
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+  subsampled points at random (without a seed) when a step had more than
+  800 units, so the plotted cloud changed between renders even though
+  the weights were identical. It now uses a deterministic thinning
+  (`.thin_scatter()`): all points are drawn up to `cap = 3000`, and
+  above that the plot always keeps both tails on each axis
+  (smallest/largest weights before and after) and the largest departures
+  from the y = x line, then systematically thins the dense core. The
+  scatter is now identical across runs and never drops the outliers.
+
 ## weightflow 0.2.0
 
 CRAN release: 2026-07-22
@@ -142,8 +349,8 @@ CRAN release: 2026-07-22
 
 - The optional machine-learning engines (`engine = "forest"` via ranger,
   `engine = "boost"` via xgboost) now run single-threaded by default,
-  for reproducibility and to respect CRAN’s check limits. Set
-  `options(weightflow.num_threads = n)` to use `n` threads.
+  for reproducibility and to respect the core limits applied in CRAN
+  checks. Set `options(weightflow.num_threads = n)` to use `n` threads.
 
 - [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
   now flags calibration steps that did not converge. When a raking,
@@ -157,10 +364,10 @@ CRAN release: 2026-07-22
   genuine Lemaitre-Dufour (1987) integrative method: each unit’s
   auxiliaries are replaced by their household mean before a person-level
   calibration, so the per-household penalty scales with household size.
-  This matches `survey`’s `calibrate(aggregate.stage = )` (Vanderhoeft
-  2001), ReGenesees and Statistics Canada’s GES. The previous
-  implementation used a household-level distance (summed auxiliaries,
-  uniform per-household penalty), a different (non-standard) method.
+  This matches `survey`’s `calibrate(aggregate.stage = )`
+  (Vanderhoeft 2001) to machine precision. The previous implementation
+  used a household-level distance (summed auxiliaries, uniform
+  per-household penalty), a different (non-standard) method.
   Integrative-calibration weights will change; totals are still met
   exactly and weights remain constant within household.
 

@@ -1,0 +1,120 @@
+# Documenting and auditing the weights: the quality report
+
+[`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+turns a prepped recipe into a single, self-contained HTML report that
+documents how the weights were built and how they behave. It follows the
+logic of an official-statistics quality report (GSBPM sub-process 5.6
+and the ESS SIMS/ESMS metadata concepts) and needs no external
+dependency: every plot is inline SVG, so the file opens anywhere and can
+be archived or emailed as is.
+
+## A worked recipe
+
+To show a report with something to say, we run a full cascade on the
+bundled `sample_survey` (one row per person, with households, so the
+weights can be kept equal within household): an unknown-eligibility
+redistribution, a nonresponse adjustment with a regression tree
+estimated by k-fold cross-fitting, a linear calibration to region
+(constant within a household) that gives every member of a household one
+weight, a trimming that preserves those calibration totals (also one
+factor per household), and a totals-preserving rounding. We add a small
+bootstrap so the report can also document the variance design.
+
+``` r
+
+totals_r <- colSums(model.matrix(~ region, population))
+
+spec <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   engine = "tree", formula = ~ region + sex + age,
+                   crossfit = 5, crossfit_seed = 1, num_classes = NULL) |>
+  step_calibrate(method = "linear", formula = ~ region, totals = totals_r,
+                 cluster = "household_id", equal_within_cluster = TRUE)
+
+# feasible trim interval from the calibrated weights
+w  <- collect_weights(prep(spec), drop_zero = FALSE)$.weight
+w  <- w[w > 0]
+lo <- as.numeric(quantile(w, 0.02)); up <- as.numeric(quantile(w, 0.98))
+
+recipe <- spec |>
+  step_trim_calibrated(~ region, lower = lo, upper = up,
+                       cluster = "household_id", equal_within_cluster = TRUE) |>
+  step_round(method = "preserve_total")
+
+fit  <- prep(recipe)
+boot <- bootstrap_weights(recipe, replicates = 15, strata = "region",
+                          psu = "psu", seed = 1, progress = FALSE)
+
+path <- report_weighting(
+  fit, replicates = boot, domains = ~ region, open = FALSE,
+  metadata = list(
+    survey           = "Living Conditions Survey (illustrative)",
+    reference_period = "2024",
+    geography        = "National",
+    producer         = "National Statistical Office",
+    frame            = "Master sample of dwellings",
+    totals_source    = "Population projections (2023)",
+    totals_date      = "2024-06-30"))
+```
+
+The generated report is embedded below (open `path` in a browser for a
+full-window view). If the `rpart` package is not installed the tree
+engine cannot run and the report is not shown here; the description that
+follows still applies.
+
+## What the report contains
+
+The report is a sequence of cards, in reading order.
+
+Executive summary. A prose summary of the cascade with the headline
+design effect, effective sample size and R-indicator, a plain-language
+interpretation of the final design effect, and a status checklist
+(convergence, extreme weights, replicate weights, alerts). Anything that
+needs attention (for example a step that did not converge, or a quality
+alert) is collected here.
+
+Reference metadata. When `metadata` is supplied, a header card aligned
+to the SIMS/ESMS concepts. Recognised keys get a proper label; any other
+key is shown as given.
+
+Fieldwork outcomes (AAPOR). Because the recipe has eligibility and
+nonresponse steps, a card reconstructs the disposition of every case
+(ineligible, unknown eligibility, eligible respondent, eligible
+nonrespondent) and reports the eligibility rate together with the
+response rate in three AAPOR variants, from the most to the least
+conservative treatment of the unknown-eligibility cases (RR1, RR3/CASRO,
+RR5), both unweighted and base-weighted.
+
+Per-stage summary. A table with the active units, sum of weights, CV,
+Kish design effect and effective sample size at each stage; an inline
+chart of the design effect across stages; and a per-step impact table
+(the change in deff and CV at each step and its share of the total
+change).
+
+Domain reliability. Because `domains = ~ region` was supplied, a card
+shows the active n, CV, design effect and effective sample size within
+each region, so thin domains (small effective n) are visible.
+
+Replication design. Because replicate weights were passed through
+`replicates`, a card documents the variance design: method, number of
+replicates, strata and PSUs per stratum, lonely-PSU handling, cores and
+run time.
+
+Weight distribution and per-step detail. The distribution of the final
+weights, and a collapsible section with one card per step: the requested
+parameters, the diagnostics (for calibration, the target and achieved
+totals with their relative difference), and a before/after scatter of
+the weights.
+
+## Arguments
+
+Set `open = TRUE` to launch the report in a browser, or pass `file` to
+choose the path. `lang = "es"` produces the narrative in Spanish.
+`narrative = FALSE` gives the previous tables-only report, and
+`plots = FALSE` drops the per-step visuals.
+
+The variance card documents the design of the replication. The standard
+errors, CVs and confidence intervals of specific estimates are computed
+downstream with the `survey` or `srvyr` package (see the Variance
+estimation article).
