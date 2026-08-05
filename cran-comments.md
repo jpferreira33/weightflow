@@ -15,16 +15,12 @@ the CRAN policy on release frequency. I apologise for the short interval since
 
 ## R CMD check results
 
-0 errors | 0 warnings | 0-1 note.
+0 errors | 0 warnings | 0 notes.
 
-* Any "checking for future file timestamps ... unable to verify current time"
-  NOTE is transient: it appears only when the check machine cannot reach the
-  online time server, and is unrelated to the package.
-* Any "possibly misspelled words in DESCRIPTION" (e.g. 'Ferreira',
-  'Nonresponse') are false positives: an author surname and a standard
-  survey-methodology term.
-* Any "invalid URL" message for github.com is a transient network timeout on the
-  check machine; the repository is public and the URLs resolve.
+Checked clean locally and on win-builder (R release and R-devel).
+
+* If a spell check flags 'Ferreira' or 'Nonresponse' in DESCRIPTION, these are
+  false positives: an author surname and a standard survey-methodology term.
 
 ## Test environments
 
