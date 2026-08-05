@@ -175,7 +175,7 @@
 <div class="section level3">
 <h3 id="machine-learning-propensities">Machine-learning propensities<a class="anchor" aria-label="anchor" href="#machine-learning-propensities"></a>
 </h3>
-<p>Estimate the response propensity with a machine-learning learner instead of logistic regression, useful when nonresponse depends on the covariates in nonlinear or interacting ways. Four engines behind the same API, swap one argument: <code>"logit"</code> (logistic regression, base R), <code>"tree"</code> (CART, via <code>rpart</code>), <code>"forest"</code> (random forest, via <code>ranger</code>) and <code>"boost"</code> (gradient boosting, via <code>xgboost</code>). The same engines drive the outcome models in <code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code>.</p>
+<p>Estimate the response propensity with a machine-learning learner instead of logistic regression, useful when nonresponse depends on the covariates in nonlinear or interacting ways. Four engines behind the same API, swap one argument: <code>"logit"</code> (logistic regression, base R), <code>"tree"</code> (CART, via <code>rpart</code>), <code>"forest"</code> (random forest, via <code>ranger</code>) and <code>"boost"</code> (gradient boosting, via <code>xgboost</code>). The same engines drive the outcome models in <code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code>. By default the propensity model is fit with the incoming weights; set <code>weight_model = FALSE</code> to fit it unweighted, useful when the weights are unrelated to response given the covariates (Little &amp; Vartivarian 2003).</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
 <span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"forest"</span><span class="op">)</span></span></code></pre></div>
@@ -193,7 +193,7 @@
 <div class="section level3">
 <h3 id="nonresponse-by-calibration-two-phase">Nonresponse by calibration (two-phase)<a class="anchor" aria-label="anchor" href="#nonresponse-by-calibration-two-phase"></a>
 </h3>
-<p>Adjust for nonresponse by calibrating the respondents to auxiliary totals instead of weighting classes or inverse propensities. With <code>totals = NULL</code> it reproduces the pre-nonresponse cascade estimates exactly (the two-phase case); and when you do use a propensity model, it can be fit <strong>unweighted</strong> (<code>weight_model = FALSE</code>) when the weights are unrelated to response given the covariates.</p>
+<p>Adjust for nonresponse by calibrating the respondents to auxiliary totals instead of weighting classes or inverse propensities. With <code>totals = NULL</code> it reproduces the pre-nonresponse cascade estimates exactly (the two-phase case); pass population <code>totals</code> to calibrate the respondents to external control totals instead.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"calibration"</span>,</span>
 <span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span><span class="op">)</span></span></code></pre></div>
@@ -271,18 +271,28 @@
 <span>  x_totals   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="va">m_region</span>, age <span class="op">=</span> <span class="fl">5.1e5</span><span class="op">)</span>, count <span class="op">=</span> <span class="st">"Freq"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
+<h3 id="recipe-aware-bootstrap">Recipe-aware bootstrap<a class="anchor" aria-label="anchor" href="#recipe-aware-bootstrap"></a>
+</h3>
+<p>The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and re-applies the <em>whole</em> recipe on each replicate, so the replicate weights carry both the sampling design and every weighting adjustment at once. Single-PSU (“lonely”) strata are handled explicitly (<code>lonely_psu = "certainty"</code> or <code>"collapse"</code>), and the replicates can run in parallel with <code>cores</code>.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">spec</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
+<span>                          lonely_psu <span class="op">=</span> <span class="st">"collapse"</span>, cores <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>   <span class="co"># collapse + parallel</span></span>
+<span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and 95% CI</span></span></code></pre></div>
+</div>
+<div class="section level3">
 <h3 id="recipe-aware-jackknife">Recipe-aware jackknife<a class="anchor" aria-label="anchor" href="#recipe-aware-jackknife"></a>
 </h3>
-<p>Alongside the bootstrap, a delete-a-PSU jackknife re-runs the whole recipe on each replicate, so the replicate weights carry every adjustment. Stratified (JKn) or unstratified (JK1), and it bridges to survey/srvyr for any estimand or domain.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">jk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jackknife_weights.html">jackknife_weights</a></span><span class="op">(</span><span class="va">spec</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
+<p>Alongside the bootstrap, a delete-a-PSU jackknife re-runs the whole recipe on each replicate, so the replicate weights carry every adjustment. Stratified (JKn) or unstratified (JK1), with the same <code>lonely_psu</code> handling and parallel <code>cores</code>, and it bridges to survey/srvyr for any estimand or domain.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">jk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jackknife_weights.html">jackknife_weights</a></span><span class="op">(</span><span class="va">spec</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
+<span>                        lonely_psu <span class="op">=</span> <span class="st">"collapse"</span>, cores <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/jackknife_estimate.html">jack_total</a></span><span class="op">(</span><span class="va">jk</span>, <span class="st">"employed"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="r-indicators-of-response-representativity">R-indicators of response representativity<a class="anchor" aria-label="anchor" href="#r-indicators-of-response-representativity"></a>
 </h3>
 <p>After a nonresponse adjustment, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="reference/report_weighting.html">report_weighting()</a></code> automatically report the R-indicator (Schouten, Cobben &amp; Bethlehem) plus the partial R-indicators: how representative the response is, and which variable drives the gap. No new function to call.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># printed by summary() when the recipe adjusts for nonresponse:</span></span>
 <span><span class="co"># R-indicator (representativity of response): 0.890  (on region, sex)</span></span></code></pre></div>
 </div>
@@ -300,7 +310,7 @@
 <li>the <strong>replication design</strong> (<code>replicates =</code>): method, replicates, strata, PSUs, lonely-PSU handling, seed, cores and run time;</li>
 <li>a <strong>per-step impact table</strong> (each step’s change in deff and CV), the weight distribution, per-step visuals, and a <strong>points-of-attention</strong> panel.</li>
 </ul>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/report_weighting.html">report_weighting</a></span><span class="op">(</span><span class="va">fitted</span>, lang <span class="op">=</span> <span class="st">"es"</span>,</span>
 <span>                 domains    <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">region</span><span class="op">:</span><span class="va">sex</span>,   <span class="co"># per-domain reliability card</span></span>
 <span>                 replicates <span class="op">=</span> <span class="va">boot</span>,                     <span class="co"># the replication-design card</span></span>
@@ -373,7 +383,7 @@
 <p>Eligibility and response accept <strong>0/1 dummy columns</strong> or any logical condition.</p>
 <p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV^2) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors. And <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained, <strong>bilingual (EN/ES)</strong> HTML quality report, aligned to GSBPM 5.6 and the ESS quality concepts, with no graphics device or server required: an auto-generated methodological narrative, a reference-metadata header, <strong>AAPOR fieldwork outcome rates</strong> (RR1/RR3/RR5), <strong>per-domain reliability</strong>, the <strong>replication design</strong>, a <strong>per-step impact table</strong>, weight-distribution diagnostics, per-step visuals and a <strong>points-of-attention</strong> panel.</p>
 <p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article). Once the weights are built, get design-based standard errors with a bootstrap that re-runs the <strong>whole recipe</strong> on each replicate:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">recipe</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
 <span>                          lonely_psu <span class="op">=</span> <span class="st">"collapse"</span>, cores <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>   <span class="co"># collapse + parallel</span></span>
 <span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and 95% CI</span></span>

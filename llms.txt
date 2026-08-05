@@ -133,6 +133,9 @@ same API, swap one argument: `"logit"` (logistic regression, base R),
 and `"boost"` (gradient boosting, via `xgboost`). The same engines drive
 the outcome models in
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).
+By default the propensity model is fit with the incoming weights; set
+`weight_model = FALSE` to fit it unweighted, useful when the weights are
+unrelated to response given the covariates (Little & Vartivarian 2003).
 
 ``` r
 
@@ -166,9 +169,8 @@ calibration* article shows the two side by side).
 Adjust for nonresponse by calibrating the respondents to auxiliary
 totals instead of weighting classes or inverse propensities. With
 `totals = NULL` it reproduces the pre-nonresponse cascade estimates
-exactly (the two-phase case); and when you do use a propensity model, it
-can be fit **unweighted** (`weight_model = FALSE`) when the weights are
-unrelated to response given the covariates.
+exactly (the two-phase case); pass population `totals` to calibrate the
+respondents to external control totals instead.
 
 ``` r
 
@@ -302,16 +304,34 @@ step_model_calibration(
   x_totals   = list(region = m_region, age = 5.1e5), count = "Freq")
 ```
 
+### Recipe-aware bootstrap
+
+The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and
+re-applies the *whole* recipe on each replicate, so the replicate
+weights carry both the sampling design and every weighting adjustment at
+once. Single-PSU (“lonely”) strata are handled explicitly
+(`lonely_psu = "certainty"` or `"collapse"`), and the replicates can run
+in parallel with `cores`.
+
+``` r
+
+boot <- bootstrap_weights(spec, replicates = 500, strata = "region", psu = "psu",
+                          lonely_psu = "collapse", cores = 4)   # collapse + parallel
+boot_mean(boot, "income")           # estimate, SE and 95% CI
+```
+
 ### Recipe-aware jackknife
 
 Alongside the bootstrap, a delete-a-PSU jackknife re-runs the whole
 recipe on each replicate, so the replicate weights carry every
-adjustment. Stratified (JKn) or unstratified (JK1), and it bridges to
+adjustment. Stratified (JKn) or unstratified (JK1), with the same
+`lonely_psu` handling and parallel `cores`, and it bridges to
 survey/srvyr for any estimand or domain.
 
 ``` r
 
-jk <- jackknife_weights(spec, strata = "region", psu = "psu")
+jk <- jackknife_weights(spec, strata = "region", psu = "psu",
+                        lonely_psu = "collapse", cores = 4)
 jack_total(jk, "employed")
 ```
 
