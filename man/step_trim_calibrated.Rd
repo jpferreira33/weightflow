@@ -10,6 +10,7 @@ step_trim_calibrated(
   lower = NULL,
   upper = NULL,
   calfun = c("linear", "raking"),
+  by = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
   maxit = 100L,
@@ -25,11 +26,18 @@ formula used in the preceding \code{step_calibrate()}.}
 
 \item{lower, upper}{numeric. Absolute bounds on the trimmed weight. At least
 one must be supplied; the other defaults to no bound. For positive variance,
-use a positive \code{lower}.}
+use a positive \code{lower}. Each may be a single number (the same bound for every
+unit) or, together with \code{by}, a named vector of bounds per subgroup (names =
+the \code{by} group levels), for differentiated trimming.}
 
 \item{calfun}{distance function: "linear" (default; the range-restricted
 Euclidean distance) or "raking" (the multiplicative distance, which keeps
 the adjustment factors positive).}
+
+\item{by}{character or NULL. Subgroup column for differentiated bounds: with a
+named-vector \code{lower}/\code{upper}, each subgroup is trimmed to its own bounds
+while the preserved totals of \code{formula} stay global. NULL (default) uses the
+same bounds for all units.}
 
 \item{cluster}{character or NULL. Cluster (e.g. household) id column, for
 integrative trimming (with \code{equal_within_cluster = TRUE}).}

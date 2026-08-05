@@ -995,10 +995,16 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #'   formula used in the preceding `step_calibrate()`.
 #' @param lower,upper numeric. Absolute bounds on the trimmed weight. At least
 #'   one must be supplied; the other defaults to no bound. For positive variance,
-#'   use a positive `lower`.
+#'   use a positive `lower`. Each may be a single number (the same bound for every
+#'   unit) or, together with `by`, a named vector of bounds per subgroup (names =
+#'   the `by` group levels), for differentiated trimming.
 #' @param calfun distance function: "linear" (default; the range-restricted
 #'   Euclidean distance) or "raking" (the multiplicative distance, which keeps
 #'   the adjustment factors positive).
+#' @param by character or NULL. Subgroup column for differentiated bounds: with a
+#'   named-vector `lower`/`upper`, each subgroup is trimmed to its own bounds
+#'   while the preserved totals of `formula` stay global. NULL (default) uses the
+#'   same bounds for all units.
 #' @param cluster character or NULL. Cluster (e.g. household) id column, for
 #'   integrative trimming (with `equal_within_cluster = TRUE`).
 #' @param equal_within_cluster logical. If TRUE, integrative trimming: one
@@ -1026,7 +1032,7 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
-                                 calfun = c("linear", "raking"),
+                                 calfun = c("linear", "raking"), by = NULL,
                                  cluster = NULL, equal_within_cluster = FALSE,
                                  maxit = 100L, tol = 1e-7) {
   calfun <- match.arg(calfun)
@@ -1035,20 +1041,29 @@ step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
          "e.g. ~ region + age_group.")
   if (is.null(lower) && is.null(upper))
     stop("Supply at least one of `lower` / `upper` (the absolute weight bounds).")
-  if (!is.null(lower) && !is.null(upper) && lower >= upper)
+  # `lower`/`upper` may be a single number (same bound for every unit) or, with
+  # `by`, a named vector of bounds per subgroup (names = the `by` group levels).
+  if (!is.null(lower) && !is.null(upper) &&
+      length(lower) == 1L && length(upper) == 1L && lower >= upper)
     stop("`lower` must be strictly below `upper`.")
+  if ((length(lower) > 1L || length(upper) > 1L) && is.null(by))
+    stop("A vector `lower`/`upper` needs `by` (the subgroup column): give a ",
+         "named vector of bounds per group, or a single number.")
   if (isTRUE(equal_within_cluster) && is.null(cluster))
     stop("equal_within_cluster = TRUE requires `cluster` (the household id).")
+  fmt <- function(b) if (is.null(b)) NA else if (length(b) > 1L) "by group" else format(b)
   step <- structure(
     list(
-      label   = sprintf("trimmed calibration [%s, %s]%s",
-                        if (is.null(lower)) "-Inf" else format(lower),
-                        if (is.null(upper)) "Inf"  else format(upper),
+      label   = sprintf("trimmed calibration [%s, %s]%s%s",
+                        if (is.null(lower)) "-Inf" else fmt(lower),
+                        if (is.null(upper)) "Inf"  else fmt(upper),
+                        if (!is.null(by)) sprintf(" by %s", by) else "",
                         if (isTRUE(equal_within_cluster)) " (integrative)" else ""),
       formula = formula,
       lower   = lower,
       upper   = upper,
       calfun  = calfun,
+      by      = by,
       cluster = cluster,
       equal_within_cluster = equal_within_cluster,
       maxit   = maxit,

@@ -999,6 +999,11 @@ apply_step.step_trim <- function(step, data, w) {
   active <- w > 0
   new_w  <- w
 
+  # Cells first: with reference = "median" the threshold is computed WITHIN each
+  # `by` group, so a differentiated trim uses each subgroup's own median (not a
+  # single global median). With by = NULL there is one group (the whole sample).
+  cells  <- .make_cells(data, step$by, n)
+
   # Define the cap and floor per unit according to the reference
   base_w <- attr(data, "weightflow_base_w")
   cap   <- numeric(n); floor_v <- rep(0, n)
@@ -1007,16 +1012,19 @@ apply_step.step_trim <- function(step, data, w) {
     cap[]     <- step$max_ratio * base_w
     if (!is.null(step$min_ratio)) floor_v[] <- step$min_ratio * base_w
   } else if (step$reference == "median") {
-    med       <- stats::median(new_w[active])
-    cap[]     <- step$max_ratio * med
-    if (!is.null(step$min_ratio)) floor_v[] <- step$min_ratio * med
+    for (g in levels(cells)) {               # per-group median threshold
+      gi <- which(cells == g & active)
+      if (!length(gi)) next
+      med <- stats::median(new_w[gi])
+      cap[gi] <- step$max_ratio * med
+      if (!is.null(step$min_ratio)) floor_v[gi] <- step$min_ratio * med
+    }
   } else {                                   # "value": absolute
     cap[]     <- step$max_ratio
     if (!is.null(step$min_ratio)) floor_v[] <- step$min_ratio
   }
 
   deff_before <- design_effect(new_w)$deff
-  cells       <- .make_cells(data, step$by, n)
 
   # Iterative cap + redistribution (Potter/NAEP style), group by group
   total_trimmed <- 0L
@@ -1312,6 +1320,27 @@ apply_step.step_trim_weights <- function(step, data, w) {
 # (calfun = "linear", the default) or the multiplicative one ("raking").
 # Units within range and not needed to restore the totals stay put (f_k ~ 1);
 # out-of-range units saturate at their bound and the rest move minimally.
+# Expand an absolute-weight bound to one value per active unit. `b` is NULL
+# (use `default`), a single number (same bound for all), or a named vector of
+# bounds per `by` group (names = the group levels); `grp` gives each active
+# unit's group. Used by trimmed calibration for subgroup-specific bounds.
+.expand_bound <- function(b, grp, n, default, nm) {
+  if (is.null(b))        return(rep(default, n))
+  if (length(b) == 1L)   return(rep(as.numeric(b), n))
+  if (is.null(grp))
+    stop(sprintf(paste0("`%s` has length > 1 but no `by` was given. Supply `by` ",
+                        "and a named vector of %s bounds per group, or a single number."),
+                 nm, nm))
+  if (is.null(names(b)))
+    stop(sprintf(paste0("`%s` must be a NAMED vector (names = the `by` group ",
+                        "levels) when it varies by group."), nm))
+  miss <- setdiff(unique(grp), names(b))
+  if (length(miss))
+    stop(sprintf("`%s` has no value for these `by` group(s): %s.",
+                 nm, paste(miss, collapse = ", ")))
+  as.numeric(b[grp])
+}
+
 apply_step.step_trim_calibrated <- function(step, data, w) {
   active <- w > 0                      # only positive calibration weights
   if (!any(active)) return(list(weights = w, diagnostics = NULL))
@@ -1328,10 +1357,15 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
   # Totals to PRESERVE: the ones the incoming weights already reproduce.
   Tvec <- colSums(d * X)
 
-  lower <- if (is.null(step$lower)) -Inf else step$lower
-  upper <- if (is.null(step$upper))  Inf else step$upper
-  if (lower >= upper)
-    stop("`lower` must be strictly below `upper`.")
+  # Per-unit absolute bounds. With `by`, each subgroup can have its own bounds
+  # (Option A: the preserved totals stay global; only the bounds differ).
+  if (!is.null(step$by) && !step$by %in% names(dd))
+    stop(sprintf("`by` column '%s' not found in the data.", step$by))
+  grp   <- if (is.null(step$by)) NULL else as.character(dd[[step$by]])
+  lower <- .expand_bound(step$lower, grp, length(d), -Inf, "lower")
+  upper <- .expand_bound(step$upper, grp, length(d),  Inf, "upper")
+  if (any(lower >= upper))
+    stop("`lower` must be strictly below `upper` (for every subgroup).")
   n_below <- sum(d < lower)
   n_above <- sum(d > upper)
 
@@ -1359,7 +1393,9 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
     Wsum  <- as.numeric(tapply(d, cl, sum)[hh])
     Xbar  <- rowsum(X, group = cl)[hh, , drop = FALSE] / n_h
     d_h   <- Wsum / n_h                                  # common household weight
-    bnd_h <- cbind(lower / d_h, upper / d_h)
+    lo_h  <- as.numeric(tapply(lower, cl, function(x) x[1])[hh])  # bound per household
+    up_h  <- as.numeric(tapply(upper, cl, function(x) x[1])[hh])
+    bnd_h <- cbind(lo_h / d_h, up_h / d_h)
     gsol  <- .calib_ds(Xbar, Wsum, Tvec, calfun = step$calfun, bounds = bnd_h,
                        maxit = step$maxit, tol = step$tol)
     fh    <- as.numeric(gsol); names(fh) <- hh
@@ -1373,25 +1409,31 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
   achieved <- colSums(wa * X)
   rel_dev  <- abs(achieved - Tvec) / (abs(Tvec) + 1)
   conv_ok  <- isTRUE(attr(gsol, "converged")) && max(rel_dev) <= 1e-6
+  # bounds may be per-unit (subgroup `by`); label them as a single value when
+  # constant, else "by group", and count units at their OWN bound.
+  lo_lab <- if (length(unique(lower)) == 1L) format(lower[1]) else "by group"
+  up_lab <- if (length(unique(upper)) == 1L) format(upper[1]) else "by group"
   if (!conv_ok)
     warning(sprintf(paste0("Trimmed calibration could not both stay within ",
       "[%s, %s] and preserve every total (max relative deviation = %.2e). ",
       "The range may be infeasible; widen the bounds or relax the constraints."),
-      format(lower), format(upper), max(rel_dev)), call. = FALSE)
+      lo_lab, up_lab, max(rel_dev)), call. = FALSE)
   fin         <- c(lower, upper); fin <- fin[is.finite(fin)]
   tolb        <- 1e-6 * max(abs(fin), 1)          # scale from the finite bound(s)
-  n_at_lower  <- if (is.finite(lower)) sum(abs(wa - lower) <= tolb) else 0L
-  n_at_upper  <- if (is.finite(upper)) sum(abs(wa - upper) <= tolb) else 0L
+  n_at_lower  <- sum(is.finite(lower) & abs(wa - lower) <= tolb)
+  n_at_upper  <- sum(is.finite(upper) & abs(wa - upper) <= tolb)
   diag <- data.frame(variable = cn, target = round(Tvec, 2),
                      achieved = round(achieved, 2), stringsAsFactors = FALSE)
   attr(diag, "converged") <- conv_ok
   attr(diag, "note") <- sprintf(
     paste0("trimmed calibration to [%s, %s] (calfun = %s); %d weights raised to ",
            "lower, %d capped at upper; f (adjustment) in [%.3f, %.3f]%s"),
-    format(lower), format(upper), step$calfun, n_at_lower, n_at_upper,
+    lo_lab, up_lab, step$calfun, n_at_lower, n_at_upper,
     min(f), max(f), note_clust)
   attr(diag, "trim") <- data.frame(
-    lower = lower, upper = upper, calfun = step$calfun,
+    lower = if (length(unique(lower)) == 1L) lower[1] else NA_real_,
+    upper = if (length(unique(upper)) == 1L) upper[1] else NA_real_,
+    calfun = step$calfun,
     n_below_before = n_below, n_above_before = n_above,
     n_at_lower = n_at_lower, n_at_upper = n_at_upper,
     sum_before = round(sum(d), 2), sum_after = round(sum(wa), 2),

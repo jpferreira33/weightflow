@@ -1,3 +1,23 @@
+# weightflow 1.0.0.9000 (development version)
+
+## New features
+
+* **Differentiated (per-subgroup) trimming.** `step_trim_calibrated()` gains a
+  `by` argument: `lower` / `upper` may now be a single number (same bound for
+  every unit) or a named vector of bounds per subgroup (names = the `by` group
+  levels), so each subgroup is trimmed to its own absolute bounds while the
+  preserved totals of `formula` stay global. Thanks to Andrés Gutiérrez
+  (ECLAC - Statistics Division) for the request.
+
+## Bug fixes
+
+* **`step_trim(reference = "median", by = )` now uses each group's own median.**
+  The median (or mean) threshold was previously computed once over the whole
+  sample and only the redistribution of the trimmed excess was grouped by `by`;
+  the cap is now computed within each `by` group, so a differentiated trim uses
+  each subgroup's own median. Runs with `by = NULL` are unaffected (one group,
+  the whole sample).
+
 # weightflow 1.0.0
 
 ## New features

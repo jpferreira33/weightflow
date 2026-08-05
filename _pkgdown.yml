@@ -25,6 +25,10 @@ navbar:
 development:
   mode: auto
 
+authors:
+  sidebar:
+    roles: [aut, cre, ctb]
+
 articles:
 - title: Quick start
   navbar: Quick start

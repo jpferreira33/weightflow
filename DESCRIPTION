@@ -3,7 +3,8 @@ Title: Declarative API for Staged Survey Weights
 Version: 1.0.0
 Authors@R: c(
     person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy",
-           role = c("aut", "cre")),
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-1884-8187")),
     person("Andrés", "Gutiérrez", role = "ctb",
            comment = c(ORCID = "0009-0007-2918-1932",
                        affiliation = "ECLAC - Statistics Division")))

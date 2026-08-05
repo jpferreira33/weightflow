@@ -442,8 +442,8 @@
         else .t(" Each respondent was reweighted by the inverse of its estimated propensity.",
                 " Cada respondente se reponder\u00f3 por el inverso de su propensi\u00f3n estimada.", lang)
       txt <- .t(
-        sprintf("The nonresponse adjustment used a response-propensity model based on the <strong>%s</strong> algorithm%s, with predictors %s selected for their association with the response pattern and their availability in the frame.%s", step$engine, cf, vlab, cls),
-        sprintf("El ajuste por no respuesta us\u00f3 un modelo de propensi\u00f3n basado en el algoritmo <strong>%s</strong>%s, con las variables predictoras %s, elegidas por su asociaci\u00f3n con el patr\u00f3n de respuesta y su disponibilidad en el marco.%s", step$engine, cf, vlab, cls),
+        sprintf("The nonresponse adjustment used a response-propensity model based on the <strong>%s</strong> algorithm%s, with predictors %s selected for their association with the response pattern and their availability for every eligible case in the sample.%s", step$engine, cf, vlab, cls),
+        sprintf("El ajuste por no respuesta us\u00f3 un modelo de propensi\u00f3n basado en el algoritmo <strong>%s</strong>%s, con las variables predictoras %s, elegidas por su asociaci\u00f3n con el patr\u00f3n de respuesta y su disponibilidad para todos los casos elegibles en la muestra.%s", step$engine, cf, vlab, cls),
         lang)
     } else {
       tgt <- if (is.null(step$totals))
@@ -499,13 +499,37 @@
       "Se aplic\u00f3 calibraci\u00f3n asistida por modelo (Wu-Sitter): las predicciones del modelo de resultado se usaron como auxiliares y se calibraron a sus totales poblacionales, aprovechando la fuerza del modelo predictivo.",
       lang), " ", .deff_phrase(de1, de2, lang))
   } else if (inherits(step, "step_trim_calibrated")) {
-    rng <- sprintf("[%s, %s]", if (is.null(step$lower)) "-Inf" else format(step$lower),
-                   if (is.null(step$upper)) "Inf" else format(step$upper))
+    # Preserved totals are ONLY the formula's auxiliaries; `by` is the subgroup
+    # for the bounds, not a preserved total, so it must not appear in `vlab`.
+    fv   <- all.vars(step$formula)
+    vlab <- {
+      b <- sprintf("<strong>%s</strong>", .html_escape(fv))
+      if (length(b) <= 1L) paste(b, collapse = "")
+      else paste0(paste(b[-length(b)], collapse = ", "),
+                  .t(" and ", " y ", lang), b[length(b)])
+    }
+    per_group <- !is.null(step$by) &&
+      (length(step$lower) > 1L || length(step$upper) > 1L)
+    if (per_group) {
+      grps <- unique(c(names(step$lower), names(step$upper)))
+      pick <- function(b, g, d) if (is.null(b)) d
+                                else if (length(b) > 1L) format(b[[g]]) else format(b)
+      per  <- vapply(grps, function(g)
+        sprintf("%s [%s, %s]", g, pick(step$lower, g, "-Inf"), pick(step$upper, g, "Inf")),
+        character(1))
+      rlab <- .t(sprintf("with per-%s bounds (%s)", step$by, paste(per, collapse = "; ")),
+                 sprintf("con cotas por %s (%s)", step$by, paste(per, collapse = "; ")), lang)
+    } else {
+      lo <- if (is.null(step$lower)) "-Inf" else format(step$lower)
+      up <- if (is.null(step$upper)) "Inf"  else format(step$upper)
+      rlab <- .t(sprintf("into the range [%s, %s]", lo, up),
+                 sprintf("al rango [%s, %s]", lo, up), lang)
+    }
     integ <- if (isTRUE(step$equal_within_cluster))
       .t(", one factor per household", ", un factor por hogar", lang) else ""
     txt <- paste0(.t(
-      sprintf("The calibrated weights were trimmed into %s while preserving the calibration totals of %s (a range-restricted, totals-preserving re-calibration%s), so the trimming reduces extreme weights without breaking the calibration constraints.", rng, vlab, integ),
-      sprintf("Los pesos calibrados se recortaron al rango %s preservando los totales de calibraci\u00f3n de %s (una recalibraci\u00f3n acotada que conserva los totales%s), de modo que el recorte reduce los pesos extremos sin romper las restricciones de calibraci\u00f3n.", rng, vlab, integ),
+      sprintf("The calibrated weights were trimmed %s while preserving the calibration totals of %s (a range-restricted, totals-preserving re-calibration%s), so the trimming reduces extreme weights without breaking the calibration constraints.", rlab, vlab, integ),
+      sprintf("Los pesos calibrados se recortaron %s preservando los totales de calibraci\u00f3n de %s (una recalibraci\u00f3n acotada que conserva los totales%s), de modo que el recorte reduce los pesos extremos sin romper las restricciones de calibraci\u00f3n.", rlab, vlab, integ),
       lang), " ", .deff_phrase(de1, de2, lang))
   } else if (inherits(step, "step_trim_weights")) {
     rng <- sprintf("[%s, %s]", format(step$lower),
