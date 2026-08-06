@@ -73,7 +73,10 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     if (!psu %in% names(data)) stop(sprintf("PSU column '%s' not found.", psu))
     as.character(data[[psu]])
   }
-  if (lonely_psu == "collapse") st <- .collapse_lonely(st, cl)
+  if (lonely_psu == "collapse") {
+    cl <- paste(st, cl, sep = "||")     # nest PSU ids so distinct PSUs stay distinct after merging strata
+    st <- .collapse_lonely(st, cl)
+  }
   hs <- unique(st)
   if (!is.null(seed)) set.seed(seed)
 
@@ -281,7 +284,10 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
     if (!psu %in% names(data)) stop(sprintf("PSU column '%s' not found.", psu))
     as.character(data[[psu]])
   }
-  if (lonely_psu == "collapse") st <- .collapse_lonely(st, cl)
+  if (lonely_psu == "collapse") {
+    cl <- paste(st, cl, sep = "||")     # nest PSU ids so distinct PSUs stay distinct after merging strata
+    st <- .collapse_lonely(st, cl)
+  }
 
   # one replicate per PSU, in strata with >= 2 PSUs
   rep_stratum <- character(0); rep_psu <- character(0); rep_nh <- integer(0)

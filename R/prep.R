@@ -92,6 +92,16 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   rec <- attr(diag, "reconcile")
   if (!is.null(rec) && nzchar(rec)) msgs <- c(msgs, rec)
 
+  # An adjustment cell with no units to adjust to (no respondents / all unknown)
+  # gets an NA factor; the affected units were set to weight 0. Surface it.
+  if (!is.null(diag) && is.data.frame(diag) && "factor" %in% names(diag) &&
+      any(is.na(diag$factor)))
+    msgs <- c(msgs, sprintf(
+      paste0("%d adjustment cell(s) had no units to adjust to (no respondents, ",
+             "or all of unknown eligibility); the affected units were set to ",
+             "weight 0. Consider collapsing cells or using a coarser grouping."),
+      sum(is.na(diag$factor))))
+
   if (isTRUE(is_calib)) {
     neg <- sum(w_after < 0, na.rm = TRUE)
     if (neg > 0)

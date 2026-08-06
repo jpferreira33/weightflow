@@ -374,10 +374,8 @@ apply_step.step_unknown_eligibility <- function(step, data, w) {
       idx_kn  <- idx[!unknown[idx]]
       w_known <- sum(w[idx_kn])
       factor  <- if (w_known > 0) w_tot / w_known else NA_real_
-      if (!is.na(factor)) {
-        new_w[idx_kn]  <- w[idx_kn] * factor
-        new_w[idx_unk] <- 0
-      }
+      new_w[idx_unk] <- 0                       # unknowns are always redistributed away
+      if (!is.na(factor)) new_w[idx_kn] <- w[idx_kn] * factor
       diag[[length(diag) + 1]] <- data.frame(
         cell = g, level = "person", n_known = length(idx_kn),
         n_unknown = length(idx_unk), factor = factor, stringsAsFactors = FALSE
@@ -399,11 +397,9 @@ apply_step.step_unknown_eligibility <- function(step, data, w) {
       W_tot   <- sum(Wh)
       W_known <- sum(Wh[!unk_h])
       factor  <- if (W_known > 0) W_tot / W_known else NA_real_
-      if (!is.na(factor)) {
-        member_unknown <- clg %in% hh[unk_h]
-        new_w[idx[!member_unknown]] <- w[idx[!member_unknown]] * factor
-        new_w[idx[member_unknown]]  <- 0
-      }
+      member_unknown <- clg %in% hh[unk_h]
+      new_w[idx[member_unknown]]  <- 0          # unknown households always redistributed away
+      if (!is.na(factor)) new_w[idx[!member_unknown]] <- w[idx[!member_unknown]] * factor
       diag[[length(diag) + 1]] <- data.frame(
         cell = g, level = "household", n_known = sum(!unk_h),
         n_unknown = sum(unk_h), factor = factor, stringsAsFactors = FALSE
@@ -649,10 +645,8 @@ apply_step.step_nonresponse <- function(step, data, w) {
       w_resp   <- sum(w[idx_resp])
       w_tot    <- sum(w[idx])
       factor   <- if (w_resp > 0) w_tot / w_resp else NA_real_
-      if (!is.na(factor)) {
-        new_w[idx_resp] <- w[idx_resp] * factor
-        new_w[idx_nr]   <- 0
-      }
+      new_w[idx_nr] <- 0                        # nonrespondents dropped even if the cell has no respondents
+      if (!is.na(factor)) new_w[idx_resp] <- w[idx_resp] * factor
       diag[[length(diag) + 1]] <- data.frame(
         cell = g, n_respondents = length(idx_resp),
         n_nonresponse = length(idx_nr), factor = factor,
@@ -694,10 +688,8 @@ apply_step.step_nonresponse <- function(step, data, w) {
       w_resp    <- sum(w[idx_cl[resp_cl]])
       w_tot     <- sum(w[idx_cl])
       factor    <- if (w_resp > 0) w_tot / w_resp else NA_real_
-      if (!is.na(factor)) {
-        new_w[idx_cl[resp_cl]]  <- w[idx_cl[resp_cl]] * factor
-        new_w[idx_cl[!resp_cl]] <- 0
-      }
+      new_w[idx_cl[!resp_cl]] <- 0
+      if (!is.na(factor)) new_w[idx_cl[resp_cl]] <- w[idx_cl[resp_cl]] * factor
       diag[[length(diag) + 1]] <- data.frame(
         propensity_class = cl, n = length(idx_cl),
         mean_prop = mean(p[sel]), factor = factor,
@@ -802,6 +794,10 @@ apply_step.step_calibrate <- function(step, data, w) {
     # logit (calfun), which keeps g within `bounds`.
     d  <- new_w[active]
     X  <- stats::model.matrix(step$formula, data = data[active, , drop = FALSE])
+    if (nrow(X) != length(d) || anyNA(X))
+      stop("Auxiliaries in `formula` have missing values (NA) in the active ",
+           "sample; calibration needs a value for every unit. Impute them first, ",
+           "or calibrate on a complete auxiliary.")
     cn <- colnames(X)
     # `totals` may be given two ways:
     #   - tidy: a NAMED LIST (data frame per categorical, number per continuous)
@@ -1090,6 +1086,10 @@ apply_step.step_model_calibration <- function(step, data, w) {
 
   # Consistency block: X auxiliaries
   X  <- stats::model.matrix(step$x_formula, data = sdata)
+  if (nrow(X) != length(d) || anyNA(X))
+    stop("Auxiliaries in `x_formula` have missing values (NA) in the active ",
+         "sample; model calibration needs a value for every unit. Impute them ",
+         "first, or use a complete auxiliary.")
   cn <- colnames(X)
   # X totals may come from the frame (default) or from an external source.
   if (is.null(step$x_totals)) {

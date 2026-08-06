@@ -219,7 +219,7 @@ region_sex <- as.data.frame(table(region = population$region, sex = population$s
 step_calibrate(method = "poststratify", totals = region_sex, count = "Freq")
 ```
 
-When several margins disagree on the population total (a common rounding artefact
+When several margins disagree on the population total (a common rounding artifact
 of independently produced control totals), weightflow reconciles them to a common
 N and reports the adjustment, instead of failing or silently picking one.
 
