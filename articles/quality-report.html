@@ -50,6 +50,7 @@
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
@@ -200,7 +201,7 @@ padding:1px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
 &lt;/style&gt;&lt;/head&gt;&lt;body&gt;
 &lt;h1&gt;weightflow &amp;mdash; weighting recipe&lt;/h1&gt;
 &lt;p class='muted'&gt;Base weights: &lt;code&gt;pw&lt;/code&gt; &amp;nbsp;|&amp;nbsp; 5 steps&lt;/p&gt;
-&lt;p class='prov'&gt;Generated 2026-08-05 03:46 &amp;middot; weightflow 1.0.0 &amp;middot; R 4.6.1&lt;/p&gt;
+&lt;p class='prov'&gt;Generated 2026-08-06 01:51 &amp;middot; weightflow 1.0.0 &amp;middot; R 4.6.1&lt;/p&gt;
 &lt;div class='toc'&gt;&lt;strong&gt;Jump to:&lt;/strong&gt; &lt;a href='#pipeline'&gt;Pipeline&lt;/a&gt; &amp;middot; &lt;a href='#stages'&gt;Per-stage summary&lt;/a&gt; &amp;middot; &lt;a href='#weights'&gt;Weight distribution&lt;/a&gt; &amp;middot; &lt;a href='#steps'&gt;Steps&lt;/a&gt;&lt;/div&gt;
 &lt;div class='meta'&gt;&lt;h4&gt;Reference metadata (SIMS / GSBPM 5.6)&lt;/h4&gt;&lt;table class='params'&gt;&lt;tr&gt;&lt;td class='k'&gt;GSBPM sub-process&lt;/td&gt;&lt;td&gt;5.6 Calculate weights&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class='k'&gt;Statistical operation&lt;/td&gt;&lt;td&gt;Living Conditions Survey (illustrative)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class='k'&gt;Reference period&lt;/td&gt;&lt;td&gt;2024&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class='k'&gt;Geographic coverage&lt;/td&gt;&lt;td&gt;National&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class='k'&gt;Producer / unit&lt;/td&gt;&lt;td&gt;National Statistical Office&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class='k'&gt;Sampling frame / source&lt;/td&gt;&lt;td&gt;Master sample of dwellings&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class='k'&gt;Calibration totals: source&lt;/td&gt;&lt;td&gt;Population projections (2023)&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td class='k'&gt;Calibration totals: reference date&lt;/td&gt;&lt;td&gt;2024-06-30&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/div&gt;
 &lt;div class='cards'&gt;&lt;div class='metric'&gt;&lt;div class='mv'&gt;467&lt;/div&gt;&lt;div class='ml'&gt;Cases&lt;/div&gt;&lt;/div&gt;&lt;div class='metric'&gt;&lt;div class='mv'&gt;270&lt;/div&gt;&lt;div class='ml'&gt;Active (final)&lt;/div&gt;&lt;/div&gt;&lt;div class='metric'&gt;&lt;div class='mv'&gt;4,495&lt;/div&gt;&lt;div class='ml'&gt;Sum of weights&lt;/div&gt;&lt;/div&gt;&lt;div class='metric'&gt;&lt;div class='mv'&gt;1.256&lt;/div&gt;&lt;div class='ml'&gt;Final Kish deff&lt;/div&gt;&lt;/div&gt;&lt;div class='metric'&gt;&lt;div class='mv'&gt;215&lt;/div&gt;&lt;div class='ml'&gt;Effective n&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;

@@ -53,6 +53,7 @@
     <li><a class="dropdown-item" href="articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
@@ -93,6 +94,9 @@
 <p>Declarative, pipeable survey weighting in base R: from design weights to calibrated, model-assisted, variance-ready weights.</p>
 </blockquote>
 <p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
+<blockquote>
+<p><strong>Get it from CRAN</strong> — <code>install.packages("weightflow")</code> — or read the full documentation at the <a href="https://jpferreira33.github.io/weightflow/">project website</a>. Free and open source (MIT).</p>
+</blockquote>
 <p>Where does it fit? <code>survey</code> and <code>srvyr</code> are the standard tools for <em>analysing</em> data once you already have weights. weightflow sits one step earlier: it <em>builds</em> those weights from the design base weights, making every adjustment (eligibility, nonresponse, calibration, trimming) an explicit, auditable step, and then hands the result to <code>survey</code>/<code>srvyr</code> for inference.</p>
 <div class="section level2">
 <h2 id="what-makes-weightflow-different">What makes weightflow different<a class="anchor" aria-label="anchor" href="#what-makes-weightflow-different"></a>
@@ -455,6 +459,7 @@
 <li><a href="https://cloud.r-project.org/package=weightflow" class="external-link">View on CRAN</a></li>
 <li><a href="https://github.com/jpferreira33/weightflow/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/jpferreira33/weightflow/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://CRAN.R-project.org/package=weightflow" class="external-link">Install from CRAN</a></li>
 </ul>
 </div>
 

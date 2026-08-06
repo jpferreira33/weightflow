@@ -22,6 +22,8 @@
   totals](https://jpferreira33.github.io/weightflow/articles/calibration-totals.md):
 - [Model calibration (model-assisted
   weighting)](https://jpferreira33.github.io/weightflow/articles/model-calibration.md):
+- [Trimming survey
+  weights](https://jpferreira33.github.io/weightflow/articles/trimming.md):
 - [Machine learning, cross-fitting and robust
   calibration](https://jpferreira33.github.io/weightflow/articles/advanced-methods.md):
 
