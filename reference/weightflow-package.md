@@ -31,10 +31,12 @@ Useful links:
 ## Author
 
 **Maintainer**: Juan Pablo Ferreira <juanpablo.ferreira@fcea.edu.uy>
+([ORCID](https://orcid.org/0000-0002-1884-8187))
 
 Authors:
 
 - Juan Pablo Ferreira <juanpablo.ferreira@fcea.edu.uy>
+  ([ORCID](https://orcid.org/0000-0002-1884-8187))
 
 Other contributors:
 

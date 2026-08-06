@@ -15,18 +15,64 @@
 
 ### Bug fixes
 
+- **[`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  drops failed replicates before handing them to `survey`.** A replicate
+  whose recipe failed on that resample is stored as an NA column; the
+  bridge passed those NA columns straight to `survey`, so
+  [`svytotal()`](https://rdrr.io/pkg/survey/man/surveysummary.html) /
+  [`svymean()`](https://rdrr.io/pkg/survey/man/surveysummary.html)
+  returned NA standard errors and the `1/R` scale assumed all R
+  replicates were valid. It now drops the NA replicates, rescales to the
+  number of valid ones, and warns, matching how
+  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  /
+  [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  already handle failures.
+
+- **Partial-response households are flagged.** With household-level
+  nonresponse (`step_nonresponse(..., cluster = )`), a household counts
+  as a respondent only if every member responded (whole-household
+  nonresponse); a partially responding household is treated as
+  nonresponse and zeroed, including its responding members. This is by
+  design, but it was silent. A quality alert now reports how many
+  households responded partially and how many responding members were
+  discarded, so the assumption is visible (and points to person-level
+  nonresponse, i.e. dropping `cluster`, if that was intended).
+
+- **Extreme response propensities are now flagged.** A propensity model
+  can produce a very small `p` for a respondent (genuinely, or from a
+  degenerate cross-fitting fold whose predictions collapse to the `1e-6`
+  floor), giving a huge `1/p` weight that dominates the estimates.
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  now raises a quality alert (shown in
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md))
+  when the smallest respondent propensity falls below 0.01, recommending
+  a check of the model or trimming with
+  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md).
+  The propensities are not silently floored: the choice of whether to
+  trim stays explicit.
+
+- **Step conditions can use variables from the caller’s environment.**
+  An unquoted condition such as
+  `step_drop_ineligible(ineligible = x > cutoff)`, where `cutoff` lives
+  in the user’s session (not the data), failed at
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+  with an “object not found” error, because conditions were evaluated in
+  the base environment. The constructors now capture the caller’s
+  environment and use it, so external thresholds and helper values
+  resolve.
+
 - **[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
   errors on a misspelled `margins` variable.** A classic
   `margins`/post-stratification variable that was not a column of the
   data produced empty cells and a silent no-op (the step did nothing, no
-  error), so a typo could leave the weights uncalibrated without any
-  signal. The constructor now validates that every `margins` variable
-  exists in the data.
+  error), so a typo could silently skip the calibration. The constructor
+  now validates that every `margins` variable exists in the data.
 
-- **`tol` is now honoured in bounded and non-linear calibration.** For
+- **`tol` is now honored in bounded and non-linear calibration.** For
   `calfun = "raking"` / `"logit"` or with `bounds`,
   [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
-  and the calibration flavour of
+  and the calibration variant of
   [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
   ignored the user’s `tol` and always used the internal default; the
   tolerance now flows through to the solver.
@@ -37,7 +83,7 @@
   [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
   with `cores > 1` now force serial execution on Windows (where
   [`parallel::mclapply()`](https://rdrr.io/r/parallel/mclapply.html)
-  cannot fork), matching the documented behaviour.
+  cannot fork), matching the documented behavior.
 
 - **Input validation in the constructors.**
   [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)

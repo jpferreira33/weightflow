@@ -111,6 +111,15 @@ vector) given a weight vector and the data.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A data frame with <code>estimate</code>, <code>se</code>, <code>ci_lower</code>, <code>ci_upper</code>.</p>
     </div>
+    <div class="section level2">
+    <h2 id="note">Note<a class="anchor" aria-label="anchor" href="#note"></a></h2>
+    <p><code>jack_total()</code> / <code>jack_mean()</code> center the replicate deviations on the
+per-stratum mean of the deleted-PSU estimates (the standard JKn). The
+<code>survey</code> design built by <code><a href="as_svydesign.html">as_svrepdesign()</a></code> instead uses <code>mse = TRUE</code>, which
+centers on the point estimate. Both are legitimate, so the standard errors
+from <code>jack_total()</code> and from <code>svytotal()</code> on the same object can differ
+slightly.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

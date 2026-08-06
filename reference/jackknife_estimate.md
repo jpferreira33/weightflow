@@ -41,6 +41,16 @@ jack_mean(jack, variable)
 
 A data frame with `estimate`, `se`, `ci_lower`, `ci_upper`.
 
+## Note
+
+`jack_total()` / `jack_mean()` center the replicate deviations on the
+per-stratum mean of the deleted-PSU estimates (the standard JKn). The
+`survey` design built by
+[`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+instead uses `mse = TRUE`, which centers on the point estimate. Both are
+legitimate, so the standard errors from `jack_total()` and from
+`svytotal()` on the same object can differ slightly.
+
 ## Examples
 
 ``` r
