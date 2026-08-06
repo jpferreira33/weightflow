@@ -24,7 +24,8 @@ report_weighting(
 \item{open}{logical; open the file in the browser.}
 
 \item{plots}{logical; add per-step plots (weight before-vs-after scatter and
-adjustment-factor histogram). Uses ggplot2 if installed, else base graphics.}
+adjustment-factor histogram), drawn as self-contained inline SVG (no graphics
+device or extra package required).}
 
 \item{narrative}{logical; add an auto-generated methodological narrative -- an
 executive summary at the top and a natural-language paragraph on each step

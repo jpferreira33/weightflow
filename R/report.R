@@ -9,7 +9,9 @@
 .html_escape <- function(x) {
   x <- gsub("&", "&amp;", x, fixed = TRUE)
   x <- gsub("<", "&lt;",  x, fixed = TRUE)
-  gsub(">", "&gt;", x, fixed = TRUE)
+  x <- gsub(">", "&gt;", x, fixed = TRUE)
+  x <- gsub("\"", "&quot;", x, fixed = TRUE)
+  gsub("'", "&#39;", x, fixed = TRUE)
 }
 
 # Format a step parameter value into a readable string
@@ -515,10 +517,12 @@
       pick <- function(b, g, d) if (is.null(b)) d
                                 else if (length(b) > 1L) format(b[[g]]) else format(b)
       per  <- vapply(grps, function(g)
-        sprintf("%s [%s, %s]", g, pick(step$lower, g, "-Inf"), pick(step$upper, g, "Inf")),
+        sprintf("%s [%s, %s]", .html_escape(g), pick(step$lower, g, "-Inf"),
+                pick(step$upper, g, "Inf")),
         character(1))
-      rlab <- .t(sprintf("with per-%s bounds (%s)", step$by, paste(per, collapse = "; ")),
-                 sprintf("con cotas por %s (%s)", step$by, paste(per, collapse = "; ")), lang)
+      byl  <- .html_escape(step$by)
+      rlab <- .t(sprintf("with per-%s bounds (%s)", byl, paste(per, collapse = "; ")),
+                 sprintf("con cotas por %s (%s)", byl, paste(per, collapse = "; ")), lang)
     } else {
       lo <- if (is.null(step$lower)) "-Inf" else format(step$lower)
       up <- if (is.null(step$upper)) "Inf"  else format(step$upper)
@@ -871,7 +875,8 @@
 #' @param file output path; if NULL, a temporary .html file.
 #' @param open logical; open the file in the browser.
 #' @param plots logical; add per-step plots (weight before-vs-after scatter and
-#'   adjustment-factor histogram). Uses ggplot2 if installed, else base graphics.
+#'   adjustment-factor histogram), drawn as self-contained inline SVG (no graphics
+#'   device or extra package required).
 #' @param narrative logical; add an auto-generated methodological narrative -- an
 #'   executive summary at the top and a natural-language paragraph on each step
 #'   explaining what was done and why (built from the step's own parameters and

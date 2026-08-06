@@ -314,6 +314,26 @@ step_nonresponse <- function(spec, respondent,
       (!is.numeric(num_classes) || length(num_classes) != 1L || num_classes < 2))
     stop("`num_classes` must be NULL (continuous 1/p) or a single integer >= 2.")
 
+  # warn about arguments this method ignores, so incompatible combinations are
+  # not silently dropped (e.g. engine = "forest" with method = "weighting_class").
+  ignored <- character(0)
+  if (method != "propensity") {
+    if (!identical(engine, "logit")) ignored <- c(ignored, "engine")
+    if (!is.null(crossfit))          ignored <- c(ignored, "crossfit")
+  }
+  if (method == "weighting_class" && !is.null(formula))
+    ignored <- c(ignored, "formula")
+  if (method != "calibration") {
+    if (!identical(calfun, "linear")) ignored <- c(ignored, "calfun")
+    if (!is.null(bounds))             ignored <- c(ignored, "bounds")
+    if (!is.null(penalty))            ignored <- c(ignored, "penalty")
+    if (!is.null(totals))             ignored <- c(ignored, "totals")
+    if (isTRUE(equal_within_cluster)) ignored <- c(ignored, "equal_within_cluster")
+  }
+  if (length(ignored))
+    warning(sprintf("For method = \"%s\", these argument(s) are ignored: %s.",
+                    method, paste(unique(ignored), collapse = ", ")), call. = FALSE)
+
   if (method == "calibration") {
     # Calibration approach to nonresponse (two-phase; Sarndal & Lundstrom 2005).
     if (is.null(formula))

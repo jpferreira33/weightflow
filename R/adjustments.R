@@ -1620,11 +1620,12 @@ apply_step.step_rescale <- function(step, data, w) {
   cells <- prep$cells
   skey  <- prep$sample_key
 
+  idx_by <- split(which(active), skey[active])      # active rows per cell key, once
   diag <- vector("list", nrow(cells))
   for (i in seq_len(nrow(cells))) {
     key    <- cells$.key[i]
     target <- cells$.Freq[i]
-    idx <- which(skey == key & active)
+    idx <- idx_by[[key]]; if (is.null(idx)) idx <- integer(0)
     cur <- sum(new_w[idx])
     fac <- if (cur > 0) target / cur else NA_real_
     if (!is.na(fac)) new_w[idx] <- new_w[idx] * fac
@@ -1677,15 +1678,19 @@ apply_step.step_rescale <- function(step, data, w) {
   for (i in seq_along(margins_prep))          # rescale each margin to the common N
     margins_prep[[i]]$cells$.Freq <- margins_prep[[i]]$cells$.Freq * rec$factors[i]
 
+  # precompute the active row indices per cell key, once, for each margin
+  for (j in seq_along(margins_prep))
+    margins_prep[[j]]$idx <- split(which(active), margins_prep[[j]]$sample_key[active])
+
   it <- 0L; maxdiff <- Inf
   while (it < maxit && maxdiff >= tol) {
     it <- it + 1L; maxdiff <- 0
     for (m in margins_prep) {
-      skey <- m$sample_key
       for (i in seq_len(nrow(m$cells))) {
         key    <- m$cells$.key[i]
         target <- m$cells$.Freq[i]
-        idx <- which(skey == key & active)
+        idx <- m$idx[[key]]
+        if (is.null(idx)) next
         cur <- sum(new_w[idx])
         if (cur > 0) {
           adj        <- target / cur

@@ -25,10 +25,18 @@ A \code{survey.design} / \code{svyrep.design} object.
 }
 \description{
 \code{as_svydesign()} builds a linearization (ultimate-cluster) design from a
-prepped recipe; \code{as_svrepdesign()} builds a replicate-weights design from a
-bootstrap (\code{weightflow_boot}) or jackknife (\code{weightflow_jack}) object, so
-survey/srvyr standard errors include the recipe's adjustments. Both require
-the 'survey' package. With replicate weights you can then estimate any
-statistic for any domain (\code{svytotal}, \code{svymean}, \code{svyratio}, \code{svyby}, ...)
-with variances that reflect the whole recipe.
+prepped recipe, treating the final weights as fixed; \code{as_svrepdesign()} builds
+a replicate-weights design from a bootstrap (\code{weightflow_boot}) or jackknife
+(\code{weightflow_jack}) object. Both require the 'survey' package. With the
+replicate-weights design you can estimate any statistic for any domain
+(\code{svytotal}, \code{svymean}, \code{svyratio}, \code{svyby}, ...).
+}
+\details{
+Only \code{as_svrepdesign()} propagates the variability of the weighting adjustments
+(nonresponse, calibration, ...), because each replicate re-runs the whole
+recipe. \code{as_svydesign()} is design-based linearization on the \emph{fixed} final
+weights: its standard errors reflect the sampling design but treat the
+adjustments as known without error, so they are usually smaller. Use
+\code{as_svrepdesign()} (with \code{bootstrap_weights()} / \code{jackknife_weights()}) when
+the adjustment variability should be included.
 }

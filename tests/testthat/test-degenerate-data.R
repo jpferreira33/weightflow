@@ -30,6 +30,15 @@ test_that("linear/GREG calibration errors on NA auxiliaries (C2)", {
     "missing values")
 })
 
+test_that("step_nonresponse warns about ignored arguments", {
+  spec <- weighting_spec(data.frame(r = c(1, 0), region = c("A", "B"), pw = c(1, 1)),
+                         base_weights = pw)
+  expect_warning(
+    step_nonresponse(spec, respondent = r, method = "weighting_class",
+                     by = "region", engine = "forest"),
+    "ignored")
+})
+
 test_that("as_svrepdesign drops failed (NA) replicates (#7)", {
   skip_if_not_installed("survey")
   spec <- weighting_spec(sample_one, base_weights = pw) |>

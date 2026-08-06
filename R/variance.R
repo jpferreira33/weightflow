@@ -420,12 +420,19 @@ jack_mean <- function(jack, variable)
 #' Export weightflow weights to a survey design
 #'
 #' `as_svydesign()` builds a linearization (ultimate-cluster) design from a
-#' prepped recipe; `as_svrepdesign()` builds a replicate-weights design from a
-#' bootstrap (`weightflow_boot`) or jackknife (`weightflow_jack`) object, so
-#' survey/srvyr standard errors include the recipe's adjustments. Both require
-#' the 'survey' package. With replicate weights you can then estimate any
-#' statistic for any domain (`svytotal`, `svymean`, `svyratio`, `svyby`, ...)
-#' with variances that reflect the whole recipe.
+#' prepped recipe, treating the final weights as fixed; `as_svrepdesign()` builds
+#' a replicate-weights design from a bootstrap (`weightflow_boot`) or jackknife
+#' (`weightflow_jack`) object. Both require the 'survey' package. With the
+#' replicate-weights design you can estimate any statistic for any domain
+#' (`svytotal`, `svymean`, `svyratio`, `svyby`, ...).
+#'
+#' Only `as_svrepdesign()` propagates the variability of the weighting adjustments
+#' (nonresponse, calibration, ...), because each replicate re-runs the whole
+#' recipe. `as_svydesign()` is design-based linearization on the *fixed* final
+#' weights: its standard errors reflect the sampling design but treat the
+#' adjustments as known without error, so they are usually smaller. Use
+#' `as_svrepdesign()` (with `bootstrap_weights()` / `jackknife_weights()`) when
+#' the adjustment variability should be included.
 #'
 #' @param object for `as_svydesign`, a prepped recipe or a data frame with the
 #'   weight and design columns; for `as_svrepdesign`, a `weightflow_boot` or
