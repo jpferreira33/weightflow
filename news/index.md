@@ -15,6 +15,15 @@
 
 ### Bug fixes
 
+- **[`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  accepts both column names and formulas, and no longer warns.** It
+  built the design formulas with `as.formula(paste("~", x))`, which
+  failed on a formula input (e.g. `ids = ~psu`) and raised R’s
+  “formula(x) is deprecated for a character vector of length \> 1”
+  warning. It now uses
+  [`stats::reformulate()`](https://rdrr.io/r/stats/delete.response.html)
+  and passes formulas through unchanged.
+
 - **`step_trim(reference = "median", by = )` now uses each group’s own
   median.** The median (or mean) threshold was previously computed once
   over the whole sample and only the redistribution of the trimmed

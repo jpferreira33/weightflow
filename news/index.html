@@ -66,8 +66,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-1-0-0-9000">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-1-0-0-9000"></a></h3>
-<ul><li>
-<strong><code>step_trim(reference = "median", by = )</code> now uses each group’s own median.</strong> The median (or mean) threshold was previously computed once over the whole sample and only the redistribution of the trimmed excess was grouped by <code>by</code>; the cap is now computed within each <code>by</code> group, so a differentiated trim uses each subgroup’s own median. Runs with <code>by = NULL</code> are unaffected (one group, the whole sample).</li>
+<ul><li><p><strong><code><a href="../reference/as_svydesign.html">as_svydesign()</a></code> accepts both column names and formulas, and no longer warns.</strong> It built the design formulas with <code>as.formula(paste("~", x))</code>, which failed on a formula input (e.g. <code>ids = ~psu</code>) and raised R’s “formula(x) is deprecated for a character vector of length &gt; 1” warning. It now uses <code><a href="https://rdrr.io/r/stats/delete.response.html" class="external-link">stats::reformulate()</a></code> and passes formulas through unchanged.</p></li>
+<li><p><strong><code>step_trim(reference = "median", by = )</code> now uses each group’s own median.</strong> The median (or mean) threshold was previously computed once over the whole sample and only the redistribution of the trimmed excess was grouped by <code>by</code>; the cap is now computed within each <code>by</code> group, so a differentiated trim uses each subgroup’s own median. Runs with <code>by = NULL</code> are unaffected (one group, the whole sample).</p></li>
 </ul></div>
 </div>
     <div class="section level2">
