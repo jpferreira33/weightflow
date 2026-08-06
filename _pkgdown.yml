@@ -25,6 +25,11 @@ navbar:
 development:
   mode: auto
 
+home:
+  links:
+  - text: Install from CRAN
+    href: https://CRAN.R-project.org/package=weightflow
+
 authors:
   sidebar:
     roles: [aut, cre, ctb]
@@ -46,6 +51,7 @@ articles:
   - calibration
   - calibration-totals
   - model-calibration
+  - trimming
   - advanced-methods
 - title: Reporting
   navbar: Reporting

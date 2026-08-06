@@ -16,6 +16,10 @@
 re-applies the whole recipe on each replicate. It has **no hard dependencies**
 (base R, R >= 4.1) and bridges to `survey`/`srvyr` for design-based inference.
 
+> **Get it from CRAN** — `install.packages("weightflow")` — or read the full
+> documentation at the [project website](https://jpferreira33.github.io/weightflow/).
+> Free and open source (MIT).
+
 Where does it fit? `survey` and `srvyr` are the standard tools for *analysing*
 data once you already have weights. weightflow sits one step earlier: it
 *builds* those weights from the design base weights, making every adjustment
