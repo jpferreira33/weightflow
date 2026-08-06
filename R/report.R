@@ -1124,31 +1124,35 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; is the Kish effective sample size; deff = 1 + CV&sup2; = n / n_eff is the Kish design effect (n = active units). This report shows the weights only; for design-based inference (standard errors, confidence intervals) use the 'survey' or 'srvyr' package.",
     "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; es el tama\u00f1o de muestra efectivo de Kish; deff = 1 + CV&sup2; = n / n_eff es el efecto de dise\u00f1o de Kish (n = unidades activas). Este reporte muestra solo los pesos; para inferencia basada en el dise\u00f1o (errores est\u00e1ndar, intervalos de confianza) us\u00e1 el paquete 'survey' o 'srvyr'.",
     lang)
-  html <- sprintf("<!DOCTYPE html><html><head><meta charset='utf-8'>
-<title>weightflow report</title>%s</head><body>
-<h1>weightflow &mdash; weighting recipe</h1>
-<p class='muted'>Base weights: <code>%s</code> &nbsp;|&nbsp; %d steps</p>
-<p class='prov'>%s</p>
-%s
-%s
-<div class='cards'>%s</div>
-%s
-%s
-<h2 id='pipeline'>Pipeline</h2>%s
-<p class='muted'>Variables used:</p>%s
-<h2 id='stages'>Per-stage summary</h2>%s
-%s
-%s
-<h2 id='weights'>Weight distribution (final)</h2>%s
-<h2 id='steps'>Steps</h2>
-<details class='steps' open><summary>%s</summary>
-%s
-</details>
-%s
-%s
-<p class='foot'>%s</p>
-</body></html>", .report_css(), .html_escape(object$base_weights),
-    length(object$steps), prov, toc_html, meta_html, cards, racct, exec, diagram, vars_chips, stab_html, repl_html, domain_html, wdist, .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang), steps_html, drift, done_txt, foot_txt)
+  # HTML assembled by named interpolation (paste0), not a positional sprintf, so
+  # sections cannot be misaligned when one is added or removed.
+  html <- paste0(
+    "<!DOCTYPE html><html><head><meta charset='utf-8'>\n",
+    "<title>weightflow report</title>", .report_css(), "</head><body>\n",
+    "<h1>weightflow &mdash; weighting recipe</h1>\n",
+    "<p class='muted'>Base weights: <code>", .html_escape(object$base_weights),
+      "</code> &nbsp;|&nbsp; ", length(object$steps), " steps</p>\n",
+    "<p class='prov'>", prov, "</p>\n",
+    toc_html, "\n",
+    meta_html, "\n",
+    "<div class='cards'>", cards, "</div>\n",
+    racct, "\n",
+    exec, "\n",
+    "<h2 id='pipeline'>Pipeline</h2>", diagram, "\n",
+    "<p class='muted'>Variables used:</p>", vars_chips, "\n",
+    "<h2 id='stages'>Per-stage summary</h2>", stab_html, "\n",
+    repl_html, "\n",
+    domain_html, "\n",
+    "<h2 id='weights'>Weight distribution (final)</h2>", wdist, "\n",
+    "<h2 id='steps'>Steps</h2>\n",
+    "<details class='steps' open><summary>",
+      .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang),
+      "</summary>\n",
+    steps_html, "\n</details>\n",
+    drift, "\n",
+    done_txt, "\n",
+    "<p class='foot'>", foot_txt, "</p>\n",
+    "</body></html>")
 
   writeLines(html, file)
   if (open) try(utils::browseURL(file), silent = TRUE)
