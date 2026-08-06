@@ -38,8 +38,8 @@ report_weighting(
 - plots:
 
   logical; add per-step plots (weight before-vs-after scatter and
-  adjustment-factor histogram). Uses ggplot2 if installed, else base
-  graphics.
+  adjustment-factor histogram), drawn as self-contained inline SVG (no
+  graphics device or extra package required).
 
 - narrative:
 

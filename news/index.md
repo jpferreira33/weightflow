@@ -15,6 +15,36 @@
 
 ### Bug fixes
 
+- **[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  warns about ignored arguments.** Arguments that do not apply to the
+  chosen `method` (for example `engine`, `crossfit`, `formula`,
+  `calfun`, `bounds`, `penalty`, `totals`, `equal_within_cluster`) were
+  silently dropped; the constructor now warns which ones are ignored, so
+  an incompatible combination such as `engine = "forest"` with
+  `method = "weighting_class"` is not a silent no-op.
+
+- **HTML report: user data is fully escaped, and the docs are
+  accurate.** `.html_escape()` now also escapes quotes, and the `by`
+  column and group names in the trimmed-calibration narrative are
+  escaped, so a group named `A & B` (or with `<`) no longer breaks the
+  report. The `plots` argument is documented as inline SVG (not
+  ggplot2/base), and the
+  [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  /
+  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  help now states that only the replicate-weights design propagates the
+  adjustment variability
+  ([`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  uses linearization on the fixed final weights).
+
+- **Faster raking and post-stratification.** The iterative proportional
+  fitting and post-stratification loops recomputed each cell’s row
+  indices on every pass (`which(key == ... & active)`); the indices are
+  now precomputed once per margin
+  ([`split()`](https://rdrr.io/r/base/split.html)), removing the
+  dominant cost on large samples with fine margins. The weights are
+  unchanged.
+
 - **[`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
   drops failed replicates before handing them to `survey`.** A replicate
   whose recipe failed on that resample is stored as an NA column; the
