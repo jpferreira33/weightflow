@@ -15,6 +15,39 @@
 
 ### Bug fixes
 
+- **Cells with no respondents (or all of unknown eligibility) no longer
+  leak.** In
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  (weighting classes and propensity classes) and
+  [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md),
+  a cell whose adjustment factor was undefined (no respondents, or every
+  unit of unknown eligibility) skipped *both* the inflation and the
+  zeroing, so the affected units passed through the rest of the cascade
+  with their original weight and biased the totals. Those units are now
+  always set to weight 0, and the empty cell is flagged as a quality
+  alert (shown in
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+  and, with `prep(warn = TRUE)`, raised as a warning), recommending a
+  coarser grouping.
+
+- **`step_calibrate(method = "linear")` and
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
+  now error on missing auxiliaries.** With the classic (named-vector)
+  totals, [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html)
+  silently dropped rows with `NA` auxiliaries, leaving the design matrix
+  shorter than the weight vector; the solver then recycled and returned
+  corrupted weights with only a generic recycling warning. Both paths
+  now check for `NA` (the same guard the tidy and trimmed-calibration
+  paths already had) and stop with an informative message.
+
+- **`lonely_psu = "collapse"` no longer merges distinct PSUs.** When
+  single-PSU strata were pooled, the pseudo-stratum kept the original
+  PSU ids; with PSUs numbered within stratum (1, 2, …), two physically
+  distinct PSUs sharing an id were treated as one, so the bootstrap and
+  jackknife under-estimated the variance in the very option meant to be
+  conservative. PSU ids are now nested within their original stratum
+  before collapsing (the analogue of `survey`’s `nest = TRUE`).
+
 - **[`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
   accepts both column names and formulas, and no longer warns.** It
   built the design formulas with `as.formula(paste("~", x))`, which

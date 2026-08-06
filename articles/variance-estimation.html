@@ -202,13 +202,13 @@ replicates,</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>,  <span class="st">"income"</span><span class="op">)</span>     <span class="co"># mean income</span></span>
 <span><span class="co">#&gt;   estimate       se ci_lower ci_upper</span></span>
-<span><span class="co">#&gt; 1 21615.21 880.2396 19889.97 23340.45</span></span>
+<span><span class="co">#&gt; 1 21615.21 884.4228 19881.77 23348.65</span></span>
 <span><span class="fu"><a href="../reference/bootstrap_estimate.html">boot_total</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"employed"</span><span class="op">)</span>   <span class="co"># total employed</span></span>
 <span><span class="co">#&gt;   estimate       se ci_lower ci_upper</span></span>
-<span><span class="co">#&gt; 1 1927.219 145.0374 1642.951 2211.487</span></span>
+<span><span class="co">#&gt; 1 1927.219 145.0993  1642.83 2211.609</span></span>
 <span><span class="fu"><a href="../reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>,  <span class="st">"employed"</span><span class="op">)</span>   <span class="co"># employment rate</span></span>
 <span><span class="co">#&gt;    estimate         se  ci_lower  ci_upper</span></span>
-<span><span class="co">#&gt; 1 0.4287473 0.03211239 0.3658082 0.4916864</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 0.4287473 0.03228016 0.3654794 0.4920153</span></span></code></pre></div>
 <p>For any other statistic, pass a function of the weights and the data
 to <code><a href="../reference/bootstrap_estimate.html">bootstrap_estimate()</a></code>:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -217,7 +217,7 @@ to <code><a href="../reference/bootstrap_estimate.html">bootstrap_estimate()</a>
 <span>  <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">income</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span>, times <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">w</span><span class="op">[</span><span class="va">ok</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>   <span class="co"># weighted median (approx.)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   estimate       se ci_lower ci_upper</span></span>
-<span><span class="co">#&gt; 1    18136 973.0253 16228.91 20043.09</span></span></code></pre></div>
+<span><span class="co">#&gt; 1    18136 991.6204 16192.46 20079.54</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -238,7 +238,7 @@ survey, feed it the bootstrap replicate weights from method 1:</p>
 <code class="sourceCode R"><span><span class="va">rep_des</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_svydesign.html">as_svrepdesign</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span></span>
 <span><span class="fu">survey</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/surveysummary.html" class="external-link">svymean</a></span><span class="op">(</span><span class="op">~</span><span class="va">income</span>, <span class="va">rep_des</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         mean     SE</span></span>
-<span><span class="co">#&gt; income 21615 880.24</span></span></code></pre></div>
+<span><span class="co">#&gt; income 21615 884.42</span></span></code></pre></div>
 <p>This matches <code>boot_mean(boot, "income")</code> exactly, because
 <code><a href="../reference/as_svydesign.html">as_svrepdesign()</a></code> sets <code>scale = 1 / B</code>,
 <code>rscales = 1</code> and <code>mse = TRUE</code>.</p>
@@ -259,7 +259,7 @@ survey, feed it the bootstrap replicate weights from method 1:</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 2</span></span></span>
 <span><span class="co">#&gt;   mean_income mean_income_se</span></span>
 <span><span class="co">#&gt;         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>      <span style="text-decoration: underline;">21</span>615.           880.</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>      <span style="text-decoration: underline;">21</span>615.           884.</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="method-3-a-delete-a-psu-jackknife-that-re-applies-the-recipe">Method 3: a delete-a-PSU jackknife that re-applies the recipe<a class="anchor" aria-label="anchor" href="#method-3-a-delete-a-psu-jackknife-that-re-applies-the-recipe"></a>
@@ -282,10 +282,10 @@ stratified delete-a-PSU jackknife (JKn) with
 <span></span>
 <span><span class="fu"><a href="../reference/jackknife_estimate.html">jack_mean</a></span><span class="op">(</span><span class="va">jk</span>,  <span class="st">"income"</span><span class="op">)</span>     <span class="co"># mean income, with the JKn variance</span></span>
 <span><span class="co">#&gt;   estimate       se ci_lower ci_upper</span></span>
-<span><span class="co">#&gt; 1 21615.21 939.1042  19774.6 23455.82</span></span>
+<span><span class="co">#&gt; 1 21615.21 944.5971 19763.83 23466.59</span></span>
 <span><span class="fu"><a href="../reference/jackknife_estimate.html">jack_total</a></span><span class="op">(</span><span class="va">jk</span>, <span class="st">"employed"</span><span class="op">)</span>   <span class="co"># total employed</span></span>
 <span><span class="co">#&gt;   estimate       se ci_lower ci_upper</span></span>
-<span><span class="co">#&gt; 1 1927.219 155.2414 1622.952 2231.487</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 1927.219 153.9697 1625.444 2228.994</span></span></code></pre></div>
 <p>For a total it matches <code>survey</code>’s replicate jackknife
 exactly. As with the bootstrap, the replicate weights bridge to
 survey/srvyr through <code>as_svrepdesign(jk)</code>, so any estimand or

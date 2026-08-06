@@ -98,13 +98,13 @@ deviation across the $`B`$ replicates,
 
 boot_mean(boot,  "income")     # mean income
 #>   estimate       se ci_lower ci_upper
-#> 1 21615.21 880.2396 19889.97 23340.45
+#> 1 21615.21 884.4228 19881.77 23348.65
 boot_total(boot, "employed")   # total employed
 #>   estimate       se ci_lower ci_upper
-#> 1 1927.219 145.0374 1642.951 2211.487
+#> 1 1927.219 145.0993  1642.83 2211.609
 boot_mean(boot,  "employed")   # employment rate
 #>    estimate         se  ci_lower  ci_upper
-#> 1 0.4287473 0.03211239 0.3658082 0.4916864
+#> 1 0.4287473 0.03228016 0.3654794 0.4920153
 ```
 
 For any other statistic, pass a function of the weights and the data to
@@ -117,7 +117,7 @@ bootstrap_estimate(boot, function(w, d) {
   stats::median(rep(d$income[ok], times = round(w[ok])))   # weighted median (approx.)
 })
 #>   estimate       se ci_lower ci_upper
-#> 1    18136 973.0253 16228.91 20043.09
+#> 1    18136 991.6204 16192.46 20079.54
 ```
 
 ## Method 2: hand the weights to the survey package
@@ -143,7 +143,7 @@ survey, feed it the bootstrap replicate weights from method 1:
 rep_des <- as_svrepdesign(boot)
 survey::svymean(~income, rep_des, na.rm = TRUE)
 #>         mean     SE
-#> income 21615 880.24
+#> income 21615 884.42
 ```
 
 This matches `boot_mean(boot, "income")` exactly, because
@@ -167,7 +167,7 @@ srvyr::summarise(d_rep, mean_income = srvyr::survey_mean(income, na.rm = TRUE))
 #> # A tibble: 1 × 2
 #>   mean_income mean_income_se
 #>         <dbl>          <dbl>
-#> 1      21615.           880.
+#> 1      21615.           884.
 ```
 
 ## Method 3: a delete-a-PSU jackknife that re-applies the recipe
@@ -192,10 +192,10 @@ jk
 
 jack_mean(jk,  "income")     # mean income, with the JKn variance
 #>   estimate       se ci_lower ci_upper
-#> 1 21615.21 939.1042  19774.6 23455.82
+#> 1 21615.21 944.5971 19763.83 23466.59
 jack_total(jk, "employed")   # total employed
 #>   estimate       se ci_lower ci_upper
-#> 1 1927.219 155.2414 1622.952 2231.487
+#> 1 1927.219 153.9697 1625.444 2228.994
 ```
 
 For a total it matches `survey`’s replicate jackknife exactly. As with
