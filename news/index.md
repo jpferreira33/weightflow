@@ -15,6 +15,39 @@
 
 ### Bug fixes
 
+- **[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+  errors on a misspelled `margins` variable.** A classic
+  `margins`/post-stratification variable that was not a column of the
+  data produced empty cells and a silent no-op (the step did nothing, no
+  error), so a typo could leave the weights uncalibrated without any
+  signal. The constructor now validates that every `margins` variable
+  exists in the data.
+
+- **`tol` is now honoured in bounded and non-linear calibration.** For
+  `calfun = "raking"` / `"logit"` or with `bounds`,
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+  and the calibration flavour of
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  ignored the user’s `tol` and always used the internal default; the
+  tolerance now flows through to the solver.
+
+- **Parallel replicates fall back to serial on Windows.**
+  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  /
+  [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+  with `cores > 1` now force serial execution on Windows (where
+  [`parallel::mclapply()`](https://rdrr.io/r/parallel/mclapply.html)
+  cannot fork), matching the documented behaviour.
+
+- **Input validation in the constructors.**
+  [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)
+  now rejects negative base weights and warns on zeros (which start
+  inactive), and
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  validates `num_classes` (NULL or an integer \>= 2) instead of failing
+  later with a cryptic error from
+  [`cut()`](https://rdrr.io/r/base/cut.html).
+
 - **Cells with no respondents (or all of unknown eligibility) no longer
   leak.** In
   [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
