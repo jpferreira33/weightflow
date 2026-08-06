@@ -433,7 +433,8 @@ as_svydesign <- function(object, ids, strata = NULL, weight_name = ".weight", ..
       stop(sprintf("Column '%s' not found; pass weight_name=.", weight_name))
   } else stop("`object` must be a prepped recipe or a data frame.")
   df <- df[df[[weight_name]] > 0, , drop = FALSE]            # drop inactive units
-  f  <- function(v) stats::as.formula(paste("~", v))
+  # accept either a bare column name (string) or a formula; build a safe formula
+  f  <- function(v) if (inherits(v, "formula")) v else stats::reformulate(v)
   survey::svydesign(ids = f(ids), strata = if (is.null(strata)) NULL else f(strata),
                     weights = f(weight_name), data = df, nest = TRUE, ...)
 }
