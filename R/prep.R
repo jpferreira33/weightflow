@@ -102,6 +102,25 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
              "weight 0. Consider collapsing cells or using a coarser grouping."),
       sum(is.na(diag$factor))))
 
+  # Very small response propensities blow up the 1/p weights; flag it.
+  pm <- attr(diag, "p_min")
+  if (!is.null(pm) && is.finite(pm) && pm < 0.01)
+    msgs <- c(msgs, sprintf(
+      paste0("Very small response propensities (min p = %.4f among respondents) ",
+             "produce extreme 1/p weights (up to %.0fx). Check the propensity model, ",
+             "or trim with step_trim_weights()."),
+      pm, 1 / pm))
+
+  # Partial-response households treated as whole-household nonresponse: flag how
+  # many responding members were discarded (so the assumption is visible).
+  ph <- attr(diag, "partial_hh")
+  if (!is.null(ph) && ph > 0)
+    msgs <- c(msgs, sprintf(
+      paste0("%d household(s) responded only partially and were treated as ",
+             "whole-household nonresponse, discarding %d responding member(s). ",
+             "If you meant person-level nonresponse, drop `cluster`."),
+      ph, attr(diag, "discarded_resp")))
+
   if (isTRUE(is_calib)) {
     neg <- sum(w_after < 0, na.rm = TRUE)
     if (neg > 0)

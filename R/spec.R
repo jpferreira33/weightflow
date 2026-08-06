@@ -75,7 +75,8 @@ step_unknown_eligibility <- function(spec, unknown, by = NULL, cluster = NULL) {
                 else sprintf("unknown eligibility (by %s)", cluster),
       unknown = substitute(unknown),
       by      = by,
-      cluster = cluster
+      cluster = cluster,
+      env     = parent.frame()
     ),
     class = c("step_unknown_eligibility", "weighting_step")
   )
@@ -131,7 +132,7 @@ step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
     stop("Provide only one of `prob` or `n_eligible`.")
   step <- structure(
     list(label = "within-household selection", prob = p,
-         n_eligible = k, n_selected = m),
+         n_eligible = k, n_selected = m, env = parent.frame()),
     class = c("step_select_within", "weighting_step")
   )
   .add_step(spec, step)
@@ -164,7 +165,8 @@ step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_drop_ineligible <- function(spec, ineligible) {
   step <- structure(
-    list(label = "drop ineligible", ineligible = substitute(ineligible)),
+    list(label = "drop ineligible", ineligible = substitute(ineligible),
+         env = parent.frame()),
     class = c("step_drop_ineligible", "weighting_step")
   )
   .add_step(spec, step)
@@ -349,6 +351,7 @@ step_nonresponse <- function(spec, respondent,
     list(
       label       = label,
       respondent  = substitute(respondent),
+      env         = parent.frame(),
       method      = method,
       by          = by,
       formula     = formula,

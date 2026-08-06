@@ -33,6 +33,14 @@ where \eqn{\theta_{(hi)}} is the estimate with PSU \eqn{i} of stratum \eqn{h}
 deleted and \eqn{\bar\theta_h} the mean of those over the stratum. No finite
 population correction is applied.
 }
+\note{
+\code{jack_total()} / \code{jack_mean()} center the replicate deviations on the
+per-stratum mean of the deleted-PSU estimates (the standard JKn). The
+\code{survey} design built by \code{as_svrepdesign()} instead uses \code{mse = TRUE}, which
+centers on the point estimate. Both are legitimate, so the standard errors
+from \code{jack_total()} and from \code{svytotal()} on the same object can differ
+slightly.
+}
 \examples{
 spec <- weighting_spec(sample_one, base_weights = pw) |>
   step_calibrate(method = "raking",

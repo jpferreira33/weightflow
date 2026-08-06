@@ -359,6 +359,12 @@ print.weightflow_jack <- function(x, ...) {
 #' @param level confidence level for the (normal) interval.
 #' @param variable name of the variable to estimate (for `jack_total`/`jack_mean`).
 #' @return A data frame with `estimate`, `se`, `ci_lower`, `ci_upper`.
+#' @note `jack_total()` / `jack_mean()` center the replicate deviations on the
+#'   per-stratum mean of the deleted-PSU estimates (the standard JKn). The
+#'   `survey` design built by `as_svrepdesign()` instead uses `mse = TRUE`, which
+#'   centers on the point estimate. Both are legitimate, so the standard errors
+#'   from `jack_total()` and from `svytotal()` on the same object can differ
+#'   slightly.
 #' @examples
 #' spec <- weighting_spec(sample_one, base_weights = pw) |>
 #'   step_calibrate(method = "raking",
@@ -452,22 +458,35 @@ as_svrepdesign <- function(object, ...) {
   if (!requireNamespace("survey", quietly = TRUE))
     stop("Install the 'survey' package to use as_svrepdesign().")
   keep <- object$weights > 0
+  rw    <- object$replicates[keep, , drop = FALSE]
+  valid <- which(!apply(rw, 2, anyNA))              # drop failed replicates (NA columns)
+  ndrop <- ncol(rw) - length(valid)
+  if (!length(valid))
+    stop("All replicates have NA weights (every replicate failed); cannot build a ",
+         "replicate design.")
+  if (ndrop > 0L)
+    warning(sprintf(paste0("%d failed replicate(s) with NA weights were dropped ",
+                           "from the survey design; the scale is set to 1/%d valid ",
+                           "replicates."), ndrop, length(valid)), call. = FALSE)
+  rw <- rw[, valid, drop = FALSE]
+  Rv <- length(valid)
   if (inherits(object, "weightflow_boot")) {
     survey::svrepdesign(
       data = object$data[keep, , drop = FALSE],
       weights = object$weights[keep],
-      repweights = object$replicates[keep, , drop = FALSE],
+      repweights = rw,
       type = "bootstrap", combined.weights = TRUE,
-      scale = 1 / object$R, rscales = rep(1, object$R), mse = TRUE, ...)
+      scale = 1 / Rv, rscales = rep(1, Rv), mse = TRUE, ...)
   } else if (inherits(object, "weightflow_jack")) {
     # delete-a-PSU jackknife: full (combined) replicate weights with per-replicate
-    # scale (n_h - 1)/n_h; survey centres at the point estimate (mse = TRUE).
+    # scale (n_h - 1)/n_h; survey centers at the point estimate (mse = TRUE).
     survey::svrepdesign(
       data = object$data[keep, , drop = FALSE],
       weights = object$weights[keep],
-      repweights = object$replicates[keep, , drop = FALSE],
+      repweights = rw,
       type = "other", combined.weights = TRUE,
-      scale = 1, rscales = (object$rep_nh - 1) / object$rep_nh, mse = TRUE, ...)
+      scale = 1, rscales = ((object$rep_nh - 1) / object$rep_nh)[valid],
+      mse = TRUE, ...)
   } else {
     stop("`object` must be a weightflow_boot or weightflow_jack object.")
   }

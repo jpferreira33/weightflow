@@ -7,9 +7,10 @@
 
 # Evaluate a captured condition against the data ----------------------------
 # Accepts a logical expression OR a 0/1 dummy column (coerced to logical).
-.eval_cond <- function(expr, data) {
+.eval_cond <- function(expr, data, env = baseenv()) {
   if (is.null(expr)) return(NULL)
-  out <- eval(expr, envir = data, enclos = baseenv())
+  if (is.null(env)) env <- baseenv()
+  out <- eval(expr, envir = data, enclos = env)
   if (is.numeric(out)) {
     if (!all(out %in% c(0, 1, NA)))
       stop("A 0/1 dummy was expected, but other values were found.")
@@ -358,7 +359,7 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
 # --- Unknown eligibility ---------------------------------------------------
 apply_step.step_unknown_eligibility <- function(step, data, w) {
   n       <- length(w)
-  unknown <- .eval_cond(step$unknown, data)
+  unknown <- .eval_cond(step$unknown, data, step$env)
   cells   <- .make_cells(data, step$by, n)
   active  <- w > 0                       # only still-active cases
   new_w   <- w
@@ -411,18 +412,19 @@ apply_step.step_unknown_eligibility <- function(step, data, w) {
 
 # --- Within-household (sub)selection ---------------------------------------
 apply_step.step_select_within <- function(step, data, w) {
+  ecenv  <- if (is.null(step$env)) baseenv() else step$env
   active <- w > 0
   new_w  <- w
   if (!is.null(step$prob)) {
-    p <- as.numeric(eval(step$prob, envir = data, enclos = baseenv()))
+    p <- as.numeric(eval(step$prob, envir = data, enclos = ecenv))
     if (any(is.na(p[active])) || any(p[active] <= 0 | p[active] > 1))
       stop("`prob` must be a within-household selection probability in (0, 1].")
     fac <- 1 / p
     lbl <- "1/prob"
   } else {
-    k <- as.numeric(eval(step$n_eligible, envir = data, enclos = baseenv()))
+    k <- as.numeric(eval(step$n_eligible, envir = data, enclos = ecenv))
     m <- if (is.null(step$n_selected)) rep(1, length(k))
-         else as.numeric(eval(step$n_selected, envir = data, enclos = baseenv()))
+         else as.numeric(eval(step$n_selected, envir = data, enclos = ecenv))
     if (length(m) == 1L) m <- rep(m, length(k))
     if (any(is.na(k[active])) || any(k[active] < 1))
       stop("`n_eligible` must be >= 1.")
@@ -453,6 +455,11 @@ apply_step.step_select_within <- function(step, data, w) {
   Wh     <- tapply(w[idx_el], cl, mean)            # one weight per household
   resp_h <- tapply(respondent[idx_el], cl, all)    # household responded (whole roster)
   hhn    <- names(Wh)
+  # partial-response households (some responded, not all) are treated as household
+  # nonresponse; record how many responding members that discards, to flag it.
+  resp_any_h  <- tapply(respondent[idx_el], cl, any)
+  n_partial   <- sum(as.logical(resp_any_h[hhn]) & !as.logical(resp_h[hhn]))
+  n_discarded <- sum(respondent[idx_el] & !as.logical(resp_h[cl]))
   Wh     <- as.numeric(Wh[hhn]); resp_h <- as.logical(resp_h[hhn])
   factor_h <- rep(NA_real_, length(hhn)); names(factor_h) <- hhn
 
@@ -503,13 +510,15 @@ apply_step.step_select_within <- function(step, data, w) {
   }
 
   new_w[idx_el] <- w[idx_el] * factor_h[cl]         # assign household factor to members
+  attr(diag, "partial_hh")     <- n_partial
+  attr(diag, "discarded_resp") <- n_discarded
   list(weights = new_w, diagnostics = diag)
 }
 
 # --- Drop ineligible (out-of-scope) units ----------------------------------
 apply_step.step_drop_ineligible <- function(step, data, w) {
   active <- w > 0
-  inelig <- .eval_cond(step$ineligible, data)
+  inelig <- .eval_cond(step$ineligible, data, step$env)
   new_w  <- w
   drop   <- active & inelig
   new_w[drop] <- 0                       # discarded, NOT redistributed
@@ -623,7 +632,7 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
 
 apply_step.step_nonresponse <- function(step, data, w) {
   n          <- length(w)
-  respondent <- .eval_cond(step$respondent, data)
+  respondent <- .eval_cond(step$respondent, data, step$env)
   eligible   <- w > 0                    # reach this stage alive
 
   if (step$method == "calibration")      # calibration approach (two-phase)
@@ -698,6 +707,7 @@ apply_step.step_nonresponse <- function(step, data, w) {
     }
     diag <- do.call(rbind, diag)
   }
+  attr(diag, "p_min") <- min(p[resp_el], na.rm = TRUE)   # smallest propensity among respondents (drives 1/p)
   list(weights = new_w, diagnostics = diag)
 }
 
