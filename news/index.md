@@ -6,172 +6,57 @@
 
 - **Differentiated (per-subgroup) trimming.**
   [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
-  gains a `by` argument: `lower` / `upper` may now be a single number
-  (same bound for every unit) or a named vector of bounds per subgroup
-  (names = the `by` group levels), so each subgroup is trimmed to its
-  own absolute bounds while the preserved totals of `formula` stay
-  global. Thanks to Andrés Gutiérrez (ECLAC - Statistics Division) for
-  the request.
+  gains a `by` argument, and `lower` / `upper` may be a named vector of
+  bounds per subgroup, so each subgroup is trimmed to its own bounds
+  while the preserved totals of `formula` stay global. On a suggestion
+  by Andrés Gutiérrez (ECLAC - Statistics Division).
 
 ### Bug fixes
 
-- **[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  warns about ignored arguments.** Arguments that do not apply to the
-  chosen `method` (for example `engine`, `crossfit`, `formula`,
-  `calfun`, `bounds`, `penalty`, `totals`, `equal_within_cluster`) were
-  silently dropped; the constructor now warns which ones are ignored, so
-  an incompatible combination such as `engine = "forest"` with
-  `method = "weighting_class"` is not a silent no-op.
-
-- **HTML report: user data is fully escaped, and the docs are
-  accurate.** `.html_escape()` now also escapes quotes, and the `by`
-  column and group names in the trimmed-calibration narrative are
-  escaped, so a group named `A & B` (or with `<`) no longer breaks the
-  report. The `plots` argument is documented as inline SVG (not
-  ggplot2/base), and the
-  [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  /
-  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  help now states that only the replicate-weights design propagates the
-  adjustment variability
-  ([`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  uses linearization on the fixed final weights).
-
-- **Faster raking and post-stratification.** The iterative proportional
-  fitting and post-stratification loops recomputed each cell’s row
-  indices on every pass (`which(key == ... & active)`); the indices are
-  now precomputed once per margin
-  ([`split()`](https://rdrr.io/r/base/split.html)), removing the
-  dominant cost on large samples with fine margins. The weights are
-  unchanged.
-
-- **[`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  drops failed replicates before handing them to `survey`.** A replicate
-  whose recipe failed on that resample is stored as an NA column; the
-  bridge passed those NA columns straight to `survey`, so
-  [`svytotal()`](https://rdrr.io/pkg/survey/man/surveysummary.html) /
-  [`svymean()`](https://rdrr.io/pkg/survey/man/surveysummary.html)
-  returned NA standard errors and the `1/R` scale assumed all R
-  replicates were valid. It now drops the NA replicates, rescales to the
-  number of valid ones, and warns, matching how
-  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
-  /
-  [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
-  already handle failures.
-
-- **Partial-response households are flagged.** With household-level
-  nonresponse (`step_nonresponse(..., cluster = )`), a household counts
-  as a respondent only if every member responded (whole-household
-  nonresponse); a partially responding household is treated as
-  nonresponse and zeroed, including its responding members. This is by
-  design, but it was silent. A quality alert now reports how many
-  households responded partially and how many responding members were
-  discarded, so the assumption is visible (and points to person-level
-  nonresponse, i.e. dropping `cluster`, if that was intended).
-
-- **Extreme response propensities are now flagged.** A propensity model
-  can produce a very small `p` for a respondent (genuinely, or from a
-  degenerate cross-fitting fold whose predictions collapse to the `1e-6`
-  floor), giving a huge `1/p` weight that dominates the estimates.
-  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  now raises a quality alert (shown in
-  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md))
-  when the smallest respondent propensity falls below 0.01, recommending
-  a check of the model or trimming with
-  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md).
-  The propensities are not silently floored: the choice of whether to
-  trim stays explicit.
-
-- **Step conditions can use variables from the caller’s environment.**
-  An unquoted condition such as
-  `step_drop_ineligible(ineligible = x > cutoff)`, where `cutoff` lives
-  in the user’s session (not the data), failed at
-  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
-  with an “object not found” error, because conditions were evaluated in
-  the base environment. The constructors now capture the caller’s
-  environment and use it, so external thresholds and helper values
-  resolve.
-
-- **[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
-  errors on a misspelled `margins` variable.** A classic
-  `margins`/post-stratification variable that was not a column of the
-  data produced empty cells and a silent no-op (the step did nothing, no
-  error), so a typo could silently skip the calibration. The constructor
-  now validates that every `margins` variable exists in the data.
-
-- **`tol` is now honored in bounded and non-linear calibration.** For
-  `calfun = "raking"` / `"logit"` or with `bounds`,
-  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
-  and the calibration variant of
-  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  ignored the user’s `tol` and always used the internal default; the
-  tolerance now flows through to the solver.
-
-- **Parallel replicates fall back to serial on Windows.**
-  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
-  /
-  [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
-  with `cores > 1` now force serial execution on Windows (where
-  [`parallel::mclapply()`](https://rdrr.io/r/parallel/mclapply.html)
-  cannot fork), matching the documented behavior.
-
-- **Input validation in the constructors.**
-  [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)
-  now rejects negative base weights and warns on zeros (which start
-  inactive), and
-  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  validates `num_classes` (NULL or an integer \>= 2) instead of failing
-  later with a cryptic error from
-  [`cut()`](https://rdrr.io/r/base/cut.html).
-
-- **Cells with no respondents (or all of unknown eligibility) no longer
-  leak.** In
-  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  (weighting classes and propensity classes) and
-  [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md),
-  a cell whose adjustment factor was undefined (no respondents, or every
-  unit of unknown eligibility) skipped *both* the inflation and the
-  zeroing, so the affected units passed through the rest of the cascade
-  with their original weight and biased the totals. Those units are now
-  always set to weight 0, and the empty cell is flagged as a quality
-  alert (shown in
-  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
-  and, with `prep(warn = TRUE)`, raised as a warning), recommending a
-  coarser grouping.
-
-- **`step_calibrate(method = "linear")` and
+- **Correctness on degenerate inputs.** Units in an adjustment cell with
+  no respondents (or all of unknown eligibility) are now set to weight 0
+  instead of passing through with their original weight;
+  `step_calibrate(method = "linear")` and
   [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
-  now error on missing auxiliaries.** With the classic (named-vector)
-  totals, [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html)
-  silently dropped rows with `NA` auxiliaries, leaving the design matrix
-  shorter than the weight vector; the solver then recycled and returned
-  corrupted weights with only a generic recycling warning. Both paths
-  now check for `NA` (the same guard the tidy and trimmed-calibration
-  paths already had) and stop with an informative message.
+  error on `NA` auxiliaries instead of silently returning corrupted
+  weights (recycling); and `lonely_psu = "collapse"` nests PSU ids
+  within their original stratum, so two distinct PSUs are no longer
+  merged (which had under-estimated the variance).
+  `step_trim(reference = "median", by = )` now uses each group’s own
+  median.
 
-- **`lonely_psu = "collapse"` no longer merges distinct PSUs.** When
-  single-PSU strata were pooled, the pseudo-stratum kept the original
-  PSU ids; with PSUs numbered within stratum (1, 2, …), two physically
-  distinct PSUs sharing an id were treated as one, so the bootstrap and
-  jackknife under-estimated the variance in the very option meant to be
-  conservative. PSU ids are now nested within their original stratum
-  before collapsing (the analogue of `survey`’s `nest = TRUE`).
+- **Clearer failures and validation.**
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+  errors on a `margins` variable that is not a column of the data (was a
+  silent no-op);
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  warns about arguments ignored by the chosen `method`;
+  [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)
+  rejects negative base weights and
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
+  validates `num_classes`; step conditions now resolve variables from
+  the caller’s environment; and `tol` is honored in bounded and
+  non-linear calibration.
 
-- **[`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  accepts both column names and formulas, and no longer warns.** It
-  built the design formulas with `as.formula(paste("~", x))`, which
-  failed on a formula input (e.g. `ids = ~psu`) and raised R’s
-  “formula(x) is deprecated for a character vector of length \> 1”
-  warning. It now uses
-  [`stats::reformulate()`](https://rdrr.io/r/stats/delete.response.html)
-  and passes formulas through unchanged.
+- **New quality alerts.** The report now flags very small response
+  propensities (extreme `1/p` weights, from a poor model or a degenerate
+  cross-fitting fold) and partially-responding households (treated as
+  whole-household nonresponse, which discards responding members).
 
-- **`step_trim(reference = "median", by = )` now uses each group’s own
-  median.** The median (or mean) threshold was previously computed once
-  over the whole sample and only the redistribution of the trimmed
-  excess was grouped by `by`; the cap is now computed within each `by`
-  group, so a differentiated trim uses each subgroup’s own median. Runs
-  with `by = NULL` are unaffected (one group, the whole sample).
+- **`survey` bridge.**
+  [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  accepts formulas (no deprecation warning), and its help clarifies that
+  only the replicate-weights design propagates the adjustment
+  variability;
+  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  drops failed (`NA`) replicates and rescales to the valid ones;
+  parallel replicates fall back to serial on Windows.
+
+- **Report and performance.** User-supplied group names and the `by`
+  column are HTML-escaped, the report template uses named interpolation
+  (no positional mismatch), and raking / post-stratification precompute
+  the cell indices, which is much faster on large samples with fine
+  margins.
 
 ## weightflow 1.0.0
 
@@ -205,8 +90,8 @@ CRAN release: 2026-08-04
   adjustment and not the model fit – useful when the weights are
   unrelated to response given the covariates (Little & Vartivarian
   2003). Works at unit and household (cluster) level and across all
-  engines. Thanks to Andrés Gutiérrez (ECLAC - Statistics Division) for
-  the suggestion.
+  engines. On a suggestion by Andrés Gutiérrez (ECLAC - Statistics
+  Division).
 
 - **Nonresponse by calibration (two-phase).**
   [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
