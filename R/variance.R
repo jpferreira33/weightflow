@@ -154,6 +154,7 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
 # (cores > 1). Kept dependency-free: `parallel` is a base R package.
 .par_lapply <- function(x, fun, cores = 1L, progress = FALSE, label = "") {
   cores <- max(1L, as.integer(cores))
+  if (cores > 1L && .Platform$OS.type == "windows") cores <- 1L   # mclapply has no forking on Windows
   if (cores > 1L && requireNamespace("parallel", quietly = TRUE)) {
     return(parallel::mclapply(x, fun, mc.cores = cores, mc.preschedule = TRUE))
   }

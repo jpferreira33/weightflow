@@ -18,6 +18,10 @@ weighting_spec <- function(data, base_weights) {
   if (!is.data.frame(data)) stop("`data` must be a data.frame.")
   if (!bw %in% names(data)) stop(sprintf("Base-weight column '%s' not found in the data.", bw))
   if (any(is.na(data[[bw]]))) stop("Base weights cannot contain NA.")
+  if (any(data[[bw]] < 0)) stop("Base weights cannot be negative.")
+  if (any(data[[bw]] == 0))
+    warning("Some base weights are 0; those units start inactive and are dropped ",
+            "from every step.", call. = FALSE)
   structure(
     list(
       data         = data,
@@ -304,6 +308,9 @@ step_nonresponse <- function(spec, respondent,
   calfun <- match.arg(calfun)
   if (!is.null(crossfit) && (!is.numeric(crossfit) || crossfit < 2))
     stop("`crossfit` must be NULL or an integer >= 2 (number of folds).")
+  if (!is.null(num_classes) &&
+      (!is.numeric(num_classes) || length(num_classes) != 1L || num_classes < 2))
+    stop("`num_classes` must be NULL (continuous 1/p) or a single integer >= 2.")
 
   if (method == "calibration") {
     # Calibration approach to nonresponse (two-phase; Sarndal & Lundstrom 2005).
@@ -526,6 +533,12 @@ step_calibrate <- function(spec, margins = NULL,
       stop(paste0("'", method, "' requires either `margins` (a named list) or ",
                   "`totals` (a data frame, or a list of data frames for raking, ",
                   "with category columns and a counts column named by `count`)."))
+    if (has_margins) {
+      bad <- setdiff(names(margins), names(spec$data))
+      if (length(bad))
+        stop(sprintf("These `margins` variable(s) are not columns of the data: %s.",
+                     paste(bad, collapse = ", ")))
+    }
     if (totals_is_df || totals_is_list) {
       if (is.null(count) || !is.character(count) || length(count) != 1L)
         stop("When `totals` is provided, `count` must be a single string naming the counts column.")

@@ -30,6 +30,22 @@ test_that("linear/GREG calibration errors on NA auxiliaries (C2)", {
     "missing values")
 })
 
+test_that("step_calibrate errors on a misspelled margins variable (#1)", {
+  dat <- data.frame(region = c("A", "B"), pw = c(1, 1))
+  expect_error(
+    weighting_spec(dat, base_weights = pw) |>
+      step_calibrate(method = "raking", margins = list(reginon = c(A = 1, B = 1))),
+    "not columns of the data")
+})
+
+test_that("constructors validate base weights and num_classes (#9)", {
+  expect_error(weighting_spec(data.frame(pw = c(1, -1)), base_weights = pw), "negative")
+  expect_error(
+    step_nonresponse(weighting_spec(data.frame(r = c(1, 0), pw = c(1, 1)), base_weights = pw),
+                     respondent = r, method = "propensity", formula = ~ 1, num_classes = 0),
+    "num_classes")
+})
+
 test_that("lonely-PSU collapse keeps distinct PSUs distinct (C3)", {
   # two strata, each a single PSU, whose ids collide ("1" in both)
   dat <- data.frame(stratum = c("A", "A", "B", "B"),

@@ -145,7 +145,7 @@
 # household means Xbar) and the calibration flavours of step_nonresponse
 # (Z = respondents' auxiliaries). Returns list(g, converged).
 .solve_calibration <- function(Z, v, Tvec, calfun = "linear", bounds = NULL,
-                               penalty = NULL, maxit = 100L) {
+                               penalty = NULL, maxit = 100L, tol = 1e-7) {
   use_ds <- calfun != "linear" || !is.null(bounds)
   if (!use_ds) {
     cn <- colnames(Z)
@@ -154,7 +154,7 @@
     lambda <- .solve_calib(A, Tvec - colSums(v * Z))
     return(list(g = as.numeric(1 + Z %*% lambda), converged = TRUE))
   }
-  g <- .calib_ds(Z, v, Tvec, calfun, bounds, maxit)
+  g <- .calib_ds(Z, v, Tvec, calfun, bounds, maxit, tol)
   list(g = as.numeric(g), converged = isTRUE(attr(g, "converged")))
 }
 
@@ -565,7 +565,7 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
   if (!step$equal_within_cluster) {
     # unit-level: one calibration factor per responding unit
     sol <- .solve_calibration(Xr, dr, Tvec, step$calfun, step$bounds,
-                              step$penalty, step$maxit)
+                              step$penalty, step$maxit, step$tol)
     g   <- sol$g
     new_w[elig_idx[resp_e]] <- dr * g
     note_clust <- ""
@@ -584,7 +584,7 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
     Wsum <- as.numeric(tapply(dr, clr, sum)[hh])             # base weight in household
     Xbar <- rowsum(Xr, group = clr)[hh, , drop = FALSE] / n_h  # household MEANS
     sol  <- .solve_calibration(Xbar, Wsum, Tvec, step$calfun, step$bounds,
-                               step$penalty, step$maxit)
+                               step$penalty, step$maxit, step$tol)
     gh   <- sol$g; names(gh) <- hh
     g    <- gh
     new_w[elig_idx[resp_e]] <- dr * gh[clr]                  # own weight x household factor
@@ -828,7 +828,7 @@ apply_step.step_calibrate <- function(step, data, w) {
     if (!step$equal_within_cluster) {
       # --- unit-level ---
       sol <- .solve_calibration(X, d, Tvec, step$calfun, step$bounds,
-                                step$penalty, step$maxit)
+                                step$penalty, step$maxit, step$tol)
       g            <- sol$g
       ds_converged <- sol$converged
       new_w[active] <- d * g
@@ -852,7 +852,7 @@ apply_step.step_calibrate <- function(step, data, w) {
       Wsum <- as.numeric(tapply(d, cl, sum)[hh])          # total base weight in household
       Xbar <- rowsum(X, group = cl)[hh, , drop = FALSE] / n_h   # household MEANS
       sol  <- .solve_calibration(Xbar, Wsum, Tvec, step$calfun, step$bounds,
-                                 step$penalty, step$maxit)
+                                 step$penalty, step$maxit, step$tol)
       gh           <- sol$g
       ds_converged <- sol$converged
       names(gh) <- hh

@@ -11,6 +11,26 @@
 
 ## Bug fixes
 
+* **`step_calibrate()` errors on a misspelled `margins` variable.** A classic
+  `margins`/post-stratification variable that was not a column of the data
+  produced empty cells and a silent no-op (the step did nothing, no error), so a
+  typo could leave the weights uncalibrated without any signal. The constructor
+  now validates that every `margins` variable exists in the data.
+
+* **`tol` is now honoured in bounded and non-linear calibration.** For
+  `calfun = "raking"` / `"logit"` or with `bounds`, `step_calibrate()` and the
+  calibration flavour of `step_nonresponse()` ignored the user's `tol` and always
+  used the internal default; the tolerance now flows through to the solver.
+
+* **Parallel replicates fall back to serial on Windows.** `bootstrap_weights()` /
+  `jackknife_weights()` with `cores > 1` now force serial execution on Windows
+  (where `parallel::mclapply()` cannot fork), matching the documented behaviour.
+
+* **Input validation in the constructors.** `weighting_spec()` now rejects
+  negative base weights and warns on zeros (which start inactive), and
+  `step_nonresponse()` validates `num_classes` (NULL or an integer >= 2) instead
+  of failing later with a cryptic error from `cut()`.
+
 * **Cells with no respondents (or all of unknown eligibility) no longer leak.**
   In `step_nonresponse()` (weighting classes and propensity classes) and
   `step_unknown_eligibility()`, a cell whose adjustment factor was undefined
