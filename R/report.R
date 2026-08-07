@@ -33,6 +33,34 @@
 }
 `%||%` <- function(a, b) if (is.null(a) || (length(a) == 1 && is.na(a))) b else a
 
+# Central number formatting: one place decides decimals per quantity type, so the
+# same kind of value reads the same everywhere (weights as integers, no ".000"
+# that reads as thousands in some locales; proportions 3 dp; factors 4 dp).
+.fmt_num <- function(x, type = c("weight", "count", "prop", "factor", "pct")) {
+  type <- match.arg(type)
+  if (length(x) != 1L || !is.finite(x)) return("&ndash;")
+  switch(type,
+    weight = format(round(x, 3), big.mark = ",", trim = TRUE),
+    count  = format(round(x),    big.mark = ",", trim = TRUE),
+    prop   = formatC(x, format = "f", digits = 3),
+    factor = formatC(x, format = "f", digits = 4),
+    pct    = if (abs(x) < 5e-9) "0.0%" else sprintf("%+.1f%%", x))
+}
+
+# Axis tick labels with no duplicates: increase decimals until distinct (avoids
+# "1.05, 1.06, 1.06" on a narrow range).
+.uniq_ticks <- function(v) {
+  v <- v[is.finite(v)]
+  if (!length(v)) return(character(0))
+  if (all(v == round(v))) return(format(round(v), big.mark = ",", trim = TRUE))  # integers: no decimals
+  if (any(abs(v) >= 1000)) return(format(round(v, 1), big.mark = ",", trim = TRUE))
+  for (d in 1:6) {
+    labs <- formatC(v, format = "f", digits = d)
+    if (!anyDuplicated(labs)) return(labs)
+  }
+  formatC(v, format = "f", digits = 6)
+}
+
 # Which step parameters to display: keep only what the user meaningfully set.
 # Drops NULL fields, the internal convergence knobs, "off" logical flags, and the
 # default calibration distance, so the "Requested" table is not cluttered with
@@ -46,6 +74,8 @@
     v <- step[[p]]
     if (is.null(v) || length(v) == 0L) next
     if (p %in% c("maxit", "tol")) next                          # internal knobs
+    if (identical(p, "env")) next                               # captured NSE environment
+    if (is.environment(v) || is.function(v)) next               # non-reproducible internals
     if (is.logical(v) && length(v) == 1L && !isTRUE(v)) next    # FALSE flag = off
     if (identical(p, "calfun") && identical(v, "linear")) next # default distance
     out[[p]] <- v
@@ -62,7 +92,7 @@
   aa  <- suppressWarnings(as.numeric(as.character(df$achieved)))
   rel <- 100 * (aa - tt) / tt
   nm  <- .t("rel. diff (%)", "dif. rel. (%)", lang)
-  df[[nm]] <- ifelse(is.finite(rel), sprintf("%+.2f%%", rel), "-")
+  df[[nm]] <- ifelse(is.finite(rel), ifelse(abs(rel) < 5e-9, "0.00%", sprintf("%+.2f%%", rel)), "-")
   new <- setdiff(names(df), nm)
   ord <- append(new, nm, after = match("achieved", new))
   df[, ord, drop = FALSE]
@@ -71,6 +101,7 @@
 # data.frame -> HTML table
 .df_to_html <- function(df) {
   if (is.null(df) || !nrow(df)) return("<p class='muted'>no diagnostics</p>")
+  for (nm in names(df)) if (is.numeric(df[[nm]])) df[[nm]] <- round(df[[nm]], 4)
   hd <- paste0("<th>", .html_escape(names(df)), "</th>", collapse = "")
   rows <- apply(df, 1, function(r)
     paste0("<tr>", paste0("<td>", .html_escape(as.character(r)), "</td>", collapse = ""), "</tr>"))
@@ -104,9 +135,9 @@
     sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#cbd0d8"/>',
             ml - 3, sy(yt), ml, sy(yt))), collapse = "")
   xtk <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#6b7280">%s</text>',
-               sx(xt), mt + ph + 13, vapply(xt, .fmt_ax, "")), collapse = "")
+               sx(xt), mt + ph + 13, .uniq_ticks(xt)), collapse = "")
   ytk <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">%s</text>',
-               ml - 5, sy(yt) + 3, vapply(yt, .fmt_ax, "")), collapse = "")
+               ml - 5, sy(yt) + 3, .uniq_ticks(yt)), collapse = "")
   xl  <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="11" fill="#6b7280">%s</text>',
                  ml + pw / 2, mt + ph + 27, xlab)
   yl  <- sprintf('<text x="11" y="%.1f" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(-90 11 %.1f)">%s</text>',
@@ -125,8 +156,8 @@
   yt <- pretty(yr, 3)
   grid <- paste(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#eef" stroke-width="1"/>',
                         ml, sy(yt), ml + pw, sy(yt)), collapse = "")
-  ytk  <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">%.3f</text>',
-                        ml - 6, sy(yt) + 3, yt), collapse = "")
+  ytk  <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">%s</text>',
+                        ml - 6, sy(yt) + 3, .uniq_ticks(yt)), collapse = "")
   d    <- paste(sprintf("%.1f %.1f", sx(seq_len(n)), sy(y)), collapse = " L ")
   line <- sprintf('<path d="M %s" fill="none" stroke="#3d3580" stroke-width="2"/>', d)
   dots <- paste(sprintf('<circle cx="%.1f" cy="%.1f" r="3" fill="#3d3580"/>',
@@ -145,13 +176,13 @@
                                sx(jj), sy(y[jj]) + 16))
   }
   paste0('<svg viewBox="0 0 ', w, ' ', h,
-         '" width="100%" font-family="-apple-system,Segoe UI,Roboto,sans-serif">',
+         '" width="100%" role="img" aria-label="Kish design effect by stage" font-family="-apple-system,Segoe UI,Roboto,sans-serif"><title>deff_K by stage</title>',
          grid, ytk, line, dots, xtk, ann, '</svg>')
 }
 
-.svg_frame <- function(body, w, h) sprintf(
-  '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="9">%s</svg>',
-  w, h, body)
+.svg_frame <- function(body, w, h, title = "diagnostic plot") sprintf(
+  '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="%s" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="9"><title>%s</title>%s</svg>',
+  w, h, title, title, body)
 
 # Deterministic thinning for the scatter (rendering only). Keeps both tails on
 # each axis (smallest/largest weights before and after) and the largest
@@ -173,7 +204,7 @@
 
 # Scatter of weight before (x) vs after (y), with a y = x reference line.
 .svg_scatter <- function(x, y, w = 330, h = 215, cap = 3000L) {
-  ml <- 46; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
+  ml <- 54; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   i <- .thin_scatter(x, y, cap); x <- x[i]; y <- y[i]
   xr <- range(x); yr <- range(c(y, x))
   if (diff(xr) == 0) xr <- xr + c(-1, 1)
@@ -193,8 +224,8 @@
 
 # Histogram of a per-unit quantity (default: the adjustment factor after/before),
 # with a reference line at 1.
-.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215) {
-  ml <- 40; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
+.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215, refline = 1) {
+  ml <- 48; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   v <- v[is.finite(v)]
   if (!length(v)) return("")
   hh <- graphics::hist(v, breaks = 30, plot = FALSE)
@@ -207,11 +238,11 @@
                 sx(hh$breaks[-length(hh$breaks)]), sy(hh$counts),
                 pmax(sx(hh$breaks[-1]) - sx(hh$breaks[-length(hh$breaks)]) - 0.5, 0.5),
                 pmax(sy(0) - sy(hh$counts), 0)), collapse = "")
-  vl <- if (1 >= xr[1] && 1 <= xr[2])
+  vl <- if (!is.null(refline) && refline >= xr[1] && refline <= xr[2])
     paste0(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#6b7280" stroke-dasharray="4 3"/>',
-                   sx(1), mt, sx(1), mt + ph),
+                   sx(refline), mt, sx(refline), mt + ph),
            sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#6b7280">factor = 1</text>',
-                   sx(1) + 3, mt + 9)) else ""
+                   sx(refline) + 3, mt + 9)) else ""
   .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, "count", sx, sy),
                     bars, vl), w, h)
 }
@@ -223,7 +254,7 @@
 # selection the factor is 1/prob, i.e. the number of eligibles the selected
 # person represents.
 .no_visual <- c("step_drop_ineligible", "step_round", "step_rescale", "step_assert")
-.step_visual <- function(step, prev, cur) {
+.step_visual <- function(step, prev, cur, lang = "en") {
   if (inherits(step, .no_visual)) return("")
   keep <- prev > 0 & cur > 0
   if (!any(keep)) return("")
@@ -233,7 +264,11 @@
             "persons represented (1/prob)" else "adjustment factor (after / before)"
   hi   <- tryCatch(.svg_hist(fac, xlab = xlab), error = function(e) "")
   if (!nzchar(sc) && !nzchar(hi)) return("")
-  sprintf("<div class='viz'><div>%s</div><div>%s</div></div>", sc, hi)
+  note <- if (sum(keep) > 3000L)
+    sprintf("<p class='muted'>%s</p>", .t(
+      sprintf("Showing 3,000 of %s points (both tails and the largest departures from y = x are kept).", format(sum(keep), big.mark = ",")),
+      sprintf("Se muestran 3.000 de %s puntos (se conservan ambas colas y las mayores desviaciones de y = x).", format(sum(keep), big.mark = ",")), lang)) else ""
+  sprintf("<div class='viz'><div>%s</div><div>%s</div></div>%s", sc, hi, note)
 }
 
 # Compact R-indicator block, rendered inside the (last) nonresponse step card.
@@ -305,6 +340,14 @@
     paste(sprintf("<span class='chip'>%s</span>", .html_escape(vars)), collapse = ""),
     "</div>")
 
+# Readable stage labels shared by the per-stage table and the step anchors:
+# base + one per step ("3 - Nonresponse adjustment (...)").
+.stage_labels <- function(object, lang)
+  c(.t("Base weights", "Pesos base", lang),
+    vapply(seq_along(object$steps),
+           function(i) sprintf("%d \u00b7 %s", i, .step_short(object$steps[[i]], lang)),
+           character(1)))
+
 # A vertical flow diagram of the pipeline (base -> steps -> final), with the
 # variables each step used shown as chips. Pure HTML/CSS (no graphics device).
 .pipeline_diagram <- function(object, lang) {
@@ -319,8 +362,19 @@
   }
   nodes <- c(nodes,
     "<div class='node node-end'><div class='nl'>Final weights</div><div class='nv'><code>.weight</code></div></div>")
-  paste0("<div class='flow'>",
-         paste(nodes, collapse = "<div class='arrow'>&darr;</div>"), "</div>")
+  hn  <- object$history
+  act <- if (!is.null(hn)) vapply(hn, function(w) sum(w > 0), integer(1)) else integer(0)
+  arrows <- vapply(seq_len(length(nodes) - 1L), function(t) {
+    lbl <- if (t <= length(act))
+      sprintf(" <span class='fn'>n = %s</span>", format(act[t], big.mark = ",")) else ""
+    sprintf("<div class='arrow'>&darr;%s</div>", lbl)
+  }, character(1))
+  out <- character(0)
+  for (t in seq_along(nodes)) {
+    out <- c(out, nodes[t])
+    if (t < length(nodes)) out <- c(out, arrows[t])
+  }
+  paste0("<div class='flow'>", paste(out, collapse = ""), "</div>")
 }
 
 # ============================================================================
@@ -635,9 +689,13 @@
       .t("Replicate weights for variance created.", "Pesos r\u00e9plica para la varianza creados.", lang)
       else .t("Replicate weights not created (add bootstrap/jackknife for variance).",
               "Sin pesos r\u00e9plica (agregue bootstrap/jackknife para la varianza).", lang)))
-  if (nalert > 0L)
-    items <- c(items, item(FALSE, .t(sprintf("%d step(s) raised quality alerts (see below).", nalert),
-                                     sprintf("%d paso(s) con alertas de calidad (ver abajo).", nalert), lang)))
+  for (si in seq_along(object$steps)) {
+    al <- object$steps[[si]]$alerts
+    if (!is.null(al) && length(al))
+      for (a in al)
+        items <- c(items, item(FALSE, sprintf("%s %d (%s): %s",
+                   .t("Step", "Paso", lang), si, .html_escape(object$steps[[si]]$label), .html_escape(a))))
+  }
   sprintf("<div class='exec'><h4>%s</h4><ul class='chk'>%s</ul></div>",
           .t("Status", "Estado", lang), paste(items, collapse = ""))
 }
@@ -655,7 +713,7 @@
   d3  <- function(x) formatC(x, format = "f", digits = 3)
   num <- function(x) format(round(x), big.mark = ",")
   dcell <- function(v) if (is.na(v)) "&ndash;" else
-    sprintf("<span class='%s'>%s</span>", if (v > 1.3) "cell-warn" else "cell-ok", d3(v))
+    sprintf("<span class='%s'>%s%s</span>", if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
   hd <- paste0("<th>", c(.t("Domain", "Dominio", lang),
                          .t("Active units (n)", "Unidades activas (n)", lang),
                          .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
@@ -706,6 +764,8 @@
   pps      <- tapply(cl, st, function(z) length(unique(z)))
   lonely_n <- sum(pps < 2L)
   secs <- rep$elapsed
+  nrep  <- if (!is.null(rep$replicates)) ncol(rep$replicates) else rep$R
+  nfail <- if (!is.null(rep$replicates)) sum(apply(rep$replicates, 2, anyNA)) else 0L
   tfmt <- if (is.null(secs) || is.na(secs)) "-" else
     if (secs < 90) sprintf("%.1f s", secs) else sprintf("%.1f min", secs / 60)
   na  <- function(x) if (is.null(x) || (length(x) == 1L && is.na(x))) "-" else as.character(x)
@@ -713,6 +773,9 @@
   body <- paste0(
     kv(.t("Method", "M\u00e9todo", lang), method),
     kv(.t("Replicates (B)", "R\u00e9plicas (B)", lang), format(rep$R, big.mark = ",")),
+    kv(.t("Failed replicates", "R\u00e9plicas fallidas", lang),
+       sprintf("%s of %s%s", format(nfail, big.mark = ","), format(nrep, big.mark = ","),
+               if (nfail == 0L) .t(" (all usable)", " (todas utilizables)", lang) else "")),
     kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
     kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
     kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
@@ -909,6 +972,48 @@
 #' # nothing is launched); use open = TRUE to view it in the browser.
 #' path <- report_weighting(fitted, open = FALSE)
 #' }
+# Lightweight, dependency-free 31-bit fingerprint of character pieces. Not a
+# cryptographic hash; enough to tell "same recipe/data" from "changed".
+.hash32 <- function(...) {
+  b <- utf8ToInt(enc2utf8(paste(unlist(list(...)), collapse = "\u001f")))
+  h <- 0
+  for (x in b) h <- (h * 31 + x) %% 2147483647
+  sprintf("%07x", as.integer(h))
+}
+
+# Reproducibility / audit-trail card: seed, recipe fingerprint, data fingerprint
+# and environment. Two runs with the same fingerprints are exactly comparable.
+.reproducibility_card <- function(object, replicates, lang) {
+  steps_sig <- vapply(object$steps, function(st) {
+    keep <- setdiff(names(st), c("env", "diagnostics", "alerts", "label"))
+    paste(deparse(st[keep]), collapse = "")
+  }, character(1))
+  recipe_fp <- .hash32(object$base_weights, steps_sig)
+  d <- object$data
+  data_fp <- if (is.null(d)) "-" else .hash32(
+    paste(dim(d), collapse = "x"),
+    paste(names(d), collapse = ","),
+    paste(vapply(d, function(col) class(col)[1], character(1)), collapse = ","),
+    sprintf("%.3f", sum(object$history[["base"]], na.rm = TRUE)),
+    sprintf("%.3f", sum(object$final_weight, na.rm = TRUE)))
+  seed <- if (!is.null(replicates) && !is.null(replicates$seed)) as.character(replicates$seed) else "-"
+  env  <- sprintf("R %s.%s &middot; weightflow %s", R.version$major, R.version$minor,
+                  as.character(utils::packageVersion("weightflow")))
+  kv <- function(k, v) sprintf("<tr><td class='k'>%s</td><td class='r'><code>%s</code></td></tr>", k, v)
+  rows <- paste0(
+    kv(.t("Seed", "Semilla", lang), .html_escape(seed)),
+    kv(.t("Recipe fingerprint", "Huella de la receta", lang), recipe_fp),
+    kv(.t("Data fingerprint", "Huella de los datos", lang), data_fp),
+    kv(.t("Rows &times; columns", "Filas &times; columnas", lang),
+       if (is.null(d)) "-" else sprintf("%s &times; %d", format(nrow(d), big.mark = ","), ncol(d))),
+    kv(.t("Environment", "Entorno", lang), env))
+  sprintf("<div class='meta repro'><h4>%s</h4><table class='params'>%s</table><p class='note'>%s</p></div>",
+    .t("Reproducibility - audit trail", "Reproducibilidad - traza de auditor\u00eda", lang),
+    rows,
+    .t("Two runs showing the same recipe and data fingerprints are exactly comparable; any difference indicates a change in code, data or environment. The fingerprint is a lightweight checksum of the recipe specification and of the data shape and weight totals (no microdata is stored).",
+       "Dos corridas con las mismas huellas de receta y de datos son exactamente comparables; cualquier diferencia indica un cambio en el c\u00f3digo, los datos o el entorno. La huella es un checksum liviano de la especificaci\u00f3n de la receta y de la forma de los datos y los totales de pesos (no se guarda microdato).", lang))
+}
+
 report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
                              narrative = TRUE, lang = c("en", "es"),
                              metadata = NULL, replicates = NULL, domains = NULL) {
@@ -942,6 +1047,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 
   # Per-stage table with readable, self-explanatory headers (not raw column names)
   stab_html <- local({
+    slab <- .stage_labels(object, lang)
     hdr <- c(.t("Stage", "Etapa", lang),
              .t("Active units (n)", "Unidades activas (n)", lang),
              .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
@@ -951,11 +1057,11 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     hd  <- paste0("<th>", hdr, "</th>", collapse = "")
     num <- function(x) format(x, big.mark = ",")
     d3  <- function(x) formatC(x, format = "f", digits = 3)
-    dcell <- function(v) sprintf("<span class='%s'>%s</span>",
-                                 if (v > 1.3) "cell-warn" else "cell-ok", d3(v))
+    dcell <- function(v) sprintf("<span class='%s'>%s%s</span>",
+                                 if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
     rows <- vapply(seq_len(nrow(stab)), function(i) sprintf(
       "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
-      .html_escape(stab$stage[i]), num(stab$n_active[i]), num(stab$sum_wts[i]),
+      slab[i], num(stab$n_active[i]), num(stab$sum_wts[i]),
       d3(stab$cv[i]), dcell(stab$deff[i]), num(stab$n_eff[i])), character(1))
     sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
             hd, paste(rows, collapse = ""))
@@ -977,8 +1083,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
           .t("largest increase in variability", "mayor aumento de variabilidad", lang)
         else .t("increases variability", "aumenta la variabilidad", lang)
       }
-      cell <- function(v) sprintf("<span class='%s'>%+.3f</span>",
-                                  if (v > 0.001) "cell-warn" else if (v < -0.001) "cell-ok" else "", v)
+      cell <- function(v) sprintf("<span class='%s'>%s%+.3f</span>",
+                                  if (v > 0.001) "cell-warn" else if (v < -0.001) "cell-ok" else "", if (v > 0.001) "&#9888; " else "", v)
       hd <- paste0("<th>", c(.t("Step", "Paso", lang), "&Delta; deff_K", "&Delta; CV",
                              .t("Contribution to deff_K change", "Contribuci\u00f3n al cambio del deff_K", lang),
                              .t("Effect", "Efecto", lang)), "</th>", collapse = "")
@@ -1050,16 +1156,16 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       if (!is.null(note)) sprintf("<p class='note'>%s</p>", .html_escape(note)) else "",
       conv_html, alerts_html)
     de1 <- design_effect(h[[i]]); de2 <- design_effect(h[[i + 1L]])
-    viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]]) else ""
+    viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]], lang) else ""
     ri_step <- if (i == nr_last && !is.null(ri)) .ri_block(ri) else ""
     narr <- if (isTRUE(narrative))
       .step_narrative(s, de1, de2, ri, i == nr_last, lang) else ""
     steps_html <- paste0(steps_html, sprintf(
-      "<div class='step'><div class='step-h'><span class='num'>%d</span>%s</div>%s
+      "<div class='step' id='step-%d'><div class='step-h'><span class='num'>%d</span>%s</div>%s
        <div class='cols'><div><h4>Requested</h4><table class='params'>%s</table></div>
        <div><h4>Diagnostics</h4>%s%s
        <p class='muted'>deff_K %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p>%s</div></div>%s</div>",
-      i, .step_short(s, lang), narr, paste(prows, collapse = ""),
+      i, i, .step_short(s, lang), narr, paste(prows, collapse = ""),
       .df_to_html(.with_reldiff(s$diagnostics, lang)), extra,
       de1$deff, de2$deff, format(round(de1$n_eff), big.mark = ","),
       format(round(de2$n_eff), big.mark = ","), ri_step,
@@ -1077,7 +1183,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     R.version$major, R.version$minor)
 
   drift <- .calibration_drift(object)
-  wdist <- .weight_distribution_html(fin)
+  wdist <- .weight_distribution_html(fin, lang, plots)
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
   exec  <- paste0(exec, .status_checklist(object, de_f, object$final_weight, replicates, lang))
   exec  <- paste0(exec, .attention_panel(object, lang))
@@ -1094,14 +1200,17 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
             de_f$deff, format(round(de_f$n_eff), big.mark = ","), imsg), lang)))
   repl_html <- .replication_card(replicates, lang)
   domain_html <- .domain_reliability(object, domains, lang)
+  step_anchors <- paste(vapply(seq_along(object$steps), function(i)
+    sprintf("<a href='#step-%d'>%d</a>", i, i), character(1)), collapse = " ")
   toc_html <- sprintf(
-    "<div class='toc'><strong>%s</strong> <a href='#pipeline'>%s</a> &middot; <a href='#stages'>%s</a> &middot; <a href='#weights'>%s</a> &middot; <a href='#steps'>%s</a></div>",
+    "<div class='toc'><strong>%s</strong> <a href='#pipeline'>%s</a> &middot; <a href='#stages'>%s</a> &middot; <a href='#weights'>%s</a> &middot; <a href='#steps'>%s</a> <span class='tsteps'>%s</span></div>",
     .t("Jump to:", "Ir a:", lang), .t("Pipeline", "Pipeline", lang),
     .t("Per-stage summary", "Resumen por etapa", lang),
     .t("Weight distribution", "Distribuci\u00f3n de pesos", lang),
-    .t("Steps", "Pasos", lang))
+    .t("Steps", "Pasos", lang), step_anchors)
   meta_html <- .metadata_card(metadata, lang)
   racct <- .response_account(object, lang)
+  repro_html <- .reproducibility_card(object, replicates, lang)
 
   done_txt <- local({
     ns  <- length(object$steps)
@@ -1130,7 +1239,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   # HTML assembled by named interpolation (paste0), not a positional sprintf, so
   # sections cannot be misaligned when one is added or removed.
   html <- paste0(
-    "<!DOCTYPE html><html><head><meta charset='utf-8'>\n",
+    sprintf("<!DOCTYPE html><html lang='%s'><head><meta charset='utf-8'>\n", lang),
     "<title>weightflow report</title>", .report_css(), "</head><body>\n",
     "<h1>weightflow &mdash; weighting recipe</h1>\n",
     "<p class='muted'>Base weights: <code>", .html_escape(object$base_weights),
@@ -1141,6 +1250,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     "<div class='cards'>", cards, "</div>\n",
     racct, "\n",
     exec, "\n",
+    repro_html, "\n",
     "<h2 id='pipeline'>Pipeline</h2>", diagram, "\n",
     "<p class='muted'>Variables used:</p>", vars_chips, "\n",
     "<h2 id='stages'>Per-stage summary</h2>", stab_html, "\n",
@@ -1170,25 +1280,32 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 # max/min ratio, and counts of negative, sub-1 and extreme weights. Manuals ask
 # for the shape of the distribution, not only the CV. "Extreme" uses 4x the
 # median as a convention; adjust to your trimming bounds.
-.weight_distribution_html <- function(fin) {
+.weight_distribution_html <- function(fin, lang = "en", plots = TRUE) {
   wnz <- fin[fin > 0]
-  if (!length(wnz)) return("<p class='muted'>No positive weights.</p>")
+  if (!length(wnz)) return(.t("<p class='muted'>No positive weights.</p>",
+                              "<p class='muted'>Sin pesos positivos.</p>", lang))
   qs  <- as.numeric(stats::quantile(wnz, c(0.01, 0.5, 0.99)))
   med <- qs[2]
   row <- function(k, v) sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>", k, v)
   rows <- paste0(
-    row("min", sprintf("%.3f", min(wnz))),
-    row("p1", sprintf("%.3f", qs[1])),
-    row("median", sprintf("%.3f", med)),
-    row("p99", sprintf("%.3f", qs[3])),
-    row("max", sprintf("%.3f", max(wnz))),
-    row("max/min ratio", sprintf("%.1f", max(wnz) / min(wnz))),
-    row("negative weights", sprintf("%d", sum(fin < 0))),
-    row("weights &lt; 1", sprintf("%d", sum(fin > 0 & fin < 1))),
-    row("extreme (&gt; 4&times; median)", sprintf("%d", sum(wnz > 4 * med))))
-  paste0("<table class='params'>", rows, "</table>",
-         "<p class='muted'>Extreme = final weight above 4&times; the median ",
-         "(a convention; adjust to your trimming bounds).</p>")
+    row("min", .fmt_num(min(wnz), "weight")),
+    row("p1", .fmt_num(qs[1], "weight")),
+    row(.t("median", "mediana", lang), .fmt_num(med, "weight")),
+    row("p99", .fmt_num(qs[3], "weight")),
+    row("max", .fmt_num(max(wnz), "weight")),
+    row(.t("max/min ratio", "raz\u00f3n max/min", lang), .fmt_num(max(wnz) / min(wnz), "prop")),
+    row(.t("negative weights", "pesos negativos", lang), .fmt_num(sum(fin < 0), "count")),
+    row(.t("weights &lt; 1", "pesos &lt; 1", lang), .fmt_num(sum(fin > 0 & fin < 1), "count")),
+    row(.t("extreme (&gt; 4&times; median)", "extremos (&gt; 4&times; mediana)", lang),
+        .fmt_num(sum(wnz > 4 * med), "count")))
+  note <- .t("Extreme = final weight above 4&times; the median (a convention; adjust to your trimming bounds).",
+             "Extremo = peso final por encima de 4&times; la mediana (una convenci\u00f3n; ajuste a sus cotas de recorte).", lang)
+  if (!isTRUE(plots))
+    return(paste0("<table class='params'>", rows, "</table><p class='muted'>", note, "</p>"))
+  hist <- tryCatch(.svg_hist(wnz, xlab = .t("final weight", "peso final", lang), refline = NULL),
+                   error = function(e) "")
+  sprintf("<table class='params'>%s</table><p class='muted'>%s</p><div class='wdhist'>%s</div>",
+    rows, note, hist)
 }
 
 .report_css <- function() "<style>
@@ -1223,7 +1340,7 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media(max-width:680px){.cols{grid-template-columns:1fr}}
 .viz{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
-.viz svg{max-width:100%;height:auto}.viz-h{margin-top:14px}
+.viz svg{max-width:100%;height:auto}.viz-h{margin-top:14px}.wdhist{margin-top:12px;max-width:480px}.wdhist svg{width:100%;height:auto}
 @media(max-width:680px){.viz{grid-template-columns:1fr}}
 .ri{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
 .ri-val{font-size:16px;margin:6px 0}
@@ -1232,9 +1349,10 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .node-end{background:var(--bg);border-style:dashed}
 .nl{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
 .nv{margin-top:3px}
-.arrow{text-align:center;color:var(--mut);font-size:18px;line-height:1.2;margin:3px 0}
+.arrow{text-align:center;color:var(--mut);font-size:18px;line-height:1.2;margin:3px 0}.arrow .fn{font-size:11px;color:var(--mut);font-family:ui-monospace,Menlo,monospace;vertical-align:2px}
 .chips{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px}
 .chip{background:#efecf8;color:var(--accent);border:1px solid #ddd6f0;border-radius:999px;
 padding:1px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
-.foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}.cell-ok{background:#ecfdf5;color:#065f46;padding:1px 6px;border-radius:4px}.cell-warn{background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px}.toc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 16px;margin:12px 0 4px;font-size:13px}.toc a{color:var(--accent);text-decoration:none}details.steps>summary{cursor:pointer;font-size:13px;color:var(--accent);margin:6px 0;list-style:none}details.steps>summary::-webkit-details-marker{display:none}.chk{list-style:none;padding-left:0;margin:6px 0;font-size:14px}.chk li{margin:3px 0}.chk .ok{color:#065f46;font-weight:600}.chk .no{color:#b45309;font-weight:600}.done{margin-top:20px;padding:12px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--ink)}
+.foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}.cell-ok{background:#ecfdf5;color:#065f46;padding:1px 6px;border-radius:4px}.cell-warn{background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px}.toc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 16px;margin:12px 0 4px;font-size:13px;position:sticky;top:0;z-index:9}.tsteps a{display:inline-block;min-width:16px;text-align:center;color:var(--accent);text-decoration:none;font-size:12px;padding:0 2px}.toc a{color:var(--accent);text-decoration:none}details.steps>summary{cursor:pointer;font-size:13px;color:var(--accent);margin:6px 0;list-style:none}details.steps>summary::-webkit-details-marker{display:none}.chk{list-style:none;padding-left:0;margin:6px 0;font-size:14px}.chk li{margin:3px 0}.chk .ok{color:#065f46;font-weight:600}.chk .no{color:#b45309;font-weight:600}.done{margin-top:20px;padding:12px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--ink)}
+@media print{.step,.exec,.meta,.metric,.node,.repro,table,.viz,.ri{break-inside:avoid;page-break-inside:avoid}h2{break-after:avoid;page-break-after:avoid}details.steps>summary{display:none}.toc{position:static}body{max-width:none;margin:0}}
 </style>"
