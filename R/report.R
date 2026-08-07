@@ -1245,6 +1245,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     "<p class='muted'>Base weights: <code>", .html_escape(object$base_weights),
       "</code> &nbsp;|&nbsp; ", length(object$steps), " steps</p>\n",
     "<p class='prov'>", prov, "</p>\n",
+    "<div class='toolbar noprint'><button type='button' id='wf-pdf' class='wfbtn'>",
+      .t("Download PDF", "Descargar PDF", lang), "</button></div>\n",
     toc_html, "\n",
     meta_html, "\n",
     "<div class='cards'>", cards, "</div>\n",
@@ -1265,6 +1267,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     drift, "\n",
     done_txt, "\n",
     "<p class='foot'>", foot_txt, "</p>\n",
+    "<script>", .report_js(), "</script>\n",
     "</body></html>")
 
   writeLines(html, file)
@@ -1307,6 +1310,56 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   sprintf("<table class='params'>%s</table><p class='muted'>%s</p><div class='wdhist'>%s</div>",
     rows, note, hist)
 }
+
+.report_js <- function() '
+(function(){
+  var Q = String.fromCharCode(34), NL = String.fromCharCode(10);
+  function dl(name, text){
+    var blob = new Blob([text], {type:"text/csv;charset=utf-8;"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+  function cell(t){
+    t = (t == null ? "" : String(t)).trim();
+    if (t.indexOf(",") >= 0 || t.indexOf(Q) >= 0) t = Q + t.split(Q).join(Q + Q) + Q;
+    return t;
+  }
+  function tableCsv(tbl){
+    var out = [], trs = tbl.querySelectorAll("tr");
+    for (var r = 0; r < trs.length; r++){
+      var cs = trs[r].querySelectorAll("th,td"), row = [];
+      for (var c = 0; c < cs.length; c++) row.push(cell(cs[c].textContent));
+      out.push(row.join(","));
+    }
+    return out.join(NL);
+  }
+  function nameFor(tbl, i){
+    var el = tbl.previousElementSibling, nm = "";
+    while (el){
+      if (/^H[1-4]$/.test(el.tagName) || (el.className || "").indexOf("muted") >= 0){ nm = el.textContent; break; }
+      el = el.previousElementSibling;
+    }
+    nm = (nm || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+    return "weightflow-" + (nm || "table") + "-" + i + ".csv";
+  }
+  var pdf = document.getElementById("wf-pdf");
+  if (pdf) pdf.onclick = function(){ window.print(); };
+  var tables = document.querySelectorAll("table"), i = 0;
+  for (var k = 0; k < tables.length; k++){
+    var tbl = tables[k];
+    if (!tbl.querySelector("thead")) continue;
+    i++;
+    var b = document.createElement("button");
+    b.className = "dlcsv noprint"; b.type = "button"; b.textContent = "CSV";
+    b.title = "Download this table as CSV";
+    (function(t, idx){ b.onclick = function(){ dl(nameFor(t, idx), tableCsv(t)); }; })(tbl, i);
+    tbl.parentNode.insertBefore(b, tbl);
+  }
+})();
+'
 
 .report_css <- function() "<style>
 :root{--ink:#1a1a2e;--mut:#6b7280;--line:#e5e7eb;--accent:#3d3580;--bg:#f7f7fb}
@@ -1354,5 +1407,5 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .chip{background:#efecf8;color:var(--accent);border:1px solid #ddd6f0;border-radius:999px;
 padding:1px 9px;font-size:11px;font-family:ui-monospace,Menlo,monospace}
 .foot{color:var(--mut);font-size:12px;margin-top:28px;border-top:1px solid var(--line);padding-top:12px}.cell-ok{background:#ecfdf5;color:#065f46;padding:1px 6px;border-radius:4px}.cell-warn{background:#fef3c7;color:#b45309;padding:1px 6px;border-radius:4px}.toc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 16px;margin:12px 0 4px;font-size:13px;position:sticky;top:0;z-index:9}.tsteps a{display:inline-block;min-width:16px;text-align:center;color:var(--accent);text-decoration:none;font-size:12px;padding:0 2px}.toc a{color:var(--accent);text-decoration:none}details.steps>summary{cursor:pointer;font-size:13px;color:var(--accent);margin:6px 0;list-style:none}details.steps>summary::-webkit-details-marker{display:none}.chk{list-style:none;padding-left:0;margin:6px 0;font-size:14px}.chk li{margin:3px 0}.chk .ok{color:#065f46;font-weight:600}.chk .no{color:#b45309;font-weight:600}.done{margin-top:20px;padding:12px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--ink)}
-@media print{.step,.exec,.meta,.metric,.node,.repro,table,.viz,.ri{break-inside:avoid;page-break-inside:avoid}h2{break-after:avoid;page-break-after:avoid}details.steps>summary{display:none}.toc{position:static}body{max-width:none;margin:0}}
+.toolbar{display:flex;gap:8px;margin:6px 0}.wfbtn{cursor:pointer;font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--accent);border-radius:8px;padding:6px 14px;font-size:13px}.wfbtn:hover{background:#efecf8}.dlcsv{cursor:pointer;font:inherit;border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:6px;padding:2px 9px;font-size:11px;margin:0 0 5px;display:inline-block}.dlcsv:hover{background:#efecf8}@media print{.step,.exec,.meta,.metric,.node,.repro,table,.viz,.ri{break-inside:avoid;page-break-inside:avoid}h2{break-after:avoid;page-break-after:avoid}details.steps>summary{display:none}.toc{position:static}body{max-width:none;margin:0}.noprint{display:none}}
 </style>"
