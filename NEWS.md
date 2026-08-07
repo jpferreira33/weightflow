@@ -41,6 +41,15 @@
   mismatch), and raking / post-stratification precompute the cell indices, which
   is much faster on large samples with fine margins.
 
+* **Design-effect note reads in context.** The report's methodological footnote
+  now explains that the Kish design effect measures weight variability against
+  equal weighting and should be read in context: calibration to informative
+  auxiliaries can raise it even as precision improves (the design effect
+  overstates the loss when weights correlate with the outcome), whereas a
+  nonresponse adjustment trades variance for reduced bias. It is best used as a
+  post-hoc diagnostic (Kish 1992; Spencer 2000; Little and Vartivarian 2005;
+  Valliant, Dever and Kreuter 2018).
+
 # weightflow 1.0.0
 
 ## New features
