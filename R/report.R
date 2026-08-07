@@ -660,7 +660,7 @@
                          .t("Active units (n)", "Unidades activas (n)", lang),
                          .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
                          .t("CV of weights", "CV de los pesos", lang),
-                         .t("Kish deff", "deff de Kish", lang),
+                         .t("deff_K", "deff_K", lang),
                          .t("Effective n (n_eff)", "n efectivo (n_eff)", lang)),
                "</th>", collapse = "")
   tables <- character(0)
@@ -927,7 +927,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     .metric("Cases", format(length(fin), big.mark = ",")),
     .metric("Active (final)", format(de_f$n, big.mark = ",")),
     .metric("Sum of weights", format(round(sum(fin)), big.mark = ",")),
-    .metric("Final Kish deff", sprintf("%.3f", de_f$deff)),
+    .metric("Final deff_K", sprintf("%.3f", de_f$deff)),
     .metric("Effective n", format(round(de_f$n_eff), big.mark = ",")))
 
   # Stage summary table
@@ -946,7 +946,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
              .t("Active units (n)", "Unidades activas (n)", lang),
              .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
              .t("CV of weights", "CV de los pesos", lang),
-             .t("Kish deff", "deff de Kish", lang),
+             .t("deff_K", "deff_K", lang),
              .t("Effective n (n_eff)", "n efectivo (n_eff)", lang))
     hd  <- paste0("<th>", hdr, "</th>", collapse = "")
     num <- function(x) format(x, big.mark = ",")
@@ -979,8 +979,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       }
       cell <- function(v) sprintf("<span class='%s'>%+.3f</span>",
                                   if (v > 0.001) "cell-warn" else if (v < -0.001) "cell-ok" else "", v)
-      hd <- paste0("<th>", c(.t("Step", "Paso", lang), "&Delta; deff", "&Delta; CV",
-                             .t("Contribution to deff change", "Contribuci\u00f3n al cambio del deff", lang),
+      hd <- paste0("<th>", c(.t("Step", "Paso", lang), "&Delta; deff_K", "&Delta; CV",
+                             .t("Contribution to deff_K change", "Contribuci\u00f3n al cambio del deff_K", lang),
                              .t("Effect", "Efecto", lang)), "</th>", collapse = "")
       rows <- vapply(seq_along(dd), function(j) sprintf(
         "<tr><td>%s</td><td>%s</td><td>%s</td><td>%.0f%%</td><td>%s</td></tr>",
@@ -1058,7 +1058,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       "<div class='step'><div class='step-h'><span class='num'>%d</span>%s</div>%s
        <div class='cols'><div><h4>Requested</h4><table class='params'>%s</table></div>
        <div><h4>Diagnostics</h4>%s%s
-       <p class='muted'>Kish deff %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p>%s</div></div>%s</div>",
+       <p class='muted'>deff_K %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p>%s</div></div>%s</div>",
       i, .step_short(s, lang), narr, paste(prows, collapse = ""),
       .df_to_html(.with_reldiff(s$diagnostics, lang)), extra,
       de1$deff, de2$deff, format(round(de1$n_eff), big.mark = ","),
@@ -1124,8 +1124,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
             lead, paste(it, collapse = " &middot; "))
   })
   foot_txt <- .t(
-    "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; is the Kish effective sample size; deff = 1 + CV&sup2; = n / n_eff is the Kish design effect (n = active units), a measure of weight variability benchmarked against equal weighting (Kish 1992). It assumes equal weights would be optimal, so read it in context: when the weights correlate with the outcome, as calibration to informative auxiliaries induces, deff overstates the variance and can rise even as precision improves (Spencer 2000; Little and Vartivarian 2005); a nonresponse adjustment instead accepts extra weight variability to reduce bias, so a high deff there reflects a more genuine bias-variance trade-off, and unequal weights can still beat equal ones when response and the outcome both depend on the adjustment variables. deff is best used as a post-hoc diagnostic: large values flag a step that may inject unjustified variability, or an error worth checking (Valliant, Dever and Kreuter 2018). This report shows the weights only; for design-based inference (standard errors, confidence intervals) use the 'survey' or 'srvyr' package.",
-    "n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; es el tama\u00f1o de muestra efectivo de Kish; deff = 1 + CV&sup2; = n / n_eff es el efecto de dise\u00f1o de Kish (n = unidades activas), una medida de la variabilidad de los pesos comparada contra la ponderaci\u00f3n igual (Kish 1992). Supone que la ponderaci\u00f3n igual ser\u00eda \u00f3ptima, as\u00ed que conviene leerlo en contexto: cuando los pesos correlacionan con la variable de inter\u00e9s, como induce la calibraci\u00f3n a auxiliares informativos, el deff sobreestima la varianza y puede subir aunque la precisi\u00f3n mejore (Spencer 2000; Little y Vartivarian 2005); en cambio un ajuste por no respuesta acepta m\u00e1s variabilidad para reducir el sesgo, por lo que un deff alto ah\u00ed refleja un compromiso sesgo-varianza m\u00e1s real, y los pesos desiguales pueden aun as\u00ed superar a los iguales cuando la respuesta y la variable de inter\u00e9s dependen de las variables de ajuste. El deff conviene usarlo como diagn\u00f3stico posterior: valores grandes se\u00f1alan un paso que puede inyectar variabilidad injustificada, o un error que vale la pena revisar (Valliant, Dever y Kreuter 2018). Este reporte muestra solo los pesos; para inferencia basada en el dise\u00f1o (errores est\u00e1ndar, intervalos de confianza) us\u00e1 el paquete 'survey' o 'srvyr'.",
+    "deff_K = 1 + CV&sup2; is the Kish design effect (n = active units; CV = coefficient of variation of the weights), a measure of weight variability benchmarked against equal weighting (Kish 1992). The corresponding effective sample size is n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; = n / deff_K. It assumes equal weights would be optimal, so read it in context: when the weights correlate with the outcome, as calibration to informative auxiliaries induces, deff_K overstates the variance and can rise even as precision improves (Spencer 2000; Little and Vartivarian 2005); a nonresponse adjustment instead accepts extra weight variability to reduce bias, so a high deff_K there reflects a more genuine bias-variance trade-off, and unequal weights can still beat equal ones when response and the outcome both depend on the adjustment variables. deff_K is best used as a post-hoc diagnostic: large values flag a step that may inject unjustified variability, or an error worth checking (Valliant, Dever and Kreuter 2018). This report shows the weights only; for design-based inference (standard errors, confidence intervals) use the 'survey' or 'srvyr' package.",
+    "deff_K = 1 + CV&sup2; es el efecto de dise\u00f1o de Kish (n = unidades activas; CV = coeficiente de variaci\u00f3n de los pesos), una medida de la variabilidad de los pesos comparada contra la ponderaci\u00f3n igual (Kish 1992). El tama\u00f1o de muestra efectivo correspondiente es n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; = n / deff_K. Supone que la ponderaci\u00f3n igual ser\u00eda \u00f3ptima, as\u00ed que conviene leerlo en contexto: cuando los pesos correlacionan con la variable de inter\u00e9s, como induce la calibraci\u00f3n a auxiliares informativos, el deff_K sobreestima la varianza y puede subir aunque la precisi\u00f3n mejore (Spencer 2000; Little y Vartivarian 2005); en cambio un ajuste por no respuesta acepta m\u00e1s variabilidad para reducir el sesgo, por lo que un deff_K alto ah\u00ed refleja un compromiso sesgo-varianza m\u00e1s real, y los pesos desiguales pueden aun as\u00ed superar a los iguales cuando la respuesta y la variable de inter\u00e9s dependen de las variables de ajuste. El deff_K conviene usarlo como diagn\u00f3stico posterior: valores grandes se\u00f1alan un paso que puede inyectar variabilidad injustificada, o un error que vale la pena revisar (Valliant, Dever y Kreuter 2018). Este reporte muestra solo los pesos; para inferencia basada en el dise\u00f1o (errores est\u00e1ndar, intervalos de confianza) us\u00e1 el paquete 'survey' o 'srvyr'.",
     lang)
   # HTML assembled by named interpolation (paste0), not a positional sprintf, so
   # sections cannot be misaligned when one is added or removed.
