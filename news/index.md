@@ -4,6 +4,36 @@
 
 ### New features
 
+- **Trimming diagnostics in the report.** The trim steps share a card:
+  winsorization accounting (mass moved, redistributed vs absorbed), bias
+  cost in SEs with `report_weighting(y_vars = ...)`, the Potter MSE
+  curve, a threshold-sensitivity table, per-subgroup detail, and alerts
+  for over-trimming, inert trims and a later calibration re-inflating a
+  trimmed cap.
+
+- **Calibration diagnostics in the report.**
+  `step_calibrate(method = "linear")` gains a card: g-range, negative /
+  at-bound counts, chi-square distance, condition number, per-constraint
+  influence, expected efficiency gain (`y_vars`), an overlap note with
+  prior nonresponse steps, and a per-domain table under `by =`;
+  ill-conditioning and negative weights raise alerts.
+
+- **Propensity-model diagnostics in the report.**
+  `step_nonresponse(method = "propensity")` gains a card: calibration by
+  decile (Cox slope, Brier), propensity floor / overlap, covariate
+  balance, model spec and hyperparameters, weighted AUC read in context,
+  top predictors, and the in-sample vs out-of-fold gap; a miscalibrated
+  model raises an alert. The refit runs once at report time, never in
+  the bootstrap.
+
+- **Nonresponse-by-calibration diagnostics (unified).**
+  `step_nonresponse(method = "calibration")` recovers the implicit
+  propensity phi-hat = 1/g and shows its distribution, the information
+  level (InfoS / InfoU) and an auxiliary-quality grade (explains
+  response / explains `y`); non-positive g raises an alert. Weighting
+  classes, propensities and calibration now share one diagnostic
+  language.
+
 - **Differentiated (per-subgroup) trimming.**
   [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
   gains a `by` argument, and `lower` / `upper` may be a named vector of
