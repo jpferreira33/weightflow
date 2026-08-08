@@ -353,3 +353,595 @@
     .t("Two runs showing the same recipe and data fingerprints are exactly comparable; any difference indicates a change in code, data or environment. The fingerprint is a lightweight checksum of the recipe specification and of the data shape and weight totals (no microdata is stored).",
        "Dos corridas con las mismas huellas de receta y de datos son exactamente comparables; cualquier diferencia indica un cambio en el c\u00f3digo, los datos o el entorno. La huella es un checksum liviano de la especificaci\u00f3n de la receta y de la forma de los datos y los totales de pesos (no se guarda microdato).", lang))
 }
+
+# Propensity-model diagnostics for ML nonresponse (method = "propensity"):
+# calibration of the estimated propensities (the metric that matters for 1/p
+# weighting, not classification), propensity floor/overlap, and covariate
+# balance after 1/p weighting. Reads attr(diag, "propensity"); "" otherwise.
+.propensity_diagnostics <- function(step, lang) {
+  pr <- attr(step$diagnostics, "propensity")
+  if (is.null(pr) || is.null(pr$p) || !length(pr$p)) return("")
+  p <- as.numeric(pr$p); resp <- as.logical(pr$resp); dw <- as.numeric(pr$dw)
+  ok <- is.finite(p) & is.finite(dw) & !is.na(resp)
+  p <- p[ok]; resp <- resp[ok]; dw <- dw[ok]
+  if (length(p) < 20L || length(unique(resp)) < 2L) return("")
+  wm  <- function(x, wt) { sm <- sum(wt); if (sm <= 0) NA_real_ else sum(wt * x) / sm }
+  d3  <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
+  pc1 <- function(x) if (!is.finite(x)) "&ndash;" else sprintf("%.1f%%", x)
+
+  # (a) calibration of the propensities, by decile of phi-hat
+  br <- unique(stats::quantile(p, probs = 0:10 / 10, na.rm = TRUE, names = FALSE))
+  cal_html <- ""
+  if (length(br) >= 3L) {
+    g  <- cut(p, breaks = br, include.lowest = TRUE)
+    hd <- paste0("<th>", c(.t("Decile of &phi;&#770;", "Decil de &phi;&#770;", lang), "n",
+                           .t("Predicted", "Predicho", lang),
+                           .t("Observed", "Observado", lang),
+                           .t("Diff.", "Dif.", lang)), "</th>", collapse = "")
+    rows <- vapply(levels(g), function(l) {
+      sidx <- which(g == l); pd <- wm(p[sidx], dw[sidx])
+      ob <- wm(as.numeric(resp[sidx]), dw[sidx]); dif <- ob - pd
+      sprintf("<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td><span class='%s'>%+.3f</span></td></tr>",
+              .html_escape(l), length(sidx), d3(pd), d3(ob),
+              if (is.finite(dif) && abs(dif) > 0.05) "cell-warn" else "cell-ok",
+              if (is.finite(dif)) dif else 0)
+    }, character(1))
+    cal_html <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+                        hd, paste(rows, collapse = ""))
+  }
+  lp  <- stats::qlogis(pmin(pmax(p, 1e-6), 1 - 1e-6))
+  cox <- tryCatch(suppressWarnings(stats::glm(as.integer(resp) ~ lp,
+           family = stats::binomial(), weights = dw)), error = function(e) NULL)
+  slope <- if (!is.null(cox)) unname(stats::coef(cox)[2]) else NA_real_
+  intc  <- if (!is.null(cox)) unname(stats::coef(cox)[1]) else NA_real_
+  brier <- wm((as.numeric(resp) - p)^2, dw)
+  cal_note <- .t(
+    sprintf("Calibration slope %s (ideal 1), intercept %s (ideal 0), Brier %s. For 1/&phi;&#770; weighting the estimated propensities must be well-calibrated, not merely discriminative: among units with &phi;&#770; near a value, that fraction should respond.",
+            d3(slope), d3(intc), d3(brier)),
+    sprintf("Pendiente de calibraci\u00f3n %s (ideal 1), intercepto %s (ideal 0), Brier %s. Para ponderar por 1/&phi;&#770; las propensiones estimadas deben estar bien calibradas, no solo discriminar: entre unidades con &phi;&#770; cercana a un valor, esa fracci\u00f3n deber\u00eda responder.",
+            d3(slope), d3(intc), d3(brier)), lang)
+
+  # (b) floor / overlap among respondents (they carry the 1/p weights)
+  pr_r <- p[resp]; dw_r <- dw[resp]
+  flo  <- function(t) 100 * wm(as.numeric(pr_r < t), dw_r)
+  floor_note <- .t(
+    sprintf("Respondents with &phi;&#770; below 0.10: %s; below 0.05: %s (min %s). Small propensities become large 1/&phi;&#770; weights; a very sharp model can hide extreme weights in a few units.",
+            pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))),
+    sprintf("Respondentes con &phi;&#770; bajo 0.10: %s; bajo 0.05: %s (m\u00ednimo %s). Las propensiones chicas se vuelven pesos 1/&phi;&#770; grandes; un modelo muy filoso puede esconder pesos extremos en pocas unidades.",
+            pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))), lang)
+
+  # (c) covariate balance: weighted respondents (before dw, after dw/p) vs the
+  # full eligible sample (target, weighted by dw); standardized differences.
+  bal_html <- ""
+  cov <- tryCatch(pr$covars[ok, , drop = FALSE], error = function(e) NULL)
+  if (!is.null(cov) && ncol(cov)) {
+    mm <- tryCatch(stats::model.matrix(~ ., data = cov)[, -1, drop = FALSE],
+                   error = function(e) NULL)
+    if (!is.null(mm) && ncol(mm)) {
+      wa <- dw_r / pr_r
+      rr <- lapply(colnames(mm), function(cn) {
+        x  <- mm[, cn]; mt <- wm(x, dw); st <- sqrt(wm((x - mt)^2, dw))
+        if (!is.finite(st) || st <= 0) return(NULL)
+        data.frame(v = cn, before = (wm(x[resp], dw[resp]) - mt) / st,
+                   after = (wm(x[resp], wa) - mt) / st, stringsAsFactors = FALSE)
+      })
+      bal <- do.call(rbind, rr)
+      if (!is.null(bal) && nrow(bal)) {
+        hd <- paste0("<th>", c(.t("Covariate", "Covariable", lang),
+                     .t("Std. diff. before", "Dif. estand. antes", lang),
+                     .t("Std. diff. after", "Dif. estand. despu\u00e9s", lang)),
+                     "</th>", collapse = "")
+        brows <- vapply(seq_len(nrow(bal)), function(i) sprintf(
+          "<tr><td>%s</td><td>%+.3f</td><td><span class='%s'>%+.3f</span></td></tr>",
+          .html_escape(bal$v[i]), bal$before[i],
+          if (is.finite(bal$after[i]) && abs(bal$after[i]) > 0.1) "cell-warn" else "cell-ok",
+          bal$after[i]), character(1))
+        bal_html <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+          .t("Standardized differences of the model covariates: weighted respondents vs the full eligible sample (target). |diff| &gt; 0.1 is flagged.",
+             "Diferencias estandarizadas de las covariables del modelo: respondentes ponderados vs la muestra elegible completa (objetivo). Se marca |dif| &gt; 0.1.", lang),
+          hd, paste(brows, collapse = ""))
+      }
+    }
+  }
+
+  # model spec / hyperparameters (auditability: what model produced these p-hat)
+  eng <- pr$engine %||% "logit"
+  cf  <- if (is.null(pr$crossfit)) .t("in-sample (no cross-fitting)", "en muestra (sin cross-fitting)", lang)
+         else sprintf(.t("%d-fold cross-fitting", "cross-fitting de %d folds", lang), pr$crossfit)
+  wgt <- if (is.null(pr$weight_model) || isTRUE(pr$weight_model)) .t("design-weighted fit", "ajuste ponderado por dise\u00f1o", lang)
+         else .t("unweighted fit", "ajuste sin ponderar", lang)
+  cls <- if (is.null(pr$num_classes)) .t("1/&phi;&#770; per unit", "1/&phi;&#770; por unidad", lang)
+         else sprintf(.t("%d propensity classes", "%d clases de propensi\u00f3n", lang), pr$num_classes)
+  hyp <- switch(eng,
+    boost  = " (nrounds=150, max_depth=4, eta=0.1)",
+    forest = " (ranger defaults: num.trees=500, mtry=floor(sqrt(p)))",
+    tree   = " (rpart defaults: cp=0.01, minsplit=20)",
+    logit  = .t(" (weighted logistic regression)", " (regresi\u00f3n log\u00edstica ponderada)", lang),
+    "")
+  spec_note <- sprintf("<p class='muted'><strong>%s:</strong> %s &middot; %s &middot; %s &middot; %s%s</p>",
+    .t("Model", "Modelo", lang), .html_escape(eng), cf, wgt, cls, hyp)
+
+  # weighted AUC (approx, ties ignored): P(phi-hat higher for a respondent)
+  wauc <- function(pp, rr, ww) tryCatch({
+    o <- order(pp); r2 <- rr[o]; w2 <- ww[o]
+    below <- cumsum(w2 * (!r2)) - w2 * (!r2)
+    Wr <- sum(w2[r2]); Wn <- sum(w2[!r2])
+    if (Wr > 0 && Wn > 0) sum((w2 * r2) * below) / (Wr * Wn) else NA_real_
+  }, error = function(e) NA_real_)
+  auc <- wauc(p, resp, dw)
+  auc_note <- .t(
+    sprintf("Weighted AUC %s. Moderate AUC is fine here; a very high AUC is a flag to check the weight tails and the missing-at-random assumption, not a goal.", d3(auc)),
+    sprintf("AUC ponderada %s. Un AUC moderado est\u00e1 bien; un AUC muy alto es una se\u00f1al para revisar las colas de los pesos y el supuesto MAR, no un objetivo.", d3(auc)), lang)
+
+  # in-sample refit (once, report time only) for variable importance and the
+  # in-sample vs out-of-fold overfitting gap. Fully guarded; never breaks the report.
+  imp <- NULL; pin <- NULL
+  covd <- tryCatch(pr$covars[ok, , drop = FALSE], error = function(e) NULL)
+  if (!is.null(pr$formula) && !is.null(covd) && ncol(covd)) {
+    tr <- covd; tr$.y <- as.integer(resp); tr$.wts <- dw
+    f2 <- stats::update(pr$formula, .y ~ .)
+    tryCatch({
+      if (eng == "logit") {
+        m  <- suppressWarnings(stats::glm(f2, data = tr, family = stats::binomial(), weights = .wts))
+        zz <- summary(m)$coefficients
+        imp <- abs(zz[rownames(zz) != "(Intercept)", "z value"])
+        pin <- as.numeric(stats::predict(m, type = "response"))
+      } else if (eng == "tree" && requireNamespace("rpart", quietly = TRUE)) {
+        tr$.y <- factor(tr$.y, levels = c(0, 1))
+        m <- rpart::rpart(f2, data = tr, method = "class", weights = .wts)
+        imp <- m$variable.importance
+        pin <- as.numeric(stats::predict(m, type = "prob")[, "1"])
+      } else if (eng == "forest" && requireNamespace("ranger", quietly = TRUE)) {
+        tr$.y <- factor(tr$.y, levels = c(0, 1))
+        m <- ranger::ranger(f2, data = tr, probability = TRUE, case.weights = dw,
+                            importance = "impurity", num.threads = 1L)
+        imp <- ranger::importance(m)
+        pin <- as.numeric(stats::predict(m, data = tr)$predictions[, "1"])
+      } else if (eng == "boost" && requireNamespace("xgboost", quietly = TRUE)) {
+        rhs <- stats::reformulate(attr(stats::terms(pr$formula), "term.labels"))
+        M   <- stats::model.matrix(rhs, data = tr)
+        M   <- M[, colnames(M) != "(Intercept)", drop = FALSE]
+        m   <- xgboost::xgb.train(params = list(objective = "binary:logistic",
+                 max_depth = 4, eta = 0.1, nthread = 1L),
+                 data = xgboost::xgb.DMatrix(M, label = tr$.y, weight = dw),
+                 nrounds = 150L, verbose = 0)
+        gi  <- xgboost::xgb.importance(model = m)
+        imp <- stats::setNames(gi$Gain, gi$Feature)
+        pin <- as.numeric(stats::predict(m, M))
+      }
+    }, error = function(e) NULL)
+  }
+  imp_html <- ""
+  if (!is.null(imp) && length(imp)) {
+    imp <- imp[is.finite(imp) & imp > 0]
+    if (length(imp)) {
+      imp <- sort(imp, decreasing = TRUE); top <- utils::head(imp, 5L)
+      rel <- 100 * top / sum(imp)
+      hd  <- paste0("<th>", c(.t("Variable", "Variable", lang),
+                              .t("Importance (%)", "Importancia (%)", lang)), "</th>", collapse = "")
+      irows <- vapply(seq_along(top), function(i)
+        sprintf("<tr><td>%s</td><td>%.1f%%</td></tr>", .html_escape(names(top)[i]), rel[i]), character(1))
+      imp_html <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+        .t(sprintf("Top predictors of response (%s importance, relative).", eng),
+           sprintf("Principales predictores de la respuesta (importancia de %s, relativa).", eng), lang),
+        hd, paste(irows, collapse = ""))
+    }
+  }
+  stab_note <- ""
+  if (!is.null(pr$crossfit) && !is.null(pin) && length(pin) == length(p)) {
+    auc_in <- wauc(pin, resp, dw)
+    stab_note <- sprintf("<p class='muted'>%s</p>", .t(
+      sprintf("Out-of-fold AUC %s vs in-sample AUC %s (gap %s). A large gap means the learner overfits; all diagnostics above use the out-of-fold predictions.",
+              d3(auc), d3(auc_in), d3(auc_in - auc)),
+      sprintf("AUC out-of-fold %s vs in-sample %s (brecha %s). Una brecha grande indica sobreajuste; todos los diagn\u00f3sticos de arriba usan las predicciones out-of-fold.",
+              d3(auc), d3(auc_in), d3(auc_in - auc)), lang))
+  }
+
+  ov <- tryCatch(.svg_overlap(p, resp, dw, lang), error = function(e) "")
+  if (nzchar(ov)) ov <- sprintf("<div class='wdhist'>%s</div>", ov)
+  sprintf("<div class='ri'><h4>%s</h4>%s%s%s<p class='note'>%s</p><p class='muted'>%s</p>%s<p class='muted'>%s</p>%s%s</div>",
+          .t("Propensity model diagnostics", "Diagn\u00f3sticos del modelo de propensi\u00f3n", lang),
+          spec_note, imp_html, cal_html, cal_note, auc_note, stab_note, floor_note, ov, bal_html)
+}
+
+# Unified nonresponse diagnostics for method = "calibration" (Sarndal-Lundstrom):
+# the response model is implicit in the g-weights, so we expose the implicit
+# response propensity phi-hat = 1/g, its distribution, the share with phi-hat > 1
+# (g < 1, auxiliaries pushing the wrong way), and the information level
+# (InfoS = full-sample totals, InfoU = population totals). Reads attr "calib_nr".
+.calib_nr_diagnostics <- function(step, lang, object = NULL, y_vars = NULL) {
+  cn <- attr(step$diagnostics, "calib_nr")
+  if (is.null(cn) || is.null(cn$g) || !length(cn$g)) return("")
+  g <- as.numeric(cn$g); dw <- as.numeric(cn$dw)
+  ok <- is.finite(g) & is.finite(dw); g <- g[ok]; dw <- dw[ok]
+  if (!length(g)) return("")
+  gpos <- g > 0; n_bad <- sum(!gpos)          # non-positive g: no valid 1/g
+  phi  <- 1 / g[gpos]
+  d3  <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
+  pc1 <- function(x) if (!is.finite(x)) "&ndash;" else sprintf("%.1f%%", x)
+  wm  <- function(x, wt) { fin <- is.finite(x); sm <- sum(wt[fin])
+    if (sm <= 0) NA_real_ else sum(wt[fin] * x[fin]) / sm }
+  q <- tryCatch(as.numeric(stats::quantile(phi, c(0, .01, .5, .99, 1), na.rm = TRUE, names = FALSE)),
+                error = function(e) rep(NA_real_, 5))
+  info_lab <- if (identical(cn$info, "population"))
+    .t("InfoU (population totals)", "InfoU (totales poblacionales)", lang)
+  else .t("InfoS (full-sample totals)", "InfoS (totales de la muestra completa)", lang)
+  pct_gt1 <- 100 * wm(as.numeric(g > 0 & g < 1), dw)
+  pct_neg <- 100 * wm(as.numeric(g <= 0), dw)
+  row <- function(k, v) sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>", k, v)
+  excl <- if (n_bad > 0) .t(sprintf(" (excluding %d unit(s) with non-positive g)", n_bad),
+                            sprintf(" (excluye %d unidad(es) con g no positivo)", n_bad), lang) else ""
+  dist <- paste0(row(paste0("min<span class='muted'>", excl, "</span>"), d3(q[1])), row("p1", d3(q[2])),
+                 row(.t("median", "mediana", lang), d3(q[3])),
+                 row("p99", d3(q[4])), row("max", d3(q[5])))
+  note <- .t(
+    sprintf("Implicit response propensity &phi;&#770; = 1/g, recovered from the calibration g-weights. Information level: <strong>%s</strong>. Respondents with &phi;&#770; &gt; 1 (g &lt; 1): %s; non-positive g: %s. A large share with &phi;&#770; &gt; 1 signals the auxiliary vector pushes the wrong way for part of the sample (Sarndal and Lundstrom 2005).",
+            info_lab, pc1(pct_gt1), pc1(pct_neg)),
+    sprintf("Propensi\u00f3n de respuesta impl\u00edcita &phi;&#770; = 1/g, recuperada de los g-weights de la calibraci\u00f3n. Nivel de informaci\u00f3n: <strong>%s</strong>. Respondentes con &phi;&#770; &gt; 1 (g &lt; 1): %s; g no positivo: %s. Una fracci\u00f3n grande con &phi;&#770; &gt; 1 indica que el vector auxiliar empuja en la direcci\u00f3n equivocada para parte de la muestra (Sarndal y Lundstrom 2005).",
+            info_lab, pc1(pct_gt1), pc1(pct_neg)), lang)
+  # (4i/4ii) auxiliary-vector quality (Sarndal-Lundstrom): does each auxiliary
+  # explain response, and (if y_vars given) the outcomes y?
+  aux_html <- ""
+  cov <- tryCatch(cn$aux, error = function(e) NULL)
+  if (!is.null(cov) && ncol(cov) && !is.null(cn$resp)) {
+    resp2 <- as.logical(cn$resp); dwa <- as.numeric(cn$dw_all)
+    ok2 <- is.finite(dwa) & !is.na(resp2)
+    cov <- cov[ok2, , drop = FALSE]; resp2 <- resp2[ok2]; dwa <- dwa[ok2]
+    mm <- tryCatch(stats::model.matrix(~ ., data = cov)[, -1, drop = FALSE], error = function(e) NULL)
+    yv <- NULL
+    if (!is.null(object) && !is.null(y_vars) && !is.null(cn$elig_idx)) {
+      yn0 <- intersect(y_vars, names(object$data))
+      if (length(yn0)) yv <- tryCatch(object$data[cn$elig_idx, yn0, drop = FALSE][ok2, , drop = FALSE],
+                                      error = function(e) NULL)
+    }
+    if (!is.null(mm) && ncol(mm) && length(unique(resp2)) >= 2L) {
+      wm2 <- function(x, w) { f <- is.finite(x); s <- sum(w[f]); if (s <= 0) NA_real_ else sum(w[f] * x[f]) / s }
+      wsd <- function(x, w) { m <- wm2(x, w); sqrt(wm2((x - m)^2, w)) }
+      wcor <- function(x, y, w) { k <- is.finite(x) & is.finite(y) & is.finite(w) & w > 0
+        x <- x[k]; y <- y[k]; w <- w[k]; W <- sum(w); if (W <= 0) return(NA_real_)
+        mx <- sum(w * x) / W; my <- sum(w * y) / W
+        sx <- sqrt(sum(w * (x - mx)^2) / W); sy <- sqrt(sum(w * (y - my)^2) / W)
+        if (sx <= 0 || sy <= 0) NA_real_ else sum(w * (x - mx) * (y - my)) / W / (sx * sy) }
+      sdif <- vapply(colnames(mm), function(nm) { x <- mm[, nm]; sp <- wsd(x, dwa)
+        if (!is.finite(sp) || sp <= 0) NA_real_ else (wm2(x[resp2], dwa[resp2]) - wm2(x[!resp2], dwa[!resp2])) / sp },
+        numeric(1))
+      ynm  <- if (!is.null(yv)) names(yv) else character(0)
+      ycor <- if (length(ynm)) lapply(ynm, function(yy) { y <- suppressWarnings(as.numeric(yv[[yy]]))
+        vapply(colnames(mm), function(nm) wcor(mm[resp2, nm], y[resp2], dwa[resp2]), numeric(1)) }) else list()
+      d3b <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
+      hd <- paste0("<th>", c(.t("Auxiliary", "Auxiliar", lang),
+             .t("Explains response (std. diff.)", "Explica respuesta (dif. estand.)", lang),
+             vapply(ynm, function(yy) sprintf(.t("Corr. with %s", "Corr. con %s", lang), .html_escape(yy)), character(1))),
+             "</th>", collapse = "")
+      arows <- vapply(seq_along(colnames(mm)), function(i) {
+        yc <- if (length(ycor)) paste(vapply(ycor, function(v) sprintf("<td>%s</td>", d3b(v[i])), character(1)), collapse = "") else ""
+        sprintf("<tr><td>%s</td><td>%+.3f</td>%s</tr>", .html_escape(colnames(mm)[i]),
+                if (is.finite(sdif[i])) sdif[i] else 0, yc) }, character(1))
+      aux_html <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+        .t("Auxiliary-vector quality (Sarndal-Lundstrom): a good auxiliary should explain response (large |std. diff.|) and, ideally, the outcomes y (large |corr.|). Auxiliaries near zero add little to the nonresponse correction.",
+           "Calidad del vector auxiliar (Sarndal-Lundstrom): un buen auxiliar deber\u00eda explicar la respuesta (|dif. estand.| grande) y, idealmente, las y (|corr.| grande). Los auxiliares cerca de cero aportan poco a la correcci\u00f3n por no respuesta.", lang),
+        hd, paste(arows, collapse = ""))
+    }
+  }
+  sprintf("<div class='ri'><h4>%s</h4><p class='muted'>%s</p><table class='params'>%s</table>%s</div>",
+          .t("Nonresponse calibration diagnostics", "Diagn\u00f3sticos de calibraci\u00f3n por no respuesta", lang),
+          note, dist, aux_html)
+}
+
+# Calibration diagnostics for step_calibrate (method = "linear"/GREG): negative
+# and at-bound weights, chi-square distance, conditioning of the system (with a
+# ridge pointer), expected efficiency gain for optional y_vars, and a note when
+# the margins overlap a prior nonresponse adjustment. Reads attr "calibrate".
+.calibrate_diagnostics <- function(step, lang, object = NULL, y_vars = NULL) {
+  dm <- attr(step$diagnostics, "calib_domains")
+  cd <- attr(step$diagnostics, "calibrate")
+  if (is.null(cd) || is.null(cd$g) || !length(cd$g)) {
+    if (!is.null(dm) && nrow(dm))
+      return(paste0(.calib_domain_table(dm, lang), .calib_overlap_note(step, object, lang)))
+    return("")
+  }
+  g <- as.numeric(cd$g); d <- as.numeric(cd$d)
+  ok <- is.finite(g) & is.finite(d); g <- g[ok]; d <- d[ok]
+  if (!length(g)) return("")
+  cov  <- tryCatch(cd$covars[ok, , drop = FALSE], error = function(e) NULL)
+  aidx <- cd$active_idx[ok]
+  d3 <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
+  nf <- function(x) if (!is.finite(x)) "&ndash;" else format(round(x), big.mark = ",", trim = TRUE)
+  w <- d * g; n_neg <- sum(w < 0); bnd <- cd$bounds
+  row <- function(k, v) sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>", k, v)
+  tab <- paste0(
+    row(.t("g range", "rango de g", lang), sprintf("[%s, %s]", d3(min(g)), d3(max(g)))),
+    row(.t("negative weights", "pesos negativos", lang),
+        sprintf("<span class='%s'>%s</span>", if (n_neg > 0) "cell-warn" else "cell-ok", nf(n_neg))),
+    if (!is.null(bnd)) row(.t("at lower bound", "en cota inferior", lang), nf(sum(abs(g - bnd[1]) < 1e-6))) else "",
+    if (!is.null(bnd)) row(.t("at upper bound", "en cota superior", lang), nf(sum(abs(g - bnd[2]) < 1e-6))) else "",
+    row(.t("chi-square distance &Sigma;(w&minus;d)&sup2;/d", "distancia chi-cuadrado &Sigma;(w&minus;d)&sup2;/d", lang), nf(cd$chi2)),
+    row(.t("condition number &kappa;(X'X)", "n\u00famero de condici\u00f3n &kappa;(X'X)", lang),
+        if (isTRUE(cd$pooled)) .t("per domain (see table below)", "por dominio (ver tabla abajo)", lang)
+        else sprintf("<span class='%s'>%s</span>",
+                if (is.finite(cd$cond) && cd$cond > 1e10) "cell-warn" else "cell-ok",
+                if (is.finite(cd$cond)) formatC(cd$cond, format = "e", digits = 1) else "&ndash;")))
+  notes <- character(0)
+  if (n_neg > 0)
+    notes <- c(notes, .t(
+      sprintf("%s unit(s) received a negative weight (g &lt; 0), the classic linear-calibration accident. Use bounds = c(lo, hi) or calfun = \"raking\" to keep the weights positive.", nf(n_neg)),
+      sprintf("%s unidad(es) recibieron peso negativo (g &lt; 0), el accidente cl\u00e1sico de la calibraci\u00f3n lineal. Us\u00e1 bounds = c(lo, hi) o calfun = \"raking\" para mantener pesos positivos.", nf(n_neg)), lang))
+  if (is.finite(cd$cond) && cd$cond > 1e10)
+    notes <- c(notes, .t(
+      "The calibration system is ill-conditioned (near-collinear auxiliaries), so the factors can be unstable. Drop a redundant auxiliary, or set penalty = <lambda> for a ridge-stabilized calibration.",
+      "El sistema de calibraci\u00f3n est\u00e1 mal condicionado (auxiliares casi colineales), as\u00ed que los factores pueden ser inestables. Quit\u00e1 un auxiliar redundante, o us\u00e1 penalty = <lambda> para una calibraci\u00f3n ridge estabilizada.", lang))
+  eff <- ""
+  if (!is.null(object) && !is.null(y_vars) && !is.null(cov) && ncol(cov)) {
+    yn <- intersect(y_vars, names(object$data))
+    Xm <- tryCatch(stats::model.matrix(cd$formula, data = cov), error = function(e) NULL)
+    if (length(yn) && !is.null(Xm) && nrow(Xm) == length(aidx)) {
+      wr2 <- function(y) {
+        kk <- is.finite(y) & is.finite(d) & d > 0
+        fit <- tryCatch(stats::lm.wfit(Xm[kk, , drop = FALSE], y[kk], d[kk]), error = function(e) NULL)
+        if (is.null(fit)) return(NA_real_)
+        my <- sum(d[kk] * y[kk]) / sum(d[kk]); sst <- sum(d[kk] * (y[kk] - my)^2)
+        if (sst <= 0) return(NA_real_)
+        1 - sum(d[kk] * (y[kk] - fit$fitted.values)^2) / sst
+      }
+      rows <- vapply(yn, function(v) {
+        r2 <- wr2(suppressWarnings(as.numeric(object$data[aidx, v])))
+        sprintf("<tr><td>%s</td><td>%s</td></tr>", .html_escape(v),
+                if (is.finite(r2)) sprintf("%.1f%%", 100 * max(r2, 0)) else "&ndash;")
+      }, character(1))
+      eff <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th></tr></thead><tbody>%s</tbody></table>",
+        .t("Expected efficiency gain: weighted R&sup2; of each outcome on the auxiliaries -- roughly the variance reduction the calibration buys for a total of that outcome.",
+           "Ganancia de eficiencia esperada: R&sup2; ponderado de cada variable sobre los auxiliares -- aproximadamente la reducci\u00f3n de varianza que la calibraci\u00f3n logra para un total de esa variable.", lang),
+        .t("Outcome", "Variable", lang), .t("Expected var. reduction", "Reducci\u00f3n de var. esperada", lang),
+        paste(rows, collapse = ""))
+    }
+  }
+  ovl <- .calib_overlap_note(step, object, lang)
+  # (3) influence by constraint: share of the chi-square distance each margin
+  # drives. Exact for unbounded linear (g - 1 = X lambda); shown only there.
+  infl <- ""
+  if (!isTRUE(cd$pooled) && identical(cd$calfun, "linear") && is.null(cd$bounds) && !is.null(cov) && ncol(cov)) {
+    Xi <- tryCatch(stats::model.matrix(cd$formula, data = cov), error = function(e) NULL)
+    if (!is.null(Xi) && nrow(Xi) == length(g)) {
+      lam <- tryCatch(as.numeric(solve(crossprod(Xi), crossprod(Xi, g - 1))), error = function(e) NULL)
+      if (!is.null(lam)) {
+        contrib <- lam * as.numeric(crossprod(Xi, d * (g - 1)))   # per-column contribution to the distance
+        tot <- sum(abs(contrib))
+        if (is.finite(tot) && tot > 0) {
+          sh <- 100 * abs(contrib) / tot; ord <- order(-sh); cn2 <- colnames(Xi)
+          hd <- paste0("<th>", c(.t("Constraint", "Restricci\u00f3n", lang),
+                                 .t("Share of movement", "% del movimiento", lang)), "</th>", collapse = "")
+          irows <- vapply(ord, function(i) sprintf("<tr><td>%s</td><td>%.0f%%</td></tr>",
+                          .html_escape(cn2[i]), sh[i]), character(1))
+          infl <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+            .t("Influence by constraint: share of the calibration distance each margin drives (which totals move the weights most).",
+               "Influencia por restricci\u00f3n: parte de la distancia de calibraci\u00f3n que aporta cada margen (qu\u00e9 totales mueven m\u00e1s los pesos).", lang),
+            hd, paste(irows, collapse = ""))
+        }
+      }
+    }
+  }
+  dom_tbl <- if (!is.null(dm) && nrow(dm)) .calib_domain_table(dm, lang) else ""
+  notes_html <- if (length(notes)) paste0("<p class='note'>", notes, "</p>", collapse = "") else ""
+  sprintf("<div class='ri'><h4>%s</h4><table class='params'>%s</table>%s%s%s%s</div>%s",
+          .t("Calibration diagnostics", "Diagn\u00f3sticos de calibraci\u00f3n", lang),
+          tab, notes_html, ovl, infl, eff, dom_tbl)
+}
+
+# Per-domain calibration summary (step_calibrate with by=): one row per domain
+# with n, g range, negative / at-bound counts, conditioning and convergence.
+# Troublesome domains (negatives, non-convergence, wide g) are listed first --
+# the small domain with extreme g is where the partition strains.
+.calib_domain_table <- function(dm, lang) {
+  d3 <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
+  nf <- function(x) if (!is.finite(x)) "&ndash;" else format(round(x), big.mark = ",", trim = TRUE)
+  hd <- paste0("<th>", c(.t("Domain", "Dominio", lang), "n", .t("g range", "rango de g", lang),
+               .t("neg.", "neg.", lang), .t("at bounds", "en cotas", lang), "&kappa;(X'X)",
+               .t("converged", "convergi\u00f3", lang)), "</th>", collapse = "")
+  ord <- order(-dm$n_neg, dm$converged, -(dm$g_max - dm$g_min))
+  rows <- vapply(ord, function(i) sprintf(
+    "<tr><td>%s</td><td>%s</td><td>[%s, %s]</td><td><span class='%s'>%s</span></td><td>%s</td><td>%s</td><td>%s</td></tr>",
+    .html_escape(as.character(dm$domain[i])), nf(dm$n[i]), d3(dm$g_min[i]), d3(dm$g_max[i]),
+    if (dm$n_neg[i] > 0) "cell-warn" else "cell-ok", nf(dm$n_neg[i]), nf(dm$n_bound[i]),
+    if (is.finite(dm$cond[i])) formatC(dm$cond[i], format = "e", digits = 1) else "&ndash;",
+    if (isTRUE(dm$converged[i])) "&#10003;" else "<span class='cell-warn'>&#10007;</span>"),
+    character(1))
+  sprintf("<div class='ri'><h4>%s</h4><p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>",
+    .t("Calibration diagnostics by domain", "Diagn\u00f3sticos de calibraci\u00f3n por dominio", lang),
+    .t("Each domain is calibrated independently; small domains with extreme g, weights at the bounds, negative weights or non-convergence are where the partition strains. Troublesome domains are listed first.",
+       "Cada dominio se calibra por separado; los dominios chicos con g extremos, pesos en las cotas, pesos negativos o sin convergencia son donde la partici\u00f3n sufre. Los problem\u00e1ticos van primero.", lang),
+    hd, paste(rows, collapse = ""))
+}
+
+# Note when the calibration margins overlap the variables of an earlier
+# nonresponse adjustment: the calibration partially re-absorbs that adjustment.
+.calib_overlap_note <- function(step, object, lang) {
+  if (is.null(object) || is.null(step$formula)) return("")
+  calvars <- all.vars(step$formula); nrv <- character(0)
+  for (st in object$steps) if (inherits(st, "step_nonresponse"))
+    nrv <- c(nrv, if (!is.null(st$formula)) all.vars(st$formula) else character(0),
+             if (!is.null(st$by)) as.character(st$by) else character(0))
+  shared <- intersect(calvars, unique(nrv))
+  if (!length(shared)) return("")
+  sprintf("<p class='note'>%s</p>", .t(
+    sprintf("These margins cover variables also used by the earlier nonresponse adjustment (%s); the calibration partially re-absorbs that adjustment. Its variability is still captured if you estimate variance with the recipe-aware bootstrap/jackknife.", .html_escape(paste(shared, collapse = ", "))),
+    sprintf("Estos m\u00e1rgenes cubren variables tambi\u00e9n usadas por el ajuste por no respuesta previo (%s); la calibraci\u00f3n re-absorbe parcialmente ese ajuste. Su variabilidad igual se captura si estim\u00e1s varianza con el bootstrap/jackknife recipe-aware.", .html_escape(paste(shared, collapse = ", "))), lang))
+}
+
+# Trimming diagnostics: what the trim bought (bias-variance trade-off), not just
+# what it did. Reads attr(diagnostics, "trim_rec") captured by the three trim
+# steps. Sections: (1) winsorization accounting; (2) bias cost with y_vars, or a
+# concentration proxy without; (3) Potter MSE curve; (4) threshold sensitivity;
+# (5) "calibration undid the trim" check; (6) variant specifics + % touched;
+# (7) inert-trim alert. Each section is guarded, so a missing piece is skipped.
+.trim_diagnostics <- function(step, lang, object = NULL, y_vars = NULL) {
+  rec <- attr(step$diagnostics, "trim_rec")
+  if (is.null(rec) || is.null(rec$wb) || !length(rec$wb)) return("")
+  wb <- as.numeric(rec$wb); wa <- as.numeric(rec$wa)
+  cap <- as.numeric(rec$cap); flo <- as.numeric(rec$floor)
+  ok <- is.finite(wb) & is.finite(wa)
+  wb <- wb[ok]; wa <- wa[ok]; cap <- cap[ok]; flo <- flo[ok]
+  n <- length(wb); if (!n) return("")
+  nf <- function(x) if (!is.finite(x)) "&ndash;" else format(round(x), big.mark = ",", trim = TRUE)
+  sf <- function(x) if (!is.finite(x)) "&ndash;" else format(round(x, 1), big.mark = ",", trim = TRUE, nsmall = 1)
+  pf <- function(x) if (!is.finite(x)) "&ndash;" else sprintf("%.1f%%", x)
+  kish <- function(x) { x <- x[is.finite(x) & x > 0]; if (length(x) < 2L) NA_real_ else length(x) * sum(x^2) / sum(x)^2 }
+  below <- is.finite(flo) & wb < flo
+  above <- is.finite(cap) & wb > cap
+  within <- !below & !above
+  n_touch <- sum(below | above); pct <- 100 * n_touch / n
+  tot_b <- sum(wb); tot_a <- sum(wa)
+  preserved <- abs(tot_a - tot_b) <= 1e-6 * max(abs(tot_b), 1)
+
+  # --- (1) winsorization accounting ---
+  band <- function(sel) c(nn = sum(sel), sb = sum(wb[sel]), sa = sum(wa[sel]))
+  b_lo <- band(below); b_in <- band(within); b_hi <- band(above)
+  brow <- function(lab, b) sprintf("<tr><td class='k'>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+    lab, nf(b["nn"]), sf(b["sb"]), sf(b["sa"]), sf(b["sa"] - b["sb"]))
+  acct <- sprintf(
+    "<table class='params'><thead><tr><th>%s</th><th>n</th><th>%s</th><th>%s</th><th>%s</th></tr></thead><tbody>%s%s%s</tbody></table>",
+    .t("band", "banda", lang), .t("sum before", "suma antes", lang), .t("sum after", "suma despues", lang),
+    .t("mass moved", "masa movida", lang),
+    brow(.t("below floor", "bajo cota inf.", lang), b_lo),
+    brow(.t("within band", "dentro", lang), b_in),
+    brow(.t("above cap", "sobre cota sup.", lang), b_hi))
+  disp <- if (identical(rec$redistribute, "calibration"))
+    .t("The trimmed mass was re-absorbed by the bounded re-calibration, which preserves the calibration totals by construction.",
+       "La masa recortada fue reabsorbida por la re-calibraci\u00f3n acotada, que preserva los totales de calibraci\u00f3n por construcci\u00f3n.", lang)
+  else if (identical(rec$redistribute, "none") || !preserved)
+    .t(sprintf("The trimmed mass was absorbed (weight total fell by %s, %s): the point estimates shift.", sf(tot_b - tot_a), pf(100 * (tot_b - tot_a) / tot_b)),
+       sprintf("La masa recortada fue absorbida (el total de pesos baj\u00f3 %s, %s): los estimadores puntuales se corren.", sf(tot_b - tot_a), pf(100 * (tot_b - tot_a) / tot_b)), lang)
+  else
+    .t("The trimmed mass was redistributed to the units within band, so the weight total is preserved.",
+       "La masa recortada se redistribuy\u00f3 a las unidades dentro de banda, as\u00ed que el total de pesos se preserva.", lang)
+  sec1 <- sprintf("<p class='muted'>%s</p>%s<p class='note'>%s</p>",
+    .t("What the trim did: units below the floor / within band / above the cap, with the weight sum before and after and the net mass moved.",
+       "Qu\u00e9 hizo el recorte: unidades bajo la cota inferior / dentro / sobre la cota superior, con la suma de pesos antes y despu\u00e9s y la masa neta movida.", lang),
+    acct, disp)
+
+  # --- (2) bias cost with y, else concentration proxy ---
+  bias <- ""
+  yn <- if (!is.null(object) && !is.null(y_vars)) intersect(y_vars, names(object$data)) else character(0)
+  if (length(yn)) {
+    wm <- function(y, w) { sw <- sum(w); if (sw <= 0) NA_real_ else sum(w * y) / sw }
+    rows <- vapply(yn, function(v) {
+      y <- suppressWarnings(as.numeric(object$data[rec$idx[ok], v])); kk <- is.finite(y)
+      yb <- wm(y[kk], wb[kk]); ya <- wm(y[kk], wa[kk]); sh <- ya - yb
+      sw <- sum(wa[kk]); se <- if (sw <= 0) NA_real_ else sqrt(sum(wa[kk]^2 * (y[kk] - ya)^2)) / sw
+      sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>", .html_escape(v),
+        if (is.finite(sh) && is.finite(yb) && yb != 0) sprintf("%+.1f%%", 100 * sh / yb) else "&ndash;",
+        if (is.finite(sh) && is.finite(se) && se > 0) sprintf("%+.2f", sh / se) else "&ndash;",
+        if (is.finite(se)) sf(se) else "&ndash;")
+    }, character(1))
+    bias <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th><th>%s</th><th>SE</th></tr></thead><tbody>%s</tbody></table>",
+      .t("Bias cost: how much the trim moved each estimated mean, as a percent and in standard errors of the (post-trim) estimate. Small multiples of an SE are cheap; large ones are the price paid for the variance reduction.",
+         "Costo en sesgo: cu\u00e1nto movi\u00f3 el recorte cada media estimada, en porcentaje y en errores est\u00e1ndar del estimador (post-recorte). M\u00faltiplos chicos de un SE son baratos; grandes son el precio de la reducci\u00f3n de varianza.", lang),
+      .t("outcome", "variable", lang), .t("shift", "corrimiento", lang), .t("shift (SE)", "corrim. (SE)", lang),
+      paste(rows, collapse = ""))
+  } else if (!is.null(rec$by)) {
+    by <- rec$by[ok]; touched <- below | above; tb <- table(by[touched])
+    if (length(tb)) {
+      sh <- 100 * as.numeric(tb) / sum(as.numeric(tb)); ord <- order(-sh)
+      rows <- vapply(ord, function(i) sprintf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>",
+        .html_escape(names(tb)[i]), nf(as.numeric(tb)[i]), pf(sh[i])), character(1))
+      conc <- if (max(sh) > 60) sprintf("<p class='note'>%s</p>", .t(
+        sprintf("The trimmed units concentrate in one domain (%s: %s): the induced bias is localized, not spread across the sample.", .html_escape(names(tb)[which.max(sh)]), pf(max(sh))),
+        sprintf("Las unidades recortadas se concentran en un dominio (%s: %s): el sesgo inducido es localizado, no repartido en la muestra.", .html_escape(names(tb)[which.max(sh)]), pf(max(sh))), lang)) else ""
+      bias <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th><th>%%</th></tr></thead><tbody>%s</tbody></table>%s",
+        .t("Where the trimmed units fall (pass y_vars for the estimator shift itself). Concentration in one cell means the bias is localized there.",
+           "D\u00f3nde caen las unidades recortadas (pas\u00e1 y_vars para el corrimiento del estimador). Concentraci\u00f3n en una celda implica sesgo localizado.", lang),
+        .t("domain", "dominio", lang), .t("trimmed", "recortadas", lang), paste(rows, collapse = ""), conc)
+    }
+  }
+
+  # --- (3) Potter MSE curve ---
+  pot <- attr(step$diagnostics, "potter"); potter_svg <- ""
+  if (!is.null(pot) && !is.null(pot$grid) && length(pot$grid) > 2L)
+    potter_svg <- paste0(sprintf("<p class='muted'>%s</p>", .t(
+      "Potter MSE-optimal threshold: estimated bias&sup2; (rising as you trim harder), remaining variance (falling), and their sum; the dashed line is the chosen cutoff. The two terms are on different scales -- this is the raw Potter heuristic, shown as an approximation.",
+      "Umbral MSE-\u00f3ptimo de Potter: bias&sup2; estimado (crece al recortar m\u00e1s), varianza remanente (cae) y su suma; la l\u00ednea punteada es el corte elegido. Los dos t\u00e9rminos est\u00e1n en escalas distintas -- es la heur\u00edstica cruda de Potter, mostrada como aproximaci\u00f3n.", lang)),
+      .svg_potter(pot$grid, pot$bias2, pot$varc, pot$mse, pot$chosen, lang))
+
+  # --- (4) threshold sensitivity (clip-based; approximate for calibrated) ---
+  sens <- ""
+  if (rec$kind %in% c("weights", "ratio")) {
+    yv <- if (length(yn)) suppressWarnings(as.numeric(object$data[rec$idx[ok], yn[1]])) else NULL
+    srows <- vapply(c(0.5, 0.75, 1, 1.5, 2), function(k) {
+      capk <- cap * k; wak <- pmin(wb, capk); exc <- sum(wb - wak); free <- wak < capk
+      if (exc > 0 && any(free)) wak[free] <- wak[free] + exc * wak[free] / sum(wak[free])
+      dk <- kish(wak)
+      ysh <- if (!is.null(yv)) { a <- sum(wak * yv) / sum(wak); b <- sum(wb * yv) / sum(wb); 100 * (a - b) / b } else NA_real_
+      sprintf("<tr><td>%s&times;</td><td>%s</td><td>%s</td><td>%s</td></tr>", format(k), nf(sum(wb > capk)),
+        if (is.finite(dk)) formatC(dk, format = "f", digits = 3) else "&ndash;",
+        if (is.finite(ysh)) sprintf("%+.1f%%", ysh) else "&ndash;")
+    }, character(1))
+    sens <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th><th>deff</th><th>%s</th></tr></thead><tbody>%s</tbody></table>",
+      .t("Sensitivity: the cutoff at multiples of the chosen threshold -- units trimmed, resulting deff and (with y) the estimator shift. A flat block means the decision is robust. Clip-based approximation.",
+         "Sensibilidad: el corte en m\u00faltiplos del umbral elegido -- unidades recortadas, deff resultante y (con y) el corrimiento del estimador. Un bloque plano indica decisi\u00f3n robusta. Aproximaci\u00f3n por recorte simple.", lang),
+      .t("threshold", "umbral", lang), .t("trimmed", "recortadas", lang), .t("y shift", "corrim. y", lang),
+      paste(srows, collapse = ""))
+  }
+
+  # --- (5) did a later calibration undo this trim? ---
+  undone <- ""
+  if (!is.null(object) && !is.null(object$steps) && !is.null(object$final_weight)) {
+    si <- which(vapply(object$steps, function(x) identical(x, step), logical(1)))
+    if (length(si) == 1L) {
+      is_cal <- function(x) inherits(x, c("step_calibrate", "step_model_calibration")) ||
+        (inherits(x, "step_nonresponse") && identical(x$method, "calibration"))
+      if (any(vapply(object$steps[-seq_len(si)], is_cal, logical(1)))) {
+        fw <- as.numeric(object$final_weight)[rec$idx[ok]]; tolc <- 1e-6 * pmax(abs(cap), 1)
+        exceed <- sum(is.finite(cap) & is.finite(fw) & fw > cap + tolc)
+        if (exceed > 0) undone <- sprintf("<p class='note'>%s</p>", .t(
+          sprintf("%s final weight(s) exceed the cap applied here: a later calibration re-inflated them above this trim. Use step_trim_calibrated() (Folsom-Singh range-restricted calibration) or trim after calibrating.", nf(exceed)),
+          sprintf("%s peso(s) final(es) superan la cota aplicada aqu\u00ed: una calibraci\u00f3n posterior los reinfl\u00f3 por encima de este recorte. Us\u00e1 step_trim_calibrated() (calibraci\u00f3n de rango restringido Folsom-Singh) o record\u00e1 despu\u00e9s de calibrar.", nf(exceed)), lang))
+      }
+    }
+  }
+
+  # --- (6) variant specifics ---
+  variant <- ""
+  if (identical(rec$kind, "calibrated") && !is.null(rec$by)) {
+    by <- rec$by[ok]; f <- as.numeric(rec$f)[ok]
+    dd <- do.call(rbind, lapply(unique(by), function(g) { sel <- by == g
+      data.frame(dom = g, n = sum(sel), at_lo = sum(below[sel]), at_hi = sum(above[sel]),
+                 fmin = min(f[sel]), fmax = max(f[sel]), stringsAsFactors = FALSE) }))
+    ord <- order(-(dd$at_lo + dd$at_hi), -(dd$fmax - dd$fmin))
+    rows <- vapply(ord, function(i) sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>[%s, %s]</td></tr>",
+      .html_escape(as.character(dd$dom[i])), nf(dd$n[i]), nf(dd$at_lo[i]), nf(dd$at_hi[i]),
+      formatC(dd$fmin[i], format = "f", digits = 3), formatC(dd$fmax[i], format = "f", digits = 3)), character(1))
+    variant <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>n</th><th>%s</th><th>%s</th><th>%s</th></tr></thead><tbody>%s</tbody></table>",
+      .t("Per subgroup: units at the lower / upper bound and the range of the adjustment factor. Subgroups straining against their bounds are listed first.",
+         "Por subgrupo: unidades en la cota inferior / superior y el rango del factor de ajuste. Los subgrupos que fuerzan sus cotas van primero.", lang),
+      .t("subgroup", "subgrupo", lang), .t("at lower", "en inf.", lang), .t("at upper", "en sup.", lang),
+      .t("f range", "rango de f", lang), paste(rows, collapse = ""))
+  }
+  if (identical(rec$kind, "weights") && identical(rec$redistribute, "uniform") &&
+      is.finite(rec$unredist) && rec$unredist > 1e-9)
+    variant <- paste0(variant, sprintf("<p class='note'>%s</p>", .t(
+      sprintf("%s of weight could not be redistributed (no eligible untrimmed unit remained) and was absorbed; the total fell by that much.", sf(rec$unredist)),
+      sprintf("%s de peso no pudo redistribuirse (no qued\u00f3 unidad sin recortar elegible) y fue absorbido; el total baj\u00f3 en esa cantidad.", sf(rec$unredist)), lang)))
+
+  # % of the sample touched -- a trim reaching past the tails is a hidden recalibration
+  touch_note <- if (pct > 10) sprintf("<p class='note'>%s</p>", .t(
+      sprintf("This step touched %s of the sample -- that is a recalibration in disguise, not a tail trim. Reconsider the threshold.", pf(pct)),
+      sprintf("Este paso toc\u00f3 %s de la muestra -- eso es una recalibraci\u00f3n encubierta, no un recorte de colas. Reconsider\u00e1 el umbral.", pf(pct)), lang))
+    else if (pct > 5) sprintf("<p class='note'>%s</p>", .t(
+      sprintf("This step touched %s of the sample; check it is trimming tails, not reshaping the bulk.", pf(pct)),
+      sprintf("Este paso toc\u00f3 %s de la muestra; verific\u00e1 que recorta colas, no que reforma el grueso.", pf(pct)), lang))
+    else ""
+
+  # --- (7) inert trim ---
+  ddeff <- rec$deff_before - rec$deff_after
+  inert <- if (is.finite(ddeff) && abs(ddeff) < 0.005 && pct < 0.5) sprintf("<p class='note'>%s</p>", .t(
+      "This trimming step had no material effect (deff essentially unchanged, under 0.5% of units touched); consider removing it to simplify the cascade.",
+      "Este paso de recorte no tuvo efecto material (deff casi sin cambio, menos del 0.5% de unidades tocadas); consider\u00e1 quitarlo para simplificar la cascada.", lang)) else ""
+
+  hd <- function(t) sprintf("<h5 class='trim-h'>%s</h5>", t)
+  paste0("<div class='ri'><h4>", .t("Trimming diagnostics", "Diagn\u00f3sticos de recorte", lang), "</h4>",
+    sec1,
+    if (nzchar(bias))       paste0(hd(.t("Bias cost", "Costo en sesgo", lang)), bias) else "",
+    if (nzchar(potter_svg)) paste0(hd(.t("Potter threshold", "Umbral de Potter", lang)), potter_svg) else "",
+    if (nzchar(sens))       paste0(hd(.t("Sensitivity", "Sensibilidad", lang)), sens) else "",
+    if (nzchar(variant))    paste0(hd(.t("Variant details", "Detalle por variante", lang)), variant) else "",
+    touch_note, undone, inert, "</div>")
+}

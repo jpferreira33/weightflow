@@ -111,6 +111,40 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
              "or trim with step_trim_weights()."),
       pm, 1 / pm))
 
+  # Miscalibrated response propensities distort the 1/p weights: flag a
+  # calibration slope far from 1 (weighted logistic of response on logit(p-hat)).
+  cs <- attr(diag, "propensity")$cal_slope
+  if (!is.null(cs) && is.finite(cs) && abs(cs - 1) > 0.3)
+    msgs <- c(msgs, sprintf(
+      paste0("The response propensities look miscalibrated (calibration slope %.2f, ",
+             "ideal 1). For 1/p weighting the probabilities must be honest, not just ",
+             "discriminative. Set num_classes (e.g. 5) to bin by propensity quantiles ",
+             "-- which use only the ranking of the propensities and so are robust to ",
+             "this shrinkage -- or review the propensity model."),
+      cs))
+
+  # Nonresponse by calibration: non-positive g-weights imply an invalid response
+  # probability (<= 0 or undefined) and a non-positive weight; surface it.
+  cnr <- attr(diag, "calib_nr")
+  if (!is.null(cnr) && !is.null(cnr$g) && length(cnr$g)) {
+    gg <- cnr$g[is.finite(cnr$g)]
+    if (length(gg) && sum(gg <= 0) > 0)
+      msgs <- c(msgs, sprintf(
+        paste0("%d respondent(s) have a non-positive calibration g-weight (implied ",
+               "response probability <= 0 or undefined). The nonresponse-calibration ",
+               "auxiliaries are ill-behaved; use a bounded distance (logit) or a ",
+               "different auxiliary vector."), sum(gg <= 0)))
+  }
+
+  # Ill-conditioned linear/GREG calibration: near-collinear auxiliaries make the
+  # calibration factors unstable; point to the ridge penalty.
+  cbd <- attr(diag, "calibrate")
+  if (!is.null(cbd) && !is.null(cbd$cond) && is.finite(cbd$cond) && cbd$cond > 1e10)
+    msgs <- c(msgs, sprintf(
+      paste0("The calibration system is ill-conditioned (condition number %.1e): ",
+             "near-collinear auxiliaries can make the weights unstable. Drop a ",
+             "redundant auxiliary, or set penalty = <lambda> (ridge)."), cbd$cond))
+
   # Partial-response households treated as whole-household nonresponse: flag how
   # many responding members were discarded (so the assumption is visible).
   ph <- attr(diag, "partial_hh")

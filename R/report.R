@@ -35,6 +35,10 @@
 #'   tables, `:` = crossed), showing the active n, sum of weights, CV, Kish
 #'   design effect and effective sample size within each domain. E.g.
 #'   `domains = ~ region + region:sex`.
+#' @param y_vars optional character vector of survey outcome variables. When a
+#'   nonresponse-by-calibration step is present, the auxiliary-quality table adds,
+#'   for each auxiliary, its weighted correlation with each `y` among respondents
+#'   (Sarndal-Lundstrom criterion (ii): a good auxiliary also explains the `y`).
 #' @return (invisibly) the path to the HTML file.
 #' @examples
 #' fitted <- weighting_spec(sample_survey, base_weights = pw) |>
@@ -48,7 +52,8 @@
 
 report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
                              narrative = TRUE, lang = c("en", "es"),
-                             metadata = NULL, replicates = NULL, domains = NULL) {
+                             metadata = NULL, replicates = NULL, domains = NULL,
+                             y_vars = NULL) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first; report_weighting() needs a prepped recipe.")
   lang <- match.arg(lang)
@@ -190,6 +195,10 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     de1 <- design_effect(h[[i]]); de2 <- design_effect(h[[i + 1L]])
     viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]], lang) else ""
     ri_step <- if (i == nr_last && !is.null(ri)) .ri_block(ri) else ""
+    prop_diag <- .propensity_diagnostics(s, lang)   # full-width, below the 2 columns
+    cnr_diag  <- .calib_nr_diagnostics(s, lang, object, y_vars)  # nonresponse-by-calibration
+    cal_diag  <- .calibrate_diagnostics(s, lang, object, y_vars) # step_calibrate diagnostics
+    trim_diag <- .trim_diagnostics(s, lang, object, y_vars)      # trimming bias-variance trade-off
     narr <- if (isTRUE(narrative))
       .step_narrative(s, de1, de2, ri, i == nr_last, lang) else ""
     steps_html <- paste0(steps_html, sprintf(
@@ -201,7 +210,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       .df_to_html(.with_reldiff(s$diagnostics, lang)), extra,
       de1$deff, de2$deff, format(round(de1$n_eff), big.mark = ","),
       format(round(de2$n_eff), big.mark = ","), ri_step,
-      if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else ""))
+      paste0(prop_diag, cnr_diag, cal_diag, trim_diag, if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else "")))
   }
 
   diagram <- .pipeline_diagram(object, lang)
@@ -253,9 +262,10 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     nis <- ncv + nal
     lead <- if (nis == 0L)
       .t("Recipe completed successfully.", "Receta completada con \u00e9xito.", lang)
-    else .t(sprintf("Recipe completed with %d point(s) of attention.", nis),
-            sprintf("Receta completada con %d punto(s) de atenci\u00f3n.", nis), lang)
-    it <- c(sprintf("%d %s", ns, .t("weighting steps", "pasos de ponderaci\u00f3n", lang)))
+    else .t(sprintf("Recipe completed with %d point%s of attention.", nis, if (nis == 1L) "" else "s"),
+            sprintf("Receta completada con %d punto%s de atenci\u00f3n.", nis, if (nis == 1L) "" else "s"), lang)
+    it <- c(sprintf("%d %s", ns, if (ns == 1L) .t("weighting step", "paso de ponderaci\u00f3n", lang)
+                                 else .t("weighting steps", "pasos de ponderaci\u00f3n", lang)))
     if (ncv == 0L) it <- c(it, .t("calibration constraints preserved",
                                   "restricciones de calibraci\u00f3n preservadas", lang))
     if (!is.null(replicates)) it <- c(it, .t("replicate weights created",

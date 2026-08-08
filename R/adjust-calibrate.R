@@ -33,7 +33,9 @@
     stop(sprintf("Domain column '%s' has missing values (NA) among active units.", byvar))
 
   new_w <- w
-  diags <- list()
+  diags <- list(); domsum <- list()
+  gL <- list(); dL <- list(); covL <- list(); aidxL <- list()
+  chi2 <- 0; calfun <- NULL; bounds <- NULL; cform <- NULL
   doms  <- unique(dom[active])
   for (d in doms) {
     idx_d  <- which(dom == d)
@@ -45,11 +47,35 @@
     dg <- res_d$diagnostics
     if (!is.null(dg) && nrow(dg) > 0L)
       diags[[length(diags) + 1L]] <- cbind(domain = d, dg)
+    cdd <- attr(dg, "calibrate")                   # per-domain calibration summary
+    if (!is.null(cdd) && !is.null(cdd$g)) {
+      gg <- cdd$g; ww <- cdd$d * gg; bnd <- cdd$bounds
+      domsum[[length(domsum) + 1L]] <- data.frame(
+        domain = d, n = length(gg), g_min = min(gg), g_max = max(gg),
+        n_neg = sum(ww < 0),
+        n_bound = if (!is.null(bnd)) sum(abs(gg - bnd[1]) < 1e-6 | abs(gg - bnd[2]) < 1e-6) else 0L,
+        cond = cdd$cond, converged = isTRUE(attr(dg, "converged")),
+        stringsAsFactors = FALSE)
+      # pool the per-unit pieces so the global calibration card shows too
+      gL[[length(gL) + 1L]]       <- gg
+      dL[[length(dL) + 1L]]       <- as.numeric(cdd$d)
+      covL[[length(covL) + 1L]]   <- cdd$covars
+      aidxL[[length(aidxL) + 1L]] <- idx_d[cdd$active_idx]
+      chi2 <- chi2 + (if (is.finite(cdd$chi2)) cdd$chi2 else 0)
+      if (is.null(calfun)) { calfun <- cdd$calfun; bounds <- cdd$bounds; cform <- cdd$formula }
+    }
   }
   diag <- if (length(diags)) do.call(rbind, diags) else NULL
-  if (!is.null(diag))
+  if (!is.null(diag)) {
     attr(diag, "note") <- sprintf("calibrated independently within '%s' (%d domains)",
                                   byvar, length(doms))
+    if (length(domsum)) attr(diag, "calib_domains") <- do.call(rbind, domsum)
+    if (length(gL))
+      attr(diag, "calibrate") <- list(
+        g = unlist(gL), d = unlist(dL), covars = do.call(rbind, covL),
+        formula = cform, active_idx = unlist(aidxL), calfun = calfun,
+        bounds = bounds, cond = NA_real_, chi2 = chi2, pooled = TRUE)
+  }
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -197,6 +223,16 @@ apply_step.step_calibrate <- function(step, data, w) {
     attr(diag, "note") <- sprintf(
       "g (calibration factor) in [%.3f, %.3f]%s%s%s",
       min(g), max(g), bnote, rnote, note_clust)
+    # Report diagnostics: per-unit g, base weights, distance, conditioning of the
+    # calibration system, and the auxiliaries (for the y-efficiency and overlap
+    # notes). Linear/GREG only (where negatives / conditioning are meaningful).
+    g_unit <- as.numeric(new_w[active] / d)
+    attr(diag, "calibrate") <- list(
+      g = g_unit, d = as.numeric(d), calfun = step$calfun, bounds = step$bounds,
+      cond = tryCatch(kappa(crossprod(X), exact = FALSE), error = function(e) NA_real_),
+      chi2 = sum(d * (g_unit - 1)^2),
+      covars = data[active, all.vars(step$formula), drop = FALSE],
+      formula = step$formula, active_idx = which(active))
     return(list(weights = new_w, diagnostics = diag))
   }
 

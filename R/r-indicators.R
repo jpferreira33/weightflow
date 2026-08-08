@@ -57,17 +57,27 @@
   S    <- sqrt(sum(d * (rho - rbar)^2) / (Nhat - 1))
   R    <- 1 - 2 * S
 
-  # unconditional partial R-indicators, for the categorical auxiliaries
-  cat_aux <- aux[vapply(aux, function(v) !is.numeric(df[[v]]), logical(1))]
-  partials <- if (length(cat_aux))
-    do.call(rbind, lapply(cat_aux, function(v) {
-      z   <- as.character(df[[v]])
-      Nz  <- tapply(d, z, sum)
-      rbz <- tapply(d * rho, z, sum) / Nz
-      data.frame(variable = v,
-                 partial_R = sqrt(sum((Nz / Nhat) * (rbz - rbar)^2)),
-                 stringsAsFactors = FALSE)
-    })) else NULL
+  # unconditional partial R-indicators. Categorical auxiliaries are used as is;
+  # numeric auxiliaries are binned into quantile groups (quintiles), so an
+  # informative continuous driver still gets a partial. `omitted` collects any
+  # that cannot be binned (too few distinct values).
+  omitted  <- character(0)
+  part_one <- function(z, vlab) {
+    Nz  <- tapply(d, z, sum); rbz <- tapply(d * rho, z, sum) / Nz
+    data.frame(variable = vlab,
+               partial_R = sqrt(sum((Nz / Nhat) * (rbz - rbar)^2)),
+               stringsAsFactors = FALSE)
+  }
+  plist <- lapply(aux, function(v) {
+    xv <- df[[v]]
+    if (!is.numeric(xv)) return(part_one(as.character(xv), v))
+    br <- unique(stats::quantile(xv, seq(0, 1, 0.2), na.rm = TRUE))
+    if (length(br) < 3L) { omitted <<- c(omitted, v); return(NULL) }
+    part_one(as.character(cut(xv, breaks = br, include.lowest = TRUE)),
+             sprintf("%s (quintiles)", v))
+  })
+  partials <- do.call(rbind, plist)
 
-  list(R = R, S = S, n_eligible = nrow(df), aux = aux, partials = partials)
+  list(R = R, S = S, n_eligible = nrow(df), aux = aux, partials = partials,
+       num_aux = omitted)
 }

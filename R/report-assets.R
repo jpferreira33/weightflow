@@ -121,6 +121,7 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .viz svg{max-width:100%;height:auto}.viz-h{margin-top:14px}.wdhist{margin-top:12px;max-width:480px}.wdhist svg{width:100%;height:auto}
 @media(max-width:680px){.viz{grid-template-columns:1fr}}
 .ri{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.trim-h{font-size:12px;font-weight:600;margin:12px 0 4px;color:#374151}
 .ri-val{font-size:16px;margin:6px 0}
 .flow{display:flex;flex-direction:column;align-items:stretch;margin:14px 0;max-width:560px}
 .node{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff}

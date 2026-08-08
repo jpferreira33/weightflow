@@ -71,6 +71,16 @@
   # `alerts` is rendered in its own "Quality alerts" block, not as a parameter;
   # `diagnostics`/`label` are internal. Drop them from the "Requested" table.
   keep <- setdiff(names(step), c("label", "diagnostics", "alerts"))
+  if (inherits(step, "step_nonresponse")) {               # drop args ignored by the chosen method
+    ign <- switch(step$method %||% "weighting_class",
+      weighting_class = c("engine", "formula", "crossfit", "crossfit_seed", "num_classes",
+                          "weight_model", "calfun", "bounds", "penalty", "totals", "count",
+                          "equal_within_cluster"),
+      propensity      = c("calfun", "bounds", "penalty", "totals", "count", "equal_within_cluster"),
+      calibration     = c("engine", "crossfit", "crossfit_seed", "num_classes", "weight_model"),
+      character(0))
+    keep <- setdiff(keep, ign)
+  }
   out  <- list()
   for (p in keep) {
     v <- step[[p]]
@@ -282,6 +292,10 @@
     ptab$partial_R <- round(ptab$partial_R, 4)
     ph <- paste0("<p class='muted'>Partial R-indicators:</p>", .df_to_html(ptab))
   }
+  if (!is.null(ri$num_aux) && length(ri$num_aux))
+    ph <- paste0(ph, sprintf(
+      "<p class='muted'>Numeric auxiliaries are binned into quintiles for their partial; not computable (too few distinct values): %s.</p>",
+      .html_escape(paste(ri$num_aux, collapse = ", "))))
   sprintf(
     "<div class='ri'><h4>Response representativity (R-indicator)</h4>
 <p class='muted'>Design-weighted logistic of response on <code>%s</code> (n = %s). Closer to 1 = more representative response; the partials show which variable drives the gap.</p>
@@ -377,4 +391,61 @@
     if (t < length(nodes)) out <- c(out, arrows[t])
   }
   paste0("<div class='flow'>", paste(out, collapse = ""), "</div>")
+}
+
+# Overlap (common-support) plot for ML nonresponse: two weighted histograms of
+# the estimated propensity phi-hat, respondents vs nonrespondents. Poor overlap
+# (little common support) is the visual warning about the MAR assumption.
+.svg_overlap <- function(p, resp, dw, lang = "en", w = 340, h = 170) {
+  ok <- is.finite(p) & is.finite(dw); p <- p[ok]; resp <- as.logical(resp[ok]); dw <- dw[ok]
+  if (length(p) < 20L || length(unique(resp)) < 2L) return("")
+  ml <- 42; mr <- 8; mt <- 10; mb <- 30; pw <- w - ml - mr; ph <- h - mt - mb
+  rng <- range(p); if (diff(rng) == 0) rng <- rng + c(-0.05, 0.05)
+  K  <- 24L; br <- seq(rng[1], rng[2], length.out = K + 1L)
+  wprop <- function(sel) {
+    if (!any(sel) || sum(dw[sel]) <= 0) return(rep(0, K))
+    idx <- findInterval(p[sel], br, rightmost.closed = TRUE, all.inside = TRUE)
+    v <- tapply(dw[sel], factor(idx, levels = seq_len(K)), sum)
+    v[is.na(v)] <- 0; as.numeric(v) / sum(dw[sel])
+  }
+  hr <- wprop(resp); hn <- wprop(!resp); ymax <- max(hr, hn, 1e-9)
+  sx <- function(z) ml + (z - rng[1]) / diff(rng) * pw
+  sy <- function(z) mt + ph - z / ymax * ph
+  bar <- function(v, fill) paste(vapply(seq_len(K), function(i) sprintf(
+    '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" fill-opacity="0.45"/>',
+    sx(br[i]), sy(v[i]), max(sx(br[i + 1]) - sx(br[i]) - 0.5, 0.5),
+    max(sy(0) - sy(v[i]), 0), fill), character(1)), collapse = "")
+  leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">%s</text><text x="%.1f" y="%.1f" font-size="10" fill="#e8941f">%s</text>',
+    ml + 6, mt + 10, .t("respondents", "respondentes", lang),
+    ml + 6, mt + 22, .t("nonrespondents", "no respondentes", lang))
+  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, rng, c(0, ymax), "&phi;&#770;",
+             .t("share", "proporci\u00f3n", lang), sx, sy),
+             bar(hn, "#e8941f"), bar(hr, "#2a78d6"), leg), w, h, "propensity overlap")
+}
+
+# Potter (1990) MSE-optimal trimming curve: estimated bias^2 (rising as the cut
+# tightens), remaining variance (falling), and their sum, over the candidate
+# thresholds, with the chosen cutoff marked. The two terms are on different
+# scales -- this draws the raw heuristic and labels it an approximation.
+.svg_potter <- function(grid, bias2, varc, mse, chosen, lang = "en", w = 360, h = 190) {
+  ok <- is.finite(grid) & is.finite(mse) & is.finite(bias2) & is.finite(varc)
+  grid <- grid[ok]; bias2 <- bias2[ok]; varc <- varc[ok]; mse <- mse[ok]
+  if (length(grid) < 3L) return("")
+  ml <- 46; mr <- 10; mt <- 12; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
+  xr <- range(grid); if (diff(xr) == 0) xr <- xr + c(-1, 1)
+  yr <- c(0, max(mse, varc, bias2, 1e-9))
+  sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
+  sy <- function(z) mt + ph - z / yr[2] * ph
+  path <- function(y, col, wd) sprintf('<path d="M %s" fill="none" stroke="%s" stroke-width="%s"/>',
+    paste(sprintf("%.1f %.1f", sx(grid), sy(y)), collapse = " L "), col, wd)
+  vln <- sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#c0392b" stroke-width="1" stroke-dasharray="3,2"/>',
+    sx(chosen), mt, sx(chosen), mt + ph)
+  vtx <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#c0392b">%s</text>',
+    sx(chosen), mt + 9, .t("chosen", "elegido", lang))
+  leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#3d3580">MSE</text><text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">bias&sup2;</text><text x="%.1f" y="%.1f" font-size="10" fill="#e8941f">var</text>',
+    ml + 6, mt + 10, ml + 6, mt + 22, ml + 44, mt + 22)
+  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr,
+             .t("upper threshold", "umbral superior", lang), "bias&sup2; + var", sx, sy),
+             path(varc, "#e8941f", "1.2"), path(bias2, "#2a78d6", "1.2"),
+             path(mse, "#3d3580", "2"), vln, vtx, leg), w, h, "Potter MSE curve")
 }

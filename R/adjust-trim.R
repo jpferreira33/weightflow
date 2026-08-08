@@ -115,6 +115,13 @@ apply_step.step_trim <- function(step, data, w) {
     stringsAsFactors = FALSE
   )
   attr(diag, "iterations") <- it_global
+  ai <- which(active)
+  attr(diag, "trim_rec") <- list(
+    wb = w[ai], wa = new_w[ai], cap = cap[ai], floor = floor_v[ai], idx = ai,
+    by = if (!is.null(step$by)) as.character(cells)[ai] else NULL,
+    redistribute = if (isTRUE(step$redistribute)) "proportional" else "none",
+    method = step$reference, kind = "ratio", f = new_w[ai] / w[ai],
+    unredist = NA_real_, deff_before = deff_before, deff_after = deff_after)
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -277,15 +284,15 @@ apply_step.step_assert <- function(step, data, w) {
 # squared weights that remain after capping at t. The cutoff with the smallest
 # estimated MSE is returned. The grid runs over the upper tail of the weights.
 .potter_threshold <- function(wv, ngrid = 100L) {
-  qs   <- stats::quantile(wv, c(0.50, 0.999))
-  grid <- seq(as.numeric(qs[1]), as.numeric(qs[2]), length.out = ngrid)
-  mse  <- vapply(grid, function(t) {
-    capped <- pmin(wv, t)
-    bias   <- sum(wv[wv > t] - t)            # weight removed above the cutoff
-    varc   <- sum(capped^2)                  # dispersion remaining after capping
-    bias^2 + varc
-  }, numeric(1))
-  grid[which.min(mse)]
+  qs    <- stats::quantile(wv, c(0.50, 0.999))
+  grid  <- seq(as.numeric(qs[1]), as.numeric(qs[2]), length.out = ngrid)
+  bias2 <- vapply(grid, function(t) sum(wv[wv > t] - t)^2, numeric(1))  # bias(t)^2
+  varc  <- vapply(grid, function(t) sum(pmin(wv, t)^2),     numeric(1))  # dispersion remaining
+  mse   <- bias2 + varc
+  best  <- grid[which.min(mse)]
+  attr(best, "grid")  <- grid;  attr(best, "bias2") <- bias2
+  attr(best, "varc")  <- varc;  attr(best, "mse")   <- mse
+  best
 }
 
 apply_step.step_trim_weights <- function(step, data, w) {
@@ -296,13 +303,16 @@ apply_step.step_trim_weights <- function(step, data, w) {
   upper <- step$upper
   if (is.null(upper)) {
     if (identical(step$method, "potter")) {
-      upper <- .potter_threshold(wv)                 # MSE-optimal cutoff (Potter)
+      upper   <- .potter_threshold(wv)               # MSE-optimal cutoff (Potter)
+      pot_obj <- upper                               # keep grid/mse for the report
+      upper   <- as.numeric(upper)
     } else {
       q  <- stats::quantile(wv, c(.25, .75))
       upper <- as.numeric(q[2] + 3 * (q[2] - q[1]))  # Tukey far-out fence
     }
   }
   lower <- step$lower
+  pot_obj <- NULL; unredist <- 0
 
   it <- 0L
   if (identical(step$redistribute, "uniform")) {
@@ -318,6 +328,8 @@ apply_step.step_trim_weights <- function(step, data, w) {
       can_trim  <- !outside & !has_trimmed
       if (any(can_trim))
         wvnew[can_trim] <- wvnew[can_trim] + sum(trimmings) / sum(can_trim)
+      else
+        unredist <- unredist + sum(trimmings)         # nobody left to receive it
       has_trimmed <- outside | has_trimmed
       wv <- wvnew
       if (!step$strict) break
@@ -350,6 +362,18 @@ apply_step.step_trim_weights <- function(step, data, w) {
     stringsAsFactors = FALSE
   )
   attr(diag, "iterations") <- it
+  ai <- which(active); lo_u <- if (is.null(lower)) -Inf else as.numeric(lower)
+  attr(diag, "trim_rec") <- list(
+    wb = w[ai], wa = new_w[ai], cap = rep(as.numeric(upper), length(ai)),
+    floor = rep(lo_u, length(ai)), idx = ai, by = NULL,
+    redistribute = if (identical(step$redistribute, "uniform")) "uniform" else "proportional",
+    method = if (is.null(step$method)) "tukey" else step$method, kind = "weights",
+    f = new_w[ai] / w[ai], unredist = unredist,
+    deff_before = design_effect(w)$deff, deff_after = design_effect(new_w)$deff)
+  if (!is.null(pot_obj))
+    attr(diag, "potter") <- list(grid = attr(pot_obj, "grid"), bias2 = attr(pot_obj, "bias2"),
+                                 varc = attr(pot_obj, "varc"), mse = attr(pot_obj, "mse"),
+                                 chosen = as.numeric(pot_obj))
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -482,6 +506,11 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
     n_at_lower = n_at_lower, n_at_upper = n_at_upper,
     sum_before = round(sum(d), 2), sum_after = round(sum(wa), 2),
     stringsAsFactors = FALSE)
+  attr(diag, "trim_rec") <- list(
+    wb = d, wa = wa, cap = upper, floor = lower, idx = which(active), by = grp,
+    redistribute = "calibration", method = step$calfun, kind = "calibrated",
+    f = f, unredist = NA_real_,
+    deff_before = design_effect(w)$deff, deff_after = design_effect(new_w)$deff)
   list(weights = new_w, diagnostics = diag)
 }
 

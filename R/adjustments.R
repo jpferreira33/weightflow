@@ -329,6 +329,12 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
   attr(diag, "note") <- sprintf(
     "nonresponse calibration to %s totals; g in [%.3f, %.3f]%s%s%s",
     tlab, min(g), max(g), bnote, rnote, note_clust)
+  # Per-respondent calibration g and info level, for the report's unified NR
+  # diagnostics: implicit response propensity phi-hat = 1/g (Sarndal-Lundstrom).
+  attr(diag, "calib_nr") <- list(
+    g = as.numeric(new_w[elig_idx[resp_e]] / dr), dw = as.numeric(dr), info = tlab,
+    aux = dd[, all.vars(step$formula), drop = FALSE], resp = as.logical(resp_e),
+    dw_all = as.numeric(w[eligible]), elig_idx = elig_idx)
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -410,5 +416,16 @@ apply_step.step_nonresponse <- function(step, data, w) {
     diag <- do.call(rbind, diag)
   }
   attr(diag, "p_min") <- min(p[resp_el], na.rm = TRUE)   # smallest propensity among respondents (drives 1/p)
+  # Keep what the report needs to diagnose the ML propensities (calibration,
+  # floor/overlap, covariate balance). Out-of-fold p when crossfit is used.
+  attr(diag, "propensity") <- list(
+    p = as.numeric(p), resp = as.logical(resp_el), dw = w[eligible],
+    covars = dd[, all.vars(step$formula), drop = FALSE], engine = step$engine,
+    formula = step$formula,
+    crossfit = step$crossfit, weight_model = step$weight_model,
+    num_classes = step$num_classes,
+    cal_slope = tryCatch(unname(stats::coef(suppressWarnings(stats::glm(
+      as.integer(resp_el) ~ stats::qlogis(pmin(pmax(p, 1e-6), 1 - 1e-6)),
+      family = stats::binomial(), weights = w[eligible])))[2]), error = function(e) NA_real_))
   list(weights = new_w, diagnostics = diag)
 }
