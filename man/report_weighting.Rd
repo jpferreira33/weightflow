@@ -13,7 +13,8 @@ report_weighting(
   lang = c("en", "es"),
   metadata = NULL,
   replicates = NULL,
-  domains = NULL
+  domains = NULL,
+  y_vars = NULL
 )
 }
 \arguments{
@@ -53,6 +54,11 @@ per-domain reliability card. Each term becomes one table (\code{+} = separate
 tables, \code{:} = crossed), showing the active n, sum of weights, CV, Kish
 design effect and effective sample size within each domain. E.g.
 \code{domains = ~ region + region:sex}.}
+
+\item{y_vars}{optional character vector of survey outcome variables. When a
+nonresponse-by-calibration step is present, the auxiliary-quality table adds,
+for each auxiliary, its weighted correlation with each \code{y} among respondents
+(Sarndal-Lundstrom criterion (ii): a good auxiliary also explains the \code{y}).}
 }
 \value{
 (invisibly) the path to the HTML file.

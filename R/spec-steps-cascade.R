@@ -172,7 +172,13 @@ step_drop_ineligible <- function(spec, ineligible) {
 #'   the design weights; only the model fit is affected.
 #' @param num_classes integer or NULL. Controls how propensities are used:
 #'   an integer forms that many propensity classes (cell adjustment within each
-#'   class); NULL applies the direct factor 1/p to each unit.
+#'   class); NULL applies the direct factor 1/p to each unit. When the fitted
+#'   propensities are (nearly) constant the requested quantile classes cannot be
+#'   formed; rather than error, or fabricate classes by jittering the
+#'   propensities (which is not reproducible and invents structure that is not
+#'   there), all units are placed in a single adjustment class and a quality
+#'   alert is raised -- the statistically correct outcome, since equal
+#'   propensities give nothing to differentiate.
 #' @param crossfit integer or NULL. If given (number of folds K >= 2), the
 #'   propensity is estimated by K-fold cross-fitting: for each fold the model is
 #'   trained on the other folds and used to predict the held-out fold, so each

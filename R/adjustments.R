@@ -3,6 +3,26 @@
 # Internal generic ----------------------------------------------------------
 apply_step <- function(step, data, w) UseMethod("apply_step")
 
+# Split fitted response propensities into `num_classes` quantile-based
+# adjustment classes. When the propensities are (nearly) constant the quantile
+# cut-points collapse to fewer than three distinct values, so no two classes can
+# be formed. Passing the deduplicated breaks straight to cut() is a trap: with a
+# single break, cut() reinterprets it as the *number* of intervals and fails
+# with "invalid number of intervals". In that degenerate case everyone goes to a
+# single adjustment class (the statistically sensible outcome -- if every unit
+# has the same propensity there is nothing to differentiate) and a `collapsed`
+# flag is attached so the caller can raise a quality alert.
+.propensity_classes <- function(p, num_classes) {
+  brks <- unique(stats::quantile(p, probs = seq(0, 1, length.out = num_classes + 1),
+                                 names = FALSE, na.rm = TRUE))
+  if (length(brks) < 3L) {
+    cls <- factor(rep("all", length(p)))
+    attr(cls, "collapsed") <- TRUE
+    return(cls)
+  }
+  cut(p, breaks = brks, include.lowest = TRUE)
+}
+
 # Estimate the response propensity P(respond) with the chosen engine.
 # Returns probabilities (bounded away from 0 for 1/p).
 # The engine only changes HOW p is estimated; the class/unit logic is the same.
@@ -194,8 +214,7 @@ apply_step.step_select_within <- function(step, data, w) {
                          method = "1/p per household",
                          p_min = min(p), p_max = max(p), stringsAsFactors = FALSE)
     } else {
-      brks   <- stats::quantile(p, probs = seq(0, 1, length.out = step$num_classes + 1))
-      classh <- cut(p, breaks = unique(brks), include.lowest = TRUE)
+      classh <- .propensity_classes(p, step$num_classes)
       diag   <- list()
       for (cls in levels(classh)) {
         sel    <- which(classh == cls)
@@ -207,6 +226,7 @@ apply_step.step_select_within <- function(step, data, w) {
           mean_prop = mean(p[sel]), factor = f, stringsAsFactors = FALSE)
       }
       diag <- do.call(rbind, diag)
+      if (isTRUE(attr(classh, "collapsed"))) attr(diag, "classes_collapsed") <- TRUE
     }
     names(factor_h) <- hhn
   }
@@ -395,8 +415,7 @@ apply_step.step_nonresponse <- function(step, data, w) {
                        p_min = min(p), p_max = max(p),
                        stringsAsFactors = FALSE)
   } else {
-    brks  <- stats::quantile(p, probs = seq(0, 1, length.out = step$num_classes + 1))
-    class <- cut(p, breaks = unique(brks), include.lowest = TRUE)
+    class <- .propensity_classes(p, step$num_classes)
     diag  <- list()
     for (cl in levels(class)) {
       sel       <- which(class == cl)
@@ -414,6 +433,7 @@ apply_step.step_nonresponse <- function(step, data, w) {
       )
     }
     diag <- do.call(rbind, diag)
+    if (isTRUE(attr(class, "collapsed"))) attr(diag, "classes_collapsed") <- TRUE
   }
   attr(diag, "p_min") <- min(p[resp_el], na.rm = TRUE)   # smallest propensity among respondents (drives 1/p)
   # Keep what the report needs to diagnose the ML propensities (calibration,

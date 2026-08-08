@@ -111,6 +111,17 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
              "or trim with step_trim_weights()."),
       pm, 1 / pm))
 
+  # Propensity classes collapsed: the fitted propensities were ~constant, so the
+  # requested num_classes quantile cut-points could not be formed and every unit
+  # went to a single adjustment class. Surface it (the correction did nothing).
+  if (isTRUE(attr(diag, "classes_collapsed")))
+    msgs <- c(msgs, paste0(
+      "The response propensities were nearly constant, so the requested ",
+      "num_classes could not be formed (the quantile cut-points collapsed); ",
+      "all units were placed in a single adjustment class -- the class-based ",
+      "correction had no effect. Drop num_classes (use 1/p weighting) or revise ",
+      "the propensity model."))
+
   # Miscalibrated response propensities distort the 1/p weights: flag a
   # calibration slope far from 1 (weighted logistic of response on logit(p-hat)).
   cs <- attr(diag, "propensity")$cal_slope
