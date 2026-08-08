@@ -167,7 +167,13 @@ the design weights; only the model fit is affected.</p></dd>
 <dt id="arg-num-classes">num_classes<a class="anchor" aria-label="anchor" href="#arg-num-classes"></a></dt>
 <dd><p>integer or NULL. Controls how propensities are used:
 an integer forms that many propensity classes (cell adjustment within each
-class); NULL applies the direct factor 1/p to each unit.</p></dd>
+class); NULL applies the direct factor 1/p to each unit. When the fitted
+propensities are (nearly) constant the requested quantile classes cannot be
+formed; rather than error, or fabricate classes by jittering the
+propensities (which is not reproducible and invents structure that is not
+there), all units are placed in a single adjustment class and a quality
+alert is raised – the statistically correct outcome, since equal
+propensities give nothing to differentiate.</p></dd>
 
 
 <dt id="arg-cluster">cluster<a class="anchor" aria-label="anchor" href="#arg-cluster"></a></dt>

@@ -43,6 +43,12 @@
 
 ### Bug fixes
 
+- **`step_nonresponse(num_classes =)` no longer fails with “invalid
+  number of intervals”** when the fitted propensities are nearly
+  constant: the quantile cut-points collapse to a single class (with an
+  alert) instead of erroring. Found by the variance-validation
+  simulation.
+
 - **Correctness on degenerate inputs.** Units in an adjustment cell with
   no respondents (or all of unknown eligibility) are now set to weight 0
   instead of passing through with their original weight;

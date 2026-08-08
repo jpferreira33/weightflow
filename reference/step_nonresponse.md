@@ -91,7 +91,13 @@ step_nonresponse(
 
   integer or NULL. Controls how propensities are used: an integer forms
   that many propensity classes (cell adjustment within each class); NULL
-  applies the direct factor 1/p to each unit.
+  applies the direct factor 1/p to each unit. When the fitted
+  propensities are (nearly) constant the requested quantile classes
+  cannot be formed; rather than error, or fabricate classes by jittering
+  the propensities (which is not reproducible and invents structure that
+  is not there), all units are placed in a single adjustment class and a
+  quality alert is raised – the statistically correct outcome, since
+  equal propensities give nothing to differentiate.
 
 - cluster:
 

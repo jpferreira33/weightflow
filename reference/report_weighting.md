@@ -17,7 +17,8 @@ report_weighting(
   lang = c("en", "es"),
   metadata = NULL,
   replicates = NULL,
-  domains = NULL
+  domains = NULL,
+  y_vars = NULL
 )
 ```
 
@@ -82,6 +83,14 @@ report_weighting(
   `:` = crossed), showing the active n, sum of weights, CV, Kish design
   effect and effective sample size within each domain. E.g.
   `domains = ~ region + region:sex`.
+
+- y_vars:
+
+  optional character vector of survey outcome variables. When a
+  nonresponse-by-calibration step is present, the auxiliary-quality
+  table adds, for each auxiliary, its weighted correlation with each `y`
+  among respondents (Sarndal-Lundstrom criterion (ii): a good auxiliary
+  also explains the `y`).
 
 ## Value
 
