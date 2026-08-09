@@ -81,7 +81,7 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
 # --- Unknown eligibility ---------------------------------------------------
 apply_step.step_unknown_eligibility <- function(step, data, w) {
   n       <- length(w)
-  unknown <- .eval_cond(step$unknown, data, step$env)
+  unknown <- .eval_cond(step$unknown, data, step$env, active = w > 0)
   cells   <- .make_cells(data, step$by, n)
   active  <- w > 0                       # only still-active cases
   new_w   <- w
@@ -240,7 +240,7 @@ apply_step.step_select_within <- function(step, data, w) {
 # --- Drop ineligible (out-of-scope) units ----------------------------------
 apply_step.step_drop_ineligible <- function(step, data, w) {
   active <- w > 0
-  inelig <- .eval_cond(step$ineligible, data, step$env)
+  inelig <- .eval_cond(step$ineligible, data, step$env, active = w > 0)
   new_w  <- w
   drop   <- active & inelig
   new_w[drop] <- 0                       # discarded, NOT redistributed
@@ -360,8 +360,8 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
 
 apply_step.step_nonresponse <- function(step, data, w) {
   n          <- length(w)
-  respondent <- .eval_cond(step$respondent, data, step$env)
   eligible   <- w > 0                    # reach this stage alive
+  respondent <- .eval_cond(step$respondent, data, step$env, active = eligible)
 
   if (step$method == "calibration")      # calibration approach (two-phase)
     return(.nonresponse_calibrate(step, data, w, respondent, eligible))

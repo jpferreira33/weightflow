@@ -9,7 +9,7 @@
 
 # Evaluate a captured condition against the data ----------------------------
 # Accepts a logical expression OR a 0/1 dummy column (coerced to logical).
-.eval_cond <- function(expr, data, env = baseenv()) {
+.eval_cond <- function(expr, data, env = baseenv(), active = NULL) {
   if (is.null(expr)) return(NULL)
   if (is.null(env)) env <- baseenv()
   out <- eval(expr, envir = data, enclos = env)
@@ -19,14 +19,20 @@
     out <- out == 1
   }
   if (!is.logical(out)) stop("The condition did not evaluate to TRUE/FALSE or a 0/1 dummy.")
-  if (anyNA(out)) {
+  # A missing disposition among the units this step still acts on is an error:
+  # weightflow will not guess a disposition from NA. NA among units already out
+  # of scope (weight 0: dropped as ineligible / unknown) is fine -- their
+  # disposition is genuinely undefined -- and is left to fall through as FALSE.
+  chk <- if (is.null(active)) rep(TRUE, length(out)) else as.logical(active)
+  if (anyNA(out[chk])) {
     lbl <- tryCatch(paste(deparse(expr), collapse = " "), error = function(e) "the flag")
-    stop(sprintf(paste0("The disposition flag (%s) has %d missing value(s). weightflow ",
-                        "does not guess a disposition from NA: recode them (e.g. to ",
-                        "respondent/nonrespondent, eligible/ineligible, or known/unknown ",
-                        "eligibility) before weighting."),
-                 lbl, sum(is.na(out))), call. = FALSE)
+    stop(sprintf(paste0("The disposition flag (%s) has %d missing value(s) among the ",
+                        "units still in scope at this step. weightflow does not guess a ",
+                        "disposition from NA: recode them (e.g. to respondent/nonrespondent, ",
+                        "eligible/ineligible, or known/unknown eligibility) before weighting."),
+                 lbl, sum(is.na(out[chk]))), call. = FALSE)
   }
+  out[is.na(out)] <- FALSE
   out
 }
 
