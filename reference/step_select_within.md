@@ -1,10 +1,10 @@
 # Within-household selection adjustment
 
-When one (or a subsample) of the eligible persons is selected within
-each household, the selected person represents all eligible persons, so
-the weight is multiplied by the inverse of the within-household
-selection probability. Apply it after the (household-level) eligibility
-adjustment and before the nonresponse adjustment.
+When one (or a subsample) of the units is selected within each cluster,
+the selected unit represents all eligible units in the cluster, so the
+weight is multiplied by the inverse of the within-cluster selection
+probability. Apply it after the (cluster-level) eligibility adjustment
+and before the nonresponse adjustment.
 
 ## Usage
 
@@ -46,6 +46,14 @@ The input `weighting_spec` with this step appended to its recipe. The
 step is recorded only; it is evaluated when
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 is called.
+
+## Details
+
+Despite the name, the cluster need not be a household and the unit need
+not be a person: the step is the generic within-cluster subsampling
+adjustment. In a multi-stage design it can appear more than once – e.g.
+dwellings selected within sampled area segments, then persons selected
+within dwellings – each occurrence undoing one stage of subsampling.
 
 ## Examples
 
