@@ -4,6 +4,15 @@
 
 ### New features
 
+- **[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
+  now exports jackknife replicates too.** It previously accepted only a
+  bootstrap object; it now also takes a `weightflow_jack` (delete-a-PSU
+  jackknife, the North-American replicate-weights standard) and attaches
+  the correct replication design as attributes (`"type"`, `"scale"`,
+  `"rscales"`) so the exported data feeds `survey`/`srvyr` with the
+  right variance scaling for either method. Its first argument is
+  renamed `boot` -\> `object` (unnamed calls are unaffected).
+
 - **Iterative recipe refinement.** Adding a step to an already-prepped
   recipe now clears the previous results with a message and downgrades
   the recipe to unprepped, so stale weights can never be read by

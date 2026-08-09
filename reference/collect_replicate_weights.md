@@ -1,18 +1,23 @@
 # Collect replicate weights into a data frame ready for srvyr
 
-Returns the data with the point weight and the bootstrap replicate
-weights as columns, so it can be fed directly to
+Returns the data with the point weight and the replicate weights as
+columns, so it can be fed directly to
 [`srvyr::as_survey_rep()`](http://gdfe.co/srvyr/reference/as_survey_rep.md)
 (or
 [`survey::svrepdesign()`](https://rdrr.io/pkg/survey/man/svrepdesign.html)).
-Replicate columns are full weights, so use `combined.weights = TRUE`,
-`scale = 1 / R`, `rscales = 1`, `mse = TRUE`.
+Works for both a bootstrap (`weightflow_boot`) and a delete-a-PSU
+jackknife (`weightflow_jack`). Replicate columns are full (combined)
+weights, so use `combined.weights = TRUE` and `mse = TRUE`; the correct
+`type`, `scale` and `rscales` for the object are attached as attributes
+(`"type"`, `"scale"`, `"rscales"`) – for a bootstrap `scale = 1 / R`,
+`rscales = 1`; for the jackknife `scale = 1`, `rscales = (n_h - 1)/n_h`
+per replicate.
 
 ## Usage
 
 ``` r
 collect_replicate_weights(
-  boot,
+  object,
   weight_name = ".weight",
   prefix = "rep_",
   drop_zero = TRUE
@@ -21,9 +26,9 @@ collect_replicate_weights(
 
 ## Arguments
 
-- boot:
+- object:
 
-  a `weightflow_boot` object.
+  a `weightflow_boot` or `weightflow_jack` object.
 
 - weight_name:
 
@@ -40,7 +45,8 @@ collect_replicate_weights(
 ## Value
 
 A data frame: the original columns, `weight_name`, and one column per
-replicate. The number of replicates is stored in attribute `"R"`.
+replicate. The number of replicates is in attribute `"R"`, and the
+replication design in attributes `"type"`, `"scale"` and `"rscales"`.
 
 ## Examples
 
@@ -50,14 +56,15 @@ spec <- weighting_spec(sample_survey, base_weights = pw) |>
                  margins = list(region = c(table(population$region))))
 boot <- bootstrap_weights(spec, replicates = 30, strata = "region",
                           psu = "psu", seed = 1, progress = FALSE)
-df <- collect_replicate_weights(boot)
+df <- collect_replicate_weights(boot)   # or a weightflow_jack object
 # \donttest{
 if (requireNamespace("srvyr", quietly = TRUE) &&
     requireNamespace("dplyr", quietly = TRUE)) {
   srvyr::as_survey_rep(df, weights = .weight,
                        repweights = dplyr::starts_with("rep_"),
-                       type = "bootstrap", combined.weights = TRUE,
-                       scale = 1 / attr(df, "R"), rscales = 1, mse = TRUE)
+                       type = attr(df, "type"), combined.weights = TRUE,
+                       scale = attr(df, "scale"), rscales = attr(df, "rscales"),
+                       mse = TRUE)
 }
 #> Call: Called via srvyr
 #> Survey bootstrap with 30 replicates and MSE variances.
