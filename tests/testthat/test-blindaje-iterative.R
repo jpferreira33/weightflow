@@ -1,6 +1,6 @@
-# Blindaje: el flujo iterativo de refinamiento de la receta.
-# prep() -> inspeccionar los pesos realizados -> elegir cotas con esa
-# informacion -> agregar el paso de trim -> prep() de nuevo, reusando la receta.
+# The iterative recipe-refinement workflow.
+# prep() -> inspect the realized weights -> choose bounds from that
+# information -> add the trim step -> prep() again, reusing the recipe.
 
 iter_d <- function(n = 500, seed = 21) {
   set.seed(seed)
@@ -25,20 +25,20 @@ test_that("adding a step to a prepped recipe downgrades it with a message (no st
 test_that("the full iterative workflow works: prep, choose bounds from the weights, trim, re-prep", {
   d <- iter_d()
   marg <- setNames(as.numeric(tapply(d$w, d$x, sum)) * 1.06, levels(d$x))
-  # 1) receta inicial y primera pasada
+  # 1) initial recipe and first pass
   rec <- suppressMessages(prep(
     weighting_spec(d, base_weights = w) |>
       step_nonresponse(respondent = resp, method = "weighting_class", by = "x") |>
       step_calibrate(method = "raking", margins = list(x = marg))))
   w1 <- collect_weights(rec)$.weight
-  # 2) cotas elegidas mirando la distribucion realizada
+  # 2) bounds chosen by looking at the realized distribution
   lo <- as.numeric(quantile(w1, 0.05)); up <- as.numeric(quantile(w1, 0.95))
-  # 3) reuso de la receta: agrego el trim calibrado y re-preparo
+  # 3) reuse the recipe: add the calibrated trim and re-prep
   rec2 <- suppressMessages(step_trim_calibrated(rec, formula = ~x,
                                                 lower = lo, upper = up))
   rec2 <- suppressMessages(prep(rec2))
   w2 <- collect_weights(rec2)$.weight
-  # 4) contratos: cotas respetadas y totales de calibracion preservados
+  # 4) contracts: bounds respected and calibration totals preserved
   expect_true(all(w2 >= lo - 1e-8 & w2 <= up + 1e-8))
   tot2 <- tapply(collect_weights(rec2)$.weight, collect_weights(rec2)$x, sum)
   expect_lt(max(abs(as.numeric(tot2[names(marg)]) - marg) / marg), 1e-6)
