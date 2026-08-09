@@ -156,6 +156,24 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
              "near-collinear auxiliaries can make the weights unstable. Drop a ",
              "redundant auxiliary, or set penalty = <lambda> (ridge)."), cbd$cond))
 
+  # Trimming that could not preserve the weight total: the requested bounds were
+  # infeasible, so part of the trimmed mass was absorbed instead of redistributed
+  # and the point estimates shift. Covers step_trim and step_trim_weights (the
+  # range-restricted step_trim_calibrated preserves the totals by construction).
+  tr <- attr(diag, "trim_rec")
+  if (!is.null(tr) && !identical(tr$redistribute, "calibration") &&
+      !is.null(tr$wb) && !is.null(tr$wa)) {
+    sb <- sum(tr$wb, na.rm = TRUE); sa <- sum(tr$wa, na.rm = TRUE)
+    if (is.finite(sb) && sb > 0 && (sb - sa) > 0.01 * sb)
+      msgs <- c(msgs, sprintf(
+        paste0("Trimming reduced the weight total by %.1f%% (from %s to %s): the ",
+               "bounds were infeasible, so the trimmed mass could not be fully ",
+               "redistributed and was absorbed. The point estimates shift; widen the ",
+               "bounds, or use step_trim_calibrated() to trim while preserving totals."),
+        100 * (sb - sa) / sb, format(round(sb), big.mark = ","),
+        format(round(sa), big.mark = ",")))
+  }
+
   # Partial-response households treated as whole-household nonresponse: flag how
   # many responding members were discarded (so the assumption is visible).
   ph <- attr(diag, "partial_hh")

@@ -51,6 +51,21 @@
 
 ## Bug fixes
 
+* **The report no longer crashes on a single-covariate propensity model.**
+  `report_weighting()` on a `method = "propensity", engine = "logit"` step with a
+  one-term formula (e.g. `~ age`) used to fail ("values must be length 1 ...")
+  because the variable-importance table dropped the predictor's name; the name is
+  now kept and the importance section is guarded.
+
+* **The trimming narrative no longer contradicts the funnel.** When the requested
+  bounds were infeasible and the trim absorbed mass, the step narrative still
+  claimed it was "redistributing the trimmed mass ... to preserve the total";
+  it now compares the before/after weight sums and reports the drop honestly, a
+  matching quality alert is raised, and the `redistribute = "proportional"`
+  branch now also accounts for mass it could not redistribute. The narrative only
+  names an automatic cutoff rule (Tukey / Potter) when the cutoff was automatic,
+  not when explicit `lower`/`upper` bounds were given.
+
 * **Numeric categories in tidy calibration now display in natural order.** When a
   tidy counts table used a numeric category (e.g. age), the report table listed
   the cells lexicographically ("10", "2", "20") instead of numerically (2, 10,

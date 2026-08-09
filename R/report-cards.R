@@ -484,7 +484,8 @@
       if (eng == "logit") {
         m  <- suppressWarnings(stats::glm(f2, data = tr, family = stats::binomial(), weights = .wts))
         zz <- summary(m)$coefficients
-        imp <- abs(zz[rownames(zz) != "(Intercept)", "z value"])
+        sel <- rownames(zz) != "(Intercept)"   # keep names: a single covariate would
+        imp <- stats::setNames(abs(zz[sel, "z value"]), rownames(zz)[sel])  # drop them
         pin <- as.numeric(stats::predict(m, type = "response"))
       } else if (eng == "tree" && requireNamespace("rpart", quietly = TRUE)) {
         tr$.y <- factor(tr$.y, levels = c(0, 1))
@@ -512,9 +513,9 @@
     }, error = function(e) NULL)
   }
   imp_html <- ""
-  if (!is.null(imp) && length(imp)) {
+  if (!is.null(imp) && length(imp) && !is.null(names(imp))) {
     imp <- imp[is.finite(imp) & imp > 0]
-    if (length(imp)) {
+    if (length(imp) && !is.null(names(imp))) {
       imp <- sort(imp, decreasing = TRUE); top <- utils::head(imp, 5L)
       rel <- 100 * top / sum(imp)
       hd  <- paste0("<th>", c(.t("Variable", "Variable", lang),

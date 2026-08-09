@@ -215,13 +215,27 @@
   } else if (inherits(step, "step_trim_weights")) {
     rng <- sprintf("[%s, %s]", format(step$lower),
                    if (is.null(step$upper)) .t("auto", "autom\u00e1tico", lang) else format(step$upper))
-    rule <- if (identical(step$method, "potter"))
-      .t("Potter's MSE-optimal rule", "la regla \u00f3ptima en ECM de Potter", lang)
+    # only an AUTOMATIC cutoff has a rule to name; with manual bounds there is none
+    rlab <- if (is.null(step$upper)) {
+      rule <- if (identical(step$method, "potter"))
+        .t("Potter's MSE-optimal rule", "la regla \u00f3ptima en ECM de Potter", lang)
       else .t("the Tukey fence rule", "la regla del cerco de Tukey", lang)
-    txt <- paste0(.t(
-      sprintf("Extreme weights were trimmed to the interval %s (%s), redistributing the trimmed mass among the untrimmed units to preserve the total.", rng, rule),
-      sprintf("Los pesos extremos se recortaron al intervalo %s (%s), redistribuyendo la masa recortada entre las unidades no recortadas para preservar el total.", rng, rule),
-      lang), " ", .deff_phrase(de1, de2, lang))
+      sprintf(" (%s)", rule)
+    } else ""
+    # did the redistribution actually preserve the total? compare the diag masses
+    dg <- step$diagnostics
+    sb <- suppressWarnings(as.numeric(dg$sum_before)[1])
+    sa <- suppressWarnings(as.numeric(dg$sum_after)[1])
+    preserved <- is.finite(sb) && is.finite(sa) && abs(sa - sb) <= 1e-6 * max(abs(sb), 1)
+    tail <- if (preserved)
+      .t("The trimmed mass was redistributed among the untrimmed units, preserving the weight total.",
+         "La masa recortada se redistribuy\u00f3 entre las unidades no recortadas, preservando el total de pesos.", lang)
+    else
+      .t(sprintf("The requested bounds were infeasible, so the trimmed mass could not be fully redistributed and the weight total fell by %.1f%%.", 100 * (sb - sa) / sb),
+         sprintf("Las cotas pedidas eran infactibles, as\u00ed que la masa recortada no pudo redistribuirse del todo y el total de pesos cay\u00f3 %.1f%%.", 100 * (sb - sa) / sb), lang)
+    intro <- .t(sprintf("Extreme weights were trimmed to the interval %s%s.", rng, rlab),
+                sprintf("Los pesos extremos se recortaron al intervalo %s%s.", rng, rlab), lang)
+    txt <- paste0(intro, " ", tail, " ", .deff_phrase(de1, de2, lang))
   } else if (inherits(step, "step_round")) {
     txt <- .t("The final weights were rounded, for delivery of integer or fixed-precision weights.",
               "Los pesos finales se redondearon, para entregar pesos enteros o de precisi\u00f3n fija.", lang)

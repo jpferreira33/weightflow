@@ -349,6 +349,8 @@ apply_step.step_trim_weights <- function(step, data, w) {
       free <- wv < upper & wv > lower
       if (abs(net) > 1e-12 && any(free))          # redistribute to preserve total
         wv[free] <- wv[free] + net * wv[free] / sum(wv[free])
+      else if (abs(net) > 1e-12)
+        unredist <- unredist + net                # nowhere to redistribute: mass lost
       if (!step$strict) break
     }
   }
