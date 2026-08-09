@@ -115,7 +115,7 @@ test_that("degenerate-but-valid extremes render sanely: equal weights (deff=1), 
   expect_true(grepl("extreme weight", hb, ignore.case = TRUE))
 })
 
-test_that("wild linear calibration surfaces its own alarms: under-weighting, Deville-Sarndal g bounds, condition number", {
+test_that("wild linear calibration surfaces its own alarms: under-weighting, Deville-Sarndal g bounds, collinearity", {
   d <- ren_d(seed = 14)
   X <- stats::model.matrix(~x, d); tt <- colSums(X * d$w)
   tt["xB"] <- tt["xB"] * 0.05          # total absurdo -> g minusculos
@@ -125,8 +125,8 @@ test_that("wild linear calibration surfaces its own alarms: under-weighting, Dev
   expect_true(any(grepl("Deville-Sarndal|Deville", p$alerts)))
   expect_true(grepl("under-weighting", h, fixed = TRUE))
   expect_true(grepl("Deville", h, fixed = TRUE))
-  expect_true(grepl("condition number", h, ignore.case = TRUE))
-  # y la tabla de diagnostico reporta los targets como logrados (el solver cerro)
+  expect_true(grepl("collinearity", h, ignore.case = TRUE))   # the plain-language kappa row
+  # the diagnostics table reports the targets as achieved (the solver closed)
   expect_true(grepl("achieved", h, fixed = TRUE))
 })
 

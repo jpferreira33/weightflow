@@ -633,6 +633,25 @@
 # and at-bound weights, chi-square distance, conditioning of the system (with a
 # ridge pointer), expected efficiency gain for optional y_vars, and a note when
 # the margins overlap a prior nonresponse adjustment. Reads attr "calibrate".
+
+# Human-readable condition number kappa(X'X): a plain-language state word (how
+# collinear / near-redundant the auxiliaries are, i.e. how stable the weights
+# are) plus the technical number in parentheses, formatted as m x 10^e instead of
+# raw scientific notation. Warns (red) past the ill-conditioning threshold.
+.kappa_fmt <- function(k) {
+  if (!is.finite(k)) return("&ndash;")
+  if (k < 1000) return(format(round(k)))
+  e <- floor(log10(k)); m <- round(k / 10^e, 1)
+  sprintf("%s&times;10<sup>%d</sup>", format(m), e)
+}
+.kappa_cell <- function(k, lang) {
+  if (!is.finite(k)) return("<span class='cell-ok'>&ndash;</span>")
+  st <- if (k > 1e10) list(cls = "cell-warn",
+                           w = .t("ill-conditioned", "mal condicionada", lang))
+        else if (k > 1e4) list(cls = "cell-ok", w = .t("moderate", "moderada", lang))
+        else list(cls = "cell-ok", w = .t("stable", "estable", lang))
+  sprintf("<span class='%s'>%s (&kappa; &asymp; %s)</span>", st$cls, st$w, .kappa_fmt(k))
+}
 .calibrate_diagnostics <- function(step, lang, object = NULL, y_vars = NULL) {
   dm <- attr(step$diagnostics, "calib_domains")
   cd <- attr(step$diagnostics, "calibrate")
@@ -657,11 +676,9 @@
     if (!is.null(bnd)) row(.t("at lower bound", "en cota inferior", lang), nf(sum(abs(g - bnd[1]) < 1e-6))) else "",
     if (!is.null(bnd)) row(.t("at upper bound", "en cota superior", lang), nf(sum(abs(g - bnd[2]) < 1e-6))) else "",
     row(.t("chi-square distance &Sigma;(w&minus;d)&sup2;/d", "distancia chi-cuadrado &Sigma;(w&minus;d)&sup2;/d", lang), nf(cd$chi2)),
-    row(.t("condition number &kappa;(X'X)", "n\u00famero de condici\u00f3n &kappa;(X'X)", lang),
+    row(.t("Auxiliary collinearity", "Colinealidad de auxiliares", lang),
         if (isTRUE(cd$pooled)) .t("per domain (see table below)", "por dominio (ver tabla abajo)", lang)
-        else sprintf("<span class='%s'>%s</span>",
-                if (is.finite(cd$cond) && cd$cond > 1e10) "cell-warn" else "cell-ok",
-                if (is.finite(cd$cond)) formatC(cd$cond, format = "e", digits = 1) else "&ndash;")))
+        else .kappa_cell(cd$cond, lang)))
   notes <- character(0)
   if (n_neg > 0)
     notes <- c(notes, .t(
@@ -736,14 +753,14 @@
   d3 <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
   nf <- function(x) if (!is.finite(x)) "&ndash;" else format(round(x), big.mark = ",", trim = TRUE)
   hd <- paste0("<th>", c(.t("Domain", "Dominio", lang), "n", .t("g range", "rango de g", lang),
-               .t("neg.", "neg.", lang), .t("at bounds", "en cotas", lang), "&kappa;(X'X)",
+               .t("neg.", "neg.", lang), .t("at bounds", "en cotas", lang), .t("collinearity", "colinealidad", lang),
                .t("converged", "convergi\u00f3", lang)), "</th>", collapse = "")
   ord <- order(-dm$n_neg, dm$converged, -(dm$g_max - dm$g_min))
   rows <- vapply(ord, function(i) sprintf(
     "<tr><td>%s</td><td>%s</td><td>[%s, %s]</td><td><span class='%s'>%s</span></td><td>%s</td><td>%s</td><td>%s</td></tr>",
     .html_escape(as.character(dm$domain[i])), nf(dm$n[i]), d3(dm$g_min[i]), d3(dm$g_max[i]),
     if (dm$n_neg[i] > 0) "cell-warn" else "cell-ok", nf(dm$n_neg[i]), nf(dm$n_bound[i]),
-    if (is.finite(dm$cond[i])) formatC(dm$cond[i], format = "e", digits = 1) else "&ndash;",
+    .kappa_cell(dm$cond[i], lang),
     if (isTRUE(dm$converged[i])) "&#10003;" else "<span class='cell-warn'>&#10007;</span>"),
     character(1))
   sprintf("<div class='ri'><h4>%s</h4><p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>",
