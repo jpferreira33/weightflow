@@ -97,7 +97,11 @@ trained on the other folds and used to predict the held-out fold, so each
 unit's propensity comes from a model that did not see it. This avoids the
 overfitting that flexible engines (forest, boost) can produce, which would
 otherwise inflate the weights. Folds are formed by \code{cluster} when given (so
-correlated units stay together). NULL (default) fits and predicts in-sample.}
+correlated units stay together). NULL (default) fits and predicts in-sample.
+For flexible learners it also keeps the design-based variance honest:
+same-sample predictions can understate the variance even under recipe-aware
+replication (Dagdoug, Goga and Haziza 2023), so cross-fitting is recommended
+whenever \code{engine} is not "logit".}
 
 \item{crossfit_seed}{integer or NULL. Seed for reproducible fold assignment
 when \code{crossfit} is used.}

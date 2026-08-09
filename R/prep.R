@@ -48,6 +48,8 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     alerts <- .wf_alerts(w_before, w, res$diagnostics, is_calib, cell_step,
                          min_cell_n = min_cell_n, max_factor = max_factor,
                          step_class = step_cls)
+    ca <- .crossfit_alert(steps[[i]])
+    if (!is.null(ca)) alerts <- c(alerts, ca)
     if (length(alerts)) {
       steps[[i]]$alerts <- alerts
       tagged <- sprintf("[%s] %s", step_cls, alerts)
@@ -68,6 +70,33 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     ),
     class = c("prepped_weighting_spec", "weighting_spec")
   )
+}
+
+# Quality alert: a flexible learner (tree / forest / boost) used WITHOUT
+# cross-fitting. Same-sample predictions keep each unit in the training set of
+# its own prediction, so the residuals are shrunk by overfitting and the variance
+# can be understated even under recipe-aware replication (re-fitting the learner
+# per replicate does not break that unit-prediction dependence; only sample
+# splitting does). Cross-fitting (crossfit = K) removes it. Applies to
+# step_nonresponse(method = "propensity") and step_model_calibration.
+# Refs: Dagdoug, Goga & Haziza (2023); Chernozhukov et al. (2018).
+.crossfit_alert <- function(step) {
+  flexible <- c("tree", "forest", "boost")
+  eng <- character(0)
+  if (inherits(step, "step_nonresponse") && identical(step$method, "propensity"))
+    eng <- step$engine
+  else if (inherits(step, "step_model_calibration"))
+    eng <- vapply(step$models, function(m) if (is.null(m$engine)) "glm" else m$engine,
+                  character(1))
+  hit <- intersect(unique(eng), flexible)
+  if (length(hit) && is.null(step$crossfit))
+    return(sprintf(paste0(
+      "Flexible learner (%s) without cross-fitting: same-sample predictions can ",
+      "understate the variance even under recipe-aware replication, because each ",
+      "unit stays in the training set of its own prediction. Set crossfit = 5 to ",
+      "break it (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018)."),
+      paste(hit, collapse = ", ")))
+  NULL
 }
 
 # Guard: a haven_labelled (SPSS/Stata) column used in a MODEL FORMULA enters the

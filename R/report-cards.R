@@ -495,7 +495,7 @@
       } else if (eng == "forest" && requireNamespace("ranger", quietly = TRUE)) {
         tr$.y <- factor(tr$.y, levels = c(0, 1))
         m <- ranger::ranger(f2, data = tr, probability = TRUE, case.weights = dw,
-                            importance = "impurity", num.threads = 1L)
+                            importance = "impurity", num.threads = 1L, seed = 1L)
         imp <- ranger::importance(m)
         pin <- as.numeric(stats::predict(m, data = tr)$predictions[, "1"])
       } else if (eng == "boost" && requireNamespace("xgboost", quietly = TRUE)) {

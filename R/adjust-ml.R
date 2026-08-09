@@ -115,12 +115,12 @@
     if (is_class) {
       train[[yname]] <- factor(train[[yname]]); lev <- levels(train[[yname]])
       fit <- ranger::ranger(f, data = train, probability = TRUE, case.weights = w,
-                            num.threads = .wf_threads())
+                            num.threads = .wf_threads(), seed = 1L)
       return(lapply(newdatas, function(nd)
         as.numeric(stats::predict(fit, data = nd)$predictions[, lev[length(lev)]])))
     }
     fit <- ranger::ranger(f, data = train, case.weights = w,
-                          num.threads = .wf_threads())
+                          num.threads = .wf_threads(), seed = 1L)
     return(lapply(newdatas, function(nd) as.numeric(stats::predict(fit, data = nd)$predictions)))
   }
 

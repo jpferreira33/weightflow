@@ -42,7 +42,11 @@
 #'   (each unit predicted by a model that did not see it), which avoids
 #'   overfitting with flexible engines; the population total of the predictions
 #'   uses the full model. Folds are formed by `cluster` when given. NULL
-#'   (default) fits and predicts in-sample.
+#'   (default) fits and predicts in-sample. For flexible learners cross-fitting
+#'   is also what keeps the variance honest: same-sample residuals are shrunk by
+#'   overfitting and can understate the variance even under recipe-aware
+#'   replication (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018), so it
+#'   is recommended whenever a model uses a non-glm engine.
 #' @param crossfit_seed integer or NULL. Seed for reproducible fold assignment.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>

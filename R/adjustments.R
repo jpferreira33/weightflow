@@ -57,7 +57,7 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
         stop("engine = 'forest' requires the 'ranger' package (install.packages('ranger')).")
       dtr$.y <- factor(dtr$.y, levels = c(0, 1))
       fit <- ranger::ranger(f, data = dtr, probability = TRUE, case.weights = wtr,
-                            num.threads = .wf_threads())
+                            num.threads = .wf_threads(), seed = 1L)
       as.numeric(stats::predict(fit, data = dte)$predictions[, "1"])
     } else if (engine == "boost") {
       y01 <- as.integer(as.character(dtr$.y) == "1" | dtr$.y == 1)
