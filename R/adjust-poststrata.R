@@ -61,7 +61,15 @@
   totals$.Freq <- as.numeric(totals[[count]])
   # collapse duplicate cells by summing their counts (robust to extra columns)
   agg   <- tapply(totals$.Freq, totals$.key, sum)
-  cells <- data.frame(.key = names(agg), .Freq = as.numeric(agg),
+  # Order the cells by the NATURAL order of the (typed) category columns, so a
+  # numeric category (e.g. age) sorts 2, 10, 20 -- not lexicographically as
+  # "10", "2", "20", which makes the report table unreadable. We keep one
+  # representative typed row per key and order by it; the string keys used for
+  # matching are unchanged, so the calibration itself is unaffected.
+  rep_rows <- totals[!duplicated(totals$.key), c(vars, ".key"), drop = FALSE]
+  ord      <- do.call(order, rep_rows[vars])
+  cells <- data.frame(.key  = rep_rows$.key[ord],
+                      .Freq = as.numeric(agg[rep_rows$.key[ord]]),
                       stringsAsFactors = FALSE)
 
   sample_key <- rep(NA_character_, nrow(data))
