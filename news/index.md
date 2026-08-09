@@ -4,6 +4,17 @@
 
 ### New features
 
+- **Iterative recipe refinement.** Adding a step to an already-prepped
+  recipe now clears the previous results with a message and downgrades
+  the recipe to unprepped, so stale weights can never be read by
+  accident; the whole cascade re-runs on the next
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md).
+  Typical use: prep, inspect the realized weight distribution, choose
+  trimming bounds from it, add
+  [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+  and prep again – the recipe stays the single audit trail of the final
+  decision.
+
 - **Trimming diagnostics in the report.** The trim steps share a card:
   winsorization accounting (mass moved, redistributed vs absorbed), bias
   cost in SEs with `report_weighting(y_vars = ...)`, the Potter MSE
