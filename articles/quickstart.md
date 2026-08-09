@@ -180,9 +180,9 @@ summary(fit)
 #> 
 #> --- Step 3: calibration (raking) ---
 #>  variable category target achieved
-#>    region     East    927      927
 #>    region    North   1570     1570
 #>    region    South   1250     1250
+#>    region     East    927      927
 #>    region     West    748      748
 #>       sex        F   2311     2311
 #>       sex        M   2184     2184

@@ -63,6 +63,13 @@
 
 ### Bug fixes
 
+- **Numeric categories in tidy calibration now display in natural
+  order.** When a tidy counts table used a numeric category (e.g. age),
+  the report table listed the cells lexicographically (“10”, “2”, “20”)
+  instead of numerically (2, 10, 20), which read as garbled. The cells
+  are now ordered by the variable’s own type; the calibrated weights are
+  unchanged (matching always used the string keys).
+
 - **Two silent-corruption traps now error.** A non-finite base weight
   (`Inf` / `NaN`) used to pass through the whole cascade untouched (only
   `NA` and negative weights were rejected);
