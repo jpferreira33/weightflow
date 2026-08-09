@@ -63,6 +63,21 @@
 
 ### Bug fixes
 
+- **Guards for `haven`/SPSS-labelled columns.** A `haven_labelled`
+  variable used in a model formula (calibration, propensity, or an ML
+  engine) used to enter the model as its numeric codes (1, 2, 3, …) – a
+  continuous term, not the intended categories – silently fitting the
+  wrong model specification;
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+  now errors and asks to convert with
+  [`haven::as_factor()`](https://forcats.tidyverse.org/reference/as_factor.html).
+  In addition, a classic margin named by the value *labels* while the
+  data holds the *codes* (the natural SPSS mistake) was already caught
+  by the unmatched-level guard, whose message now also lists the
+  observed levels so the mismatch is obvious. Labelled columns remain
+  fine for `by` cells and 0/1 dispositions, where the codes are the
+  right thing.
+
 - **The report no longer crashes on a single-covariate propensity
   model.**
   [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
