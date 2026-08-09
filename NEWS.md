@@ -1,4 +1,4 @@
-# weightflow 1.0.0.9000 (development version)
+# weightflow 1.1.0
 
 ## New features
 
