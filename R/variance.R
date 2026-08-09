@@ -501,44 +501,64 @@ as_svrepdesign <- function(object, ...) {
 
 #' Collect replicate weights into a data frame ready for srvyr
 #'
-#' Returns the data with the point weight and the bootstrap replicate weights
-#' as columns, so it can be fed directly to `srvyr::as_survey_rep()` (or
-#' `survey::svrepdesign()`). Replicate columns are full weights, so use
-#' `combined.weights = TRUE`, `scale = 1 / R`, `rscales = 1`, `mse = TRUE`.
+#' Returns the data with the point weight and the replicate weights as columns,
+#' so it can be fed directly to `srvyr::as_survey_rep()` (or
+#' `survey::svrepdesign()`). Works for both a bootstrap (`weightflow_boot`) and a
+#' delete-a-PSU jackknife (`weightflow_jack`). Replicate columns are full
+#' (combined) weights, so use `combined.weights = TRUE` and `mse = TRUE`; the
+#' correct `type`, `scale` and `rscales` for the object are attached as
+#' attributes (`"type"`, `"scale"`, `"rscales"`) -- for a bootstrap
+#' `scale = 1 / R`, `rscales = 1`; for the jackknife `scale = 1`,
+#' `rscales = (n_h - 1)/n_h` per replicate.
 #'
-#' @param boot a `weightflow_boot` object.
+#' @param object a `weightflow_boot` or `weightflow_jack` object.
 #' @param weight_name name of the point-weight column to add.
 #' @param prefix prefix for the replicate-weight columns (`rep_1`, `rep_2`, ...).
 #' @param drop_zero keep only active units (point weight > 0).
 #' @return A data frame: the original columns, `weight_name`, and one column per
-#'   replicate. The number of replicates is stored in attribute `"R"`.
+#'   replicate. The number of replicates is in attribute `"R"`, and the
+#'   replication design in attributes `"type"`, `"scale"` and `"rscales"`.
 #' @examples
 #' spec <- weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_calibrate(method = "raking",
 #'                  margins = list(region = c(table(population$region))))
 #' boot <- bootstrap_weights(spec, replicates = 30, strata = "region",
 #'                           psu = "psu", seed = 1, progress = FALSE)
-#' df <- collect_replicate_weights(boot)
+#' df <- collect_replicate_weights(boot)   # or a weightflow_jack object
 #' \donttest{
 #' if (requireNamespace("srvyr", quietly = TRUE) &&
 #'     requireNamespace("dplyr", quietly = TRUE)) {
 #'   srvyr::as_survey_rep(df, weights = .weight,
 #'                        repweights = dplyr::starts_with("rep_"),
-#'                        type = "bootstrap", combined.weights = TRUE,
-#'                        scale = 1 / attr(df, "R"), rscales = 1, mse = TRUE)
+#'                        type = attr(df, "type"), combined.weights = TRUE,
+#'                        scale = attr(df, "scale"), rscales = attr(df, "rscales"),
+#'                        mse = TRUE)
 #' }
 #' }
 #' @export
-collect_replicate_weights <- function(boot, weight_name = ".weight",
+collect_replicate_weights <- function(object, weight_name = ".weight",
                                       prefix = "rep_", drop_zero = TRUE) {
-  if (!inherits(boot, "weightflow_boot")) stop("`boot` must be a weightflow_boot object.")
-  keep <- if (drop_zero) boot$weights > 0 else rep(TRUE, length(boot$weights))
-  out  <- boot$data[keep, , drop = FALSE]
-  reps <- boot$replicates[keep, , drop = FALSE]
+  if (!inherits(object, c("weightflow_boot", "weightflow_jack")))
+    stop("`object` must be a weightflow_boot or weightflow_jack object.")
+  keep <- if (drop_zero) object$weights > 0 else rep(TRUE, length(object$weights))
+  out  <- object$data[keep, , drop = FALSE]
+  reps <- object$replicates[keep, , drop = FALSE]
   colnames(reps) <- paste0(prefix, seq_len(ncol(reps)))
-  out[[weight_name]] <- boot$weights[keep]
+  out[[weight_name]] <- object$weights[keep]
   out <- cbind(out, as.data.frame(reps))
   rownames(out) <- NULL
-  attr(out, "R") <- boot$R
+  attr(out, "R") <- object$R
+  # Replication design for survey/srvyr, correct per method: the bootstrap uses
+  # scale 1/R with unit rscales; the delete-a-PSU jackknife uses scale 1 with
+  # per-replicate rscales (n_h - 1)/n_h (survey type = "other").
+  if (inherits(object, "weightflow_jack")) {
+    attr(out, "type")    <- "other"
+    attr(out, "scale")   <- 1
+    attr(out, "rscales") <- (object$rep_nh - 1) / object$rep_nh
+  } else {
+    attr(out, "type")    <- "bootstrap"
+    attr(out, "scale")   <- 1 / object$R
+    attr(out, "rscales") <- rep(1, object$R)
+  }
   out
 }
