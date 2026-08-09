@@ -205,7 +205,7 @@ The step’s diagnostics show target versus achieved:</p>
 <span><span class="co">#&gt; regionEast   regionEast X (consistency)      927      927</span></span>
 <span><span class="co">#&gt; regionWest   regionWest X (consistency)      748      748</span></span>
 <span><span class="co">#&gt; sexM               sexM X (consistency)     2184     2184</span></span>
-<span><span class="co">#&gt; income           income       y (model) 91802625 91802625</span></span></code></pre></div>
+<span><span class="co">#&gt; income           income       y (model) 91704745 91704745</span></span></code></pre></div>
 <p>The <code>X (consistency)</code> rows are the region and sex totals;
 the <code>y (model)</code> row is the population total of the forest
 predictions. Each <code>achieved</code> equals its
@@ -223,7 +223,7 @@ total:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>estimated <span class="op">=</span> <span class="va">est_total</span>, population <span class="op">=</span> <span class="va">true_total</span>,</span>
 <span>  rel_error <span class="op">=</span> <span class="op">(</span><span class="va">est_total</span> <span class="op">-</span> <span class="va">true_total</span><span class="op">)</span> <span class="op">/</span> <span class="va">true_total</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    estimated   population    rel_error </span></span>
-<span><span class="co">#&gt; 8.971419e+07 8.674501e+07 3.422891e-02</span></span></code></pre></div>
+<span><span class="co">#&gt; 8.994816e+07 8.674501e+07 3.692607e-02</span></span></code></pre></div>
 <p>The estimator stays design-based,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mover><mi>Y</mi><mo accent="true">̂</mo></mover><mrow><mi mathvariant="normal">m</mi><mi mathvariant="normal">c</mi></mrow></msub><mo>=</mo><msub><mo>∑</mo><mrow><mi>i</mi><mo>∈</mo><mi>s</mi></mrow></msub><msub><mi>w</mi><mi>i</mi></msub><mspace width="0.167em"></mspace><msub><mi>y</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">\hat Y_{\mathrm{mc}} = \sum_{i \in s} w_i\,y_i</annotation></semantics></math>;
 the model only shapes the weights to make it efficient. A poor model

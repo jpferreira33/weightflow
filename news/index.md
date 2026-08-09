@@ -4,6 +4,19 @@
 
 ### New features
 
+- **Variance alert for flexible learners without cross-fitting.** A
+  `step_nonresponse(method = "propensity")` or
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
+  step that uses a tree / forest / boost engine with `crossfit = NULL`
+  now raises a quality alert: same-sample predictions can understate the
+  design-based variance even under recipe-aware replication (re-fitting
+  the learner per replicate does not break the unit-prediction
+  dependence; only sample splitting does), so `crossfit = 5` is
+  recommended. Backed by a Monte Carlo study and the model-assisted ML
+  literature (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018).
+  The random-forest engine’s own RNG seed is now fixed, so its Monte
+  Carlo noise no longer enters the replicate variances.
+
 - **[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
   now exports jackknife replicates too.** It previously accepted only a
   bootstrap object; it now also takes a `weightflow_jack` (delete-a-PSU

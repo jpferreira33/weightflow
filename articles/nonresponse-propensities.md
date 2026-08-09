@@ -218,7 +218,7 @@ wf <- weighting_spec(sample_survey, base_weights = pw) |>
                    num_classes = 5) |>
   prep()
 design_effect(wf$final_weight)$deff
-#> [1] 1.12651
+#> [1] 1.11675
 ```
 
 ### Flexibility, overfitting, and cross-fitting
@@ -246,7 +246,7 @@ wf <- weighting_spec(sample_survey, base_weights = pw) |>
                    num_classes = 5, crossfit = 5, crossfit_seed = 1) |>
   prep()
 design_effect(wf$final_weight)$deff
-#> [1] 1.050402
+#> [1] 1.051409
 ```
 
 The *Machine learning, cross-fitting and robust calibration* article

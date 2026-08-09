@@ -134,7 +134,11 @@ step_nonresponse(
   the overfitting that flexible engines (forest, boost) can produce,
   which would otherwise inflate the weights. Folds are formed by
   `cluster` when given (so correlated units stay together). NULL
-  (default) fits and predicts in-sample.
+  (default) fits and predicts in-sample. For flexible learners it also
+  keeps the design-based variance honest: same-sample predictions can
+  understate the variance even under recipe-aware replication (Dagdoug,
+  Goga and Haziza 2023), so cross-fitting is recommended whenever
+  `engine` is not "logit".
 
 - crossfit_seed:
 

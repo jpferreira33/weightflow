@@ -93,7 +93,7 @@ fitted$steps[[2]]$diagnostics
 #> regionEast   regionEast X (consistency)      927      927
 #> regionWest   regionWest X (consistency)      748      748
 #> sexM               sexM X (consistency)     2184     2184
-#> income           income       y (model) 91802625 91802625
+#> income           income       y (model) 91704745 91704745
 ```
 
 The `X (consistency)` rows are the region and sex totals; the
@@ -112,7 +112,7 @@ true_total <- sum(population$income)
 c(estimated = est_total, population = true_total,
   rel_error = (est_total - true_total) / true_total)
 #>    estimated   population    rel_error 
-#> 8.971419e+07 8.674501e+07 3.422891e-02
+#> 8.994816e+07 8.674501e+07 3.692607e-02
 ```
 
 The estimator stays design-based,
