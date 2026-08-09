@@ -38,6 +38,22 @@ weighting_spec <- function(data, base_weights) {
 .add_step <- function(spec, step) {
   if (!inherits(spec, "weighting_spec"))
     stop("The first argument must be a weighting_spec (piped with |>).")
+  if (inherits(spec, "prepped_weighting_spec")) {
+    # Iterative refinement workflow: prep() -> inspect the realized weights ->
+    # add a step (e.g. a trim whose bounds come from that distribution) ->
+    # prep() again. Downgrade to an unprepped spec so no stale results can be
+    # read; the whole cascade re-runs with the new step on the next prep().
+    message("Adding a step to a prepped recipe: previous results cleared. ",
+            "Call prep() to re-run the full cascade with the new step.")
+    data <- spec$data
+    attr(data, "weightflow_base_w") <- NULL
+    spec <- structure(
+      list(data         = data,
+           base_weights = spec$base_weights,
+           steps        = lapply(spec$steps, function(s) {
+             s$diagnostics <- NULL; s$alerts <- NULL; s })),
+      class = "weighting_spec")
+  }
   spec$steps <- c(spec$steps, list(step))
   spec
 }

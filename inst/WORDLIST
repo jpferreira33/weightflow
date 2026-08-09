@@ -31,6 +31,8 @@ Hogares
 Horvitz
 INE
 IPF
+InfoS
+InfoU
 JK
 JKn
 Kalton
@@ -59,6 +61,7 @@ Ranalli
 Rao
 ReGenesees
 Recognised
+SEs
 Sarndal
 Sautory
 Schouten
@@ -88,12 +91,14 @@ computable
 cv
 de
 debiased
+decile
 deff
 diag
 disposition
 doi
 el
 eligibles
+erroring
 estimand
 et
 eta
@@ -116,6 +121,7 @@ mathrm
 mc
 methodologist
 microdata
+miscalibrated
 misspecified
 modelled
 modelling
@@ -160,6 +166,7 @@ trimWeights
 trimcal
 tukey
 undercoverage
+unprepped
 unstratified
 weightflow's
 widehat
