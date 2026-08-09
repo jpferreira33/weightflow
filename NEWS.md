@@ -43,6 +43,13 @@
 
 ## Bug fixes
 
+* **Clearer guards on natural misuse.** `weighting_spec()` errors on a 0-row data
+  frame (a common symptom of an upstream filter that emptied the data);
+  `collect_weights()` warns when the output column (default `.weight`) already
+  exists in the data and is overwritten (use `weight_name=`); and
+  `design_effect()` now accepts a prepped recipe directly, not only a weight
+  vector.
+
 * **`step_nonresponse(num_classes =)` no longer fails with "invalid number of
   intervals"** when the fitted propensities are nearly constant: the quantile
   cut-points collapse to a single class (with an alert) instead of erroring.

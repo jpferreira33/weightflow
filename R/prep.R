@@ -240,6 +240,10 @@ collect_weights <- function(object, drop_zero = TRUE,
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first.")
   out <- object$data
+  if (weight_name %in% names(out))
+    warning(sprintf(paste0("Column '%s' already in the data was overwritten with the ",
+                           "computed weights; pass weight_name= to keep both."), weight_name),
+            call. = FALSE)
   out[[weight_name]] <- object$final_weight
 
   if (keep_intermediate) {

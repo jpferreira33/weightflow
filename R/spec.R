@@ -18,6 +18,7 @@
 weighting_spec <- function(data, base_weights) {
   bw <- deparse(substitute(base_weights))
   if (!is.data.frame(data)) stop("`data` must be a data.frame.")
+  if (nrow(data) == 0L) stop("`data` has 0 rows (an upstream filter may have emptied it).")
   if (!bw %in% names(data)) stop(sprintf("Base-weight column '%s' not found in the data.", bw))
   if (any(is.na(data[[bw]]))) stop("Base weights cannot contain NA.")
   if (any(data[[bw]] < 0)) stop("Base weights cannot be negative.")

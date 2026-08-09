@@ -19,7 +19,14 @@
     out <- out == 1
   }
   if (!is.logical(out)) stop("The condition did not evaluate to TRUE/FALSE or a 0/1 dummy.")
-  out[is.na(out)] <- FALSE
+  if (anyNA(out)) {
+    lbl <- tryCatch(paste(deparse(expr), collapse = " "), error = function(e) "the flag")
+    stop(sprintf(paste0("The disposition flag (%s) has %d missing value(s). weightflow ",
+                        "does not guess a disposition from NA: recode them (e.g. to ",
+                        "respondent/nonrespondent, eligible/ineligible, or known/unknown ",
+                        "eligibility) before weighting."),
+                 lbl, sum(is.na(out))), call. = FALSE)
+  }
   out
 }
 
