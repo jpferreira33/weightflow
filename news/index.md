@@ -54,6 +54,27 @@
 
 ### Bug fixes
 
+- **Missing disposition flags now error instead of being read as
+  `FALSE`.** A `respondent` / `unknown` / `ineligible` flag with `NA`
+  values **among the units still in scope at that step** used to be
+  silently coerced to `FALSE` (treating the case as nonrespondent /
+  known eligibility / eligible); it now stops with the count of missing
+  values, so an uncoded disposition can no longer misclassify units
+  silently. `NA` for units already out of scope (weight 0, dropped as
+  ineligible or unknown) is still fine – their disposition is genuinely
+  undefined. Consistent with how `NA` auxiliaries are handled in
+  calibration.
+
+- **Clearer guards on natural misuse.**
+  [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)
+  errors on a 0-row data frame (a common symptom of an upstream filter
+  that emptied the data);
+  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
+  warns when the output column (default `.weight`) already exists in the
+  data and is overwritten (use `weight_name=`); and
+  [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
+  now accepts a prepped recipe directly, not only a weight vector.
+
 - **`step_nonresponse(num_classes =)` no longer fails with “invalid
   number of intervals”** when the fitted propensities are nearly
   constant: the quantile cut-points collapse to a single class (with an
