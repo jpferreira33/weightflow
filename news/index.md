@@ -4,211 +4,63 @@
 
 ### New features
 
-- **Variance alert for flexible learners without cross-fitting.** A
-  `step_nonresponse(method = "propensity")` or
-  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
-  step that uses a tree / forest / boost engine with `crossfit = NULL`
-  now raises a quality alert: same-sample predictions can understate the
-  design-based variance even under recipe-aware replication (re-fitting
-  the learner per replicate does not break the unit-prediction
-  dependence; only sample splitting does), so `crossfit = 5` is
-  recommended. Backed by a Monte Carlo study and the model-assisted ML
-  literature (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018).
-  The random-forest engine’s own RNG seed is now fixed, so its Monte
-  Carlo noise no longer enters the replicate variances.
-
-- **[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
-  now exports jackknife replicates too.** It previously accepted only a
-  bootstrap object; it now also takes a `weightflow_jack` (delete-a-PSU
-  jackknife, the North-American replicate-weights standard) and attaches
-  the correct replication design as attributes (`"type"`, `"scale"`,
-  `"rscales"`) so the exported data feeds `survey`/`srvyr` with the
-  right variance scaling for either method. Its first argument is
-  renamed `boot` -\> `object` (unnamed calls are unaffected).
-
-- **Iterative recipe refinement.** Adding a step to an already-prepped
-  recipe now clears the previous results with a message and downgrades
-  the recipe to unprepped, so stale weights can never be read by
-  accident; the whole cascade re-runs on the next
-  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md).
-  Typical use: prep, inspect the realized weight distribution, choose
-  trimming bounds from it, add
-  [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
-  and prep again – the recipe stays the single audit trail of the final
-  decision.
-
-- **Trimming diagnostics in the report.** The trim steps share a card:
-  winsorization accounting (mass moved, redistributed vs absorbed), bias
-  cost in SEs with `report_weighting(y_vars = ...)`, the Potter MSE
-  curve, a threshold-sensitivity table, per-subgroup detail, and alerts
-  for over-trimming, inert trims and a later calibration re-inflating a
-  trimmed cap.
-
-- **Calibration diagnostics in the report.**
-  `step_calibrate(method = "linear")` gains a card: g-range, negative /
-  at-bound counts, chi-square distance, condition number, per-constraint
-  influence, expected efficiency gain (`y_vars`), an overlap note with
-  prior nonresponse steps, and a per-domain table under `by =`;
-  ill-conditioning and negative weights raise alerts.
-
-- **Propensity-model diagnostics in the report.**
-  `step_nonresponse(method = "propensity")` gains a card: calibration by
-  decile (Cox slope, Brier), propensity floor / overlap, covariate
-  balance, model spec and hyperparameters, weighted AUC read in context,
-  top predictors, and the in-sample vs out-of-fold gap; a miscalibrated
-  model raises an alert. The refit runs once at report time, never in
-  the bootstrap.
-
-- **Nonresponse-by-calibration diagnostics (unified).**
-  `step_nonresponse(method = "calibration")` recovers the implicit
-  propensity phi-hat = 1/g and shows its distribution, the information
-  level (InfoS / InfoU) and an auxiliary-quality grade (explains
-  response / explains `y`); non-positive g raises an alert. Weighting
-  classes, propensities and calibration now share one diagnostic
+- **Diagnostics report suite.** A card per step reads the bias-variance
+  trade-off each adjustment bought, with quality alerts: trimming
+  (winsorization accounting, bias cost, Potter curve, sensitivity),
+  linear calibration (g-range, distance, collinearity, per-constraint
+  influence, efficiency, per-domain table), ML propensity models
+  (calibration by decile, Brier, balance, AUC in context, overfitting
+  gap), and nonresponse by calibration (implicit propensity phi-hat =
+  1/g, information level, auxiliary quality) – all under one diagnostic
   language.
-
-- **Differentiated (per-subgroup) trimming.**
+- **Honest variance for machine-learning adjustments.** A flexible
+  learner (tree / forest / boost) run without `crossfit` now raises an
+  alert, since same-sample predictions can understate the variance even
+  under recipe-aware replication; the `ranger` seed is fixed so the
+  forest’s noise no longer enters the replicates.
+- **[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
+  also exports delete-a-PSU jackknife objects**, with the `type` /
+  `scale` / `rscales` needed by `survey` / `srvyr` (first argument
+  renamed `boot` -\> `object`).
+- **Iterative recipe refinement.** Adding a step to a prepped recipe
+  clears the results with a message and re-runs the cascade on the next
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md),
+  so stale weights cannot be read by accident.
+- **Per-subgroup trimming.**
   [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
-  gains a `by` argument, and `lower` / `upper` may be a named vector of
-  bounds per subgroup, so each subgroup is trimmed to its own bounds
-  while the preserved totals of `formula` stay global. On a suggestion
-  by Andrés Gutiérrez (ECLAC - Statistics Division).
+  gains a `by` argument and per-group `lower` / `upper` bounds
+  (suggested by Andrés Gutiérrez, ECLAC).
 
 ### Bug fixes
 
-- **Guards for `haven`/SPSS-labelled columns.** A `haven_labelled`
-  variable used in a model formula (calibration, propensity, or an ML
-  engine) used to enter the model as its numeric codes (1, 2, 3, …) – a
-  continuous term, not the intended categories – silently fitting the
-  wrong model specification;
-  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
-  now errors and asks to convert with
-  [`haven::as_factor()`](https://forcats.tidyverse.org/reference/as_factor.html).
-  In addition, a classic margin named by the value *labels* while the
-  data holds the *codes* (the natural SPSS mistake) was already caught
-  by the unmatched-level guard, whose message now also lists the
-  observed levels so the mismatch is obvious. Labelled columns remain
-  fine for `by` cells and 0/1 dispositions, where the codes are the
-  right thing.
-
-- **The report no longer crashes on a single-covariate propensity
-  model.**
-  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
-  on a `method = "propensity", engine = "logit"` step with a one-term
-  formula (e.g. `~ age`) used to fail (“values must be length 1 …”)
-  because the variable-importance table dropped the predictor’s name;
-  the name is now kept and the importance section is guarded.
-
-- **The trimming narrative no longer contradicts the funnel.** When the
-  requested bounds were infeasible and the trim absorbed mass, the step
-  narrative still claimed it was “redistributing the trimmed mass … to
-  preserve the total”; it now compares the before/after weight sums and
-  reports the drop honestly, a matching quality alert is raised, and the
-  `redistribute = "proportional"` branch now also accounts for mass it
-  could not redistribute. The narrative only names an automatic cutoff
-  rule (Tukey / Potter) when the cutoff was automatic, not when explicit
-  `lower`/`upper` bounds were given.
-
-- **Numeric categories in tidy calibration now display in natural
-  order.** When a tidy counts table used a numeric category (e.g. age),
-  the report table listed the cells lexicographically (“10”, “2”, “20”)
-  instead of numerically (2, 10, 20), which read as garbled. The cells
-  are now ordered by the variable’s own type; the calibrated weights are
-  unchanged (matching always used the string keys).
-
-- **Two silent-corruption traps now error.** A non-finite base weight
-  (`Inf` / `NaN`) used to pass through the whole cascade untouched (only
-  `NA` and negative weights were rejected);
-  [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)
-  now requires finite base weights. A classic (named-vector) raking or
-  post-stratification margin naming a level that matches no active unit
-  (a typo like `"Zona99"`, or a category carried over from the
-  population projections) used to be raked silently to an unreachable
-  total;
-  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
-  now errors, naming the offending levels.
-
-- **Missing disposition flags now error instead of being read as
-  `FALSE`.** A `respondent` / `unknown` / `ineligible` flag with `NA`
-  values **among the units still in scope at that step** used to be
-  silently coerced to `FALSE` (treating the case as nonrespondent /
-  known eligibility / eligible); it now stops with the count of missing
-  values, so an uncoded disposition can no longer misclassify units
-  silently. `NA` for units already out of scope (weight 0, dropped as
-  ineligible or unknown) is still fine – their disposition is genuinely
-  undefined. Consistent with how `NA` auxiliaries are handled in
-  calibration.
-
-- **Clearer guards on natural misuse.**
-  [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)
-  errors on a 0-row data frame (a common symptom of an upstream filter
-  that emptied the data);
+- **Bad inputs now fail loudly instead of corrupting silently.**
+  Non-finite base weights, 0-row data, missing `respondent` / `unknown`
+  / `ineligible` flags among in-scope units, raking /
+  post-stratification margin levels that match no unit, and `haven` /
+  SPSS-labelled columns used in a model formula now error; near-constant
+  propensities collapse to a single class with an alert instead of
+  failing.
+- **Report correctness.** No longer crashes on a single-covariate logit
+  propensity; the trimming narrative reports mass loss honestly instead
+  of claiming preservation; numeric categories in tidy tables display in
+  natural order; the condition number is shown in plain language;
+  user-supplied names are HTML-escaped.
+- **Weighting correctness.** Empty adjustment cells are set to weight 0;
+  `NA` auxiliaries error; `lonely_psu = "collapse"` nests PSU ids within
+  their stratum; `step_trim(reference = "median", by = )` uses each
+  group’s median; `tol` is honored in bounded / non-linear calibration.
+- **Smaller conveniences.**
   [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
-  warns when the output column (default `.weight`) already exists in the
-  data and is overwritten (use `weight_name=`); and
+  warns when overwriting `.weight`;
   [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
-  now accepts a prepped recipe directly, not only a weight vector.
-
-- **`step_nonresponse(num_classes =)` no longer fails with “invalid
-  number of intervals”** when the fitted propensities are nearly
-  constant: the quantile cut-points collapse to a single class (with an
-  alert) instead of erroring. Found by the variance-validation
-  simulation.
-
-- **Correctness on degenerate inputs.** Units in an adjustment cell with
-  no respondents (or all of unknown eligibility) are now set to weight 0
-  instead of passing through with their original weight;
-  `step_calibrate(method = "linear")` and
-  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
-  error on `NA` auxiliaries instead of silently returning corrupted
-  weights (recycling); and `lonely_psu = "collapse"` nests PSU ids
-  within their original stratum, so two distinct PSUs are no longer
-  merged (which had under-estimated the variance).
-  `step_trim(reference = "median", by = )` now uses each group’s own
-  median.
-
-- **Clearer failures and validation.**
-  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
-  errors on a `margins` variable that is not a column of the data (was a
-  silent no-op);
-  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  warns about arguments ignored by the chosen `method`;
-  [`weighting_spec()`](https://jpferreira33.github.io/weightflow/reference/weighting_spec.md)
-  rejects negative base weights and
-  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
-  validates `num_classes`; step conditions now resolve variables from
-  the caller’s environment; and `tol` is honored in bounded and
-  non-linear calibration.
-
-- **New quality alerts.** The report now flags very small response
-  propensities (extreme `1/p` weights, from a poor model or a degenerate
-  cross-fitting fold) and partially-responding households (treated as
-  whole-household nonresponse, which discards responding members).
-
-- **`survey` bridge.**
+  accepts a prepped recipe;
   [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  accepts formulas (no deprecation warning), and its help clarifies that
-  only the replicate-weights design propagates the adjustment
-  variability;
+  accepts formulas;
   [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  drops failed (`NA`) replicates and rescales to the valid ones;
-  parallel replicates fall back to serial on Windows.
-
-- **Report and performance.** User-supplied group names and the `by`
-  column are HTML-escaped, the report template uses named interpolation
-  (no positional mismatch), and raking / post-stratification precompute
-  the cell indices, which is much faster on large samples with fine
-  margins.
-
-- **Design-effect note reads in context.** The report’s methodological
-  footnote now explains that the Kish design effect measures weight
-  variability against equal weighting and should be read in context:
-  calibration to informative auxiliaries can raise it even as precision
-  improves (the design effect overstates the loss when weights correlate
-  with the outcome), whereas a nonresponse adjustment trades variance
-  for reduced bias. It is best used as a post-hoc diagnostic (Kish 1992;
-  Spencer 2000; Little and Vartivarian 2005; Valliant, Dever and Kreuter
-  2018).
+  drops failed replicates; parallel replicates fall back to serial on
+  Windows; raking is faster on large samples.
+- **New alerts** for very small response propensities and
+  partially-responding households.
 
 ## weightflow 1.0.0
 
