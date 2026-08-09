@@ -37,6 +37,7 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
 
   for (i in seq_along(steps)) {
     w_before               <- w
+    .check_step_labelled(steps[[i]], data)
     res                    <- apply_step(steps[[i]], data, w)
     w                      <- res$weights
     steps[[i]]$diagnostics <- res$diagnostics
@@ -67,6 +68,28 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     ),
     class = c("prepped_weighting_spec", "weighting_spec")
   )
+}
+
+# Guard: a haven_labelled (SPSS/Stata) column used in a MODEL FORMULA enters the
+# model.matrix as its numeric codes (1, 2, 3, ...) -- a continuous term, not the
+# categories the user intends -- silently mis-specifying the calibration / model.
+# Cell (`by`) grouping and 0/1 dispositions are fine on labelled vectors (they go
+# by the codes, which is correct there); only formula terms are affected.
+.check_step_labelled <- function(step, data) {
+  fs   <- Filter(function(f) inherits(f, "formula"),
+                 c(list(step$formula), list(step$x_formula)))
+  vars <- unique(unlist(lapply(fs, all.vars)))
+  vars <- intersect(vars, names(data))
+  bad  <- vars[vapply(vars, function(v) inherits(data[[v]], "haven_labelled"),
+                      logical(1))]
+  if (length(bad))
+    stop(sprintf(paste0("Formula variable(s) %s are haven_labelled (from an SPSS/Stata ",
+                        "import). In a model formula they enter as their numeric codes ",
+                        "(1, 2, 3, ...), i.e. a continuous term -- not as categories -- a ",
+                        "silent, semantically wrong calibration/model. Convert them first, ",
+                        "e.g. `data <- haven::as_factor(data)` or `haven::as_factor()` the ",
+                        "specific columns."),
+                 paste(bad, collapse = ", ")), call. = FALSE)
 }
 
 # ---------------------------------------------------------------------------

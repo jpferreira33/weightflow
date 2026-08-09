@@ -93,9 +93,12 @@
     miss <- setdiff(names(margins[[v]]), have)
     if (length(miss))
       stop(sprintf(paste0("Margin '%s' names level(s) that match no active unit: %s. ",
-                          "Check for a typo or a category carried over from the ",
-                          "population totals; the target would be silently unreachable."),
-                   v, paste(miss, collapse = ", ")), call. = FALSE)
+                          "Observed level(s) in the data: %s. ",
+                          "Check for a typo, a category carried over from the population ",
+                          "totals, or a haven_labelled column named by its labels while the ",
+                          "data holds the codes (convert with haven::as_factor() first)."),
+                   v, paste(miss, collapse = ", "),
+                   paste(utils::head(have, 15L), collapse = ", ")), call. = FALSE)
   }
 }
 
