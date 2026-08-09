@@ -51,6 +51,14 @@
 
 ## Bug fixes
 
+* **Two silent-corruption traps now error.** A non-finite base weight (`Inf` /
+  `NaN`) used to pass through the whole cascade untouched (only `NA` and negative
+  weights were rejected); `weighting_spec()` now requires finite base weights. A
+  classic (named-vector) raking or post-stratification margin naming a level that
+  matches no active unit (a typo like `"Zona99"`, or a category carried over from
+  the population projections) used to be raked silently to an unreachable total;
+  `step_calibrate()` now errors, naming the offending levels.
+
 * **Missing disposition flags now error instead of being read as `FALSE`.** A
   `respondent` / `unknown` / `ineligible` flag with `NA` values **among the units
   still in scope at that step** used to be silently coerced to `FALSE` (treating

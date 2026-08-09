@@ -45,11 +45,17 @@ step_unknown_eligibility <- function(spec, unknown, by = NULL, cluster = NULL) {
 
 #' Within-household selection adjustment
 #'
-#' When one (or a subsample) of the eligible persons is selected within each
-#' household, the selected person represents all eligible persons, so the weight
-#' is multiplied by the inverse of the within-household selection probability.
-#' Apply it after the (household-level) eligibility adjustment and before the
-#' nonresponse adjustment.
+#' When one (or a subsample) of the units is selected within each cluster, the
+#' selected unit represents all eligible units in the cluster, so the weight is
+#' multiplied by the inverse of the within-cluster selection probability. Apply
+#' it after the (cluster-level) eligibility adjustment and before the nonresponse
+#' adjustment.
+#'
+#' Despite the name, the cluster need not be a household and the unit need not be
+#' a person: the step is the generic within-cluster subsampling adjustment. In a
+#' multi-stage design it can appear more than once -- e.g. dwellings selected
+#' within sampled area segments, then persons selected within dwellings -- each
+#' occurrence undoing one stage of subsampling.
 #'
 #' @param spec a weighting_spec.
 #' @param prob unquoted column with the within-household selection probability of
@@ -189,17 +195,26 @@ step_drop_ineligible <- function(spec, ineligible) {
 #' @param crossfit_seed integer or NULL. Seed for reproducible fold assignment
 #'   when `crossfit` is used.
 #' @param cluster character or NULL. If given, the adjustment is done at the
-#'   cluster (e.g. household) level for whole-household nonresponse: each
-#'   household counts once with its (uniform) weight; in "weighting_class" the
-#'   redistribution is between responding and nonresponding households within
-#'   the cells, and in "propensity" the model is fitted with one row per
-#'   household (household auxiliaries), predicting the household response. The
-#'   resulting factor is assigned to every member; nonresponding households go to
-#'   zero. As always, only active units (weight > 0) take part, so units already
-#'   dropped (unknown eligibility, ineligible) are excluded automatically. For
-#'   `method = "calibration"`, `cluster` is used together with
-#'   `equal_within_cluster = TRUE` for integrative (one weight per household)
-#'   calibration.
+#'   cluster level for whole-cluster nonresponse: each cluster counts once with
+#'   its (uniform) weight; in "weighting_class" the redistribution is between
+#'   responding and nonresponding clusters within the cells, and in "propensity"
+#'   the model is fitted with one row per cluster (cluster auxiliaries),
+#'   predicting the cluster's response. The resulting factor is assigned to every
+#'   member; nonresponding clusters go to zero. As always, only active units
+#'   (weight > 0) take part, so units already dropped (unknown eligibility,
+#'   ineligible) are excluded automatically. For `method = "calibration"`,
+#'   `cluster` is used together with `equal_within_cluster = TRUE` for
+#'   integrative (one weight per cluster) calibration.
+#'
+#'   The cluster need not be a household: it is any grouping whose members share
+#'   a fate and a weight -- a dwelling, an area segment, or a whole primary
+#'   sampling unit (an entire PSU inaccessible, then redistributed within its
+#'   stratum). A methodological consequence to keep in mind: a cluster-level
+#'   adjustment preserves the *mass of clusters* in each cell (the cluster weight
+#'   is the mean of its members, in the sense of Valliant et al. 2018), and the
+#'   factor is uniform within the cell; it does **not**, by construction,
+#'   preserve the mass of the underlying units (persons). That is the job of the
+#'   later calibration, whose margins bring the person totals back exactly.
 #' @param totals (method = "calibration") calibration targets. NULL (default)
 #'   calibrates the respondents to the R+NR design-weighted totals of `formula`
 #'   at that stage (the two-phase / sample-level case; Sarndal & Lundstrom 2005);

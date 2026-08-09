@@ -79,6 +79,26 @@
   list(weights = new_w, diagnostics = diag)
 }
 
+# Guard: every level named in a classic (named-vector) raking / poststrat margin
+# must match at least one ACTIVE unit. A level that matches nothing -- a typo
+# like "Zona99", or a category carried over from the population projections --
+# would otherwise be raked silently to a total no unit can reach, so the
+# achieved total falls short with no warning (the sibling of the labelled-factor
+# trap). One check closes it: error, naming the offending levels.
+.check_margin_levels <- function(margins, data, active) {
+  for (v in names(margins)) {
+    if (!v %in% names(data))
+      stop(sprintf("Margin variable '%s' not found in the data.", v), call. = FALSE)
+    have <- unique(as.character(data[[v]])[active])
+    miss <- setdiff(names(margins[[v]]), have)
+    if (length(miss))
+      stop(sprintf(paste0("Margin '%s' names level(s) that match no active unit: %s. ",
+                          "Check for a typo or a category carried over from the ",
+                          "population totals; the target would be silently unreachable."),
+                   v, paste(miss, collapse = ", ")), call. = FALSE)
+  }
+}
+
 # --- Calibration -----------------------------------------------------------
 apply_step.step_calibrate <- function(step, data, w) {
   active <- w > 0
@@ -96,6 +116,7 @@ apply_step.step_calibrate <- function(step, data, w) {
     # --- classic `margins` named list (unchanged) ---
     if (length(step$margins) != 1L)
       stop("poststratify uses exactly one variable in `margins`.")
+    .check_margin_levels(step$margins, data, active)
     v      <- names(step$margins)[1]
     target <- step$margins[[1]]
     f      <- as.character(data[[v]])
@@ -247,6 +268,7 @@ apply_step.step_calibrate <- function(step, data, w) {
   }
 
   # --- classic `margins` named list (unchanged behaviour + convergence warn) ---
+  .check_margin_levels(step$margins, data, active)
   it <- 0L; maxdiff <- Inf
   while (it < step$maxit && maxdiff >= step$tol) {
     it <- it + 1L; maxdiff <- 0

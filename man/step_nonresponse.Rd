@@ -70,17 +70,26 @@ alert is raised -- the statistically correct outcome, since equal
 propensities give nothing to differentiate.}
 
 \item{cluster}{character or NULL. If given, the adjustment is done at the
-cluster (e.g. household) level for whole-household nonresponse: each
-household counts once with its (uniform) weight; in "weighting_class" the
-redistribution is between responding and nonresponding households within
-the cells, and in "propensity" the model is fitted with one row per
-household (household auxiliaries), predicting the household response. The
-resulting factor is assigned to every member; nonresponding households go to
-zero. As always, only active units (weight > 0) take part, so units already
-dropped (unknown eligibility, ineligible) are excluded automatically. For
-\code{method = "calibration"}, \code{cluster} is used together with
-\code{equal_within_cluster = TRUE} for integrative (one weight per household)
-calibration.}
+cluster level for whole-cluster nonresponse: each cluster counts once with
+its (uniform) weight; in "weighting_class" the redistribution is between
+responding and nonresponding clusters within the cells, and in "propensity"
+the model is fitted with one row per cluster (cluster auxiliaries),
+predicting the cluster's response. The resulting factor is assigned to every
+member; nonresponding clusters go to zero. As always, only active units
+(weight > 0) take part, so units already dropped (unknown eligibility,
+ineligible) are excluded automatically. For \code{method = "calibration"},
+\code{cluster} is used together with \code{equal_within_cluster = TRUE} for
+integrative (one weight per cluster) calibration.
+
+The cluster need not be a household: it is any grouping whose members share
+a fate and a weight -- a dwelling, an area segment, or a whole primary
+sampling unit (an entire PSU inaccessible, then redistributed within its
+stratum). A methodological consequence to keep in mind: a cluster-level
+adjustment preserves the \emph{mass of clusters} in each cell (the cluster weight
+is the mean of its members, in the sense of Valliant et al. 2018), and the
+factor is uniform within the cell; it does \strong{not}, by construction,
+preserve the mass of the underlying units (persons). That is the job of the
+later calibration, whose margins bring the person totals back exactly.}
 
 \item{crossfit}{integer or NULL. If given (number of folds K >= 2), the
 propensity is estimated by K-fold cross-fitting: for each fold the model is
