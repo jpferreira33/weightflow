@@ -215,7 +215,7 @@
 }
 
 # Scatter of weight before (x) vs after (y), with a y = x reference line.
-.svg_scatter <- function(x, y, w = 330, h = 215, cap = 3000L) {
+.svg_scatter <- function(x, y, w = 330, h = 215, cap = 3000L, lang = "en") {
   ml <- 54; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   i <- .thin_scatter(x, y, cap); x <- x[i]; y <- y[i]
   xr <- range(x); yr <- range(c(y, x))
@@ -230,13 +230,13 @@
                  sx(lo), sy(lo), sx(hi), sy(hi))
   lbl <- sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">y = x</text>',
                  sx(hi) - 3, sy(hi) + 12)
-  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, "weight before", "weight after", sx, sy),
+  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, .t("weight before", "peso antes", lang), .t("weight after", "peso despu\u00e9s", lang), sx, sy),
                     pts, ln, lbl), w, h)
 }
 
 # Histogram of a per-unit quantity (default: the adjustment factor after/before),
 # with a reference line at 1.
-.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215, refline = 1) {
+.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215, refline = 1, lang = "en") {
   ml <- 48; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   v <- v[is.finite(v)]
   if (!length(v)) return("")
@@ -255,7 +255,7 @@
                    sx(refline), mt, sx(refline), mt + ph),
            sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#6b7280">factor = 1</text>',
                    sx(refline) + 3, mt + 9)) else ""
-  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, "count", sx, sy),
+  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, .t("count", "conteo", lang), sx, sy),
                     bars, vl), w, h)
 }
 
@@ -270,11 +270,12 @@
   if (inherits(step, .no_visual)) return("")
   keep <- prev > 0 & cur > 0
   if (!any(keep)) return("")
-  sc   <- tryCatch(.svg_scatter(prev[keep], cur[keep]), error = function(e) "")
+  sc   <- tryCatch(.svg_scatter(prev[keep], cur[keep], lang = lang), error = function(e) "")
   fac  <- (cur / prev)[keep]
   xlab <- if (inherits(step, "step_select_within"))
-            "persons represented (1/prob)" else "adjustment factor (after / before)"
-  hi   <- tryCatch(.svg_hist(fac, xlab = xlab), error = function(e) "")
+            .t("persons represented (1/prob)", "personas representadas (1/prob)", lang)
+          else .t("adjustment factor (after / before)", "factor de ajuste (despu\u00e9s / antes)", lang)
+  hi   <- tryCatch(.svg_hist(fac, xlab = xlab, lang = lang), error = function(e) "")
   if (!nzchar(sc) && !nzchar(hi)) return("")
   note <- if (sum(keep) > 3000L)
     sprintf("<p class='muted'>%s</p>", .t(
@@ -284,22 +285,26 @@
 }
 
 # Compact R-indicator block, rendered inside the (last) nonresponse step card.
-.ri_block <- function(ri) {
+.ri_block <- function(ri, lang = "en") {
   ph <- ""
   ptab <- ri$partials
   if (!is.null(ptab)) {
     ptab <- ptab[order(-ptab$partial_R), , drop = FALSE]
     ptab$partial_R <- round(ptab$partial_R, 4)
-    ph <- paste0("<p class='muted'>Partial R-indicators:</p>", .df_to_html(ptab))
+    ph <- paste0(sprintf("<p class='muted'>%s</p>", .t("Partial R-indicators:", "R-indicadores parciales:", lang)), .df_to_html(ptab))
   }
   if (!is.null(ri$num_aux) && length(ri$num_aux))
     ph <- paste0(ph, sprintf(
-      "<p class='muted'>Numeric auxiliaries are binned into quintiles for their partial; not computable (too few distinct values): %s.</p>",
+      .t("<p class='muted'>Numeric auxiliaries are binned into quintiles for their partial; not computable (too few distinct values): %s.</p>",
+         "<p class='muted'>Los auxiliares num\u00e9ricos se agrupan en quintiles para su parcial; no computable (muy pocos valores distintos): %s.</p>", lang),
       .html_escape(paste(ri$num_aux, collapse = ", "))))
   sprintf(
-    "<div class='ri'><h4>Response representativity (R-indicator)</h4>
+    .t("<div class='ri'><h4>Response representativity (R-indicator)</h4>
 <p class='muted'>Design-weighted logistic of response on <code>%s</code> (n = %s). Closer to 1 = more representative response; the partials show which variable drives the gap.</p>
 <p class='ri-val'><strong>R = %.3f</strong></p>%s</div>",
+       "<div class='ri'><h4>Representatividad de la respuesta (R-indicador)</h4>
+<p class='muted'>Log\u00edstica ponderada por dise\u00f1o de la respuesta sobre <code>%s</code> (n = %s). M\u00e1s cerca de 1 = respuesta m\u00e1s representativa; los parciales muestran qu\u00e9 variable explica la brecha.</p>
+<p class='ri-val'><strong>R = %.3f</strong></p>%s</div>", lang),
     .html_escape(paste(ri$aux, collapse = ", ")),
     format(ri$n_eligible, big.mark = ","), ri$R, ph)
 }
@@ -308,7 +313,7 @@
 # weighted totals away from the calibration targets. This recomputes the last
 # calibration's categorical targets at the FINAL weights and reports the drift.
 # Only shown when there is a calibration step followed by at least one more step.
-.calibration_drift <- function(object) {
+.calibration_drift <- function(object, lang = "en") {
   is_cal <- vapply(object$steps, function(s) inherits(s, "step_calibrate"), logical(1))
   if (!any(is_cal)) return("")
   kc <- max(which(is_cal))
@@ -330,8 +335,10 @@
   if (is.null(rows) || !nrow(rows)) return("")
   maxdev <- max(abs(rows[["dev %"]]), na.rm = TRUE)
   sprintf(
-    "<h2>Calibration drift</h2>
+    .t("<h2>Calibration drift</h2>
 <p class='muted'>Steps after calibration (trimming, rounding, rescaling) move the weighted totals away from the calibration targets. <code>achieved</code> is recomputed at the final weights; max deviation %.2f%%.</p>%s",
+       "<h2>Deriva de calibraci\u00f3n</h2>
+<p class='muted'>Los pasos posteriores a la calibraci\u00f3n (recorte, redondeo, reescalado) alejan los totales ponderados de los objetivos de calibraci\u00f3n. <code>logrado</code> se recalcula con los pesos finales; desviaci\u00f3n m\u00e1xima %.2f%%.</p>%s", lang),
     maxdev, .df_to_html(rows))
 }
 

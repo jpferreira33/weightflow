@@ -94,9 +94,12 @@
   if (inherits(step, "step_unknown_eligibility")) {
     lvl <- if (!is.null(step$cluster)) .t("at the household level", "a nivel de hogar", lang)
            else .t("at the unit level", "a nivel de unidad", lang)
+    byv <- if (!is.null(step$by))
+             sprintf(.t(" by <strong>%s</strong>", " por <strong>%s</strong>", lang),
+                     .html_escape(paste(step$by, collapse = ", "))) else ""
     txt <- .t(
-      sprintf("Cases of unknown eligibility had their weight redistributed to the resolved (known-eligibility) cases %s, so the unresolved cases do not bias the eligible totals.", lvl),
-      sprintf("A los casos de elegibilidad desconocida se les redistribuy\u00f3 el peso entre los casos resueltos (de elegibilidad conocida) %s, para que los no resueltos no sesguen los totales de elegibles.", lvl),
+      sprintf("Cases of unknown eligibility had their weight redistributed to the resolved (known-eligibility) cases%s %s, so the unresolved cases do not bias the eligible totals.", byv, lvl),
+      sprintf("A los casos de elegibilidad desconocida se les redistribuy\u00f3 el peso entre los casos resueltos (de elegibilidad conocida)%s %s, para que los no resueltos no sesguen los totales de elegibles.", byv, lvl),
       lang)
   } else if (inherits(step, "step_drop_ineligible")) {
     txt <- .t("Units identified as out of scope (ineligible) were removed from the cascade, setting their weight to zero so they do not contribute to any later estimate.",

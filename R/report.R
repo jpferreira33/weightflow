@@ -66,11 +66,11 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 
   # Headline metrics
   cards <- paste0(
-    .metric("Cases", format(length(fin), big.mark = ",")),
-    .metric("Active (final)", format(de_f$n, big.mark = ",")),
-    .metric("Sum of weights", format(round(sum(fin)), big.mark = ",")),
-    .metric("Final deff_K", sprintf("%.3f", de_f$deff)),
-    .metric("Effective n", format(round(de_f$n_eff), big.mark = ",")))
+    .metric(.t("Cases", "Casos", lang), format(length(fin), big.mark = ",")),
+    .metric(.t("Active (final)", "Activas (final)", lang), format(de_f$n, big.mark = ",")),
+    .metric(.t("Sum of weights", "Suma de pesos", lang), format(round(sum(fin)), big.mark = ",")),
+    .metric(.t("Final deff_K", "deff_K final", lang), sprintf("%.3f", de_f$deff)),
+    .metric(.t("Effective n", "n efectivo", lang), format(round(de_f$n_eff), big.mark = ",")))
 
   # Stage summary table
   stab <- data.frame(
@@ -176,17 +176,21 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       paste0("<div class='alert'><strong>Quality alerts</strong><ul>",
              paste0("<li>", vapply(al, .html_escape, character(1)), "</li>", collapse = ""),
              "</ul></div>") else ""
-    conv_html <- if (identical(cv, FALSE))
-      paste0("<div class='alert'><strong>Did not converge</strong>",
-             "<p>The calibration stopped without satisfying all margins",
-             if (!is.null(it)) sprintf(" (after %d iterations)", it) else "",
-             ". The returned weights do not fully reproduce the requested totals. ",
-             "Increase <code>maxit</code> or check that the margins are ",
-             "mutually consistent.</p></div>") else ""
+    conv_html <- if (identical(cv, FALSE)) {
+      itn <- if (!is.null(it)) sprintf(.t(" (after %d iterations)", " (tras %d iteraciones)", lang), it) else ""
+      sprintf("<div class='alert'><strong>%s</strong><p>%s%s. %s</p></div>",
+        .t("Did not converge", "No convergi\u00f3", lang),
+        .t("The calibration stopped without satisfying all margins",
+           "La calibraci\u00f3n se detuvo sin satisfacer todos los m\u00e1rgenes", lang), itn,
+        .t("The returned weights do not fully reproduce the requested totals. Increase <code>maxit</code> or check that the margins are mutually consistent.",
+           "Los pesos devueltos no reproducen del todo los totales pedidos. Aument\u00e1 <code>maxit</code> o verific\u00e1 que los m\u00e1rgenes sean mutuamente consistentes.", lang))
+    } else ""
     iter_html <- if (!is.null(it)) {
       if (identical(cv, FALSE))
-        sprintf("<p class='muted'>stopped after %d iterations (did not converge)</p>", it)
-      else sprintf("<p class='muted'>converged in %d iterations</p>", it)
+        sprintf(.t("<p class='muted'>stopped after %d iterations (did not converge)</p>",
+                   "<p class='muted'>detenido tras %d iteraciones (no convergi\u00f3)</p>", lang), it)
+      else sprintf(.t("<p class='muted'>converged in %d iterations</p>",
+                      "<p class='muted'>convergi\u00f3 en %d iteraciones</p>", lang), it)
     } else ""
     extra <- paste0(
       iter_html,
@@ -194,7 +198,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       conv_html, alerts_html)
     de1 <- design_effect(h[[i]]); de2 <- design_effect(h[[i + 1L]])
     viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]], lang) else ""
-    ri_step <- if (i == nr_last && !is.null(ri)) .ri_block(ri) else ""
+    ri_step <- if (i == nr_last && !is.null(ri)) .ri_block(ri, lang) else ""
     prop_diag <- .propensity_diagnostics(s, lang)   # full-width, below the 2 columns
     cnr_diag  <- .calib_nr_diagnostics(s, lang, object, y_vars)  # nonresponse-by-calibration
     cal_diag  <- .calibrate_diagnostics(s, lang, object, y_vars) # step_calibrate diagnostics
@@ -203,14 +207,16 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       .step_narrative(s, de1, de2, ri, i == nr_last, lang) else ""
     steps_html <- paste0(steps_html, sprintf(
       "<div class='step' id='step-%d'><div class='step-h'><span class='num'>%d</span>%s</div>%s
-       <div class='cols'><div><h4>Requested</h4><table class='params'>%s</table></div>
-       <div><h4>Diagnostics</h4>%s%s
+       <div class='cols'><div><h4>%s</h4><table class='params'>%s</table></div>
+       <div><h4>%s</h4>%s%s
        <p class='muted'>deff_K %.3f &rarr; %.3f &nbsp;|&nbsp; n_eff %s &rarr; %s</p>%s</div></div>%s</div>",
-      i, i, .step_short(s, lang), narr, paste(prows, collapse = ""),
+      i, i, .step_short(s, lang), narr,
+      .t("Requested", "Solicitado", lang), paste(prows, collapse = ""),
+      .t("Diagnostics", "Diagn\u00f3sticos", lang),
       .df_to_html(.with_reldiff(s$diagnostics, lang)), extra,
       de1$deff, de2$deff, format(round(de1$n_eff), big.mark = ","),
       format(round(de2$n_eff), big.mark = ","), ri_step,
-      paste0(prop_diag, cnr_diag, cal_diag, trim_diag, if (nzchar(viz)) paste0("<h4 class='viz-h'>Visual</h4>", viz) else "")))
+      paste0(prop_diag, cnr_diag, cal_diag, trim_diag, if (nzchar(viz)) paste0(sprintf("<h4 class='viz-h'>%s</h4>", .t("Visual", "Visual", lang)), viz) else "")))
   }
 
   diagram <- .pipeline_diagram(object, lang)
@@ -218,12 +224,12 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   vars_chips <- .chips(allvars)
 
   # Provenance line for auditability: when, and with which versions, it was made.
-  prov <- sprintf("Generated %s &middot; weightflow %s &middot; R %s.%s",
+  prov <- sprintf(paste0(.t("Generated", "Generado", lang), " %s &middot; weightflow %s &middot; R %s.%s"),
     format(Sys.time(), "%Y-%m-%d %H:%M"),
     as.character(utils::packageVersion("weightflow")),
     R.version$major, R.version$minor)
 
-  drift <- .calibration_drift(object)
+  drift <- .calibration_drift(object, lang)
   wdist <- .weight_distribution_html(fin, lang, plots)
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
   exec  <- paste0(exec, .status_checklist(object, de_f, object$final_weight, replicates, lang))
@@ -282,10 +288,11 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   # sections cannot be misaligned when one is added or removed.
   html <- paste0(
     sprintf("<!DOCTYPE html><html lang='%s'><head><meta charset='utf-8'>\n", lang),
-    "<title>weightflow report</title>", .report_css(), "</head><body>\n",
-    "<h1>weightflow &mdash; weighting recipe</h1>\n",
-    "<p class='muted'>Base weights: <code>", .html_escape(object$base_weights),
-      "</code> &nbsp;|&nbsp; ", length(object$steps), " steps</p>\n",
+    sprintf("<title>%s</title>", .t("weightflow report", "reporte weightflow", lang)), .report_css(), "</head><body>\n",
+    sprintf("<h1>weightflow &mdash; %s</h1>\n", .t("weighting recipe", "receta de ponderaci\u00f3n", lang)),
+    sprintf("<p class='muted'>%s: <code>%s</code> &nbsp;|&nbsp; %d %s</p>\n",
+            .t("Base weights", "Pesos base", lang), .html_escape(object$base_weights),
+            length(object$steps), .t("steps", "pasos", lang)),
     "<p class='prov'>", prov, "</p>\n",
     "<div class='toolbar noprint'><button type='button' id='wf-pdf' class='wfbtn'>",
       .t("Download PDF", "Descargar PDF", lang), "</button></div>\n",
@@ -295,13 +302,13 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     racct, "\n",
     exec, "\n",
     repro_html, "\n",
-    "<h2 id='pipeline'>Pipeline</h2>", diagram, "\n",
-    "<p class='muted'>Variables used:</p>", vars_chips, "\n",
-    "<h2 id='stages'>Per-stage summary</h2>", stab_html, "\n",
+    sprintf("<h2 id='pipeline'>%s</h2>", .t("Pipeline", "Flujo de pasos", lang)), diagram, "\n",
+    sprintf("<p class='muted'>%s</p>", .t("Variables used:", "Variables usadas:", lang)), vars_chips, "\n",
+    sprintf("<h2 id='stages'>%s</h2>", .t("Per-stage summary", "Resumen por etapa", lang)), stab_html, "\n",
     repl_html, "\n",
     domain_html, "\n",
-    "<h2 id='weights'>Weight distribution (final)</h2>", wdist, "\n",
-    "<h2 id='steps'>Steps</h2>\n",
+    sprintf("<h2 id='weights'>%s</h2>", .t("Weight distribution (final)", "Distribuci\u00f3n de pesos (final)", lang)), wdist, "\n",
+    sprintf("<h2 id='steps'>%s</h2>\n", .t("Steps", "Pasos", lang)),
     "<details class='steps' open><summary>",
       .t("Show / hide per-step detail", "Mostrar / ocultar detalle por paso", lang),
       "</summary>\n",
