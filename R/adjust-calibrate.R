@@ -89,6 +89,14 @@
   for (v in names(margins)) {
     if (!v %in% names(data))
       stop(sprintf("Margin variable '%s' not found in the data.", v), call. = FALSE)
+    # No NA in a raking / poststratification variable: a unit with no cell cannot
+    # be raked, so erroring here avoids the silent pass-through where NA units
+    # keep their base weight and the calibrated total drifts.
+    if (anyNA(data[[v]][active]))
+      stop(sprintf(paste0("Margin variable '%s' has missing values (NA) in %d active unit(s). ",
+                          "Raking / post-stratification needs a cell for every unit. Impute or ",
+                          "recode the NAs before calibrating."),
+                   v, sum(is.na(data[[v]][active]))), call. = FALSE)
     have <- unique(as.character(data[[v]])[active])
     miss <- setdiff(names(margins[[v]]), have)
     if (length(miss))
@@ -199,7 +207,25 @@ apply_step.step_calibrate <- function(step, data, w) {
       hh   <- unique(cl)
       n_h  <- as.numeric(tapply(d, cl, length)[hh])       # persons per household
       Wsum <- as.numeric(tapply(d, cl, sum)[hh])          # total base weight in household
+      # `equal_within_cluster = TRUE` promises ONE weight per cluster. That is
+      # only well defined when the pre-calibration (incoming) weights are already
+      # constant within each cluster: the final weight is base_weight x household
+      # g-factor, so if the base weights differ within a cluster the members end
+      # up with DIFFERENT final weights and the promise is silently broken. Refuse
+      # up front and tell the user to look at the upstream step, rather than
+      # returning per-member-varying weights that only look like one-per-cluster.
+      nonunif <- tapply(d, cl, function(z) (max(z) - min(z)) > 1e-9 * max(abs(z), 1))
+      if (any(nonunif, na.rm = TRUE))
+        stop(sprintf(paste0("`equal_within_cluster = TRUE` needs one weight per cluster, but the ",
+                          "pre-calibration base weights are NOT constant within %d of %d '%s' ",
+                          "cluster(s). The final weights would differ between members of the same ",
+                          "cluster (final = base x household g-factor), breaking the one-weight-per-",
+                          "cluster promise. Review the upstream step that made the within-cluster ",
+                          "weights differ, or drop `equal_within_cluster`."),
+                   sum(nonunif, na.rm = TRUE), length(nonunif), step$cluster), call. = FALSE)
       Xbar <- rowsum(X, group = cl)[hh, , drop = FALSE] / n_h   # household MEANS
+      # (arithmetic mean: matches survey's aggregate.stage to machine precision;
+      # valid because the within-cluster weights are now guaranteed constant.)
       sol  <- .solve_calibration(Xbar, Wsum, Tvec, step$calfun, step$bounds,
                                  step$penalty, step$maxit, step$tol)
       gh           <- sol$g
@@ -214,22 +240,26 @@ apply_step.step_calibrate <- function(step, data, w) {
     achieved <- colSums(new_w[active] * X)
     # Check that the calibration constraints are satisfied (unless ridge, where
     # relaxation is intentional, or bounded, which has its own convergence warn).
-    conv_ok <- TRUE
-    if (is.null(step$penalty) && !truncated) {
+    # Verify the REAL achieved totals against the targets -- ALWAYS, not only in
+    # the unbounded case. Under bounds/logit some relaxation is legitimate, so
+    # the tolerance is loosened and the DS convergence flag is folded in; but a
+    # gross miss (e.g. the old integrative-mean bug) is no longer hidden just
+    # because `bounds` were supplied.
+    conv_ok <- if (truncated) ds_converged else TRUE
+    if (is.null(step$penalty)) {
       rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
-      off <- which(rel_dev > 1e-6)
+      tol_dev <- if (truncated) 1e-3 else 1e-6
+      off <- which(rel_dev > tol_dev)
       if (length(off) > 0L) {
         conv_ok <- FALSE
         warning(sprintf(
-          paste0("Linear calibration did not fully satisfy the constraints for: ",
-                 "%s. The achieved totals differ from the targets (max relative ",
-                 "deviation = %.2e). This can happen with collinear auxiliaries ",
-                 "or an ill-conditioned system; check the auxiliary variables."),
+          paste0("Calibration did not satisfy the constraints for: %s. The achieved ",
+                 "totals differ from the targets (max relative deviation = %.2e). Under ",
+                 "bounds this can mean the bounds are infeasible; otherwise check for ",
+                 "collinear auxiliaries or non-uniform within-cluster base weights."),
           paste(utils::head(cn[off], 10L), collapse = ", "), max(rel_dev)),
           call. = FALSE)
       }
-    } else if (truncated) {
-      conv_ok <- ds_converged
     }
     diag <- data.frame(variable = cn, target = Tvec,
                        achieved = round(achieved, 2), stringsAsFactors = FALSE)

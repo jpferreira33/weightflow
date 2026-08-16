@@ -300,6 +300,8 @@ apply_step.step_trim_weights <- function(step, data, w) {
   new_w  <- w               # unbounded calibration); leave dropped units (w == 0)
   wv     <- new_w[active]
 
+  pot_obj <- NULL; unredist <- 0        # init BEFORE the potter branch, so the
+                                        # Potter grid/MSE set below is not clobbered
   upper <- step$upper
   if (is.null(upper)) {
     if (identical(step$method, "potter")) {
@@ -311,8 +313,10 @@ apply_step.step_trim_weights <- function(step, data, w) {
       upper <- as.numeric(q[2] + 3 * (q[2] - q[1]))  # Tukey far-out fence
     }
   }
-  lower <- step$lower
-  pot_obj <- NULL; unredist <- 0
+  # `lower = NULL` means "no floor" -> -Inf. (Leaving it NULL makes `wv < lower`
+  # collapse to logical(0), which breaks the redistribution and errors on the
+  # diagnostics data.frame.)
+  lower <- if (is.null(step$lower)) -Inf else as.numeric(step$lower)
 
   it <- 0L
   if (identical(step$redistribute, "uniform")) {

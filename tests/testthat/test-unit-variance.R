@@ -237,15 +237,16 @@ test_that("jackknife_estimate drops non-finite replicates with a warning", {
   expect_true(is.finite(est$se))
 })
 
-test_that("a failed replicate is invisible to the na.rm = TRUE helpers", {
-  # Documents current behaviour, and why the two tests above pass a statistic of
-  # their own: boot_total() sums with na.rm = TRUE, so an all-NA replicate
-  # contributes 0 rather than being detected and dropped.
+test_that("a failed replicate is dropped by boot_total (with a warning), not counted as 0", {
+  # Fixed 2026-08 (A8): boot_total()/jack_total() return NA for an all-NA
+  # replicate, so the existing good-replicate filter drops it and warns, instead
+  # of the failed replicate contributing a spurious 0 that inflated the SE.
   b <- vboot; b$replicates[, 1] <- NA_real_
   clean  <- boot_total(vboot, "y")
-  broken <- boot_total(b, "y")                 # no warning, and se is inflated
+  expect_warning(broken <- boot_total(b, "y"), "non-finite replicate")
   expect_equal(broken$estimate, clean$estimate)
-  expect_true(broken$se > clean$se)
+  expect_true(is.finite(broken$se))
+  expect_lt(broken$se, clean$se * 1.5)          # no longer blown up by the failed replicate
 })
 
 # ---------------------------------------------------------------------------

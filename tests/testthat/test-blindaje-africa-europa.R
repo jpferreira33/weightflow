@@ -95,27 +95,22 @@ test_that("Mikrozensus-style: integrative AND bounded at once -- one weight per 
   expect_lt(max(abs(ach - tt) / abs(tt)), 1e-4)
 })
 
-test_that("the general integrative promise with person-varying base weights: one g-FACTOR per household (not one weight), warned if inexact", {
+test_that("person-varying base weights with equal_within_cluster now ERROR (2026-08 decision)", {
+  # Previously this ran, producing one g-FACTOR per household (members kept
+  # DIFFERENT weights) with an inexactness warning. Design decision 2026-08:
+  # `equal_within_cluster` promises ONE WEIGHT per cluster, which is undefined
+  # when the incoming base weights already differ within a cluster -> hard error
+  # pointing at the upstream step, instead of silently per-member-varying weights.
   set.seed(331); n <- 400
   d <- data.frame(id = 1:n, sexo = factor(sample(c("H", "M"), n, TRUE)),
                   hogar = rep(1:(n / 2), each = 2), w = runif(n, 5, 20))
   X  <- stats::model.matrix(~sexo, d)
   tt <- colSums(X * d$w) * 1.04
-  # with weights varying within the household the promise is ONE FACTOR per household
-  p <- suppressWarnings(suppressMessages(prep(
-    weighting_spec(d, base_weights = w) |>
-      step_calibrate(method = "linear", formula = ~sexo, totals = tt,
-                     cluster = "hogar", equal_within_cluster = TRUE))))
-  cw <- collect_weights(p)
-  gf <- cw$.weight / d$w[match(cw$id, d$id)]
-  expect_lt(max(tapply(gf, cw$hogar, function(x) diff(range(x)))), 1e-10)
-  # and if the household-mean system does not close exactly, the package WARNS
-  # (warning "did not fully satisfy...") en vez de callar: lo fijamos
-  expect_warning(suppressMessages(prep(
+  expect_error(suppressMessages(prep(
     weighting_spec(d, base_weights = w) |>
       step_calibrate(method = "linear", formula = ~sexo, totals = tt,
                      cluster = "hogar", equal_within_cluster = TRUE))),
-    "did not fully satisfy|constraint")
+    "constant within|one weight per cluster")
 })
 
 test_that("ESS-style: design weights + poststratification + trim at 4x the mean, mass preserved and cap held", {

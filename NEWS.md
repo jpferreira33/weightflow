@@ -1,3 +1,11 @@
+# weightflow 1.1.1
+
+## Bug fixes
+
+* **Missing or malformed data now errors instead of biasing silently.** `NA` in a raking / post-stratification margin, a propensity model covariate, or a bootstrap / jackknife stratum or PSU; a household-level nonresponse `by` cell that varies within the cluster; and `equal_within_cluster = TRUE` with non-uniform incoming weights all stop with a clear message rather than passing units through untouched or producing `NA` weights.
+* **Honest variance and totals.** `boot_total()` / `jack_total()` drop a failed replicate (and report how many) instead of counting it as 0 and inflating the standard error; the achieved-vs-target check now runs even under `bounds`, so `converged` reflects the real totals.
+* **Trimming and diagnostics.** `step_trim_weights(lower = NULL)` means "no floor" instead of erroring; the Potter MSE curve is drawn again, with a readable, compactly-labelled axis; `weight_factors()` works on a zero-step recipe.
+
 # weightflow 1.1.0
 
 ## New features

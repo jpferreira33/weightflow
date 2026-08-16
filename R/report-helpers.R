@@ -129,7 +129,19 @@
   else formatC(v, digits = 3, format = "g")
 }
 
-.svg_axes <- function(ml, mt, pw, ph, xr, yr, xlab, ylab, sx, sy) {
+# Compact SI-style tick labels for large-magnitude axes (e.g. the Potter MSE
+# curve, in the millions): 1.27M, 637k. Keeps the left margin small and readable.
+.fmt_si <- function(v) vapply(v, function(x) {
+  if (!is.finite(x)) return("")
+  a <- abs(x); g <- function(z) formatC(z, digits = 3, format = "g")
+  if      (a >= 1e12) paste0(g(x / 1e12), "T")
+  else if (a >= 1e9)  paste0(g(x / 1e9),  "B")
+  else if (a >= 1e6)  paste0(g(x / 1e6),  "M")
+  else if (a >= 1e3)  paste0(g(x / 1e3),  "k")
+  else                g(x)
+}, character(1))
+
+.svg_axes <- function(ml, mt, pw, ph, xr, yr, xlab, ylab, sx, sy, yfmt = NULL) {
   xt <- c(xr[1], mean(xr), xr[2]); yt <- c(yr[1], mean(yr), yr[2])
   # faint gridlines at the tick positions (drawn first, so they sit behind data)
   grid <- paste(c(
@@ -148,8 +160,9 @@
             ml - 3, sy(yt), ml, sy(yt))), collapse = "")
   xtk <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#6b7280">%s</text>',
                sx(xt), mt + ph + 13, .uniq_ticks(xt)), collapse = "")
+  ylabs <- if (is.null(yfmt)) .uniq_ticks(yt) else yfmt(yt)
   ytk <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">%s</text>',
-               ml - 5, sy(yt) + 3, .uniq_ticks(yt)), collapse = "")
+               ml - 5, sy(yt) + 3, ylabs), collapse = "")
   xl  <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="11" fill="#6b7280">%s</text>',
                  ml + pw / 2, mt + ph + 27, xlab)
   yl  <- sprintf('<text x="11" y="%.1f" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(-90 11 %.1f)">%s</text>',
@@ -438,7 +451,7 @@
   ok <- is.finite(grid) & is.finite(mse) & is.finite(bias2) & is.finite(varc)
   grid <- grid[ok]; bias2 <- bias2[ok]; varc <- varc[ok]; mse <- mse[ok]
   if (length(grid) < 3L) return("")
-  ml <- 46; mr <- 10; mt <- 12; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
+  ml <- 56; mr <- 12; mt <- 12; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   xr <- range(grid); if (diff(xr) == 0) xr <- xr + c(-1, 1)
   yr <- c(0, max(mse, varc, bias2, 1e-9))
   sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
@@ -451,8 +464,10 @@
     sx(chosen), mt + 9, .t("chosen", "elegido", lang))
   leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#3d3580">MSE</text><text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">bias&sup2;</text><text x="%.1f" y="%.1f" font-size="10" fill="#e8941f">var</text>',
     ml + 6, mt + 10, ml + 6, mt + 22, ml + 44, mt + 22)
-  .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr,
-             .t("upper threshold", "umbral superior", lang), "bias&sup2; + var", sx, sy),
-             path(varc, "#e8941f", "1.2"), path(bias2, "#2a78d6", "1.2"),
-             path(mse, "#3d3580", "2"), vln, vtx, leg), w, h, "Potter MSE curve")
+  sprintf("<div class='chart1'>%s</div>",
+    .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr,
+               .t("upper threshold", "umbral superior", lang), "bias&sup2; + var", sx, sy,
+               yfmt = .fmt_si),
+               path(varc, "#e8941f", "1.2"), path(bias2, "#2a78d6", "1.2"),
+               path(mse, "#3d3580", "2"), vln, vtx, leg), w, h, "Potter MSE curve"))
 }

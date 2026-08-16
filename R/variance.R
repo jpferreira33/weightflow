@@ -73,6 +73,7 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     if (!psu %in% names(data)) stop(sprintf("PSU column '%s' not found.", psu))
     as.character(data[[psu]])
   }
+  .assert_design_complete(data, strata, psu)
   if (lonely_psu == "collapse") {
     cl <- paste(st, cl, sep = "||")     # nest PSU ids so distinct PSUs stay distinct after merging strata
     st <- .collapse_lonely(st, cl)
@@ -164,6 +165,22 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   })
 }
 
+# Reject NA in the design identifiers (strata / PSU) before resampling: a unit
+# with no stratum or no PSU cannot be resampled and would otherwise get a zero
+# replicate weight (or fail every replicate) silently. Error early and clearly.
+.assert_design_complete <- function(data, strata, psu) {
+  if (!is.null(strata) && anyNA(data[[strata]]))
+    stop(sprintf(paste0("Strata column '%s' has missing values (NA) in %d unit(s). ",
+                        "Resampling is undefined for a unit with no stratum; assign a stratum ",
+                        "to those units (or filter them) before bootstrap/jackknife."),
+                 strata, sum(is.na(data[[strata]]))), call. = FALSE)
+  if (!is.null(psu) && anyNA(data[[psu]]))
+    stop(sprintf(paste0("PSU column '%s' has missing values (NA) in %d unit(s). ",
+                        "Resampling is undefined for a unit with no PSU; assign a PSU to those ",
+                        "units (or filter them) before bootstrap/jackknife."),
+                 psu, sum(is.na(data[[psu]]))), call. = FALSE)
+}
+
 #' @export
 print.weightflow_boot <- function(x, ...) {
   cat("<weightflow bootstrap>\n")
@@ -210,7 +227,8 @@ bootstrap_estimate <- function(boot, statistic, level = 0.95) {
 #' @param variable name of the variable to estimate.
 #' @export
 boot_total <- function(boot, variable)
-  bootstrap_estimate(boot, function(w, d) sum(w * d[[variable]], na.rm = TRUE))
+  bootstrap_estimate(boot, function(w, d)
+    if (anyNA(w)) NA_real_ else sum(w * d[[variable]], na.rm = TRUE))
 
 #' @rdname bootstrap_estimate
 #' @export
@@ -285,6 +303,7 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
     if (!psu %in% names(data)) stop(sprintf("PSU column '%s' not found.", psu))
     as.character(data[[psu]])
   }
+  .assert_design_complete(data, strata, psu)
   if (lonely_psu == "collapse") {
     cl <- paste(st, cl, sep = "||")     # nest PSU ids so distinct PSUs stay distinct after merging strata
     st <- .collapse_lonely(st, cl)
@@ -407,7 +426,8 @@ jackknife_estimate <- function(jack, statistic, level = 0.95) {
 #' @rdname jackknife_estimate
 #' @export
 jack_total <- function(jack, variable)
-  jackknife_estimate(jack, function(w, d) sum(w * d[[variable]], na.rm = TRUE))
+  jackknife_estimate(jack, function(w, d)
+    if (anyNA(w)) NA_real_ else sum(w * d[[variable]], na.rm = TRUE))
 
 #' @rdname jackknife_estimate
 #' @export

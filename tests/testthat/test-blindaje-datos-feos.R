@@ -35,22 +35,15 @@ test_that("a raking margin level that matches nothing errors, naming it", {
     "match no active unit")
 })
 
-test_that("NA in the margin variable: named levels still hit their targets and NA units pass through untouched", {
+test_that("NA in the raking margin variable errors (raking needs a cell for every unit)", {
+  # Design decision (2026-08): raking / post-stratification requires a cell for
+  # every unit, so an NA in a margin variable is an error instead of a silent
+  # pass-through where the NA units keep their base weight and the total drifts.
   d <- feo_d(); d$x[c(2, 4, 6)] <- NA
   marg <- feo_marg(feo_d())
-  p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
-    step_calibrate(method = "raking", margins = list(x = marg))))
-  cw <- collect_weights(p, drop_zero = FALSE)
-  expect_false(anyNA(cw$.weight))
-  # the named levels hit their targets exactly
-  tt <- tapply(cw$.weight[!is.na(d$x)], d$x[!is.na(d$x)], sum)
-  expect_lt(max(abs(as.numeric(tt[names(marg)]) - marg) / marg), 1e-6)
-  # las unidades con NA quedan con factor exactamente 1 (sin tocar):
-  # current behaviour is reasonable but SILENT -- a candidate quality alert
-  # ("k units have NA in calibration variable 'x' and were not calibrated")
-  expect_equal(cw$.weight[c(2, 4, 6)], d$w[c(2, 4, 6)], tolerance = 1e-10)
-  # accounting: total = requested margins + NA mass left at base
-  expect_equal(sum(cw$.weight), sum(marg) + sum(d$w[c(2, 4, 6)]), tolerance = 1e-6)
+  expect_error(suppressMessages(prep(weighting_spec(d, base_weights = w) |>
+    step_calibrate(method = "raking", margins = list(x = marg)))),
+    "missing values")
 })
 
 test_that("an NA inside the totals vector errors (loudly, though the message could name the margin)", {

@@ -874,10 +874,11 @@
   # --- (3) Potter MSE curve ---
   pot <- attr(step$diagnostics, "potter"); potter_svg <- ""
   if (!is.null(pot) && !is.null(pot$grid) && length(pot$grid) > 2L)
-    potter_svg <- paste0(sprintf("<p class='muted'>%s</p>", .t(
-      "Potter MSE-optimal threshold: estimated bias&sup2; (rising as you trim harder), remaining variance (falling), and their sum; the dashed line is the chosen cutoff. The two terms are on different scales -- this is the raw Potter heuristic, shown as an approximation.",
-      "Umbral MSE-\u00f3ptimo de Potter: bias&sup2; estimado (crece al recortar m\u00e1s), varianza remanente (cae) y su suma; la l\u00ednea punteada es el corte elegido. Los dos t\u00e9rminos est\u00e1n en escalas distintas -- es la heur\u00edstica cruda de Potter, mostrada como aproximaci\u00f3n.", lang)),
-      .svg_potter(pot$grid, pot$bias2, pot$varc, pot$mse, pot$chosen, lang))
+    potter_svg <- sprintf(
+      "<div class='pgrid'>%s<div class='pgrid-note muted'>%s</div></div>",
+      .svg_potter(pot$grid, pot$bias2, pot$varc, pot$mse, pot$chosen, lang),
+      .t("Potter MSE-optimal threshold: estimated bias&sup2; (rising as you trim harder), remaining variance (falling), and their sum; the dashed line is the chosen cutoff. The two terms are on different scales -- this is the raw Potter heuristic, shown as an approximation.",
+         "Umbral MSE-\u00f3ptimo de Potter: bias&sup2; estimado (crece al recortar m\u00e1s), varianza remanente (cae) y su suma; la l\u00ednea punteada es el corte elegido. Los dos t\u00e9rminos est\u00e1n en escalas distintas -- es la heur\u00edstica cruda de Potter, mostrada como aproximaci\u00f3n.", lang))
 
   # --- (4) threshold sensitivity (clip-based; approximate for calibrated) ---
   sens <- ""

@@ -82,7 +82,7 @@ weight_factors <- function(object) {
   h   <- object$history
   out <- as.data.frame(h, check.names = FALSE)
   nm  <- names(h)
-  for (i in 2:length(h)) {
+  for (i in seq_along(h)[-1]) {          # empty when the recipe has 0 steps (length(h) == 1)
     prev <- h[[i - 1]]
     out[[paste0("factor_", nm[i])]] <- ifelse(prev > 0, h[[i]] / prev, NA_real_)
   }

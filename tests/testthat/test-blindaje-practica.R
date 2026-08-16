@@ -47,9 +47,10 @@ test_that("NA in the cell variable forms its own cell; respondents there keep po
 test_that("a two-level nonresponse cascade (household then person) runs and zeroes correctly", {
   d <- prac_d()
   d$hh_resp <- rep(rbinom(nrow(d) / 2, 1, 0.8) == 1, each = 2)
+  d$hhgrp   <- rep(sample(c("g1", "g2"), nrow(d) / 2, TRUE), each = 2)  # household-level group
   p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
     step_nonresponse(respondent = hh_resp, method = "weighting_class",
-                     by = "x", cluster = "hh") |>
+                     by = "hhgrp", cluster = "hh") |>       # by constant within household
     step_nonresponse(respondent = resp, method = "weighting_class", by = "x")))
   ww <- collect_weights(p, drop_zero = FALSE)$.weight
   expect_true(all(ww[!d$hh_resp] == 0))                    # hogares no respondentes: fuera

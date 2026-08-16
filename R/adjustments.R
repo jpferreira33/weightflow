@@ -30,6 +30,20 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
 # to avoid overfitting; when NULL, the model is fitted and predicted in-sample.
 .estimate_propensity <- function(engine, formula, dd, weights,
                                  crossfit = NULL, cluster_id = NULL, seed = NULL) {
+  # NA in a model covariate makes predict() return NA for those rows: the fitted
+  # propensity is NA, the unit falls into no adjustment class, and (for
+  # nonrespondents) never gets set to weight 0 -- it survives the cascade
+  # silently. Mirror the calibration path: require covariates observed, error
+  # otherwise. (Applies to both unit-level and household-level propensity.)
+  vars <- intersect(all.vars(formula), names(dd))
+  miss <- vars[vapply(vars, function(v) anyNA(dd[[v]]), logical(1))]
+  if (length(miss))
+    stop(sprintf(paste0("Response-propensity covariate(s) %s have missing values (NA). ",
+                        "The propensity model needs them observed for every eligible unit ",
+                        "(respondents and nonrespondents); NA propensities would let ",
+                        "nonrespondents survive the adjustment. Impute them first, or model ",
+                        "on a complete covariate set."),
+                 paste(miss, collapse = ", ")), call. = FALSE)
   f <- stats::update(formula, .y ~ .)
   dd$.wts <- weights
 
@@ -109,6 +123,11 @@ apply_step.step_unknown_eligibility <- function(step, data, w) {
     if (!step$cluster %in% names(data))
       stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
     cl <- as.character(data[[step$cluster]])
+    if (anyNA(cl[active]))
+      stop(sprintf(paste0("Cluster column '%s' has missing values (NA) among the active units. ",
+                          "Cluster-level unknown-eligibility redistribution needs every unit ",
+                          "assigned to a cluster; assign one (or filter those units) first."),
+                   step$cluster), call. = FALSE)
     for (g in levels(cells)) {
       idx <- which(cells == g & active)
       if (!length(idx)) next
@@ -174,6 +193,11 @@ apply_step.step_select_within <- function(step, data, w) {
   new_w  <- w
   idx_el <- which(eligible)
   cl     <- as.character(data[[step$cluster]])[idx_el]
+  if (anyNA(cl))
+    stop(sprintf(paste0("Cluster column '%s' has missing values (NA) among the eligible units. ",
+                        "Household-level nonresponse needs every unit assigned to a cluster; ",
+                        "assign a cluster (or filter those units) before this step."),
+                 step$cluster), call. = FALSE)
   Wh     <- tapply(w[idx_el], cl, mean)            # one weight per household
   resp_h <- tapply(respondent[idx_el], cl, all)    # household responded (whole roster)
   hhn    <- names(Wh)
@@ -187,7 +211,16 @@ apply_step.step_select_within <- function(step, data, w) {
 
   if (step$method == "weighting_class") {
     cells_all <- .make_cells(data, step$by, n)
-    cellh <- tapply(as.character(cells_all[idx_el]), cl, function(z) z[1])[hhn]
+    cell_el   <- as.character(cells_all[idx_el])
+    nuniq     <- tapply(cell_el, cl, function(z) length(unique(z)))
+    if (any(nuniq > 1L))
+      stop(sprintf(paste0("The `by` grouping is not constant within %d cluster(s) of '%s'. ",
+                          "Household-level nonresponse assigns one adjustment cell per cluster; ",
+                          "with `by` varying inside a cluster the result would depend on row ",
+                          "order. Use a cluster-level `by`, or drop `cluster` for person-level ",
+                          "adjustment."),
+                   sum(nuniq > 1L), step$cluster), call. = FALSE)
+    cellh <- tapply(cell_el, cl, function(z) z[1])[hhn]
     diag  <- list()
     for (g in unique(cellh)) {
       sel    <- which(cellh == g)
