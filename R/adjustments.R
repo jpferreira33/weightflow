@@ -157,15 +157,15 @@ apply_step.step_select_within <- function(step, data, w) {
   active <- .wf_active(w)
   new_w  <- w
   if (!is.null(step$prob)) {
-    p <- as.numeric(eval(step$prob, envir = data, enclos = ecenv))
+    p <- .eval_num(step$prob, "prob", data, ecenv)
     if (any(is.na(p[active])) || any(p[active] <= 0 | p[active] > 1))
       stop("`prob` must be a within-household selection probability in (0, 1].")
     fac <- 1 / p
     lbl <- "1/prob"
   } else {
-    k <- as.numeric(eval(step$n_eligible, envir = data, enclos = ecenv))
+    k <- .eval_num(step$n_eligible, "n_eligible", data, ecenv)
     m <- if (is.null(step$n_selected)) rep(1, length(k))
-         else as.numeric(eval(step$n_selected, envir = data, enclos = ecenv))
+         else .eval_num(step$n_selected, "n_selected", data, ecenv)
     if (length(m) == 1L) m <- rep(m, length(k))
     if (any(is.na(k[active])) || any(k[active] < 1))
       stop("`n_eligible` must be >= 1.")

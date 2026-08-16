@@ -288,13 +288,13 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #' @param maxit integer. Maximum iterations for the bounded solver.
 #' @param tol numeric. Convergence tolerance for the bounded solver.
 #' @examples
-#' # calibrate, then trim the calibrated weights into [50, 400] without breaking
-#' # the region/sex totals
+#' # calibrate, then trim the calibrated weights into [6, 13] without breaking
+#' # the region/sex totals (the calibrated weights of sample_survey live in ~[5.4, 14])
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_calibrate(method = "raking",
 #'                  margins = list(region = c(table(population$region)),
 #'                                 sex    = c(table(population$sex)))) |>
-#'   step_trim_calibrated(~ region + sex, lower = 50, upper = 400) |>
+#'   step_trim_calibrated(~ region + sex, lower = 6, upper = 13) |>
 #'   prep()
 #' @references
 #' Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model for

@@ -600,6 +600,8 @@ collect_replicate_weights <- function(object, weight_name = ".weight",
                                       prefix = "rep_", drop_zero = TRUE) {
   if (!inherits(object, c("weightflow_boot", "weightflow_jack")))
     stop("`object` must be a weightflow_boot or weightflow_jack object.")
+  weight_name <- .wf_outname(weight_name, "weight_name")
+  prefix      <- .wf_outname(prefix, "prefix")
   keep <- if (drop_zero) object$weights > 0 else rep(TRUE, length(object$weights))
   out  <- object$data[keep, , drop = FALSE]
   reps <- object$replicates[keep, , drop = FALSE]

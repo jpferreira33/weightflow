@@ -68,6 +68,22 @@
                  deparse(variable)[1]), call. = FALSE)
   variable
 }
+.wf_outname <- function(x, arg) {
+  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x))
+    stop(sprintf("`%s` must be a single non-empty column name (a string), not %s.",
+                 arg, deparse(x)[1]), call. = FALSE)
+  x
+}
+# Evaluate a numeric expression in the data, rejecting factors (as.numeric() on a
+# factor returns its integer codes, not the values -- a silent, wrong result).
+.eval_num <- function(expr, arg, data, env) {
+  v <- eval(expr, envir = data, enclos = env)
+  if (is.factor(v))
+    stop(sprintf(paste0("`%s` evaluated to a factor; it must be numeric. as.numeric() on a ",
+                        "factor returns its integer codes, not the values -- convert with ",
+                        "as.numeric(as.character(x)) if it holds numbers."), arg), call. = FALSE)
+  as.numeric(v)
+}
 
 # Build a grouping factor from the `by` columns -----------------------------
 .make_cells <- function(data, by, n) {

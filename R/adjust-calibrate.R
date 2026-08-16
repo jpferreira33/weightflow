@@ -172,6 +172,12 @@ apply_step.step_calibrate <- function(step, data, w) {
     } else {
       totvec <- step$totals
     }
+    if (anyDuplicated(names(totvec)))
+      stop(sprintf(paste0("`totals` has duplicate names: %s. Each model-matrix column needs ",
+                          "exactly one target; with duplicates only one value would be used ",
+                          "(setequal ignores the repetition)."),
+                   paste(unique(names(totvec)[duplicated(names(totvec))]), collapse = ", ")),
+           call. = FALSE)
     if (!setequal(names(totvec), cn))
       stop(sprintf(
         "`totals` names must match the model.matrix columns.\nExpected: %s",

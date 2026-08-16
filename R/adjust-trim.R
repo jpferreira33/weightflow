@@ -549,6 +549,11 @@ apply_step.step_rescale <- function(step, data, w) {
   new_w  <- w
 
   if (step$to == "total") {                       # scale overall to `total`
+    if (!is.numeric(step$total) || length(step$total) != 1L || !is.finite(step$total) ||
+        step$total <= 0)
+      stop(sprintf(paste0("step_rescale(to = \"total\") needs `total` to be a single positive ",
+                          "finite number; got %s. (0 zeroes every weight, a negative flips their ",
+                          "sign, Inf/NA corrupt them.)"), deparse(step$total)[1]), call. = FALSE)
     cur <- sum(new_w[active])
     fac <- if (cur > 0) step$total / cur else NA_real_
     if (!is.na(fac)) new_w[active] <- new_w[active] * fac

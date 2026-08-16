@@ -398,3 +398,62 @@ test_that("Bloque 2 (variance): level, variable and replicates are validated", {
                                  strata = "stratum", psu = "psu", progress = FALSE),
                "integer >= 2")                                     # B4
 })
+
+test_that("N-22: prep() validates warn / min_cell_n / max_factor", {
+  s <- weighting_spec(data.frame(pw = rep(10, 5)), base_weights = pw)
+  expect_error(prep(s, warn = "yes"), "TRUE or FALSE")
+  expect_error(prep(s, min_cell_n = NA), "non-negative")
+  expect_error(prep(s, max_factor = -1), "positive number")
+})
+
+test_that("N-27: step_rescale(to = 'total') validates total", {
+  d <- data.frame(pw = rep(10, 5))
+  expect_error(prep(step_rescale(weighting_spec(d, base_weights = pw), to = "total", total = 0)),
+               "positive")
+  expect_error(prep(step_rescale(weighting_spec(d, base_weights = pw), to = "total", total = -5)),
+               "positive")
+})
+
+test_that("N-28: step_select_within with a factor prob errors (not integer codes)", {
+  d <- data.frame(pw = rep(10, 6), hh = rep(1:3, each = 2), p = factor("0.5"))
+  expect_error(prep(step_select_within(weighting_spec(d, base_weights = pw), prob = p)),
+               "factor")
+})
+
+test_that("N-19: collect_weights / collect_replicate_weights validate the output name", {
+  f <- prep(weighting_spec(data.frame(pw = rep(10, 5)), base_weights = pw))
+  expect_error(collect_weights(f, weight_name = 1),  "non-empty column name")
+  expect_error(collect_weights(f, weight_name = ""), "non-empty column name")
+})
+
+test_that("B2: a numeric category 100000 matches between totals and data (no sci-notation gap)", {
+  d   <- data.frame(pw = rep(10, 20), g = rep(c(100000L, 200000L), each = 10))
+  tot <- data.frame(g = c(100000, 200000), Freq = c(120, 90))       # double vs integer
+  fit <- prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "poststratify", totals = tot, count = "Freq"))
+  expect_equal(sum(fit$final_weight[d$g == 100000L]), 120)          # matched, not "no total"
+})
+
+test_that("B1: duplicate names in a classic totals vector error", {
+  d   <- data.frame(pw = rep(10, 20), sex = rep(c("F", "M"), 10))
+  tot <- c("(Intercept)" = 200, sexM = 100, sexM = 999)             # sexM duplicated
+  expect_error(prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "linear", formula = ~ sex, totals = tot)),
+    "duplicate names")
+})
+
+test_that("N-15: step_calibrate warns about ignored arguments (cluster with raking)", {
+  d <- data.frame(pw = rep(10, 20), region = rep(c("A", "B"), 10))
+  expect_warning(
+    step_calibrate(weighting_spec(d, base_weights = pw), method = "raking",
+                   margins = list(region = c(A = 100, B = 100)), cluster = "region"),
+    "ignored")
+})
+
+test_that("NUEVO-13: duplicate cells in tidy poststrata totals emit a message (still summed)", {
+  d   <- data.frame(pw = rep(10, 30), region = sample(c("A", "B", "C"), 30, TRUE))
+  tot <- data.frame(region = c("A", "B", "C", "A"), Freq = c(60, 120, 90, 40))  # A duplicated
+  expect_message(fit <- prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "poststratify", totals = tot, count = "Freq")), "duplicate cell")
+  expect_equal(sum(fit$final_weight[d$region == "A"]), 100)                      # 60 + 40 summed
+})

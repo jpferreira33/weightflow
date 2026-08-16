@@ -27,6 +27,15 @@
 prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   if (!inherits(spec, "weighting_spec"))
     stop("`spec` must be a weighting_spec.")
+  warn <- .wf_flag(warn, "warn")                 # "yes"/1/NA would silently disable warnings
+  if (!is.null(min_cell_n) && (!is.numeric(min_cell_n) || length(min_cell_n) != 1L ||
+                               is.na(min_cell_n) || min_cell_n < 0))
+    stop("`min_cell_n` must be NULL (no small-cell check) or a single non-negative number.",
+         call. = FALSE)
+  if (!is.null(max_factor) && (!is.numeric(max_factor) || length(max_factor) != 1L ||
+                               is.na(max_factor) || max_factor <= 0))
+    stop("`max_factor` must be NULL (no large-factor check) or a single positive number.",
+         call. = FALSE)
   data <- spec$data
   w    <- data[[spec$base_weights]]
   attr(data, "weightflow_base_w") <- w     # available to step_trim(reference = "base")
@@ -329,6 +338,7 @@ collect_weights <- function(object, drop_zero = TRUE,
                             keep_intermediate = FALSE, weight_name = ".weight") {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first.")
+  weight_name <- .wf_outname(weight_name, "weight_name")   # 1 / NA / "" would silently overwrite
   out <- object$data
   if (weight_name %in% names(out))
     warning(sprintf(paste0("Column '%s' already in the data was overwritten with the ",

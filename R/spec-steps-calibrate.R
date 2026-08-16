@@ -233,6 +233,16 @@ step_calibrate <- function(spec, margins = NULL,
     if (is.null(cluster))
       stop("equal_within_cluster = TRUE requires `cluster`.")
   }
+  # Surface arguments that this calibration will ignore, instead of dropping them
+  # silently (e.g. cluster with raking, or bounds with poststratify).
+  ignored <- character(0)
+  if (!is.null(cluster) && !(method == "linear" && isTRUE(equal_within_cluster)))
+    ignored <- c(ignored, "cluster (only method = 'linear' with equal_within_cluster = TRUE)")
+  if (!is.null(bounds) && method != "linear")
+    ignored <- c(ignored, "bounds (only method = 'linear')")
+  if (length(ignored))
+    warning(sprintf("Argument(s) ignored by this calibration step: %s.",
+                    paste(ignored, collapse = "; ")), call. = FALSE)
   detail <- if (method == "linear" && equal_within_cluster)
               sprintf("linear, equal weights by %s", cluster) else method
   if (method == "linear" && (calfun == "logit" || !is.null(bounds)))

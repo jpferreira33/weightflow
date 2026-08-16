@@ -57,13 +57,26 @@
       paste(names(data), collapse = ", ")))
 
   key_of <- function(df, vars) {
-    parts <- lapply(vars, function(v) as.character(df[[v]]))
+    # Numeric categories: format WITHOUT scientific notation and consistently for
+    # integer vs double, so 100000 in the totals matches 100000L in the data
+    # (as.character(1e5) is "1e+05" but as.character(100000L) is "100000"). Applied
+    # to both the totals and the sample through this same function, so they align.
+    parts <- lapply(vars, function(v) {
+      x <- df[[v]]
+      if (is.numeric(x)) format(x, scientific = FALSE, trim = TRUE) else as.character(x)
+    })
     do.call(paste, c(parts, sep = "\r"))
   }
 
   totals$.key  <- key_of(totals, vars)
   totals$.Freq <- as.numeric(totals[[count]])
-  # collapse duplicate cells by summing their counts (robust to extra columns)
+  # collapse duplicate cells by summing their counts (robust to extra columns).
+  # Surface it: summing is right for a census table disaggregated by extra
+  # variables, but a message lets an accidental double-paste be caught too.
+  if (anyDuplicated(totals$.key))
+    message(sprintf(
+      "The totals for %s had %d duplicate cell(s); their counts were summed.",
+      paste(vars, collapse = " x "), sum(duplicated(totals$.key))))
   agg   <- tapply(totals$.Freq, totals$.key, sum)
   # Order the cells by the NATURAL order of the (typed) category columns, so a
   # numeric category (e.g. age) sorts 2, 10, 20 -- not lexicographically as
