@@ -399,7 +399,7 @@
   nodes <- c(nodes,
     "<div class='node node-end'><div class='nl'>Final weights</div><div class='nv'><code>.weight</code></div></div>")
   hn  <- object$history
-  act <- if (!is.null(hn)) vapply(hn, function(w) sum(w > 0), integer(1)) else integer(0)
+  act <- if (!is.null(hn)) vapply(hn, function(w) sum(.wf_active(w)), integer(1)) else integer(0)
   arrows <- vapply(seq_len(length(nodes) - 1L), function(t) {
     lbl <- if (t <= length(act))
       sprintf(" <span class='fn'>n = %s</span>", format(act[t], big.mark = ",")) else ""

@@ -40,6 +40,13 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     .check_step_labelled(steps[[i]], data)
     res                    <- apply_step(steps[[i]], data, w)
     w                      <- res$weights
+    if (any(!is.finite(w)))
+      stop(sprintf(paste0("Step %d (%s) produced %d non-finite weight(s) (Inf/NaN), which ",
+                          "would corrupt every later step and the diagnostics silently. This ",
+                          "usually comes from a zero or missing selection probability, a zero ",
+                          "cell total, or an extreme calibration factor -- check that step's ",
+                          "inputs."),
+                   i, class(steps[[i]])[1], sum(!is.finite(w))), call. = FALSE)
     steps[[i]]$diagnostics <- res$diagnostics
     step_cls  <- class(steps[[i]])[1]
     is_calib  <- inherits(steps[[i]], c("step_calibrate", "step_model_calibration"))
@@ -207,6 +214,19 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
       paste0("The calibration system is ill-conditioned (condition number %.1e): ",
              "near-collinear auxiliaries can make the weights unstable. Drop a ",
              "redundant auxiliary, or set penalty = <lambda> (ridge)."), cbd$cond))
+  # Negative calibration weights: a valid but unusual output of unbounded linear
+  # calibration. They stay active (in the cascade, collect_weights() and the deff),
+  # so the totals are honest -- but surface them, since a negative survey weight is
+  # rarely wanted and makes the estimator erratic.
+  if (!is.null(cbd) && !is.null(cbd$g)) {
+    nneg <- sum(cbd$g < 0, na.rm = TRUE)
+    if (nneg > 0L)
+      msgs <- c(msgs, sprintf(
+        paste0("%d unit(s) received a NEGATIVE calibration weight. They remain active (counted ",
+               "in the totals, the design effect and collect_weights()), but a negative weight ",
+               "is rarely intended; set `bounds` to keep the calibration factor positive."),
+        nneg))
+  }
 
   # Trimming that could not preserve the weight total: the requested bounds were
   # infeasible, so part of the trimmed mass was absorbed instead of redistributed
@@ -216,14 +236,14 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   if (!is.null(tr) && !identical(tr$redistribute, "calibration") &&
       !is.null(tr$wb) && !is.null(tr$wa)) {
     sb <- sum(tr$wb, na.rm = TRUE); sa <- sum(tr$wa, na.rm = TRUE)
-    if (is.finite(sb) && sb > 0 && (sb - sa) > 0.01 * sb)
+    if (is.finite(sb) && sb > 0 && abs(sb - sa) > 0.01 * sb)
       msgs <- c(msgs, sprintf(
-        paste0("Trimming reduced the weight total by %.1f%% (from %s to %s): the ",
-               "bounds were infeasible, so the trimmed mass could not be fully ",
-               "redistributed and was absorbed. The point estimates shift; widen the ",
-               "bounds, or use step_trim_calibrated() to trim while preserving totals."),
-        100 * (sb - sa) / sb, format(round(sb), big.mark = ","),
-        format(round(sa), big.mark = ",")))
+        paste0("Trimming %s the weight total by %.1f%% (from %s to %s): the mass was not ",
+               "preserved (infeasible bounds absorbed, or a floor above the cap). The point ",
+               "estimates shift; check the bounds, or use step_trim_calibrated() to trim while ",
+               "preserving totals."),
+        if (sa < sb) "reduced" else "increased", abs(100 * (sa - sb) / sb),
+        format(round(sb), big.mark = ","), format(round(sa), big.mark = ",")))
   }
 
   # Partial-response households treated as whole-household nonresponse: flag how
@@ -321,7 +341,9 @@ collect_weights <- function(object, drop_zero = TRUE,
     for (nm in names(h)) out[[paste0(".wt_", nm)]] <- h[[nm]]
   }
   # which() (not a bare logical) so any NA weight is dropped rather than inserting
-  # a phantom all-NA row (which later breaks summary()).
-  if (drop_zero) out <- out[which(object$final_weight > 0), , drop = FALSE]
+  # a phantom all-NA row (which later breaks summary()). drop_zero drops the exact
+  # zeros (the "dropped" marker); negative weights are active and are kept, so the
+  # data.frame total matches sum(final_weight).
+  if (drop_zero) out <- out[which(.wf_active(object$final_weight)), , drop = FALSE]
   out
 }

@@ -56,6 +56,8 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
   lonely_psu <- match.arg(lonely_psu)
+  replicates <- .wf_count(replicates, "replicates", min = 2L)
+  if (!is.null(m)) m <- .wf_count(m, "m", min = 1L)
   # Snapshot the caller's RNG so the per-replicate seeding below does not leak
   # into their stream (restored on exit, once the replicate seeds are drawn).
   .rng_entry <- if (exists(".Random.seed", envir = .GlobalEnv))
@@ -120,10 +122,17 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   one_rep <- function(b) {
     set.seed(rseeds[b])                       # only matters if a step is stochastic
     sp <- spec; sp$data[[bw]] <- bw0 * facs[[b]]
+    attr(sp$data, "wf_replicate") <- TRUE          # step_assert becomes a no-op in replicates
     tryCatch(prep(sp)$final_weight, error = function(e) rep(NA_real_, n))
   }
   fw_list <- .par_lapply(seq_len(replicates), one_rep, cores = cores,
                          progress = progress, label = "bootstrap")
+  # A dead mclapply worker (OOM-killed) returns NULL, and a serialization error a
+  # try-error; do.call(cbind, ) would silently drop the NULLs or coerce the whole
+  # matrix to character. Normalise every element to an n-vector so failures become
+  # NA columns and are counted, not lost.
+  fw_list <- lapply(fw_list, function(z)
+    if (is.numeric(z) && length(z) == n) z else rep(NA_real_, n))
   reps   <- do.call(cbind, fw_list)
   failed <- sum(vapply(fw_list, anyNA, logical(1)))
 
@@ -217,6 +226,7 @@ print.weightflow_boot <- function(x, ...) {
 #' @export
 bootstrap_estimate <- function(boot, statistic, level = 0.95) {
   if (!inherits(boot, "weightflow_boot")) stop("`boot` must be a weightflow_boot object.")
+  .wf_level(level)
   theta_hat <- statistic(boot$weights, boot$data)
   thetas    <- apply(boot$replicates, 2L, function(w) statistic(w, boot$data))
   z <- stats::qnorm(1 - (1 - level) / 2)
@@ -238,17 +248,21 @@ bootstrap_estimate <- function(boot, statistic, level = 0.95) {
 #' @rdname bootstrap_estimate
 #' @param variable name of the variable to estimate.
 #' @export
-boot_total <- function(boot, variable)
+boot_total <- function(boot, variable) {
+  variable <- .wf_var(variable, boot)
   bootstrap_estimate(boot, function(w, d)
     if (anyNA(w)) NA_real_ else sum(w * d[[variable]], na.rm = TRUE))
+}
 
 #' @rdname bootstrap_estimate
 #' @export
-boot_mean <- function(boot, variable)
+boot_mean <- function(boot, variable) {
+  variable <- .wf_var(variable, boot)
   bootstrap_estimate(boot, function(w, d) {
     x <- d[[variable]]; ok <- !is.na(x) & w > 0
     sum(w[ok] * x[ok]) / sum(w[ok])
   })
+}
 
 # ==========================================================================
 # Delete-a-PSU jackknife (recipe-aware)
@@ -342,10 +356,14 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
     fac[in_h & cl == rep_psu[r]] <- 0             # delete this PSU
     fac[in_h & cl != rep_psu[r]] <- nh / (nh - 1) # inflate the rest of the stratum
     sp <- spec; sp$data[[bw]] <- bw0 * fac
+    attr(sp$data, "wf_replicate") <- TRUE          # step_assert becomes a no-op in replicates
     tryCatch(prep(sp)$final_weight, error = function(e) rep(NA_real_, n))
   }
   fw_list <- .par_lapply(seq_len(R), one_rep, cores = cores,
                          progress = progress, label = "jackknife")
+  # normalise dead-worker NULLs / try-errors to NA columns (see bootstrap above)
+  fw_list <- lapply(fw_list, function(z)
+    if (is.numeric(z) && length(z) == n) z else rep(NA_real_, n))
   reps   <- do.call(cbind, fw_list)
   failed <- sum(vapply(fw_list, anyNA, logical(1)))
 
@@ -405,6 +423,7 @@ print.weightflow_jack <- function(x, ...) {
 #' @export
 jackknife_estimate <- function(jack, statistic, level = 0.95) {
   if (!inherits(jack, "weightflow_jack")) stop("`jack` must be a weightflow_jack object.")
+  .wf_level(level)
   theta_hat <- statistic(jack$weights, jack$data)
   thetas    <- apply(jack$replicates, 2L, function(w) statistic(w, jack$data))
   z <- stats::qnorm(1 - (1 - level) / 2)
@@ -415,9 +434,14 @@ jackknife_estimate <- function(jack, statistic, level = 0.95) {
     V <- 0
     for (h in unique(strat[good])) {
       sel <- strat == h & good
-      if (sum(sel) < 2L) next
-      nh <- nh_vec[which(sel)[1]]
-      V  <- V + (nh - 1) / nh * sum((th[sel] - mean(th[sel]))^2)
+      m   <- sum(sel)
+      if (m < 2L) next
+      nh  <- nh_vec[which(sel)[1]]
+      # If some of the nh delete-a-PSU replicates in this stratum failed, the sum
+      # runs over m < nh terms; scaling (nh-1)/nh up by nh/m (i.e. (nh-1)/m) makes
+      # the partial sum still estimate the full stratum contribution, instead of
+      # biasing the variance low.
+      V  <- V + (nh - 1) / m * sum((th[sel] - mean(th[sel]))^2)
     }
     V
   }
@@ -437,17 +461,21 @@ jackknife_estimate <- function(jack, statistic, level = 0.95) {
 
 #' @rdname jackknife_estimate
 #' @export
-jack_total <- function(jack, variable)
+jack_total <- function(jack, variable) {
+  variable <- .wf_var(variable, jack)
   jackknife_estimate(jack, function(w, d)
     if (anyNA(w)) NA_real_ else sum(w * d[[variable]], na.rm = TRUE))
+}
 
 #' @rdname jackknife_estimate
 #' @export
-jack_mean <- function(jack, variable)
+jack_mean <- function(jack, variable) {
+  variable <- .wf_var(variable, jack)
   jackknife_estimate(jack, function(w, d) {
     x <- d[[variable]]; ok <- !is.na(x) & w > 0
     sum(w[ok] * x[ok]) / sum(w[ok])
   })
+}
 
 #' Export weightflow weights to a survey design
 #'

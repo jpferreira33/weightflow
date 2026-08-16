@@ -75,7 +75,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   # Stage summary table
   stab <- data.frame(
     stage    = names(h),
-    n_active = vapply(h, function(w) sum(w > 0), integer(1)),
+    n_active = vapply(h, function(w) sum(.wf_active(w)), integer(1)),
     sum_wts  = vapply(h, function(w) round(sum(w)), numeric(1)),
     cv       = vapply(h, function(w) round(design_effect(w)$cv, 3), numeric(1)),
     deff     = vapply(h, function(w) round(design_effect(w)$deff, 3), numeric(1)),

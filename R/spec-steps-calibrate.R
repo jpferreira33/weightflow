@@ -322,7 +322,7 @@ step_trim <- function(spec, max_ratio, min_ratio = NULL,
 #' design_effect(sample_survey$pw)
 design_effect <- function(w) {
   if (inherits(w, "prepped_weighting_spec")) w <- w$final_weight   # accept a prepped recipe
-  wa <- w[w > 0]
+  wa <- w[.wf_active(w)]                # zeros dropped; negative (active) weights kept
   m  <- length(wa)
   if (m == 0L) return(list(deff = NA_real_, n_eff = 0, cv = NA_real_, n = 0L))
   sw   <- sum(wa)

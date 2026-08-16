@@ -24,7 +24,7 @@ print.prepped_weighting_spec <- function(x, ...) {
   cat("Stage summary:\n")
   tab <- data.frame(
     stage     = names(h),
-    n_active  = vapply(h, function(w) sum(w > 0), integer(1)),
+    n_active  = vapply(h, function(w) sum(.wf_active(w)), integer(1)),
     sum_wts   = vapply(h, function(w) round(sum(w)), numeric(1)),
     cv_wts    = vapply(h, function(w) round(design_effect(w)$cv, 3), numeric(1)),
     deff_kish = vapply(h, function(w) round(design_effect(w)$deff, 3), numeric(1)),

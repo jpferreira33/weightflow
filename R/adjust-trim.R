@@ -2,7 +2,7 @@
 
 # --- Weight rounding -------------------------------------------------------
 apply_step.step_round <- function(step, data, w) {
-  active <- w > 0
+  active <- .wf_active(w)
   new_w  <- w
   f      <- 10^step$digits
   sum_before <- sum(w[active])
@@ -36,8 +36,15 @@ apply_step.step_round <- function(step, data, w) {
 # --- Trimming (capping extreme weights) ------------------------------------
 apply_step.step_trim <- function(step, data, w) {
   n      <- length(w)
-  active <- w > 0
+  active <- .wf_active(w)
   new_w  <- w
+  step$maxit <- .wf_count(step$maxit, "maxit")   # 0/NA/"a" would silently skip trimming
+
+  if (!is.null(step$min_ratio) && step$min_ratio >= step$max_ratio)
+    stop(sprintf(paste0("`min_ratio` (%s) must be strictly below `max_ratio` (%s) in ",
+                        "step_trim(); with min_ratio >= max_ratio the floor sits above the cap ",
+                        "and the 'trim' would clamp every weight and distort the total."),
+                 format(step$min_ratio), format(step$max_ratio)), call. = FALSE)
 
   # Cells first: with reference = "median" the threshold is computed WITHIN each
   # `by` group, so a differentiated trim uses each subgroup's own median (not a
@@ -129,7 +136,7 @@ apply_step.step_trim <- function(step, data, w) {
 # Calibrates simultaneously to the X totals (consistency) and to the population
 # totals of each model y prediction (model-assisted efficiency).
 apply_step.step_model_calibration <- function(step, data, w) {
-  active <- w > 0
+  active <- .wf_active(w)
   new_w  <- w
   d      <- w[active]
   sdata  <- data[active, , drop = FALSE]
@@ -248,9 +255,16 @@ apply_step.step_model_calibration <- function(step, data, w) {
 
 # --- Assert / checkpoint ---------------------------------------------------
 apply_step.step_assert <- function(step, data, w) {
+  # During recipe-aware replication the replicate weights carry the Rao-Wu
+  # multiplier, so their design effect is structurally larger than the point
+  # weights'. A quality checkpoint is meant for the FINAL weights, not each
+  # replicate: evaluating it here would fail every replicate (SE = NaN), or worse,
+  # let only the low-deff replicates survive and bias the SE downward. Skip it.
+  if (isTRUE(attr(data, "wf_replicate")))
+    return(list(weights = w, diagnostics = NULL))
   de     <- design_effect(w)
   base_w <- attr(data, "weightflow_base_w")
-  active <- w > 0
+  active <- .wf_active(w)
   checks <- list()
   add <- function(name, value, thr, pass)
     checks[[length(checks) + 1]] <<- data.frame(
@@ -299,6 +313,7 @@ apply_step.step_trim_weights <- function(step, data, w) {
   active <- w != 0          # trim every non-zero weight (incl. negatives from
   new_w  <- w               # unbounded calibration); leave dropped units (w == 0)
   wv     <- new_w[active]
+  step$maxit <- .wf_count(step$maxit, "maxit")   # 0/NA/"a" would silently skip trimming
 
   pot_obj <- NULL; unredist <- 0        # init BEFORE the potter branch, so the
                                         # Potter grid/MSE set below is not clobbered
@@ -317,6 +332,13 @@ apply_step.step_trim_weights <- function(step, data, w) {
   # collapse to logical(0), which breaks the redistribution and errors on the
   # diagnostics data.frame.)
   lower <- if (is.null(step$lower)) -Inf else as.numeric(step$lower)
+  # Validate AFTER the automatic `upper` (Potter / Tukey) is resolved, not just in
+  # the constructor: `lower >= upper` has no valid interval and would otherwise
+  # clamp every weight to a single value and silently inflate/deflate the total.
+  if (lower >= upper)
+    stop(sprintf(paste0("`lower` (%s) must be strictly below `upper` (%s) in ",
+                        "step_trim_weights(); with lower >= upper the trim has no valid ",
+                        "interval."), format(lower), format(upper)), call. = FALSE)
 
   it <- 0L
   if (identical(step$redistribute, "uniform")) {
@@ -416,7 +438,7 @@ apply_step.step_trim_weights <- function(step, data, w) {
 }
 
 apply_step.step_trim_calibrated <- function(step, data, w) {
-  active <- w > 0                      # only positive calibration weights
+  active <- .wf_active(w)                      # only positive calibration weights
   if (!any(active)) return(list(weights = w, diagnostics = NULL))
   new_w <- w
   d     <- w[active]                   # incoming weights = base for this step
@@ -523,7 +545,7 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
 # --- Rescale / normalize ---------------------------------------------------
 apply_step.step_rescale <- function(step, data, w) {
   n      <- length(w)
-  active <- w > 0
+  active <- .wf_active(w)
   new_w  <- w
 
   if (step$to == "total") {                       # scale overall to `total`

@@ -28,7 +28,7 @@
   if (!byvar %in% names(data))
     stop(sprintf("Domain column '%s' not found in the data.", byvar))
   dom    <- as.character(data[[byvar]])
-  active <- w > 0
+  active <- .wf_active(w)
   if (any(is.na(dom[active])))
     stop(sprintf("Domain column '%s' has missing values (NA) among active units.", byvar))
 
@@ -118,7 +118,7 @@
 
 # --- Calibration -----------------------------------------------------------
 apply_step.step_calibrate <- function(step, data, w) {
-  active <- w > 0
+  active <- .wf_active(w)
   new_w  <- w
 
   if (!is.null(step$by)) return(.calibrate_by_domain(step, data, w))

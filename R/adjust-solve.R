@@ -36,9 +36,46 @@
   out
 }
 
+# Active units: everything with a non-zero FINITE weight. 0 is the "dropped"
+# marker; a negative weight (a valid, if unusual, output of unbounded linear
+# calibration) is still active -- it must take part in later steps, be counted,
+# and appear in collect_weights(), so the reported totals/deff match reality.
+.wf_active <- function(w) is.finite(w) & w != 0
+
+# Small argument validators (fail early, with a message that names the fix) ---
+.wf_flag <- function(x, arg) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x))
+    stop(sprintf(paste0("`%s` must be a single TRUE or FALSE; got %s. Values such as 1, 0, ",
+                        "NA or \"yes\" are not accepted -- they would be silently treated as ",
+                        "FALSE and change the result."), arg, deparse(x)[1]), call. = FALSE)
+  x
+}
+.wf_count <- function(x, arg, min = 1L) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) || x < min || x != round(x))
+    stop(sprintf("`%s` must be a single integer >= %d; got %s.", arg, min, deparse(x)[1]),
+         call. = FALSE)
+  as.integer(x)
+}
+.wf_level <- function(level) {
+  if (!is.numeric(level) || length(level) != 1L || is.na(level) || level <= 0 || level >= 1)
+    stop("`level` must be a single number strictly between 0 and 1 (e.g. 0.95, not 95).",
+         call. = FALSE)
+  level
+}
+.wf_var <- function(variable, obj) {
+  if (!is.character(variable) || length(variable) != 1L || !variable %in% names(obj$data))
+    stop(sprintf("`variable` must be a single column name present in the data; got %s.",
+                 deparse(variable)[1]), call. = FALSE)
+  variable
+}
+
 # Build a grouping factor from the `by` columns -----------------------------
 .make_cells <- function(data, by, n) {
   if (is.null(by)) return(factor(rep("(all)", n)))
+  if (!length(by))
+    stop(paste0("`by` has length 0. Use `by = NULL` for no grouping; a zero-length `by` ",
+                "(e.g. from names(x)[grepl(...)] matching nothing) would silently skip the ",
+                "whole step."), call. = FALSE)
   na_any <- FALSE
   parts <- lapply(by, function(v) {
     if (!v %in% names(data)) stop(sprintf("Cell variable '%s' not found.", v))

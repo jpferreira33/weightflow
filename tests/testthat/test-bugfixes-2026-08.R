@@ -290,3 +290,111 @@ test_that("M16: collect_weights() with an NA weight drops it, no phantom all-NA 
   expect_equal(nrow(cw), 4L)                    # NA row dropped, no phantom row
   expect_false(anyNA(cw$.weight))
 })
+
+# --- Round 2 -----------------------------------------------------------------
+
+test_that("NUEVO-3: a non-finite weight mid-cascade errors instead of propagating", {
+  d <- data.frame(pw = rep(10, 20), p = c(1e-320, rep(0.5, 19)))
+  expect_error(
+    prep(step_select_within(weighting_spec(d, base_weights = pw), prob = p)),
+    "non-finite")
+})
+
+test_that("M2: step_trim_weights(lower >= upper) errors", {
+  d <- data.frame(pw = c(rep(1, 20), 5, 8, 12))
+  expect_error(
+    prep(step_trim_weights(weighting_spec(d, base_weights = pw), lower = 10, upper = 5)),
+    "strictly below")
+})
+
+test_that("M2: step_trim(min_ratio >= max_ratio) errors", {
+  d <- data.frame(pw = c(rep(1, 20), 5, 8, 12))
+  expect_error(
+    prep(step_trim(weighting_spec(d, base_weights = pw),
+                   max_ratio = 3, min_ratio = 5, reference = "value")),
+    "strictly below")
+})
+
+test_that("NUEVO-4: trimming that inflates the total now raises an alert", {
+  set.seed(44); d <- data.frame(pw = rgamma(200, shape = 3, rate = 0.3))   # mean ~10
+  f <- suppressWarnings(prep(step_trim_weights(weighting_spec(d, base_weights = pw),
+                                               lower = 20, upper = 25)))
+  expect_true(any(grepl("increased the weight total", f$alerts)))
+})
+
+test_that("NUEVO-1: step_assert is a no-op inside replicates (does not kill the bootstrap)", {
+  set.seed(1)
+  d <- data.frame(pw = rep(10, 60), stratum = rep(c("s1", "s2"), each = 30),
+                  psu = paste0("p", rep(1:6, each = 10)),
+                  grp = sample(c("A", "B"), 60, TRUE),
+                  resp = rbinom(60, 1, .8), y = rnorm(60, 100, 20))
+  base <- weighting_spec(d, base_weights = pw) |>
+    step_nonresponse(respondent = resp, method = "weighting_class", by = "grp")
+  dp   <- design_effect(prep(base)$final_weight)$deff       # point-weight deff
+  spec <- base |> step_assert(max_deff = dp * 1.05, on_fail = "error")
+  b <- suppressWarnings(bootstrap_weights(spec, replicates = 30, strata = "stratum",
+                                          psu = "psu", seed = 7, progress = FALSE))
+  nfail <- b$R - sum(apply(is.finite(b$replicates), 2, all))
+  expect_lt(nfail, b$R)                                     # not ALL replicates failed
+  expect_true(is.finite(boot_total(b, "y")$se))             # SE is finite (was NaN)
+})
+
+test_that("NUEVO-5: a zero-length `by` errors instead of skipping the step", {
+  d <- data.frame(pw = rep(10, 20), grp = sample(c("A", "B"), 20, TRUE),
+                  resp = rbinom(20, 1, .7))
+  expect_error(
+    prep(step_nonresponse(weighting_spec(d, base_weights = pw), respondent = resp,
+                          method = "weighting_class", by = character(0))),
+    "length 0")
+})
+
+test_that("NUEVO-6: an invalid maxit errors instead of silently skipping the trim", {
+  d <- data.frame(pw = c(rep(1, 20), 5, 8, 12))
+  expect_error(
+    prep(step_trim_weights(weighting_spec(d, base_weights = pw), upper = 15, maxit = 0)),
+    "integer >= 1")
+})
+
+test_that("NUEVO-7: a non-logical weight_model errors instead of flipping the estimator", {
+  d <- data.frame(pw = rep(10, 30), x = rnorm(30), resp = rbinom(30, 1, .7))
+  expect_error(
+    step_nonresponse(weighting_spec(d, base_weights = pw), respondent = resp,
+                     method = "propensity", formula = ~x, weight_model = 1),
+    "TRUE or FALSE")
+})
+
+test_that("NUEVO-11: JKn stays finite and rescales when replicates drop", {
+  set.seed(11)
+  d <- data.frame(pw = rep(10, 40), stratum = rep(c("s1", "s2"), each = 20),
+                  psu = paste0("p", rep(1:8, each = 5)), y = rnorm(40, 100, 15))
+  jk <- jackknife_weights(weighting_spec(d, base_weights = pw),
+                          strata = "stratum", psu = "psu", progress = FALSE)
+  se_full <- jack_total(jk, "y")$se
+  jk2 <- jk; jk2$replicates[, 1:2] <- NA_real_               # drop 2 replicates
+  expect_warning(se_drop <- jack_total(jk2, "y")$se, "non-finite")
+  expect_true(is.finite(se_drop) && se_drop > 0)
+  expect_gt(se_drop, se_full * 0.5)                          # rescaled, not collapsed low
+})
+
+test_that("A10/NUEVO-2: a negative weight stays active (collect_weights, design_effect)", {
+  f <- prep(weighting_spec(data.frame(pw = rep(10, 5)), base_weights = pw))
+  f$final_weight[2] <- -3                                    # a negative (active) weight
+  cw <- collect_weights(f)
+  expect_equal(nrow(cw), 5L)                                 # negative kept, not dropped
+  expect_equal(sum(cw$.weight), sum(f$final_weight), tolerance = 1e-9)
+  expect_equal(design_effect(f$final_weight)$n, 5L)          # negative counted as active
+})
+
+test_that("Bloque 2 (variance): level, variable and replicates are validated", {
+  set.seed(2)
+  d <- data.frame(pw = rep(10, 20), stratum = rep(c("s1", "s2"), each = 10),
+                  psu = paste0("p", rep(1:4, each = 5)), y = rnorm(20))
+  b <- bootstrap_weights(weighting_spec(d, base_weights = pw), replicates = 10,
+                         strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
+  expect_error(bootstrap_estimate(b, function(w, dd) sum(w * dd$y), level = 95),
+               "between 0 and 1")                                  # N-18
+  expect_error(boot_total(b, "no_existe"), "column name present")  # NUEVO-8
+  expect_error(bootstrap_weights(weighting_spec(d, base_weights = pw), replicates = 0,
+                                 strata = "stratum", psu = "psu", progress = FALSE),
+               "integer >= 2")                                     # B4
+})
