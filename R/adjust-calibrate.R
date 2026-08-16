@@ -35,7 +35,7 @@
   new_w <- w
   diags <- list(); domsum <- list()
   gL <- list(); dL <- list(); covL <- list(); aidxL <- list()
-  chi2 <- 0; calfun <- NULL; bounds <- NULL; cform <- NULL
+  chi2 <- 0; calfun <- NULL; bounds <- NULL; cform <- NULL; conv <- logical(0)
   doms  <- unique(dom[active])
   for (d in doms) {
     idx_d  <- which(dom == d)
@@ -45,6 +45,7 @@
     res_d <- apply_step(step_d, data[idx_d, , drop = FALSE], w[idx_d])
     new_w[idx_d] <- res_d$weights
     dg <- res_d$diagnostics
+    conv <- c(conv, attr(dg, "converged"))         # NULL (e.g. poststrat) contributes nothing
     if (!is.null(dg) && nrow(dg) > 0L)
       diags[[length(diags) + 1L]] <- cbind(domain = d, dg)
     cdd <- attr(dg, "calibrate")                   # per-domain calibration summary
@@ -70,6 +71,11 @@
     attr(diag, "note") <- sprintf("calibrated independently within '%s' (%d domains)",
                                   byvar, length(doms))
     if (length(domsum)) attr(diag, "calib_domains") <- do.call(rbind, domsum)
+    # Propagate an overall convergence flag: the step converged iff EVERY domain
+    # that has one did (poststrat domains have none and are exact by construction).
+    # Without this the by-domain path left `converged` NULL and the report showed
+    # green even when a domain failed to converge (M5).
+    if (length(conv)) attr(diag, "converged") <- all(conv)
     if (length(gL))
       attr(diag, "calibrate") <- list(
         g = unlist(gL), d = unlist(dL), covars = do.call(rbind, covL),

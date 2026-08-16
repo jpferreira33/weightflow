@@ -56,6 +56,10 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
   lonely_psu <- match.arg(lonely_psu)
+  # Snapshot the caller's RNG so the per-replicate seeding below does not leak
+  # into their stream (restored on exit, once the replicate seeds are drawn).
+  .rng_entry <- if (exists(".Random.seed", envir = .GlobalEnv))
+    get(".Random.seed", envir = .GlobalEnv) else NULL
   t0 <- Sys.time()
   data <- object$data
   bw   <- object$base_weights
@@ -87,6 +91,14 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   singleton <- character(0)
   facs   <- vector("list", replicates)
   rseeds <- sample.int(.Machine$integer.max, replicates)
+  # Restore the RNG on exit so one_rep()'s per-replicate set.seed() does not leak.
+  # With an explicit `seed`: restore the caller's state entirely (no leak, fully
+  # reproducible). Unseeded: restore the state just after the replicate seeds were
+  # drawn, so consecutive unseeded calls still differ.
+  .rng_restore <- if (is.null(seed) && exists(".Random.seed", envir = .GlobalEnv))
+    get(".Random.seed", envir = .GlobalEnv) else .rng_entry
+  if (!is.null(.rng_restore))
+    on.exit(assign(".Random.seed", .rng_restore, envir = .GlobalEnv), add = TRUE)
   for (b in seq_len(replicates)) {
     fac <- numeric(n)
     for (h in hs) {
@@ -563,22 +575,35 @@ collect_replicate_weights <- function(object, weight_name = ".weight",
   keep <- if (drop_zero) object$weights > 0 else rep(TRUE, length(object$weights))
   out  <- object$data[keep, , drop = FALSE]
   reps <- object$replicates[keep, , drop = FALSE]
+  # Drop failed replicates (all-NA columns) so downstream survey / srvyr does not
+  # return NA standard errors, and keep scale / rscales / R consistent with the
+  # survivors. Same rule (and message) as as_svrepdesign().
+  valid <- which(!apply(reps, 2, anyNA))
+  ndrop <- ncol(reps) - length(valid)
+  if (!length(valid))
+    stop("All replicates have NA weights (every replicate failed); cannot build ",
+         "replicate weights.", call. = FALSE)
+  if (ndrop > 0L)
+    warning(sprintf(paste0("%d failed replicate(s) with NA weights were dropped; ",
+                           "the replicate design now uses %d valid replicate(s)."),
+                    ndrop, length(valid)), call. = FALSE)
+  reps <- reps[, valid, drop = FALSE]
   colnames(reps) <- paste0(prefix, seq_len(ncol(reps)))
   out[[weight_name]] <- object$weights[keep]
   out <- cbind(out, as.data.frame(reps))
   rownames(out) <- NULL
-  attr(out, "R") <- object$R
+  attr(out, "R") <- length(valid)
   # Replication design for survey/srvyr, correct per method: the bootstrap uses
   # scale 1/R with unit rscales; the delete-a-PSU jackknife uses scale 1 with
   # per-replicate rscales (n_h - 1)/n_h (survey type = "other").
   if (inherits(object, "weightflow_jack")) {
     attr(out, "type")    <- "other"
     attr(out, "scale")   <- 1
-    attr(out, "rscales") <- (object$rep_nh - 1) / object$rep_nh
+    attr(out, "rscales") <- ((object$rep_nh - 1) / object$rep_nh)[valid]
   } else {
     attr(out, "type")    <- "bootstrap"
-    attr(out, "scale")   <- 1 / object$R
-    attr(out, "rscales") <- rep(1, object$R)
+    attr(out, "scale")   <- 1 / length(valid)
+    attr(out, "rscales") <- rep(1, length(valid))
   }
   out
 }

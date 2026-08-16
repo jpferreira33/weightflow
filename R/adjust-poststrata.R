@@ -38,6 +38,10 @@
       count, paste(names(totals), collapse = ", ")))
   if (!is.numeric(totals[[count]]))
     stop(sprintf("The counts column '%s' must be numeric.", count))
+  if (anyNA(totals[[count]]))
+    stop(sprintf(paste0("The counts column '%s' has missing values (NA): every target ",
+                        "cell needs a count. An NA target would leave that cell unadjusted."),
+                 count), call. = FALSE)
 
   vars <- setdiff(names(totals), count)
   if (length(vars) == 0L)
@@ -298,6 +302,36 @@
       levels_v <- as.character(t[[lev_col]])
       sc       <- if (!is.null(rec$factors[[v]])) rec$factors[[v]] else 1
       counts_v <- as.numeric(t[[count]]) * sc
+      # Sum duplicate categories (e.g. a census table disaggregated by extra
+      # variables, collapsed onto this margin) instead of letting the last row
+      # silently overwrite the earlier ones -- the missing mass would otherwise
+      # leak into the reference category. Matches the post-stratification path,
+      # with an informative message (never fatal, safe under options(warn = 2)).
+      if (anyDuplicated(levels_v)) {
+        message(sprintf(
+          "The totals for '%s' had %d duplicate category value(s); their counts were summed.",
+          v, sum(duplicated(levels_v))))
+        agg      <- tapply(counts_v, levels_v, sum)
+        levels_v <- names(agg)
+        counts_v <- as.numeric(agg)
+      }
+      # A population level present in `totals` but with NO units in the sample
+      # cannot be calibrated: linear/GREG builds no model.matrix column for it, so
+      # its total would silently leak into the reference category and inflate it.
+      # Unlike post-stratification (which can simply fall short of N), GREG also
+      # carries continuous and interaction terms, so absorbing an uncovered level
+      # into the reference is wrong -- error and let the user decide.
+      sample_levels <- unique(as.character(data[[v]][active]))
+      absent <- setdiff(levels_v, sample_levels)
+      if (length(absent))
+        stop(sprintf(paste0(
+          "The totals for '%s' include level(s) with no units in the sample: %s. ",
+          "Linear/GREG calibration cannot assign weight to a category that has no ",
+          "sample units (there is no model term for it), so its total would ",
+          "silently inflate the reference category. Drop those level(s) from ",
+          "`totals` if they are genuinely out of the sample's scope, or fix the ",
+          "sample coverage before calibrating."),
+          v, paste(utils::head(absent, 15L), collapse = ", ")), call. = FALSE)
       for (j in seq_along(levels_v)) {
         col <- paste0(v, levels_v[j])
         if (col %in% cn) Tvec[col] <- counts_v[j]

@@ -177,3 +177,116 @@ test_that("M11: weight_factors() on a 0-step recipe returns the base table (no e
   expect_error(weight_factors(fit), NA)            # no 2:length() subscript error
   expect_equal(nrow(weight_factors(fit)), 5L)
 })
+
+# --- A5: duplicate category in tidy linear totals is summed ----------------
+
+test_that("A5: a duplicate category in tidy linear/GREG totals is summed, not overwritten", {
+  set.seed(5); n <- 200
+  d <- data.frame(pw = rep(10, n),
+                  region = sample(c("North", "South", "East", "West"), n, TRUE))
+  # South duplicated (as census tables disaggregated by extra variables arrive)
+  tot <- list(region = data.frame(
+    region = c("North", "South", "South", "East", "West"),
+    n      = c(600, 300, 350, 500, 450)))          # South intended = 300 + 350 = 650
+  fit <- suppressMessages(prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "linear", formula = ~ region, totals = tot, count = "n")))
+  expect_equal(sum(fit$final_weight[d$region == "South"]), 650, tolerance = 1e-6)
+  expect_message(prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "linear", formula = ~ region, totals = tot, count = "n")),
+    "duplicate category")
+})
+
+# --- A6: population level absent from the sample errors (tidy linear) -------
+
+test_that("A6: a population level with no units in the sample errors (tidy linear/GREG)", {
+  set.seed(6); n <- 200
+  d <- data.frame(pw = rep(10, n),
+                  region = sample(c("North", "South", "East"), n, TRUE))   # no West
+  tot <- list(region = data.frame(
+    region = c("North", "South", "East", "West"),   # West is in totals, not in sample
+    n      = c(600, 500, 400, 300)))
+  expect_error(suppressMessages(prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "linear", formula = ~ region, totals = tot, count = "n"))),
+    "no units in the sample")
+})
+
+# --- M5: by-domain calibration propagates the converged flag ---------------
+
+test_that("M5: by-domain calibration sets a converged flag (was NULL -> looked green)", {
+  set.seed(5); n <- 300
+  d <- data.frame(pw = rep(10, n),
+                  region = sample(c("A", "B"), n, TRUE),
+                  sex    = sample(c("M", "F"), n, TRUE))
+  m <- as.data.frame(stats::xtabs(pw ~ region + sex, d))   # region (domain) x sex + Freq
+  m$Freq <- m$Freq * 1.05
+  fit <- suppressMessages(prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "raking", totals = list(m), count = "Freq", by = "region")))
+  cvg <- attr(fit$steps[[1]]$diagnostics, "converged")
+  expect_false(is.null(cvg))          # previously NULL for the by-domain path
+  expect_true(isTRUE(cvg))            # clean case: every domain converged
+})
+
+# --- M10: bootstrap does not leak its RNG into the caller -------------------
+
+test_that("M10: a seeded bootstrap leaves the caller's RNG stream unchanged", {
+  set.seed(1)
+  d <- data.frame(pw = rep(10, 20), stratum = rep(c("s1", "s2"), each = 10),
+                  psu = paste0("p", rep(1:4, each = 5)), y = rnorm(20))
+  set.seed(123); a <- runif(1)
+  set.seed(123)
+  invisible(bootstrap_weights(weighting_spec(d, base_weights = pw), replicates = 10,
+                              strata = "stratum", psu = "psu", seed = 7, progress = FALSE))
+  b <- runif(1)
+  expect_equal(a, b)                  # RNG continues as if the bootstrap never ran
+})
+
+# --- M12: collect_replicate_weights drops failed replicates -----------------
+
+test_that("M12: collect_replicate_weights drops a failed replicate and warns", {
+  set.seed(2)
+  d <- data.frame(pw = rep(10, 20), stratum = rep(c("s1", "s2"), each = 10),
+                  psu = paste0("p", rep(1:4, each = 5)), y = rnorm(20))
+  b <- bootstrap_weights(weighting_spec(d, base_weights = pw), replicates = 10,
+                         strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
+  b$replicates[, 1] <- NA_real_                        # a failed replicate
+  expect_warning(df <- collect_replicate_weights(b), "failed replicate")
+  expect_equal(sum(grepl("^rep_", names(df))), 9L)     # 10 - 1 dropped
+  expect_equal(attr(df, "R"), 9L)
+  expect_equal(length(attr(df, "rscales")), 9L)
+  expect_false(anyNA(df[, grepl("^rep_", names(df)), drop = FALSE]))
+})
+
+# --- M13: NA count in poststratification totals errors ----------------------
+
+test_that("M13: an NA in the counts column of poststratification totals errors", {
+  set.seed(13)
+  d <- data.frame(pw = rep(10, 30), region = sample(c("A", "B", "C"), 30, TRUE))
+  tot <- data.frame(region = c("A", "B", "C"), Freq = c(120, NA, 90))
+  expect_error(prep(step_calibrate(weighting_spec(d, base_weights = pw),
+    method = "poststratify", totals = tot, count = "Freq")),
+    "missing values")
+})
+
+# --- M15: NA in a `by` cell variable -> explicit (missing) cell + warning ----
+
+test_that("M15: NA in a `by` cell forms a '(missing)' group with a warning", {
+  set.seed(15)
+  d <- data.frame(pw = rep(10, 40), grp = sample(c("A", "B"), 40, TRUE),
+                  resp = rbinom(40, 1, .7))
+  d$grp[c(3, 7, 11)] <- NA
+  expect_warning(
+    f <- suppressMessages(prep(step_nonresponse(weighting_spec(d, base_weights = pw),
+      respondent = resp, method = "weighting_class", by = "grp"), min_cell_n = NULL)),
+    "missing")
+  expect_false(anyNA(f$final_weight))          # the (missing) cell is handled, not NA
+})
+
+# --- M16: collect_weights with an NA weight -> no phantom rows ---------------
+
+test_that("M16: collect_weights() with an NA weight drops it, no phantom all-NA rows", {
+  f <- prep(weighting_spec(data.frame(pw = rep(10, 5)), base_weights = pw))
+  f$final_weight[2] <- NA_real_                 # inject an NA weight
+  cw <- collect_weights(f)                      # drop_zero = TRUE
+  expect_equal(nrow(cw), 4L)                    # NA row dropped, no phantom row
+  expect_false(anyNA(cw$.weight))
+})

@@ -20,7 +20,10 @@ cascade <- function() {
     step_select_within(prob = p_within) |>
     step_nonresponse(respondent = responded, method = "weighting_class",
                      by = c("region", "sex", "age_grp"))
-  nr  <- prep(nr_spec)$final_weight
+  # age_grp (from cut) has some NA -> weightflow groups them into a '(missing)'
+  # cell and warns; that is not what this survey-equivalence test is about, so
+  # the warning is silenced here (and at the calibration preps below).
+  nr  <- suppressWarnings(prep(nr_spec))$final_weight
   act <- which(nr > 0)                       # eligible respondents
 
   dat$w_nr <- nr
@@ -38,9 +41,9 @@ test_that("poststratify matches survey::postStratify", {
   cc  <- cascade()
   # weightflow: tidy joint table (region x sex), crossed automatically
   ps_tab <- as.data.frame(table(region = population$region, sex = population$sex))
-  wf <- prep(cc$nr_spec |>
+  wf <- suppressWarnings(prep(cc$nr_spec |>
                step_calibrate(method = "poststratify", totals = ps_tab,
-                              count = "Freq"))$final_weight[cc$act]
+                              count = "Freq")))$final_weight[cc$act]
   # survey
   des_ps <- survey::postStratify(cc$des, ~ region + sex, ps_tab)
   expect_equal(as.numeric(weights(des_ps)), as.numeric(wf), tolerance = 1e-6)
@@ -49,10 +52,10 @@ test_that("poststratify matches survey::postStratify", {
 test_that("raking matches survey::rake", {
   skip_if_not_installed("survey")
   cc <- cascade()
-  wf <- prep(cc$nr_spec |>
+  wf <- suppressWarnings(prep(cc$nr_spec |>
                step_calibrate(method = "raking",
                               totals = list(reg_tab, sex_tab),
-                              count = "Freq"))$final_weight[cc$act]
+                              count = "Freq")))$final_weight[cc$act]
   des_rk <- survey::rake(cc$des,
                          sample.margins     = list(~ region, ~ sex),
                          population.margins = list(reg_tab, sex_tab))
@@ -63,11 +66,11 @@ test_that("linear/GREG (categorical + numeric) matches survey::calibrate", {
   skip_if_not_installed("survey")
   cc <- cascade()
   # weightflow: tidy list, data frame per factor + a single number for income
-  wf <- prep(cc$nr_spec |>
+  wf <- suppressWarnings(prep(cc$nr_spec |>
                step_calibrate(method = "linear", formula = ~ region + sex + income,
                               totals = list(region = reg_tab, sex = sex_tab,
                                             income = inc_tot),
-                              count = "Freq"))$final_weight[cc$act]
+                              count = "Freq")))$final_weight[cc$act]
   # survey: the classic model-matrix totals vector (reference levels dropped)
   rlev <- levels(population$region); slev <- levels(population$sex)
   pop_tot <- c(`(Intercept)` = nrow(population),
@@ -83,11 +86,11 @@ test_that("the exponential (raking) distance matches survey calfun = 'raking'", 
   skip_if_not_installed("survey")
   skip_if_not_installed("MASS")   # survey's raking distance uses MASS::ginv
   cc <- cascade()
-  wf <- prep(cc$nr_spec |>
+  wf <- suppressWarnings(prep(cc$nr_spec |>
                step_calibrate(method = "linear", formula = ~ region + sex + income,
                               totals = list(region = reg_tab, sex = sex_tab,
                                             income = inc_tot),
-                              count = "Freq", calfun = "raking"))$final_weight[cc$act]
+                              count = "Freq", calfun = "raking")))$final_weight[cc$act]
   rlev <- levels(population$region); slev <- levels(population$sex)
   pop_tot <- c(`(Intercept)` = nrow(population),
     stats::setNames(as.numeric(table(population$region))[-1], paste0("region", rlev[-1])),

@@ -39,10 +39,17 @@
 # Build a grouping factor from the `by` columns -----------------------------
 .make_cells <- function(data, by, n) {
   if (is.null(by)) return(factor(rep("(all)", n)))
+  na_any <- FALSE
   parts <- lapply(by, function(v) {
     if (!v %in% names(data)) stop(sprintf("Cell variable '%s' not found.", v))
-    as.character(data[[v]])
+    x <- as.character(data[[v]])
+    if (anyNA(x)) { na_any <<- TRUE; x[is.na(x)] <- "(missing)" }  # explicit, not the ambiguous "NA"
+    x
   })
+  if (na_any)
+    warning(paste0("Missing values in the cell variable(s) `by` were grouped into a ",
+                   "'(missing)' cell. Those units are adjusted within their own cell; ",
+                   "recode the NAs if that is not intended."), call. = FALSE)
   factor(do.call(paste, c(parts, sep = " | ")))
 }
 

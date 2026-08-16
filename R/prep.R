@@ -320,6 +320,8 @@ collect_weights <- function(object, drop_zero = TRUE,
     h <- object$history
     for (nm in names(h)) out[[paste0(".wt_", nm)]] <- h[[nm]]
   }
-  if (drop_zero) out <- out[object$final_weight > 0, , drop = FALSE]
+  # which() (not a bare logical) so any NA weight is dropped rather than inserting
+  # a phantom all-NA row (which later breaks summary()).
+  if (drop_zero) out <- out[which(object$final_weight > 0), , drop = FALSE]
   out
 }

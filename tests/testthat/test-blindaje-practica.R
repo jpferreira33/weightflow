@@ -35,12 +35,14 @@ test_that("`by` on a character column behaves like the factor version", {
   expect_equal(wf_, wc)
 })
 
-test_that("NA in the cell variable forms its own cell; respondents there keep positive weight", {
+test_that("NA in the cell variable forms a '(missing)' cell (with a warning); respondents there keep positive weight", {
   d <- prac_d(); d$x[c(5, 9, 13, 17)] <- NA; d$resp[c(5, 9)] <- TRUE
-  p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
-    step_nonresponse(respondent = resp, method = "weighting_class", by = "x")))
+  expect_warning(
+    p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
+      step_nonresponse(respondent = resp, method = "weighting_class", by = "x"))),
+    "missing")
   ww <- collect_weights(p, drop_zero = FALSE)$.weight
-  expect_true(all(ww[c(5, 9)] > 0))                        # respondentes NA-cell adjusted
+  expect_true(all(ww[c(5, 9)] > 0))                        # respondentes (missing)-cell adjusted
   expect_equal(sum(ww), sum(d$w), tolerance = 1e-8)        # masa conservada
 })
 

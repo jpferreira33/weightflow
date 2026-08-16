@@ -1,11 +1,3 @@
-# weightflow 1.1.1
-
-## Bug fixes
-
-* **Missing or malformed data now errors instead of biasing silently.** `NA` in a raking / post-stratification margin, a propensity model covariate, or a bootstrap / jackknife stratum or PSU; a household-level nonresponse `by` cell that varies within the cluster; and `equal_within_cluster = TRUE` with non-uniform incoming weights all stop with a clear message rather than passing units through untouched or producing `NA` weights.
-* **Honest variance and totals.** `boot_total()` / `jack_total()` drop a failed replicate (and report how many) instead of counting it as 0 and inflating the standard error; the achieved-vs-target check now runs even under `bounds`, so `converged` reflects the real totals.
-* **Trimming and diagnostics.** `step_trim_weights(lower = NULL)` means "no floor" instead of erroring; the Potter MSE curve is drawn again, with a readable, compactly-labelled axis; `weight_factors()` works on a zero-step recipe.
-
 # weightflow 1.1.0
 
 ## New features
@@ -23,6 +15,9 @@
 * **Weighting correctness.** Empty adjustment cells are set to weight 0; `NA` auxiliaries error; `lonely_psu = "collapse"` nests PSU ids within their stratum; `step_trim(reference = "median", by = )` uses each group's median; `tol` is honored in bounded / non-linear calibration.
 * **Smaller conveniences.** `collect_weights()` warns when overwriting `.weight`; `design_effect()` accepts a prepped recipe; `as_svydesign()` accepts formulas; `as_svrepdesign()` drops failed replicates; parallel replicates fall back to serial on Windows; raking is faster on large samples.
 * **New alerts** for very small response propensities and partially-responding households.
+* **Missing or malformed data now errors instead of biasing silently.** `NA` in a raking / post-stratification margin variable, a propensity model covariate, or a bootstrap / jackknife stratum or PSU; a household-level nonresponse `by` cell that varies within the cluster; `equal_within_cluster = TRUE` with non-uniform incoming base weights; a tidy linear/GREG total for a category with no units in the sample; an `NA` in a post-stratification counts column; and a classic `margins` entry given as an unnamed numeric vector (previously a silent no-op) all stop with a clear message rather than passing units through untouched, producing `NA` weights, or leaking the uncovered mass into the reference category. Missing values in a nonresponse / eligibility `by` cell now form an explicit `(missing)` group with a warning, instead of a silent, ambiguous `"NA"` cell.
+* **Honest replicate variance and calibration totals.** `boot_total()` / `jack_total()` drop a failed replicate (and report how many) instead of counting it as 0 and inflating the standard error; the achieved-vs-target check now runs even under `bounds`, so `converged` reflects the real totals; a duplicate category in tidy linear/GREG totals is now summed (not overwritten by the last row); by-domain (`by =`) calibration propagates its convergence flag, so the report no longer shows green when a single domain failed to converge; `bootstrap_weights()` restores the global RNG on exit, so its internal per-replicate seeding no longer leaks into the caller's random stream; and `collect_replicate_weights()` drops failed replicates (with a warning), like `as_svrepdesign()`, instead of carrying all-NA columns that made `srvyr` return NA standard errors.
+* **Trimming and diagnostics.** `step_trim_weights(lower = NULL)` means "no floor" instead of erroring; the Potter MSE curve is drawn again, with a readable, compactly-labelled axis; `weight_factors()` works on a zero-step recipe; and `collect_weights()` drops `NA` weights cleanly instead of inserting phantom all-`NA` rows.
 
 # weightflow 1.0.0
 

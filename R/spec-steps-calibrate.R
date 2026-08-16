@@ -164,6 +164,16 @@ step_calibrate <- function(spec, margins = NULL,
       if (length(bad))
         stop(sprintf("These `margins` variable(s) are not columns of the data: %s.",
                      paste(bad, collapse = ", ")))
+      for (mv in names(margins)) {
+        tv <- margins[[mv]]
+        if (!is.numeric(tv) || is.null(names(tv)) || anyNA(names(tv)) ||
+            any(!nzchar(names(tv))) || anyDuplicated(names(tv)))
+          stop(sprintf(paste0("`margins$%s` must be a NAMED numeric vector with one target ",
+                              "per category, e.g. c(North = 1570, South = 1250). The names ",
+                              "(categories) must be present, non-empty and unique; without ",
+                              "them the step would silently do nothing."),
+                       mv), call. = FALSE)
+      }
     }
     if (totals_is_df || totals_is_list) {
       if (is.null(count) || !is.character(count) || length(count) != 1L)
