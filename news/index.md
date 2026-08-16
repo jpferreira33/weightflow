@@ -92,14 +92,67 @@
   drops failed replicates (with a warning), like
   [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md),
   instead of carrying all-NA columns that made `srvyr` return NA
-  standard errors.
+  standard errors; and
+  [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
+  is skipped inside bootstrap / jackknife replicates (a quality
+  checkpoint applies to the final weights, not to replicate weights,
+  whose design effect is structurally larger), so a checkpoint the point
+  weights pass no longer makes every replicate fail with `se = NaN`; a
+  bootstrap / jackknife worker killed mid-run (e.g. out of memory under
+  `mclapply`) becomes a counted failed replicate instead of being
+  silently dropped or coercing the weight matrix to character; and the
+  stratified jackknife rescales its per-stratum contribution when some
+  delete-a-PSU replicates fail, so the variance is no longer biased low.
 - **Trimming and diagnostics.** `step_trim_weights(lower = NULL)` means
   “no floor” instead of erroring; the Potter MSE curve is drawn again,
   with a readable, compactly-labelled axis;
   [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
-  works on a zero-step recipe; and
+  works on a zero-step recipe;
   [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
-  drops `NA` weights cleanly instead of inserting phantom all-`NA` rows.
+  drops `NA` weights cleanly instead of inserting phantom all-`NA` rows;
+  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
+  and
+  [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md)
+  require `lower < upper` (resp. `min_ratio < max_ratio`) once the
+  automatic cap is resolved, and the mass-change alert now fires in both
+  directions (inflation as well as loss); and a non-finite (`Inf`/`NaN`)
+  weight produced mid-cascade now errors at the step that produced it,
+  instead of propagating silently into the final weights and
+  diagnostics.
+- **Stricter argument validation.** A zero-length `by` (e.g. from a
+  [`grepl()`](https://rdrr.io/r/base/grep.html) filter that matched
+  nothing), an invalid `maxit` (`0`, `NA`, non-integer) in
+  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
+  /
+  [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+  a non-logical `weight_model` (such as `1` or `"yes"`); a confidence
+  `level` outside `(0, 1)` (e.g. `95`); a `variable` that is not a
+  column of the data in
+  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  /
+  [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  /
+  [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+  /
+  [`jack_mean()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+  (which used to return `0 +/- 0` for a typo); and `replicates < 2` all
+  now error, instead of silently skipping the step, flipping the
+  estimator (`isTRUE(1)` is `FALSE`), or returning a meaningless result.
+- **Negative weights are now consistent instead of half-counted.** A
+  negative weight – a valid, if unusual, output of unbounded linear/GREG
+  calibration – is treated as *active* everywhere through a single
+  predicate (`is.finite(w) & w != 0`): it takes part in later steps, is
+  counted by
+  [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
+  and the stage funnel, and is kept by
+  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md),
+  so the reported totals and design effect match the weights actually
+  returned. (Previously the cascade froze it,
+  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
+  dropped it, and the calibration diagnostics were computed on the
+  positive subset only, so a re-calibration reported totals that were
+  not the real ones.) A new alert reports how many units received a
+  negative calibration weight and points to `bounds`.
 
 ## weightflow 1.0.0
 
