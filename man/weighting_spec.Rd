@@ -15,7 +15,11 @@ weighting_spec(data, base_weights)
 an object of class "weighting_spec".
 }
 \description{
-Creates an inert recipe object. Nothing is computed until prep() is called.
+Opens a weighting recipe on a sample and its design base weights. The object
+it returns is inert: it holds the data, the name of the base-weight column and
+an empty list of steps, and computes nothing. Every \verb{step_*()} function takes
+such an object and returns it with one more step appended; \code{\link[=prep]{prep()}} estimates
+the result.
 }
 \examples{
 rec <- weighting_spec(sample_survey, base_weights = pw)

@@ -17,9 +17,11 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Sets the weight of known-ineligible units to zero so they leave the cascade
-(excluded from every later step and from collect_weights). No redistribution
-is done.
+Sets the weight of the units known to be outside the target population to zero,
+so they leave the cascade and take no part in any later step or in
+\code{\link[=collect_weights]{collect_weights()}}. Their weight is discarded, not redistributed: the weight
+total is meant to fall by exactly the mass they carried. Use it once
+eligibility has been resolved, immediately after \code{\link[=step_unknown_eligibility]{step_unknown_eligibility()}}.
 }
 \details{
 Apply it AFTER step_unknown_eligibility: ineligibles must be present and NOT

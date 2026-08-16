@@ -13,8 +13,10 @@ weight_factors(object)
 data.frame with one weight column per stage and one factor per step.
 }
 \description{
-Returns a data.frame with the weight at each stage and the factor of each
-step (stage weight / previous-stage weight), handy for custom plots.
+Unrolls the cascade into a \code{data.frame}: the weight of every unit at every
+stage, plus the factor each step applied to it. This is the tidy form of
+\code{prep()}'s \verb{$history}, and the starting point for any diagnostic that
+\link[=plot.prepped_weighting_spec]{plot()} does not already draw.
 }
 \examples{
 fitted <- weighting_spec(sample_survey, base_weights = pw) |>

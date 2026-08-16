@@ -159,7 +159,7 @@ apply_step.step_select_within <- function(step, data, w) {
   if (!is.null(step$prob)) {
     p <- .eval_num(step$prob, "prob", data, ecenv)
     if (any(is.na(p[active])) || any(p[active] <= 0 | p[active] > 1))
-      stop("`prob` must be a within-household selection probability in (0, 1].")
+      stop("`prob` must be a within-cluster selection probability in (0, 1].")
     fac <- 1 / p
     lbl <- "1/prob"
   } else {

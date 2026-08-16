@@ -1,11 +1,14 @@
 # report_weighting(): assembles the self-contained HTML report from the pieces below and the card/helper modules.
 
-#' Build a nice HTML report of the weighting recipe
+#' Self-contained HTML quality report for a weighting recipe
 #'
-#' Writes a self-contained HTML file (no dependencies, no server) showing the
-#' pipeline, the parameters requested at each step, the per-stage summary
-#' (n, sum, CV, Kish deff, effective n) and per-step diagnostics, and opens it
-#' in the browser.
+#' Writes a single, self-contained HTML file documenting how a prepped recipe
+#' turned the design base weights into the final weights: the cascade, the
+#' parameters requested at each step, the per-stage weight summary, the
+#' step-specific diagnostics (calibration, nonresponse, trimming), the fieldwork
+#' outcome rates and an audit trail. It is the deliverable to attach to a
+#' methodological report or a weighting annex: everything is inline, so the file
+#' opens offline and can be archived or emailed as one artifact.
 #'
 #' @param object a prepped object (output of prep()).
 #' @param file output path; if NULL, a temporary .html file.
@@ -250,8 +253,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   exec  <- paste0(exec, .status_checklist(object, de_f, object$final_weight, replicates, lang))
   exec  <- paste0(exec, .attention_panel(object, lang))
   imsg  <- if (!is.finite(de_f$deff))
-             .t("the design effect could not be computed — check the weights.",
-                "no se pudo calcular el efecto de diseño — revisá los pesos.", lang)
+             .t("the design effect could not be computed \u2014 check the weights.",
+                "no se pudo calcular el efecto de dise\u00f1o \u2014 revis\u00e1 los pesos.", lang)
            else if (de_f$deff < 1.2)
              .t("weight variability is low.", "la variabilidad de los pesos es baja.", lang)
            else if (de_f$deff < 1.4)

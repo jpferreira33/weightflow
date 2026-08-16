@@ -27,8 +27,10 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Redistributes the weight of unknown-eligibility cases among the
-known-eligibility cases, within the cells defined by \code{by}.
+Redistributes the weight of the cases whose eligibility was never resolved
+onto the resolved cases of the same adjustment cell, so the resolved units
+stand in for the unresolved share of the frame. Reach for it as the first step
+of the cascade, while the known-ineligible units are still in the data.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

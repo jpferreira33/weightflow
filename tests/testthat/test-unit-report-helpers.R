@@ -301,7 +301,7 @@ test_that(".step_visual pairs a scatter with a factor histogram", {
   expect_match(out, "adjustment factor")
 })
 
-test_that(".step_visual relabels the histogram for within-household selection", {
+test_that(".step_visual relabels the histogram for within-cluster selection", {
   set.seed(26)
   st   <- structure(list(label = "s"),
                     class = c("step_select_within", "weighting_step"))

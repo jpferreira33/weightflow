@@ -1,11 +1,15 @@
 # further step constructors: model-assisted calibration, assert, weight trimming (Tukey/Potter), calibration-preserving trimming, rescale.
 
-#' Model calibration (model-assisted, Wu & Sitter 2001)
+#' Model-assisted calibration (Wu and Sitter 2001)
 #'
-#' Fits a working model for each study variable y, predicts over the population,
-#' and calibrates the weights so that the sample total of each prediction equals
-#' its population total (model-assisted efficiency). It also calibrates to the X
-#' totals (consistency with the auxiliary controls).
+#' Fits a working model for each study variable, predicts it over the whole
+#' population, and calibrates the weights so that the sample total of every
+#' prediction matches its population total, on top of the usual auxiliary totals
+#' -- which may come from the population frame itself or from an external source
+#' (a census table, an administrative register). Reach for it when you hold, or
+#' can supply, those control totals and the outcome is well predicted by the
+#' auxiliaries: the predictions act as extra, highly relevant controls and buy
+#' precision that calibrating on `x` alone cannot.
 #'
 #' Requires COMPLETE auxiliary information: a data.frame `population` with the
 #' `x_formula` columns and the model predictors for the whole population (or a
@@ -48,6 +52,10 @@
 #'   replication (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018), so it
 #'   is recommended whenever a model uses a non-glm engine.
 #' @param crossfit_seed integer or NULL. Seed for reproducible fold assignment.
+#' @references Wu, C. and Sitter, R. R. (2001). A model-calibration approach to
+#'   using complete auxiliary information from survey data. \emph{Journal of the
+#'   American Statistical Association}, 96(453), 185-193.
+#'   \doi{10.1198/016214501750333054}.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
@@ -141,11 +149,12 @@ step_model_calibration <- function(spec, x_formula, models, population,
 
 # --- Optional step: assertions / checkpoint --------------------------------
 
-#' Assert conditions on the weights at this point of the cascade
+#' Assert quality conditions on the weights
 #'
-#' A checkpoint that does NOT change the weights; it verifies conditions and
-#' fails (error) or warns if they are not met. Useful to guard a production
-#' pipeline (tidymodels-style tests inside the recipe).
+#' A checkpoint that leaves the weights untouched and instead verifies that they
+#' meet quality thresholds at this point of the cascade, raising an error or a
+#' warning when they do not. Use it to stop a production pipeline before bad
+#' weights are published, in the spirit of a validation step inside a recipe.
 #'
 #' @param spec a weighting_spec.
 #' @param max_deff numeric or NULL. Maximum acceptable Kish design effect.
@@ -177,16 +186,14 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 
 # --- Optional step: automatic weight trimming ------------------------------
 
-#' Automatic weight trimming (survey-style)
+#' Automatic weight trimming to an absolute band
 #'
-#' Caps weights into `[lower, upper]` and redistributes the change among the
-#' untrimmed units to preserve the total. With `redistribute = "uniform"` the
-#' change is shared equally among the untrimmed units (and cases already trimmed
-#' are never reused), exactly mirroring survey::trimWeights(); the default
-#' `"proportional"` shares it in proportion to the untrimmed weights, keeping
-#' their relative sizes. By default no weight may fall below 1, and the upper
-#' cap is chosen by an automatic rule: the Tukey far-out fence (Q3 + 3*IQR) or,
-#' with `method = "potter"`, Potter's MSE-optimal cutoff.
+#' Caps the weights into an absolute interval `[lower, upper]` and hands the
+#' removed mass back to the units that were not capped, so the weighted total is
+#' preserved. This is the step to use when you have **not calibrated yet** (or
+#' will calibrate afterwards) and you want the cutoff chosen from the data rather
+#' than argued for: with `upper = NULL` it picks one by the Tukey far-out fence or
+#' by Potter's MSE rule.
 #'
 #' @param spec a weighting_spec.
 #' @param lower numeric. Lower floor (default 1: no weight below 1).
@@ -242,21 +249,22 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 
 #' Trimmed calibration (range-restricted, totals-preserving)
 #'
-#' Trims already-calibrated weights into an absolute interval `[lower, upper]`
-#' **while preserving the calibration totals** of `formula`. Unlike
-#' `step_trim_weights()` (which caps and then redistributes the trimmed mass, so
-#' the calibration constraints are broken), this is a bounded re-calibration: it
-#' finds the weights closest to the incoming ones that both lie in
-#' `[lower, upper]` and still reproduce the totals the incoming weights achieve
-#' (the generalized exponential method of Folsom & Singh 2000). The
-#' absolute-weight bound is imposed as a per-unit
-#' factor bound `w_new / w in [lower/w, upper/w]` on top of the incoming weights,
-#' using the range-restricted Euclidean distance (`calfun = "linear"`, the
-#' default) or the multiplicative one (`calfun = "raking"`). Weights
-#' inside the range that are not needed to restore the totals stay put; the
-#' out-of-range ones saturate at their bound and the rest move as little as
-#' possible. If the range is too tight to preserve every total, the totals that
-#' cannot be met are relaxed and a warning is raised.
+#' Pulls already-calibrated weights into an absolute interval `[lower, upper]`
+#' without breaking the calibration: instead of capping and redistributing, it
+#' re-solves a bounded calibration whose targets are the totals the incoming
+#' weights already reproduce, optionally with its own band per subgroup through
+#' `by`. It is the only one of the three trimming steps that leaves the
+#' calibration totals intact.
+#'
+#' The absolute-weight bound is imposed as a per-unit factor bound
+#' `w_new / w in [lower/w, upper/w]` on top of the incoming weights, using a
+#' bounded (range-restricted) calibration with the truncated Deville-Sarndal
+#' distances: the range-restricted Euclidean distance (`calfun = "linear"`, the
+#' default) or the multiplicative one (`calfun = "raking"`). Weights inside the
+#' range that are not needed to restore the totals stay put; the out-of-range ones
+#' saturate at their bound and the rest move as little as possible. If the range
+#' is too tight to preserve every total, the totals that cannot be met are relaxed
+#' and a warning is raised.
 #'
 #' This step is meant to run **after** a `step_calibrate()`: it acts on the
 #' positive incoming weights and leaves dropped units (weight 0) alone.
@@ -296,11 +304,6 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #'                                 sex    = c(table(population$sex)))) |>
 #'   step_trim_calibrated(~ region + sex, lower = 6, upper = 13) |>
 #'   prep()
-#' @references
-#' Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model for
-#' sampling weight calibration for extreme values, nonresponse, and
-#' poststratification. *ASA Proceedings of the Section on Survey Research
-#' Methods*, 598-603.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
@@ -348,7 +351,12 @@ step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
 
 # --- Optional step: rescale / normalize weights ----------------------------
 
-#' Rescale (normalize) the weights
+#' Rescale the weights to a fixed sum
+#'
+#' Multiplies the active weights by a single constant so that they add up to a
+#' chosen total: either the number of active units (mean weight 1) or an arbitrary
+#' number. Use it as a presentation step, when the analysis wants normalized
+#' weights rather than population-scale ones.
 #'
 #' @param spec a weighting_spec.
 #' @param to "n" (weights sum to the number of active units, i.e. mean weight 1)

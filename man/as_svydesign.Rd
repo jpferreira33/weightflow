@@ -24,12 +24,12 @@ weight and design columns; for \code{as_svrepdesign}, a \code{weightflow_boot} o
 A \code{survey.design} / \code{svyrep.design} object.
 }
 \description{
-\code{as_svydesign()} builds a linearization (ultimate-cluster) design from a
-prepped recipe, treating the final weights as fixed; \code{as_svrepdesign()} builds
-a replicate-weights design from a bootstrap (\code{weightflow_boot}) or jackknife
-(\code{weightflow_jack}) object. Both require the 'survey' package. With the
-replicate-weights design you can estimate any statistic for any domain
-(\code{svytotal}, \code{svymean}, \code{svyratio}, \code{svyby}, ...).
+\code{as_svydesign()} builds a linearization (ultimate-cluster) \code{survey.design}
+from a prepped recipe, treating the final weights as fixed constants.
+\code{as_svrepdesign()} builds a replicate-weights \code{svyrep.design} from a
+\code{\link[=bootstrap_weights]{bootstrap_weights()}} or \code{\link[=jackknife_weights]{jackknife_weights()}} object. Both are the bridge to
+the \code{survey} package, and therefore to \code{svytotal()}, \code{svymean()}, \code{svyratio()},
+\code{svyby()}, \code{svyglm()} and domain estimation generally.
 }
 \details{
 Only \code{as_svrepdesign()} propagates the variability of the weighting adjustments

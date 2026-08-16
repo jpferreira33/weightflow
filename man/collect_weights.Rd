@@ -25,7 +25,10 @@ collect_weights(
 data.frame.
 }
 \description{
-Extract the data with the computed weights
+Returns the sample as a \code{data.frame} with the final analysis weight attached
+as a column, ready to hand to an estimation routine. By default the units that
+left the cascade (weight 0) are dropped, so what comes back is the responding,
+in-scope sample and its weights.
 }
 \examples{
 fitted <- weighting_spec(sample_survey, base_weights = pw) |>

@@ -70,7 +70,7 @@ test_that(".step_short names the simple steps in both languages", {
   cases <- list(
     step_unknown_eligibility = c("unknown-eligibility", "elegibilidad desconocida"),
     step_drop_ineligible     = c("ineligible units",    "no elegibles"),
-    step_select_within       = c("within-household",    "dentro del hogar"),
+    step_select_within       = c("within-cluster",      "dentro del conglomerado"),
     step_model_calibration   = c("model-assisted",      "asistida por modelo"),
     step_trim_calibrated     = c("calibration-preserving", "preserva la calibraci"),
     step_trim_weights        = c("weight trimming",     "recorte de pesos"),
@@ -135,11 +135,11 @@ test_that("unknown-eligibility mentions the level and the cells", {
                "elegibilidad desconocida")
 })
 
-test_that("dropping ineligibles and within-household selection are described", {
+test_that("dropping ineligibles and within-cluster selection are described", {
   expect_match(narr(mkstep("step_drop_ineligible")), "out of scope")
-  expect_match(narr(mkstep("step_select_within")), "within-household selection")
+  expect_match(narr(mkstep("step_select_within")), "within-cluster selection")
   expect_match(narr(mkstep("step_select_within"), lang = "es"),
-               "dentro del hogar")
+               "dentro del conglomerado")
 })
 
 # ---------------------------------------------------------------------------

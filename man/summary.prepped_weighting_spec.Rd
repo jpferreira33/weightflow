@@ -15,7 +15,11 @@
 (invisibly) the prepped object.
 }
 \description{
-Detailed per-step diagnostics
+Prints the full audit of an estimated recipe: the stage-by-stage evolution of
+the weights, then one block per step with that step's own diagnostics table and
+the design effect before and after it, and finally the R-indicator when the
+recipe adjusted for nonresponse. Where \code{print()} answers "what is in this
+recipe?", \code{summary()} answers "what did each step do, and what did it cost?".
 }
 \examples{
 fitted <- weighting_spec(sample_survey, base_weights = pw) |>

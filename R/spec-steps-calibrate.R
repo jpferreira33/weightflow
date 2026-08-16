@@ -3,12 +3,11 @@
 #' Calibration to population totals
 #'
 #' Adjusts the weights so that the weighted sample reproduces known population
-#' totals of auxiliary variables, while staying as close as possible to the input
-#' weights (Deville & Sarndal 1992). Supports raking (IPF on categorical
-#' margins), post-stratification, and linear/GREG calibration, optionally bounded
-#' (a logit distance or explicit bounds on the calibration factor). For linear
-#' calibration, `penalty` enables ridge (penalized) calibration, which relaxes
-#' the targets to control extreme weights when there are many auxiliaries.
+#' totals of auxiliary variables, while moving the incoming weights as little as
+#' possible. This is the calibration estimator of Deville and Sarndal (1992), with
+#' raking, post-stratification and linear (GREG) calibration, optional bounds on
+#' the adjustment factor, ridge relaxation of the targets, domain partitions and
+#' one-weight-per-cluster (integrative) calibration.
 #'
 #' @param spec a weighting_spec.
 #' @param margins named list (classic format for "raking"/"poststratify"). Each
@@ -272,12 +271,14 @@ step_calibrate <- function(spec, margins = NULL,
 
 # --- Optional step: weight trimming ----------------------------------------
 
-#' Trim extreme weights
+#' Trim extreme weights against a ratio
 #'
-#' Caps weights above a limit and, optionally, redistributes the excess among
-#' the others to preserve the weighted total (Potter 1988, 1990; Liu et al.
-#' 2004). Optional step that can be inserted anywhere in the recipe, even
-#' several times. Operates on the CURRENT weights at that point of the cascade.
+#' Caps the current weights at a multiple of a reference (each unit's base
+#' weight, the group median, or an absolute value) and, by default, redistributes
+#' the removed mass among the untrimmed units so the weighted total survives the
+#' trim. With `by`, the reference and the cap are computed separately within each
+#' subgroup. An optional step that can appear anywhere in the recipe, more than
+#' once.
 #'
 #' There is no standard threshold: `max_ratio` is an analyst decision, a
 #' bias-variance trade-off. Use Kish's design effect (see summary) to judge
@@ -323,8 +324,11 @@ step_trim <- function(spec, max_ratio, min_ratio = NULL,
 
 #' Kish design effect from unequal weighting
 #'
-#' deff = 1 + CV^2(w) = m * sum(w^2) / (sum(w))^2, over the active weights.
-#' The effective sample size is n_eff = m / deff.
+#' Computes Kish's design effect due to unequal weighting,
+#' \eqn{deff = 1 + CV^2(w) = m \sum w^2 / (\sum w)^2}, and the effective sample
+#' size \eqn{n_\mathrm{eff} = m / deff} it implies. It is the standard one-number
+#' summary of what a weighting cascade cost in precision, and it is what the
+#' `summary()` and `plot()` methods of a prepped recipe report step by step.
 #'
 #' @param w vector of weights (zeros are dropped).
 #' @return list with deff, n_eff, cv and n.
@@ -345,9 +349,11 @@ design_effect <- function(w) {
 
 #' Round the final weights
 #'
-#' Optional step, typically the last one (after calibration). Simple rounding
-#' ("nearest") slightly breaks the calibrated totals; "preserve_total" uses the
-#' largest-remainder method to keep the exact total.
+#' Rounds the weights to a given number of decimals, either unit by unit
+#' (`"nearest"`) or with the largest-remainder method (`"preserve_total"`), which
+#' keeps the weighted total exactly. Typically the last step of a recipe, after
+#' calibration, when the weights have to be delivered as integers or with a fixed
+#' number of decimals.
 #'
 #' @param spec a weighting_spec.
 #' @param digits integer. Decimals to keep (0 = integers).
@@ -375,6 +381,13 @@ step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total"
 # --- Model calibration (Wu & Sitter 2001) ----------------------------------
 
 #' Specify a working model for a study variable y
+#'
+#' Declares the working model that [step_model_calibration()] fits for one study
+#' variable: a formula, a learner (a linear/`glm` model or a machine-learning
+#' method such as a regression tree, a random forest or gradient boosting) and,
+#' for `glm`, a family. It builds no model and touches no data -- it records the
+#' specification that the calibration step will fit on the sample and predict over
+#' the population.
 #'
 #' @param formula full formula, e.g. income ~ sex + age_g.
 #' @param engine "glm", "tree" (rpart), "forest" (ranger) or "boost" (xgboost).

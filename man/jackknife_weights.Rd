@@ -2,7 +2,7 @@
 % Please edit documentation in R/variance.R
 \name{jackknife_weights}
 \alias{jackknife_weights}
-\title{Delete-a-PSU jackknife replicate weights that re-apply the recipe}
+\title{Recipe-aware delete-a-PSU jackknife replicate weights}
 \usage{
 jackknife_weights(
   object,
@@ -39,10 +39,10 @@ stratum size (used by \code{jackknife_estimate()}), and the design metadata.
 }
 \description{
 Builds jackknife replicate weights by deleting one primary sampling unit
-(PSU) at a time and re-running the whole recipe on each replicate, so the
-replicate weights carry the variability of every adjustment (like
-\code{bootstrap_weights()}, but with the delete-a-PSU jackknife instead of a
-resampling bootstrap).
+(PSU) at a time and re-running the \strong{entire} weighting recipe on each
+replicate. This is the deterministic sibling of \code{\link[=bootstrap_weights]{bootstrap_weights()}}: same
+recipe-aware variance, no random number generation, and a replicate count
+fixed by the design rather than chosen by the analyst.
 }
 \details{
 For a stratum \eqn{h} with \eqn{n_h} PSUs, the replicate that deletes PSU

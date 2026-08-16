@@ -5,6 +5,12 @@
 
 #' Diagnostic plots for the weights
 #'
+#' Draws the weighting cascade: one histogram of the adjustment factor per step,
+#' plus a four-panel summary of the final weights, the cumulative factor, base
+#' against final weight, and the design effect by stage. Base graphics only, no
+#' dependencies. Use it after [prep()] to see *how* the weights moved, where
+#' [summary()][summary.prepped_weighting_spec()] tells you *by how much*.
+#'
 #' @param x a prepped object (output of prep()).
 #' @param type "all" (default): per-step adjustment-factor histograms PLUS the
 #'   summary panel (final weights, cumulative factor, base vs final, deff by
@@ -66,8 +72,10 @@ plot.prepped_weighting_spec <- function(x, type = c("all", "factors", "summary")
 
 #' Per-unit adjustment factors table
 #'
-#' Returns a data.frame with the weight at each stage and the factor of each
-#' step (stage weight / previous-stage weight), handy for custom plots.
+#' Unrolls the cascade into a `data.frame`: the weight of every unit at every
+#' stage, plus the factor each step applied to it. This is the tidy form of
+#' `prep()`'s `$history`, and the starting point for any diagnostic that
+#' [plot()][plot.prepped_weighting_spec()] does not already draw.
 #'
 #' @param object a prepped object (output of prep()).
 #' @return data.frame with one weight column per stage and one factor per step.

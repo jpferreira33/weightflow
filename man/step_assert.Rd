@@ -2,7 +2,7 @@
 % Please edit documentation in R/spec-steps-final.R
 \name{step_assert}
 \alias{step_assert}
-\title{Assert conditions on the weights at this point of the cascade}
+\title{Assert quality conditions on the weights}
 \usage{
 step_assert(
   spec,
@@ -30,9 +30,10 @@ recipe. The check is recorded only; it is evaluated when \code{prep()} is called
 and does not modify the weights.
 }
 \description{
-A checkpoint that does NOT change the weights; it verifies conditions and
-fails (error) or warns if they are not met. Useful to guard a production
-pipeline (tidymodels-style tests inside the recipe).
+A checkpoint that leaves the weights untouched and instead verifies that they
+meet quality thresholds at this point of the cascade, raising an error or a
+warning when they do not. Use it to stop a production pipeline before bad
+weights are published, in the spirit of a validation step inside a recipe.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

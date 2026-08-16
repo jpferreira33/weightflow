@@ -26,8 +26,11 @@ warnings, so they do not flood bootstrap/jackknife replicate fits.}
 a "prepped_weighting_spec" object.
 }
 \description{
-Walks the steps in the order they were added, starting from the base
-weights. Each step multiplies the current weight by its adjustment factor.
+Runs an inert \code{\link[=weighting_spec]{weighting_spec()}} recipe. Starting from the design base
+weights, \code{prep()} applies each step in the order it was piped, multiplying the
+current weight by that step's adjustment factor, and returns an object holding
+the weight at every stage, the per-step diagnostics and the quality alerts.
+This is the only function that computes weights.
 }
 \examples{
 rec <- weighting_spec(sample_survey, base_weights = pw) |>

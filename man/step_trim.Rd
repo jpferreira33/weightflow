@@ -2,7 +2,7 @@
 % Please edit documentation in R/spec-steps-calibrate.R
 \name{step_trim}
 \alias{step_trim}
-\title{Trim extreme weights}
+\title{Trim extreme weights against a ratio}
 \usage{
 step_trim(
   spec,
@@ -40,10 +40,12 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Caps weights above a limit and, optionally, redistributes the excess among
-the others to preserve the weighted total (Potter 1988, 1990; Liu et al.
-2004). Optional step that can be inserted anywhere in the recipe, even
-several times. Operates on the CURRENT weights at that point of the cascade.
+Caps the current weights at a multiple of a reference (each unit's base
+weight, the group median, or an absolute value) and, by default, redistributes
+the removed mass among the untrimmed units so the weighted total survives the
+trim. With \code{by}, the reference and the cap are computed separately within each
+subgroup. An optional step that can appear anywhere in the recipe, more than
+once.
 }
 \details{
 There is no standard threshold: \code{max_ratio} is an analyst decision, a

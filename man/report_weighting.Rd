@@ -2,7 +2,7 @@
 % Please edit documentation in R/report.R
 \name{report_weighting}
 \alias{report_weighting}
-\title{Build a nice HTML report of the weighting recipe}
+\title{Self-contained HTML quality report for a weighting recipe}
 \usage{
 report_weighting(
   object,
@@ -64,10 +64,13 @@ for each auxiliary, its weighted correlation with each \code{y} among respondent
 (invisibly) the path to the HTML file.
 }
 \description{
-Writes a self-contained HTML file (no dependencies, no server) showing the
-pipeline, the parameters requested at each step, the per-stage summary
-(n, sum, CV, Kish deff, effective n) and per-step diagnostics, and opens it
-in the browser.
+Writes a single, self-contained HTML file documenting how a prepped recipe
+turned the design base weights into the final weights: the cascade, the
+parameters requested at each step, the per-stage weight summary, the
+step-specific diagnostics (calibration, nonresponse, trimming), the fieldwork
+outcome rates and an audit trail. It is the deliverable to attach to a
+methodological report or a weighting annex: everything is inline, so the file
+opens offline and can be archived or emailed as one artifact.
 }
 \examples{
 fitted <- weighting_spec(sample_survey, base_weights = pw) |>

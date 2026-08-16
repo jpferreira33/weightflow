@@ -21,7 +21,12 @@ For tree/forest, regression vs classification is inferred from y.}
 a model specification list.
 }
 \description{
-Specify a working model for a study variable y
+Declares the working model that \code{\link[=step_model_calibration]{step_model_calibration()}} fits for one study
+variable: a formula, a learner (a linear/\code{glm} model or a machine-learning
+method such as a regression tree, a random forest or gradient boosting) and,
+for \code{glm}, a family. It builds no model and touches no data -- it records the
+specification that the calibration step will fit on the sample and predict over
+the population.
 }
 \examples{
 y_model(income ~ age + sex, engine = "glm")

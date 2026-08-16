@@ -27,11 +27,9 @@ A data frame with \code{estimate}, \code{se}, \code{ci_lower}, \code{ci_upper}.
 }
 \description{
 Applies a statistic to the point weights and to every delete-a-PSU replicate,
-and summarises it with the stratified jackknife (JKn) variance
-\deqn{\sum_h \frac{n_h - 1}{n_h} \sum_{i \in h} (\theta_{(hi)} - \bar\theta_h)^2,}
-where \eqn{\theta_{(hi)}} is the estimate with PSU \eqn{i} of stratum \eqn{h}
-deleted and \eqn{\bar\theta_h} the mean of those over the stratum. No finite
-population correction is applied.
+and returns the estimate with its stratified jackknife (JKn) standard error and
+a normal confidence interval. \code{jack_total()} and \code{jack_mean()} are the
+shortcuts for a weighted total and a weighted mean of one column.
 }
 \note{
 \code{jack_total()} / \code{jack_mean()} center the replicate deviations on the

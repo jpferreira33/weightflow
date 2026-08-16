@@ -2,7 +2,7 @@
 % Please edit documentation in R/variance.R
 \name{bootstrap_weights}
 \alias{bootstrap_weights}
-\title{Bootstrap replicate weights that re-apply the recipe}
+\title{Recipe-aware bootstrap replicate weights}
 \usage{
 bootstrap_weights(
   object,
@@ -50,10 +50,11 @@ An object of class \code{weightflow_boot} with the \code{replicates} matrix
 }
 \description{
 Builds bootstrap replicate weights by resampling primary sampling units
-(PSUs) with replacement within strata and re-running the whole recipe on
-each replicate. Because every adjustment (nonresponse, calibration, ...) is
-recomputed per replicate, the resulting replicate weights propagate the
-variability introduced by each weighting stage.
+(PSUs) with replacement within strata and re-running the \strong{entire} weighting
+recipe on each replicate -- every estimated stage (nonresponse, calibration,
+model calibration, trimming), not just one. Reach for this when those stages
+are estimated from the sample and you want their uncertainty inside the
+standard error, instead of conditioning on them as if they were known.
 }
 \details{
 The multiplier is the Rao-Wu rescaling bootstrap: within a stratum with

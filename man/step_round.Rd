@@ -20,9 +20,11 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Optional step, typically the last one (after calibration). Simple rounding
-("nearest") slightly breaks the calibrated totals; "preserve_total" uses the
-largest-remainder method to keep the exact total.
+Rounds the weights to a given number of decimals, either unit by unit
+(\code{"nearest"}) or with the largest-remainder method (\code{"preserve_total"}), which
+keeps the weighted total exactly. Typically the last step of a recipe, after
+calibration, when the weights have to be delivered as integers or with a fixed
+number of decimals.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

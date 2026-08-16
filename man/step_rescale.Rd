@@ -2,7 +2,7 @@
 % Please edit documentation in R/spec-steps-final.R
 \name{step_rescale}
 \alias{step_rescale}
-\title{Rescale (normalize) the weights}
+\title{Rescale the weights to a fixed sum}
 \usage{
 step_rescale(spec, to = c("n", "total"), total = NULL, by = NULL)
 }
@@ -22,7 +22,10 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Rescale (normalize) the weights
+Multiplies the active weights by a single constant so that they add up to a
+chosen total: either the number of active units (mean weight 1) or an arbitrary
+number. Use it as a presentation step, when the analysis wants normalized
+weights rather than population-scale ones.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

@@ -100,12 +100,11 @@ step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
 Adjusts the weights so that the weighted sample reproduces known population
-totals of auxiliary variables, while staying as close as possible to the input
-weights (Deville & Sarndal 1992). Supports raking (IPF on categorical
-margins), post-stratification, and linear/GREG calibration, optionally bounded
-(a logit distance or explicit bounds on the calibration factor). For linear
-calibration, \code{penalty} enables ridge (penalized) calibration, which relaxes
-the targets to control extreme weights when there are many auxiliaries.
+totals of auxiliary variables, while moving the incoming weights as little as
+possible. This is the calibration estimator of Deville and Sarndal (1992), with
+raking, post-stratification and linear (GREG) calibration, optional bounds on
+the adjustment factor, ridge relaxation of the targets, domain partitions and
+one-weight-per-cluster (integrative) calibration.
 }
 \examples{
 # Raking to population margins

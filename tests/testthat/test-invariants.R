@@ -41,7 +41,7 @@ test_that("raking reproduces every margin", {
 
 # ---- Weight-conserving / defining identities -------------------------------
 
-test_that("within-household selection multiplies the base weight by 1/prob", {
+test_that("within-cluster selection multiplies the base weight by 1/prob", {
   # applied on rows with a valid selection probability (as it is in the cascade,
   # after the drops); the identity is w_after = w_before / prob.
   d   <- data.frame(pw = c(10, 20, 30, 40), p_within = c(0.5, 0.25, 1, 0.1))

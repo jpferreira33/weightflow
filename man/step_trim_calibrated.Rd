@@ -58,39 +58,34 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Trims already-calibrated weights into an absolute interval \verb{[lower, upper]}
-\strong{while preserving the calibration totals} of \code{formula}. Unlike
-\code{step_trim_weights()} (which caps and then redistributes the trimmed mass, so
-the calibration constraints are broken), this is a bounded re-calibration: it
-finds the weights closest to the incoming ones that both lie in
-\verb{[lower, upper]} and still reproduce the totals the incoming weights achieve
-(the generalized exponential method of Folsom & Singh 2000). The
-absolute-weight bound is imposed as a per-unit
-factor bound \verb{w_new / w in [lower/w, upper/w]} on top of the incoming weights,
-using the range-restricted Euclidean distance (\code{calfun = "linear"}, the
-default) or the multiplicative one (\code{calfun = "raking"}). Weights
-inside the range that are not needed to restore the totals stay put; the
-out-of-range ones saturate at their bound and the rest move as little as
-possible. If the range is too tight to preserve every total, the totals that
-cannot be met are relaxed and a warning is raised.
+Pulls already-calibrated weights into an absolute interval \verb{[lower, upper]}
+without breaking the calibration: instead of capping and redistributing, it
+re-solves a bounded calibration whose targets are the totals the incoming
+weights already reproduce, optionally with its own band per subgroup through
+\code{by}. It is the only one of the three trimming steps that leaves the
+calibration totals intact.
 }
 \details{
+The absolute-weight bound is imposed as a per-unit factor bound
+\verb{w_new / w in [lower/w, upper/w]} on top of the incoming weights, using a
+bounded (range-restricted) calibration with the truncated Deville-Sarndal
+distances: the range-restricted Euclidean distance (\code{calfun = "linear"}, the
+default) or the multiplicative one (\code{calfun = "raking"}). Weights inside the
+range that are not needed to restore the totals stay put; the out-of-range ones
+saturate at their bound and the rest move as little as possible. If the range
+is too tight to preserve every total, the totals that cannot be met are relaxed
+and a warning is raised.
+
 This step is meant to run \strong{after} a \code{step_calibrate()}: it acts on the
 positive incoming weights and leaves dropped units (weight 0) alone.
 }
 \examples{
-# calibrate, then trim the calibrated weights into [50, 400] without breaking
-# the region/sex totals
+# calibrate, then trim the calibrated weights into [6, 13] without breaking
+# the region/sex totals (the calibrated weights of sample_survey live in ~[5.4, 14])
 weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region)),
                                 sex    = c(table(population$sex)))) |>
-  step_trim_calibrated(~ region + sex, lower = 50, upper = 400) |>
+  step_trim_calibrated(~ region + sex, lower = 6, upper = 13) |>
   prep()
-}
-\references{
-Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model for
-sampling weight calibration for extreme values, nonresponse, and
-poststratification. \emph{ASA Proceedings of the Section on Survey Research
-Methods}, 598-603.
 }

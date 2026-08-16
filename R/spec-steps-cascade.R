@@ -2,8 +2,10 @@
 
 #' Unknown-eligibility adjustment
 #'
-#' Redistributes the weight of unknown-eligibility cases among the
-#' known-eligibility cases, within the cells defined by `by`.
+#' Redistributes the weight of the cases whose eligibility was never resolved
+#' onto the resolved cases of the same adjustment cell, so the resolved units
+#' stand in for the unresolved share of the frame. Reach for it as the first step
+#' of the cascade, while the known-ineligible units are still in the data.
 #'
 #' @param spec a weighting_spec.
 #' @param unknown a 0/1 dummy column (1 = eligibility unknown) or any logical
@@ -43,13 +45,14 @@ step_unknown_eligibility <- function(spec, unknown, by = NULL, cluster = NULL) {
 
 # --- Step: within-household (sub)selection ---------------------------------
 
-#' Within-household selection adjustment
+#' Within-cluster selection adjustment
 #'
-#' When one (or a subsample) of the units is selected within each cluster, the
-#' selected unit represents all eligible units in the cluster, so the weight is
-#' multiplied by the inverse of the within-cluster selection probability. Apply
-#' it after the (cluster-level) eligibility adjustment and before the nonresponse
-#' adjustment.
+#' Undoes one stage of subsampling inside a cluster: when only some of the
+#' eligible units of a household (or dwelling, or area segment) were selected, the
+#' selected ones must represent the whole cluster, so their weight is multiplied
+#' by the inverse of the within-cluster selection probability. Apply it after the
+#' cluster-level eligibility and nonresponse steps and before the person-level
+#' nonresponse step.
 #'
 #' Despite the name, the cluster need not be a household and the unit need not be
 #' a person: the step is the generic within-cluster subsampling adjustment. In a
@@ -95,7 +98,7 @@ step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
   if (!is.null(p) && !is.null(k))
     stop("Provide only one of `prob` or `n_eligible`.")
   step <- structure(
-    list(label = "within-household selection", prob = p,
+    list(label = "within-cluster selection", prob = p,
          n_eligible = k, n_selected = m, env = parent.frame()),
     class = c("step_select_within", "weighting_step")
   )
@@ -106,9 +109,11 @@ step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
 
 #' Drop ineligible (out-of-scope) units
 #'
-#' Sets the weight of known-ineligible units to zero so they leave the cascade
-#' (excluded from every later step and from collect_weights). No redistribution
-#' is done.
+#' Sets the weight of the units known to be outside the target population to zero,
+#' so they leave the cascade and take no part in any later step or in
+#' [collect_weights()]. Their weight is discarded, not redistributed: the weight
+#' total is meant to fall by exactly the mass they carried. Use it once
+#' eligibility has been resolved, immediately after [step_unknown_eligibility()].
 #'
 #' Apply it AFTER step_unknown_eligibility: ineligibles must be present and NOT
 #' flagged as unknown during that step, so they take part in the
@@ -140,16 +145,12 @@ step_drop_ineligible <- function(spec, ineligible) {
 
 #' Nonresponse adjustment
 #'
-#' Inflates the weights of respondents to represent the nonrespondents, under the
-#' assumption that response is ignorable given the information used. The response
-#' propensity can be estimated by weighting classes (cells), by a model
-#' ("propensity"), with engines ranging from logistic regression to machine
-#' learning (regression tree, random forest, gradient boosting), or the
-#' adjustment can be made by calibrating the respondents to auxiliary totals
-#' ("calibration", the two-phase / Sarndal-Lundstrom approach). Optional
-#' K-fold cross-fitting estimates the propensity out-of-sample to avoid the
-#' overfitting that flexible engines can introduce. The adjustment can be applied
-#' at the person or, via `cluster`, the household level.
+#' Inflates the weights of the eligible respondents so they also represent the
+#' eligible nonrespondents, under the assumption that response is ignorable given
+#' the information used. Three estimators are available -- weighting classes, a
+#' response-propensity model (four engines, with optional cross-fitting), and
+#' calibration of the respondents to auxiliary totals -- at the unit level or,
+#' through `cluster`, at a coarser level (e.g. the household).
 #'
 #' @param spec a weighting_spec.
 #' @param respondent a 0/1 dummy column (1 = responded) or any logical condition

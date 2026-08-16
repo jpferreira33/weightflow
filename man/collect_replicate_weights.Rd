@@ -26,15 +26,11 @@ replicate. The number of replicates is in attribute \code{"R"}, and the
 replication design in attributes \code{"type"}, \code{"scale"} and \code{"rscales"}.
 }
 \description{
-Returns the data with the point weight and the replicate weights as columns,
-so it can be fed directly to \code{srvyr::as_survey_rep()} (or
-\code{survey::svrepdesign()}). Works for both a bootstrap (\code{weightflow_boot}) and a
-delete-a-PSU jackknife (\code{weightflow_jack}). Replicate columns are full
-(combined) weights, so use \code{combined.weights = TRUE} and \code{mse = TRUE}; the
-correct \code{type}, \code{scale} and \code{rscales} for the object are attached as
-attributes (\code{"type"}, \code{"scale"}, \code{"rscales"}) -- for a bootstrap
-\code{scale = 1 / R}, \code{rscales = 1}; for the jackknife \code{scale = 1},
-\code{rscales = (n_h - 1)/n_h} per replicate.
+Returns the data with the point weight and every replicate weight as ordinary
+columns, plus the replication design as attributes. This is the form
+\code{srvyr::as_survey_rep()} and \code{survey::svrepdesign()} expect, and the form to
+write out when the analysis continues in another session, another script or
+another language.
 }
 \examples{
 spec <- weighting_spec(sample_survey, base_weights = pw) |>

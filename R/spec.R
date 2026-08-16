@@ -2,12 +2,16 @@
 
 # ---------------------------------------------------------------------------
 # weightflow: declarative API to build survey weights through hierarchical
-# stages. It computes weights only; it does NOT compute variances.
+# stages, with recipe-aware bootstrap / jackknife variances on top.
 # ---------------------------------------------------------------------------
 
 #' Start a weighting specification
 #'
-#' Creates an inert recipe object. Nothing is computed until prep() is called.
+#' Opens a weighting recipe on a sample and its design base weights. The object
+#' it returns is inert: it holds the data, the name of the base-weight column and
+#' an empty list of steps, and computes nothing. Every `step_*()` function takes
+#' such an object and returns it with one more step appended; [prep()] estimates
+#' the result.
 #'
 #' @param data data.frame with the sample units (one row per case).
 #' @param base_weights unquoted name of the design base-weight column.

@@ -930,8 +930,8 @@
         fw <- as.numeric(object$final_weight)[rec$idx[ok]]; tolc <- 1e-6 * pmax(abs(cap), 1)
         exceed <- sum(is.finite(cap) & is.finite(fw) & fw > cap + tolc)
         if (exceed > 0) undone <- sprintf("<p class='note'>%s</p>", .t(
-          sprintf("%s final weight(s) exceed the cap applied here: a later calibration re-inflated them above this trim. Use step_trim_calibrated() (Folsom-Singh range-restricted calibration) or trim after calibrating.", nf(exceed)),
-          sprintf("%s peso(s) final(es) superan la cota aplicada aqu\u00ed: una calibraci\u00f3n posterior los reinfl\u00f3 por encima de este recorte. Us\u00e1 step_trim_calibrated() (calibraci\u00f3n de rango restringido Folsom-Singh) o record\u00e1 despu\u00e9s de calibrar.", nf(exceed)), lang))
+          sprintf("%s final weight(s) exceed the cap applied here: a later calibration re-inflated them above this trim. Use step_trim_calibrated() (range-restricted, totals-preserving calibration) or trim after calibrating.", nf(exceed)),
+          sprintf("%s peso(s) final(es) superan la cota aplicada aqu\u00ed: una calibraci\u00f3n posterior los reinfl\u00f3 por encima de este recorte. Us\u00e1 step_trim_calibrated() (calibraci\u00f3n de rango restringido que preserva los totales) o record\u00e1 despu\u00e9s de calibrar.", nf(exceed)), lang))
       }
     }
   }

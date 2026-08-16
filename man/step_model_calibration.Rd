@@ -2,7 +2,7 @@
 % Please edit documentation in R/spec-steps-final.R
 \name{step_model_calibration}
 \alias{step_model_calibration}
-\title{Model calibration (model-assisted, Wu & Sitter 2001)}
+\title{Model-assisted calibration (Wu and Sitter 2001)}
 \usage{
 step_model_calibration(
   spec,
@@ -70,10 +70,14 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Fits a working model for each study variable y, predicts over the population,
-and calibrates the weights so that the sample total of each prediction equals
-its population total (model-assisted efficiency). It also calibrates to the X
-totals (consistency with the auxiliary controls).
+Fits a working model for each study variable, predicts it over the whole
+population, and calibrates the weights so that the sample total of every
+prediction matches its population total, on top of the usual auxiliary totals
+-- which may come from the population frame itself or from an external source
+(a census table, an administrative register). Reach for it when you hold, or
+can supply, those control totals and the outcome is well predicted by the
+auxiliaries: the predictions act as extra, highly relevant controls and buy
+precision that calibrating on \code{x} alone cannot.
 }
 \details{
 Requires COMPLETE auxiliary information: a data.frame \code{population} with the
@@ -127,4 +131,10 @@ fit_hh <- weighting_spec(sample_survey, base_weights = pw) |>
 w <- fit_hh$final_weight
 max(tapply(w[w > 0], sample_survey$household_id[w > 0],
            function(x) diff(range(x))))    # 0: one weight per household
+}
+\references{
+Wu, C. and Sitter, R. R. (2001). A model-calibration approach to
+using complete auxiliary information from survey data. \emph{Journal of the
+American Statistical Association}, 96(453), 185-193.
+\doi{10.1198/016214501750333054}.
 }

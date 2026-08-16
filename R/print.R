@@ -40,6 +40,12 @@ print.prepped_weighting_spec <- function(x, ...) {
 
 #' Detailed per-step diagnostics
 #'
+#' Prints the full audit of an estimated recipe: the stage-by-stage evolution of
+#' the weights, then one block per step with that step's own diagnostics table and
+#' the design effect before and after it, and finally the R-indicator when the
+#' recipe adjusted for nonresponse. Where `print()` answers "what is in this
+#' recipe?", `summary()` answers "what did each step do, and what did it cost?".
+#'
 #' @param object a prepped object (output of prep()).
 #' @param ... ignored.
 #' @return (invisibly) the prepped object.

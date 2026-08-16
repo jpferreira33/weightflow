@@ -21,7 +21,11 @@ Invisibly, the prepped object \code{x}. Called for its side effect of
 drawing the diagnostic plots described above.
 }
 \description{
-Diagnostic plots for the weights
+Draws the weighting cascade: one histogram of the adjustment factor per step,
+plus a four-panel summary of the final weights, the cumulative factor, base
+against final weight, and the design effect by stage. Base graphics only, no
+dependencies. Use it after \code{\link[=prep]{prep()}} to see \emph{how} the weights moved, where
+\link[=summary.prepped_weighting_spec]{summary()} tells you \emph{by how much}.
 }
 \examples{
 fitted <- weighting_spec(sample_survey, base_weights = pw) |>

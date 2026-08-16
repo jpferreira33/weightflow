@@ -2,7 +2,7 @@
 % Please edit documentation in R/spec-steps-cascade.R
 \name{step_select_within}
 \alias{step_select_within}
-\title{Within-household selection adjustment}
+\title{Within-cluster selection adjustment}
 \usage{
 step_select_within(spec, prob = NULL, n_eligible = NULL, n_selected = NULL)
 }
@@ -30,11 +30,12 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-When one (or a subsample) of the units is selected within each cluster, the
-selected unit represents all eligible units in the cluster, so the weight is
-multiplied by the inverse of the within-cluster selection probability. Apply
-it after the (cluster-level) eligibility adjustment and before the nonresponse
-adjustment.
+Undoes one stage of subsampling inside a cluster: when only some of the
+eligible units of a household (or dwelling, or area segment) were selected, the
+selected ones must represent the whole cluster, so their weight is multiplied
+by the inverse of the within-cluster selection probability. Apply it after the
+cluster-level eligibility and nonresponse steps and before the person-level
+nonresponse step.
 }
 \details{
 Despite the name, the cluster need not be a household and the unit need not be

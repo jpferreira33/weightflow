@@ -1,14 +1,12 @@
 #' weightflow: declarative survey weighting
 #'
-#' Build survey weights from design base weights by chaining hierarchical
-#' adjustments (unknown eligibility, nonresponse, trimming, calibration,
-#' rounding, rescaling, assertions) through a declarative, pipeable,
-#' tidymodels-style API. For inference it provides recipe-aware bootstrap and
-#' delete-a-PSU jackknife replicate weights (`bootstrap_weights()`,
-#' `jackknife_weights()`), which re-run the whole cascade on each replicate so the
-#' variance of the adjustments is captured; the weights and replicates also export
-#' to the 'survey' / 'srvyr' packages (`as_svydesign()`, `as_svrepdesign()`,
-#' `collect_replicate_weights()`).
+#' Builds analysis weights from design base weights by declaring the
+#' weighting process as an ordered recipe of explicit adjustments — unknown
+#' eligibility, within-cluster selection (e.g. within household), nonresponse,
+#' calibration, trimming, rounding, rescaling, assertions — and then estimating
+#' that recipe in one call. The package also produces replicate weights and
+#' design-based standard errors that carry the variability of the whole cascade,
+#' so a weighting project no longer has to end at the weights.
 #'
 #' Start with `weighting_spec()`, add `step_*()` adjustments, estimate the
 #' cascade with `prep()`, and extract the weights with `collect_weights()`.

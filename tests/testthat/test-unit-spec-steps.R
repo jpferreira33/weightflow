@@ -63,7 +63,7 @@ test_that("step_select_within requires exactly one of prob / n_eligible", {
 test_that("step_select_within records the captured expressions", {
   s <- step_select_within(sp(), n_eligible = age, n_selected = 2)
   st <- s$steps[[1]]
-  expect_equal(st$label, "within-household selection")
+  expect_equal(st$label, "within-cluster selection")
   expect_null(st$prob)
   expect_equal(deparse(st$n_eligible), "age")
 })

@@ -138,16 +138,12 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Inflates the weights of respondents to represent the nonrespondents, under the
-assumption that response is ignorable given the information used. The response
-propensity can be estimated by weighting classes (cells), by a model
-("propensity"), with engines ranging from logistic regression to machine
-learning (regression tree, random forest, gradient boosting), or the
-adjustment can be made by calibrating the respondents to auxiliary totals
-("calibration", the two-phase / Sarndal-Lundstrom approach). Optional
-K-fold cross-fitting estimates the propensity out-of-sample to avoid the
-overfitting that flexible engines can introduce. The adjustment can be applied
-at the person or, via \code{cluster}, the household level.
+Inflates the weights of the eligible respondents so they also represent the
+eligible nonrespondents, under the assumption that response is ignorable given
+the information used. Three estimators are available -- weighting classes, a
+response-propensity model (four engines, with optional cross-fitting), and
+calibration of the respondents to auxiliary totals -- at the unit level or,
+through \code{cluster}, at a coarser level (e.g. the household).
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

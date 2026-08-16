@@ -5,8 +5,11 @@
 
 #' Estimate the weighting cascade
 #'
-#' Walks the steps in the order they were added, starting from the base
-#' weights. Each step multiplies the current weight by its adjustment factor.
+#' Runs an inert [weighting_spec()] recipe. Starting from the design base
+#' weights, `prep()` applies each step in the order it was piped, multiplying the
+#' current weight by that step's adjustment factor, and returns an object holding
+#' the weight at every stage, the per-step diagnostics and the quality alerts.
+#' This is the only function that computes weights.
 #'
 #' @param spec a weighting_spec.
 #' @param min_cell_n integer. Minimum number of cases per adjustment cell
@@ -322,6 +325,11 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
 }
 
 #' Extract the data with the computed weights
+#'
+#' Returns the sample as a `data.frame` with the final analysis weight attached
+#' as a column, ready to hand to an estimation routine. By default the units that
+#' left the cascade (weight 0) are dropped, so what comes back is the responding,
+#' in-scope sample and its weights.
 #'
 #' @param object a prepped object (output of prep()).
 #' @param drop_zero logical. If TRUE, drops rows with final weight 0

@@ -50,7 +50,7 @@
   if (inherits(step, "step_drop_ineligible"))
     return(.t("removal of ineligible units", "eliminaci\u00f3n de unidades no elegibles", lang))
   if (inherits(step, "step_select_within"))
-    return(.t("within-household selection", "selecci\u00f3n dentro del hogar", lang))
+    return(.t("within-cluster selection", "selecci\u00f3n dentro del conglomerado", lang))
   if (inherits(step, "step_nonresponse")) {
     m <- step$method %||% "weighting_class"
     if (identical(m, "calibration")) {
@@ -105,8 +105,8 @@
     txt <- .t("Units identified as out of scope (ineligible) were removed from the cascade, setting their weight to zero so they do not contribute to any later estimate.",
               "Las unidades identificadas como fuera del universo (no elegibles) se eliminaron de la cascada, poniendo su peso en cero para que no contribuyan a ninguna estimaci\u00f3n posterior.", lang)
   } else if (inherits(step, "step_select_within")) {
-    txt <- .t("A within-household selection adjustment was applied: the selected person's weight was multiplied by the inverse of its within-household selection probability, so it represents all the eligible members of the household.",
-              "Se aplic\u00f3 un ajuste por selecci\u00f3n dentro del hogar: el peso de la persona seleccionada se multiplic\u00f3 por el inverso de su probabilidad de selecci\u00f3n intra-hogar, de modo que representa a todos los miembros elegibles del hogar.", lang)
+    txt <- .t("A within-cluster selection adjustment was applied: the selected unit's weight was multiplied by the inverse of its within-cluster selection probability, so it represents all the eligible units of the cluster (e.g. the household).",
+              "Se aplic\u00f3 un ajuste por selecci\u00f3n dentro del conglomerado: el peso de la unidad seleccionada se multiplic\u00f3 por el inverso de su probabilidad de selecci\u00f3n intra-conglomerado, de modo que representa a todas las unidades elegibles del conglomerado (p. ej. el hogar).", lang)
   } else if (inherits(step, "step_nonresponse")) {
     m <- step$method %||% "weighting_class"
     if (m == "weighting_class") {

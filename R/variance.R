@@ -6,13 +6,14 @@
 ##   2. as_svydesign() / as_svrepdesign(): hand the weights to the 'survey'
 ##      package (ultimate-cluster linearization, or the replicate weights above).
 
-#' Bootstrap replicate weights that re-apply the recipe
+#' Recipe-aware bootstrap replicate weights
 #'
 #' Builds bootstrap replicate weights by resampling primary sampling units
-#' (PSUs) with replacement within strata and re-running the whole recipe on
-#' each replicate. Because every adjustment (nonresponse, calibration, ...) is
-#' recomputed per replicate, the resulting replicate weights propagate the
-#' variability introduced by each weighting stage.
+#' (PSUs) with replacement within strata and re-running the **entire** weighting
+#' recipe on each replicate -- every estimated stage (nonresponse, calibration,
+#' model calibration, trimming), not just one. Reach for this when those stages
+#' are estimated from the sample and you want their uncertainty inside the
+#' standard error, instead of conditioning on them as if they were known.
 #'
 #' The multiplier is the Rao-Wu rescaling bootstrap: within a stratum with
 #' \eqn{n} PSUs, \eqn{m} PSUs are drawn with replacement (default
@@ -202,6 +203,16 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
                  psu, sum(is.na(data[[psu]]))), call. = FALSE)
 }
 
+#' Print a bootstrap replicate-weight object
+#'
+#' Compact one-screen summary of a `weightflow_boot` object: how many replicates
+#' were requested, how many units are in the data, how many of them are still
+#' active (final weight above zero), and which columns defined the resampling
+#' design.
+#'
+#' @param x a `weightflow_boot` object.
+#' @param ... ignored.
+#' @return (invisibly) the object.
 #' @export
 print.weightflow_boot <- function(x, ...) {
   cat("<weightflow bootstrap>\n")
@@ -214,9 +225,10 @@ print.weightflow_boot <- function(x, ...) {
 
 #' Bootstrap estimate, standard error and confidence interval
 #'
-#' Applies a statistic to the point weights and to every replicate, and
-#' summarises it with the bootstrap variance \eqn{(1/B)\sum(\theta^*_b -
-#' \hat\theta)^2}.
+#' Applies a statistic to the point weights and to every bootstrap replicate, and
+#' returns the estimate with its bootstrap standard error and a normal confidence
+#' interval. `boot_total()` and `boot_mean()` are the two shortcuts you will use
+#' most: a weighted total and a weighted mean of one column.
 #'
 #' @param boot a `weightflow_boot` object.
 #' @param statistic a function `function(w, data)` returning a numeric scalar
@@ -268,13 +280,13 @@ boot_mean <- function(boot, variable) {
 # Delete-a-PSU jackknife (recipe-aware)
 # ==========================================================================
 
-#' Delete-a-PSU jackknife replicate weights that re-apply the recipe
+#' Recipe-aware delete-a-PSU jackknife replicate weights
 #'
 #' Builds jackknife replicate weights by deleting one primary sampling unit
-#' (PSU) at a time and re-running the whole recipe on each replicate, so the
-#' replicate weights carry the variability of every adjustment (like
-#' `bootstrap_weights()`, but with the delete-a-PSU jackknife instead of a
-#' resampling bootstrap).
+#' (PSU) at a time and re-running the **entire** weighting recipe on each
+#' replicate. This is the deterministic sibling of [bootstrap_weights()]: same
+#' recipe-aware variance, no random number generation, and a replicate count
+#' fixed by the design rather than chosen by the analyst.
 #'
 #' For a stratum \eqn{h} with \eqn{n_h} PSUs, the replicate that deletes PSU
 #' \eqn{i} zeros the base weight of that PSU and inflates the remaining PSUs of
@@ -383,6 +395,16 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
             class = "weightflow_jack")
 }
 
+#' Print a jackknife replicate-weight object
+#'
+#' Compact one-screen summary of a `weightflow_jack` object: how many
+#' delete-a-PSU replicates were built, how many units are in the data, how many of
+#' them are still active (final weight above zero), and which columns defined the
+#' deletion design.
+#'
+#' @param x a `weightflow_jack` object.
+#' @param ... ignored.
+#' @return (invisibly) the object.
 #' @export
 print.weightflow_jack <- function(x, ...) {
   cat("<weightflow jackknife>\n")
@@ -396,11 +418,9 @@ print.weightflow_jack <- function(x, ...) {
 #' Jackknife estimate, standard error and confidence interval
 #'
 #' Applies a statistic to the point weights and to every delete-a-PSU replicate,
-#' and summarises it with the stratified jackknife (JKn) variance
-#' \deqn{\sum_h \frac{n_h - 1}{n_h} \sum_{i \in h} (\theta_{(hi)} - \bar\theta_h)^2,}
-#' where \eqn{\theta_{(hi)}} is the estimate with PSU \eqn{i} of stratum \eqn{h}
-#' deleted and \eqn{\bar\theta_h} the mean of those over the stratum. No finite
-#' population correction is applied.
+#' and returns the estimate with its stratified jackknife (JKn) standard error and
+#' a normal confidence interval. `jack_total()` and `jack_mean()` are the
+#' shortcuts for a weighted total and a weighted mean of one column.
 #'
 #' @param jack a `weightflow_jack` object.
 #' @param statistic a function `function(w, data)` returning a numeric scalar (or
@@ -479,12 +499,12 @@ jack_mean <- function(jack, variable) {
 
 #' Export weightflow weights to a survey design
 #'
-#' `as_svydesign()` builds a linearization (ultimate-cluster) design from a
-#' prepped recipe, treating the final weights as fixed; `as_svrepdesign()` builds
-#' a replicate-weights design from a bootstrap (`weightflow_boot`) or jackknife
-#' (`weightflow_jack`) object. Both require the 'survey' package. With the
-#' replicate-weights design you can estimate any statistic for any domain
-#' (`svytotal`, `svymean`, `svyratio`, `svyby`, ...).
+#' `as_svydesign()` builds a linearization (ultimate-cluster) `survey.design`
+#' from a prepped recipe, treating the final weights as fixed constants.
+#' `as_svrepdesign()` builds a replicate-weights `svyrep.design` from a
+#' [bootstrap_weights()] or [jackknife_weights()] object. Both are the bridge to
+#' the `survey` package, and therefore to `svytotal()`, `svymean()`, `svyratio()`,
+#' `svyby()`, `svyglm()` and domain estimation generally.
 #'
 #' Only `as_svrepdesign()` propagates the variability of the weighting adjustments
 #' (nonresponse, calibration, ...), because each replicate re-runs the whole
@@ -561,15 +581,11 @@ as_svrepdesign <- function(object, ...) {
 
 #' Collect replicate weights into a data frame ready for srvyr
 #'
-#' Returns the data with the point weight and the replicate weights as columns,
-#' so it can be fed directly to `srvyr::as_survey_rep()` (or
-#' `survey::svrepdesign()`). Works for both a bootstrap (`weightflow_boot`) and a
-#' delete-a-PSU jackknife (`weightflow_jack`). Replicate columns are full
-#' (combined) weights, so use `combined.weights = TRUE` and `mse = TRUE`; the
-#' correct `type`, `scale` and `rscales` for the object are attached as
-#' attributes (`"type"`, `"scale"`, `"rscales"`) -- for a bootstrap
-#' `scale = 1 / R`, `rscales = 1`; for the jackknife `scale = 1`,
-#' `rscales = (n_h - 1)/n_h` per replicate.
+#' Returns the data with the point weight and every replicate weight as ordinary
+#' columns, plus the replication design as attributes. This is the form
+#' `srvyr::as_survey_rep()` and `survey::svrepdesign()` expect, and the form to
+#' write out when the analysis continues in another session, another script or
+#' another language.
 #'
 #' @param object a `weightflow_boot` or `weightflow_jack` object.
 #' @param weight_name name of the point-weight column to add.

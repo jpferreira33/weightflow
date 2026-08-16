@@ -2,7 +2,7 @@
 % Please edit documentation in R/spec-steps-final.R
 \name{step_trim_weights}
 \alias{step_trim_weights}
-\title{Automatic weight trimming (survey-style)}
+\title{Automatic weight trimming to an absolute band}
 \usage{
 step_trim_weights(
   spec,
@@ -44,14 +44,12 @@ The input \code{weighting_spec} with this step appended to its recipe. The
 step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
-Caps weights into \verb{[lower, upper]} and redistributes the change among the
-untrimmed units to preserve the total. With \code{redistribute = "uniform"} the
-change is shared equally among the untrimmed units (and cases already trimmed
-are never reused), exactly mirroring survey::trimWeights(); the default
-\code{"proportional"} shares it in proportion to the untrimmed weights, keeping
-their relative sizes. By default no weight may fall below 1, and the upper
-cap is chosen by an automatic rule: the Tukey far-out fence (Q3 + 3*IQR) or,
-with \code{method = "potter"}, Potter's MSE-optimal cutoff.
+Caps the weights into an absolute interval \verb{[lower, upper]} and hands the
+removed mass back to the units that were not capped, so the weighted total is
+preserved. This is the step to use when you have \strong{not calibrated yet} (or
+will calibrate afterwards) and you want the cutoff chosen from the data rather
+than argued for: with \code{upper = NULL} it picks one by the Tukey far-out fence or
+by Potter's MSE rule.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>
