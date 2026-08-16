@@ -44,7 +44,16 @@
   propensity; the trimming narrative reports mass loss honestly instead
   of claiming preservation; numeric categories in tidy tables display in
   natural order; the condition number is shown in plain language;
-  user-supplied names are HTML-escaped.
+  user-supplied names are HTML-escaped. A non-finite design effect –
+  `Inf` from an overflowed weight sum or `NaN` from all-zero base
+  weights, both reachable after a successful
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+  – no longer aborts the report with “missing value where TRUE/FALSE
+  needed”; the impact table shows a dash and the design-effect line
+  explains it could not be computed. The HTML is written as explicit
+  UTF-8 bytes, so accents and symbols in user metadata survive on a
+  non-UTF-8 locale (e.g. Windows latin1), including in English-language
+  reports.
 - **Weighting correctness.** Empty adjustment cells are set to weight 0;
   `NA` auxiliaries error; `lonely_psu = "collapse"` nests PSU ids within
   their stratum; `step_trim(reference = "median", by = )` uses each
@@ -105,6 +114,22 @@
   silently dropped or coercing the weight matrix to character; and the
   stratified jackknife rescales its per-stratum contribution when some
   delete-a-PSU replicates fail, so the variance is no longer biased low.
+  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
+  now errors instead of producing duplicate column names when the data
+  already carries a column matching the replicate prefix (e.g. a stray
+  `rep_1`), which used to make the documented
+  `srvyr::as_survey_rep(starts_with("rep_"))` flow silently pick the
+  wrong column, and warns (like
+  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md))
+  when its point-weight column overwrites an existing one.
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+  no longer reports success when every replicate failed: an all-`NA`
+  replicate set raises a point-of-attention alert, the “Recipe-aware”
+  row reads “not applicable”, the summary line says the replicate
+  weights failed, and the lonely-PSU advice is corrected – a single-PSU
+  stratum contributes no variance under *either* the rescaling bootstrap
+  or the delete-a-PSU jackknife (the lone PSU cannot be deleted), so it
+  points to collapsing strata rather than switching method.
 - **Trimming and diagnostics.** `step_trim_weights(lower = NULL)` means
   “no floor” instead of erroring; the Potter MSE curve is drawn again,
   with a readable, compactly-labelled axis;
