@@ -55,6 +55,609 @@ spec <- weighting_spec(dat, base_weights = pw) |>
 
 boot <- bootstrap_weights(spec, replicates = 200, strata = "region",
                           psu = "psu", seed = 2024, progress = FALSE)
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
 boot
 #> <weightflow bootstrap>
 #>   replicates : 200
@@ -129,6 +732,9 @@ It is fast, but treats the calibration as fixed.
 ``` r
 
 fitted <- prep(spec)
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
 des <- as_svydesign(fitted, ids = "psu", strata = "region")
 survey::svymean(~income, des, na.rm = TRUE)
 #>         mean     SE
@@ -183,6 +789,153 @@ the unstratified JK1 follows from `strata = NULL`.
 ``` r
 
 jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
 jk
 #> <weightflow jackknife>
 #>   replicates : 48 (delete-a-PSU)

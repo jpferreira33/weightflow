@@ -25,10 +25,12 @@ bootstrap so the report can also document the variance design.
 totals_r <- colSums(model.matrix(~ region, population))
 
 spec <- weighting_spec(sample_survey, base_weights = pw) |>
-  step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
   step_nonresponse(respondent = responded, method = "propensity",
                    engine = "tree", formula = ~ region + sex + age,
-                   crossfit = 5, crossfit_seed = 1, num_classes = NULL) |>
+                   crossfit = 5, crossfit_seed = 1, num_classes = NULL,
+                   cluster = "household_id") |>
   step_calibrate(method = "linear", formula = ~ region, totals = totals_r,
                  cluster = "household_id", equal_within_cluster = TRUE)
 
