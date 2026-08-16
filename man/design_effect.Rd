@@ -7,7 +7,8 @@
 design_effect(w)
 }
 \arguments{
-\item{w}{vector of weights (zeros are dropped).}
+\item{w}{vector of weights (zeros are dropped; negative weights are kept
+active, but see the note above on the design effect).}
 }
 \value{
 list with deff, n_eff, cv and n.
@@ -18,6 +19,17 @@ Computes Kish's design effect due to unequal weighting,
 size \eqn{n_\mathrm{eff} = m / deff}{n_eff = m / deff} it implies. It is the standard one-number
 summary of what a weighting cascade cost in precision, and it is what the
 \code{summary()} and \code{plot()} methods of a prepped recipe report step by step.
+}
+\details{
+Zero weights are dropped (they are the "dropped-unit" marker); negative weights
+-- a valid but unusual output of unbounded linear/GREG calibration -- are kept
+active, so the count \code{n} matches \code{\link[=collect_weights]{collect_weights()}}. Be aware, however, that
+the Kish formula assumes non-negative weights: a negative weight shrinks
+\eqn{\sum w}{sum(w)} and enlarges \eqn{\sum w^2}{sum(w^2)} at once, so with
+negatives present \code{deff} is inflated and no longer interpretable as an
+effective-sample summary. \code{prep()} raises an alert when a calibration produces
+negative weights; prefer \code{bounds} to keep the factor positive if you need the
+design effect to be meaningful.
 }
 \examples{
 design_effect(sample_survey$pw)

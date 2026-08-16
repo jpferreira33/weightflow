@@ -1,17 +1,15 @@
 ## Submission
 
-This is an update to weightflow (0.2.0 is currently on CRAN, published
-2026-07-22).
+This is a maintenance and feature update to weightflow (version 1.1.0).
 
-It is the 1.0.0 milestone: the package is now feature-complete for its intended
-scope (the full weighting cascade, machine-learning response propensities,
-range-restricted / trimmed calibration, recipe-aware bootstrap and jackknife
-variance, and the self-contained HTML quality report). I brought this milestone
-forward so that a version reference in upcoming teaching material and
-documentation points to a stable, feature-complete release. From here on updates
-will be infrequent and limited to bug fixes and minor improvements, in line with
-the CRAN policy on release frequency. I apologise for the short interval since
-0.2.0 and am happy to wait if you would prefer.
+Since the previous release it adds a diagnostics report suite, honest
+recipe-aware variance for machine-learning adjustments, jackknife export in
+`collect_replicate_weights()`, and per-subgroup trimming; it also fixes a large
+batch of edge-case bugs (bad inputs now error instead of corrupting silently,
+honest replicate variance and calibration totals, consistent handling of
+negative calibration weights) and reworks the help pages (every function's title
+and description, estimator formulas in `@details`, and two new documented
+methods). NEWS.md has the full list.
 
 ## R CMD check results
 
@@ -19,13 +17,13 @@ the CRAN policy on release frequency. I apologise for the short interval since
 
 Checked clean locally and on win-builder (R release and R-devel).
 
-* If a spell check flags 'Ferreira' or 'Nonresponse' in DESCRIPTION, these are
-  false positives: an author surname and a standard survey-methodology term.
+* If a spell check flags an author surname (e.g. 'Sarndal') or a standard
+  survey-methodology term in DESCRIPTION, these are false positives.
 
 ## Test environments
 
 * local: macOS, R release
-* win-builder: R release and R-devel
+* win-builder: R release and R-devel (R Under development)
 
 ## Downstream dependencies
 

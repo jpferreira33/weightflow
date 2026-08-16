@@ -303,13 +303,13 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #' @param maxit integer. Maximum iterations for the bounded solver.
 #' @param tol numeric. Convergence tolerance for the bounded solver.
 #' @examples
-#' # calibrate, then trim the calibrated weights into [6, 13] without breaking
+#' # calibrate, then trim the calibrated weights into [5.5, 13.5] without breaking
 #' # the region/sex totals (the calibrated weights of sample_survey live in ~[5.4, 14])
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_calibrate(method = "raking",
 #'                  margins = list(region = c(table(population$region)),
 #'                                 sex    = c(table(population$sex)))) |>
-#'   step_trim_calibrated(~ region + sex, lower = 6, upper = 13) |>
+#'   step_trim_calibrated(~ region + sex, lower = 5.5, upper = 13.5) |>
 #'   prep()
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.

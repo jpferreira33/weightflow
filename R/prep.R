@@ -235,8 +235,10 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     if (nneg > 0L)
       msgs <- c(msgs, sprintf(
         paste0("%d unit(s) received a NEGATIVE calibration weight. They remain active (counted ",
-               "in the totals, the design effect and collect_weights()), but a negative weight ",
-               "is rarely intended; set `bounds` to keep the calibration factor positive."),
+               "in the totals and collect_weights()), but a negative weight is rarely intended; ",
+               "set `bounds` to keep the calibration factor positive. Note that the Kish design ",
+               "effect assumes non-negative weights, so with negatives present its value is ",
+               "inflated and not interpretable as an effective-sample summary."),
         nneg))
   }
 

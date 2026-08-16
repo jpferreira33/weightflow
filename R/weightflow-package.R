@@ -1,9 +1,9 @@
 #' weightflow: declarative survey weighting
 #'
 #' Builds analysis weights from design base weights by declaring the
-#' weighting process as an ordered recipe of explicit adjustments — unknown
+#' weighting process as an ordered recipe of explicit adjustments -- unknown
 #' eligibility, within-cluster selection (e.g. within household), nonresponse,
-#' calibration, trimming, rounding, rescaling, assertions — and then estimating
+#' calibration, trimming, rounding, rescaling, assertions -- and then estimating
 #' that recipe in one call. The package also produces replicate weights and
 #' design-based standard errors that carry the variability of the whole cascade,
 #' so a weighting project no longer has to end at the weights.

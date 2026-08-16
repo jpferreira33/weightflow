@@ -15,14 +15,14 @@ Description: Builds survey analysis weights by declaring the whole weighting
     nonresponse adjustment by weighting classes, by response-propensity models
     (logistic regression or machine-learning learners such as trees, random
     forests and gradient boosting, with optional cross-fitting) or by two-phase
-    calibration following Sarndal and Lundstrom (2005) <doi:10.1002/0470011351>,
-    calibration to known population totals following Deville and Sarndal (1992)
+    calibration for nonresponse, calibration to known population totals
+    following Deville and Sarndal (1992)
     <doi:10.2307/2290268>, optional model-assisted (model) calibration to
     auxiliary predictions following Wu and Sitter (2001)
     <doi:10.1198/016214501750333054>, and range-restricted
     trimming that bounds the weights while preserving the calibration totals.
-    Variances come from a recipe-aware bootstrap and a delete-a-PSU jackknife
-    that resample or delete primary sampling units and re-apply the entire
+    Variances come from a recipe-aware bootstrap and jackknife that resample or
+    delete primary sampling units and re-apply the entire
     cascade on each replicate, following the rescaling bootstrap of Rao and Wu
     (1988) <doi:10.1080/01621459.1988.10478591>, so the replicate weights carry
     the variability of every adjustment instead of treating the adjustments as

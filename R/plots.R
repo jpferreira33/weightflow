@@ -28,11 +28,11 @@ plot.prepped_weighting_spec <- function(x, type = c("all", "factors", "summary")
   type   <- match.arg(type)
   h      <- x$history
   ns     <- length(x$steps)
-  base_w <- h[["base"]]; fin_w <- x$final_weight; act <- fin_w > 0
+  base_w <- h[["base"]]; fin_w <- x$final_weight; act <- .wf_active(fin_w)
 
   # Per-step factor histogram (weight after / before, among survivors)
   draw_factor <- function(i) {
-    prev <- h[[i]]; cur <- h[[i + 1L]]; keep <- cur > 0 & prev > 0
+    prev <- h[[i]]; cur <- h[[i + 1L]]; keep <- .wf_active(cur) & .wf_active(prev)
     graphics::hist(cur[keep] / prev[keep], breaks = 30, col = "grey80",
                    border = "white", main = x$steps[[i]]$label,
                    xlab = "weight after / before", cex.main = 0.9)
@@ -92,7 +92,7 @@ weight_factors <- function(object) {
   nm  <- names(h)
   for (i in seq_along(h)[-1]) {          # empty when the recipe has 0 steps (length(h) == 1)
     prev <- h[[i - 1]]
-    out[[paste0("factor_", nm[i])]] <- ifelse(prev > 0, h[[i]] / prev, NA_real_)
+    out[[paste0("factor_", nm[i])]] <- ifelse(.wf_active(prev), h[[i]] / prev, NA_real_)
   }
   out
 }

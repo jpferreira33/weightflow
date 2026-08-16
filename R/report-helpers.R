@@ -283,7 +283,7 @@
 .no_visual <- c("step_drop_ineligible", "step_round", "step_rescale", "step_assert")
 .step_visual <- function(step, prev, cur, lang = "en") {
   if (inherits(step, .no_visual)) return("")
-  keep <- prev > 0 & cur > 0
+  keep <- .wf_active(prev) & .wf_active(cur)
   if (!any(keep)) return("")
   sc   <- tryCatch(.svg_scatter(prev[keep], cur[keep], lang = lang), error = function(e) "")
   fac  <- (cur / prev)[keep]

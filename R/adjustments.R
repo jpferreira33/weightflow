@@ -97,7 +97,7 @@ apply_step.step_unknown_eligibility <- function(step, data, w) {
   n       <- length(w)
   unknown <- .eval_cond(step$unknown, data, step$env, active = .wf_active(w))
   cells   <- .make_cells(data, step$by, n)
-  active  <- w > 0                       # only still-active cases
+  active  <- .wf_active(w)                # only still-active cases (negatives count)
   new_w   <- w
   diag    <- list()
 
@@ -280,7 +280,7 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
   diag <- data.frame(
     n_dropped      = sum(drop),
     weight_dropped = round(sum(w[drop]), 2),
-    n_remaining    = sum(new_w > 0),
+    n_remaining    = sum(.wf_active(new_w)),
     stringsAsFactors = FALSE
   )
   list(weights = new_w, diagnostics = diag)

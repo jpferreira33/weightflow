@@ -11,4 +11,54 @@ scales on which weight bounds are expressed, which arguments take a bare column
 name and which take a string, and how to read the diagnostics that \code{prep()}
 stores.
 }
-\keyword{internal}
+\details{
+\strong{The active set.} A unit is \emph{active} when its weight is finite and non-zero
+(\code{is.finite(w) & w != 0}). A weight of exactly \code{0} is the "dropped" marker:
+\code{\link[=step_drop_ineligible]{step_drop_ineligible()}} sets out-of-scope units to zero, an empty adjustment
+cell collapses to zero, and a unit that leaves the active set takes no part in
+any later step and is not returned by \code{\link[=collect_weights]{collect_weights()}}. A \emph{negative} weight,
+by contrast, is a valid (if unusual) output of unbounded linear/GREG
+calibration and stays active: it is counted by \code{\link[=collect_weights]{collect_weights()}}, the stage
+funnel and \code{\link[=design_effect]{design_effect()}}, so the reported totals match the weights actually
+returned. (One caveat: the Kish design effect assumes non-negative weights, so
+with negatives present its value is inflated -- see \code{\link[=design_effect]{design_effect()}}.)
+
+\strong{Why the order is not arbitrary.} Each step multiplies the \emph{current} weight,
+i.e. the weight leaving the previous step, so the cascade is read top to bottom.
+The methodological order of a household survey is: resolve unknown eligibility
+(\code{\link[=step_unknown_eligibility]{step_unknown_eligibility()}}) while the ineligible units are still present,
+then drop the ineligible (\code{\link[=step_drop_ineligible]{step_drop_ineligible()}}), undo any within-cluster
+subsampling (\code{\link[=step_select_within]{step_select_within()}}), adjust for nonresponse
+(\code{\link[=step_nonresponse]{step_nonresponse()}}), calibrate to population totals (\code{\link[=step_calibrate]{step_calibrate()}}),
+and finally trim, round or rescale for delivery. Putting calibration before a
+trim, or a trim before the nonresponse adjustment, changes the estimator, which
+is why the steps are explicit rather than inferred.
+
+\strong{Three scales for weight bounds.} Bounds are expressed on three different
+scales, and mixing them up is the most common mistake for users coming from
+\code{survey}:
+\itemize{
+\item \code{\link[=step_trim]{step_trim()}} \code{max_ratio} / \code{min_ratio} are a \strong{ratio} to a reference (each
+unit's base weight, the group median, or an absolute value): \code{max_ratio = 3}
+caps a weight at three times its reference.
+\item \code{\link[=step_trim_weights]{step_trim_weights()}} and \code{\link[=step_trim_calibrated]{step_trim_calibrated()}} \code{lower} / \code{upper} are
+\strong{absolute weights}: \code{upper = 400} caps the weight itself at 400.
+\item \code{\link[=step_calibrate]{step_calibrate()}} \code{bounds = c(L, U)} bound the calibration \strong{g-factor}
+\code{w_new / d} (the multiplicative adjustment), not the weight.
+}
+
+\strong{Bare column name vs string.} Arguments that name a single variable to be
+\emph{evaluated on the data} take an unquoted (bare) column name or condition:
+\code{base_weights} in \code{\link[=weighting_spec]{weighting_spec()}}, and \code{respondent}, \code{unknown}, \code{ineligible},
+\code{prob}, \code{n_eligible}, \code{n_selected} in the steps. Arguments that name \emph{grouping
+or design structure} take character strings: \code{by}, \code{cluster}, and \code{strata} /
+\code{psu} in the variance functions. So it is \code{step_nonresponse(respondent = responded, by = "region")} -- \code{responded} bare, \code{"region"} quoted.
+
+\strong{Reading the diagnostics.} \code{\link[=prep]{prep()}} returns an object that carries the weight
+at every stage (\verb{$history}, a named list of vectors), one entry per step
+(\verb{$steps}, each with its own \verb{$diagnostics} table and \verb{$alerts}), and the
+recipe-level \verb{$alerts}. Rather than read those directly, use \code{\link[=summary]{summary()}} for the
+stage-by-stage audit, \code{\link[=plot]{plot()}} for the visual cascade, \code{\link[=weight_factors]{weight_factors()}} for
+the per-unit factor table, \code{\link[=design_effect]{design_effect()}} for the Kish design effect, and
+\code{\link[=report_weighting]{report_weighting()}} for the full self-contained HTML report.
+}

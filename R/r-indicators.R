@@ -23,7 +23,7 @@
   step <- steps[[k]]
   data <- object$data
   w_in <- object$history[[k]]                  # weights entering the NR step
-  elig <- which(w_in > 0)                       # eligible sample (resolved cases)
+  elig <- which(.wf_active(w_in))               # eligible sample (resolved cases)
   if (length(elig) < 10L) return(NULL)
 
   resp <- tryCatch(

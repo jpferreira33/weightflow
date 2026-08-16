@@ -486,6 +486,44 @@ test_that("N-24: report flags an all-failed replicate set instead of showing suc
   expect_false(grepl("all usable", h, ignore.case = TRUE))      # not shown as usable
 })
 
+test_that("A10 leftovers: plots/weight_factors count negative weights like the rest of the cascade", {
+  dat    <- data.frame(x = c(rep(2, 19), 40), pw = rep(1, 20))   # outlier forces a negative g
+  totals <- c("(Intercept)" = 20, x = 30)
+  fit <- suppressWarnings(suppressMessages(
+    weighting_spec(dat, base_weights = pw) |>
+      step_calibrate(method = "linear", formula = ~ x, totals = totals) |>
+      step_rescale(to = "total", total = 25) |>
+      prep()))
+  fw <- fit$final_weight
+  expect_true(any(fw < 0))                                       # sanity: a negative weight exists
+  nact <- sum(is.finite(fw) & fw != 0)                           # .wf_active count
+  expect_equal(design_effect(fit)$n, nact)                       # deff counts the negatives
+  expect_equal(nrow(collect_weights(fit)), nact)                 # collect_weights keeps them
+  wf   <- weight_factors(fit)
+  facs <- grep("^factor_", names(wf), value = TRUE)
+  # the factor of the step AFTER the negative appeared is no longer NA for the
+  # negative-weight row (weight_factors migrated from `> 0` to .wf_active)
+  expect_equal(sum(!is.na(wf[[tail(facs, 1)]])), nact)
+  # the negative-weight alert now carries the Kish-deff caveat
+  expect_true(any(grepl("not interpretable", fit$alerts)))
+})
+
+test_that("step_trim_calibrated help example uses a feasible band [5.5, 13.5] that preserves totals", {
+  fit <- suppressMessages(
+    weighting_spec(sample_survey, base_weights = pw) |>
+      step_calibrate(method = "raking",
+                     margins = list(region = c(table(population$region)),
+                                    sex    = c(table(population$sex)))) |>
+      step_trim_calibrated(~ region + sex, lower = 5.5, upper = 13.5) |>
+      prep())
+  w   <- fit$final_weight
+  reg <- tapply(w, sample_survey$region, sum)
+  tgt <- table(population$region)
+  expect_equal(as.numeric(reg[names(tgt)]), as.numeric(tgt), tolerance = 1e-3)  # region totals preserved
+  active <- w[is.finite(w) & w != 0]
+  expect_true(all(active >= 5.5 - 1e-6 & active <= 13.5 + 1e-6))                 # weights inside the band
+})
+
 test_that("NUEVO-13: duplicate cells in tidy poststrata totals emit a message (still summed)", {
   d   <- data.frame(pw = rep(10, 30), region = sample(c("A", "B", "C"), 30, TRUE))
   tot <- data.frame(region = c("A", "B", "C", "A"), Freq = c(60, 120, 90, 40))  # A duplicated
