@@ -31,3 +31,9 @@ returns the estimate with its bootstrap standard error and a normal confidence
 interval. \code{boot_total()} and \code{boot_mean()} are the two shortcuts you will use
 most: a weighted total and a weighted mean of one column.
 }
+\details{
+The bootstrap variance is the Monte Carlo variance of the statistic over the
+\eqn{B}{B} replicate estimates \eqn{\hat\theta^{*}_b}{theta*_b},
+\deqn{\widehat V_{\mathrm{boot}}(\hat\theta) = \frac{1}{B}\sum_{b=1}^{B}\big(\hat\theta^{*}_b - \bar\theta^{*}\big)^2,}{V_boot = (1/B) sum_b (theta*_b - mean(theta*))^2,}
+with \eqn{\bar\theta^{*}}{mean(theta*)} the mean of the replicate estimates.
+}

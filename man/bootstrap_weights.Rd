@@ -60,7 +60,7 @@ standard error, instead of conditioning on them as if they were known.
 The multiplier is the Rao-Wu rescaling bootstrap: within a stratum with
 \eqn{n} PSUs, \eqn{m} PSUs are drawn with replacement (default
 \eqn{m = n - 1}) and unit \eqn{i} in PSU \eqn{k} gets
-\eqn{\lambda = 1 - \sqrt{m/(n-1)} + \sqrt{m/(n-1)}\,(n/m)\,t_k}, with
+\eqn{\lambda = 1 - \sqrt{m/(n-1)} + \sqrt{m/(n-1)}\,(n/m)\,t_k}{lambda = 1 - sqrt(m/(n-1)) + sqrt(m/(n-1)) * (n/m) * t_k}, with
 \eqn{t_k} the number of times its PSU was drawn.
 }
 \examples{

@@ -83,6 +83,13 @@ precision that calibrating on \code{x} alone cannot.
 Requires COMPLETE auxiliary information: a data.frame \code{population} with the
 \code{x_formula} columns and the model predictors for the whole population (or a
 reference frame/census).
+
+The predictions \eqn{\hat y_i}{yhat_i} enter as extra constraints,
+\eqn{\sum_{i \in s} w_i \hat y_i = \sum_{i \in U} \hat y_i}{sum_(i in s) w_i yhat_i = sum_(i in U) yhat_i},
+solved together with the benchmark auxiliary totals \eqn{\mathbf{X}}{X}. When
+the working model is linear this reduces to GREG; a nonlinear learner adds
+efficiency through the prediction constraint while the totals \eqn{\mathbf{X}}{X}
+preserve design consistency even if the model is misspecified.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

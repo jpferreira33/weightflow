@@ -18,7 +18,7 @@
 #' The multiplier is the Rao-Wu rescaling bootstrap: within a stratum with
 #' \eqn{n} PSUs, \eqn{m} PSUs are drawn with replacement (default
 #' \eqn{m = n - 1}) and unit \eqn{i} in PSU \eqn{k} gets
-#' \eqn{\lambda = 1 - \sqrt{m/(n-1)} + \sqrt{m/(n-1)}\,(n/m)\,t_k}, with
+#' \eqn{\lambda = 1 - \sqrt{m/(n-1)} + \sqrt{m/(n-1)}\,(n/m)\,t_k}{lambda = 1 - sqrt(m/(n-1)) + sqrt(m/(n-1)) * (n/m) * t_k}, with
 #' \eqn{t_k} the number of times its PSU was drawn.
 #'
 #' @param object a `weighting_spec` (or a prepped one) holding the recipe.
@@ -230,6 +230,11 @@ print.weightflow_boot <- function(x, ...) {
 #' interval. `boot_total()` and `boot_mean()` are the two shortcuts you will use
 #' most: a weighted total and a weighted mean of one column.
 #'
+#' The bootstrap variance is the Monte Carlo variance of the statistic over the
+#' \eqn{B}{B} replicate estimates \eqn{\hat\theta^{*}_b}{theta*_b},
+#' \deqn{\widehat V_{\mathrm{boot}}(\hat\theta) = \frac{1}{B}\sum_{b=1}^{B}\big(\hat\theta^{*}_b - \bar\theta^{*}\big)^2,}{V_boot = (1/B) sum_b (theta*_b - mean(theta*))^2,}
+#' with \eqn{\bar\theta^{*}}{mean(theta*)} the mean of the replicate estimates.
+#'
 #' @param boot a `weightflow_boot` object.
 #' @param statistic a function `function(w, data)` returning a numeric scalar
 #'   (or vector) given a weight vector and the data.
@@ -421,6 +426,13 @@ print.weightflow_jack <- function(x, ...) {
 #' and returns the estimate with its stratified jackknife (JKn) standard error and
 #' a normal confidence interval. `jack_total()` and `jack_mean()` are the
 #' shortcuts for a weighted total and a weighted mean of one column.
+#'
+#' The stratified (JKn) variance sums each stratum's delete-a-PSU spread,
+#' \deqn{\widehat V_{JK} = \sum_h \frac{n_h - 1}{n_h}\sum_{i \in h}\big(\hat\theta_{(hi)} - \hat\theta_h\big)^2,}{V_JK = sum_h (n_h - 1)/n_h * sum_(i in h) (theta_(hi) - theta_h)^2,}
+#' with \eqn{\hat\theta_{(hi)}}{theta_(hi)} the estimate with PSU \eqn{i}{i} of
+#' stratum \eqn{h}{h} deleted and \eqn{\hat\theta_h}{theta_h} their within-stratum
+#' mean; the unstratified JK1 uses a single stratum. No finite population
+#' correction is applied.
 #'
 #' @param jack a `weightflow_jack` object.
 #' @param statistic a function `function(w, data)` returning a numeric scalar (or

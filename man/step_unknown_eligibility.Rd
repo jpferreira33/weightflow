@@ -32,6 +32,14 @@ onto the resolved cases of the same adjustment cell, so the resolved units
 stand in for the unresolved share of the frame. Reach for it as the first step
 of the cascade, while the known-ineligible units are still in the data.
 }
+\details{
+Within each cell \eqn{c}{c} the resolved cases are scaled up to also carry the
+unresolved ones,
+\deqn{w_i^{\mathrm{out}} = w_i \, \frac{\sum_{j \in c} w_j}{\sum_{j \in c,\, \mathrm{resolved}} w_j},}{w_i_out = w_i * (sum of w over the cell) / (sum of w over the resolved cases of the cell),}
+with every weight on the right the weight \emph{entering} the step, so the ratio is
+one number per cell, the cell total is conserved exactly, and the result does
+not depend on the order in which units are updated.
+}
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region")

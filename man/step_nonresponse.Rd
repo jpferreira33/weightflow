@@ -145,6 +145,17 @@ response-propensity model (four engines, with optional cross-fitting), and
 calibration of the respondents to auxiliary totals -- at the unit level or,
 through \code{cluster}, at a coarser level (e.g. the household).
 }
+\details{
+The three estimators are the same operation with a different inflation factor.
+Weighting classes inflate the responding weight to the cell total,
+\eqn{f_c = \sum_{i \in c} w_i / \sum_{i \in c} r_i w_i}{f_c = (sum of w over the cell) / (sum of w over the respondents of the cell)}
+(with \eqn{r_i = 1}{r_i = 1} if \eqn{i}{i} responds), applied as
+\eqn{w_i \leftarrow f_c w_i}{w_i <- f_c * w_i}. A response-propensity model
+instead adjusts unit by unit, \eqn{w_i \leftarrow w_i / \hat\phi_i}{w_i <- w_i / phi_hat_i},
+with \eqn{\hat\phi_i}{phi_hat_i} the estimated response propensity. Calibration
+of the respondents solves for a factor \eqn{v_i}{v_i} that makes the respondents
+reproduce a reference total (the two-phase / Sarndal-Lundstrom approach).
+}
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",

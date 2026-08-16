@@ -9,6 +9,19 @@
 #' the adjustment factor, ridge relaxation of the targets, domain partitions and
 #' one-weight-per-cluster (integrative) calibration.
 #'
+#' The calibrated weight is \eqn{w_i = d_i g_i}{w_i = d_i * g_i}, close to the
+#' incoming weights \eqn{d_i}{d_i} and reproducing the totals
+#' \eqn{\sum_{i \in s} w_i \mathbf{x}_i = \mathbf{X}}{sum_i w_i x_i = X}, with the
+#' factor \eqn{g_i}{g_i} minimizing a distance to \eqn{d_i}{d_i}: linear
+#' \eqn{g_i = 1 + \mathbf{x}_i'\boldsymbol\lambda}{g_i = 1 + x_i'lambda} or
+#' exponential ("raking") \eqn{g_i = \exp(\mathbf{x}_i'\boldsymbol\lambda)}{g_i = exp(x_i'lambda)}.
+#' The `penalty` (ridge) relaxes the exact constraint to steady extreme weights
+#' when the auxiliaries are many or collinear, minimizing
+#' \deqn{\sum_i \frac{(w_i - d_i)^2}{d_i q_i} + \frac{1}{s}\sum_j c_j (\hat X_j - X_j)^2,}{sum_i (w_i - d_i)^2 / (d_i q_i) + (1/s) sum_j c_j (Xhat_j - X_j)^2,}
+#' where \eqn{c_j}{c_j} is the cost of missing constraint \eqn{j}{j}: as
+#' \eqn{c_j \to \infty}{c_j -> Inf} the constraint is met exactly, as
+#' \eqn{c_j \to 0}{c_j -> 0} the weights return to \eqn{d_i}{d_i}.
+#'
 #' @param spec a weighting_spec.
 #' @param margins named list (classic format for "raking"/"poststratify"). Each
 #'   element is a named numeric vector with the target totals per category. E.g.:
@@ -325,8 +338,8 @@ step_trim <- function(spec, max_ratio, min_ratio = NULL,
 #' Kish design effect from unequal weighting
 #'
 #' Computes Kish's design effect due to unequal weighting,
-#' \eqn{deff = 1 + CV^2(w) = m \sum w^2 / (\sum w)^2}, and the effective sample
-#' size \eqn{n_\mathrm{eff} = m / deff} it implies. It is the standard one-number
+#' \eqn{deff = 1 + CV^2(w) = m \sum w^2 / (\sum w)^2}{deff = 1 + CV^2(w) = m * sum(w^2) / (sum(w))^2}, and the effective sample
+#' size \eqn{n_\mathrm{eff} = m / deff}{n_eff = m / deff} it implies. It is the standard one-number
 #' summary of what a weighting cascade cost in precision, and it is what the
 #' `summary()` and `plot()` methods of a prepped recipe report step by step.
 #'

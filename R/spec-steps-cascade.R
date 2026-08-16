@@ -7,6 +7,13 @@
 #' stand in for the unresolved share of the frame. Reach for it as the first step
 #' of the cascade, while the known-ineligible units are still in the data.
 #'
+#' Within each cell \eqn{c}{c} the resolved cases are scaled up to also carry the
+#' unresolved ones,
+#' \deqn{w_i^{\mathrm{out}} = w_i \, \frac{\sum_{j \in c} w_j}{\sum_{j \in c,\, \mathrm{resolved}} w_j},}{w_i_out = w_i * (sum of w over the cell) / (sum of w over the resolved cases of the cell),}
+#' with every weight on the right the weight *entering* the step, so the ratio is
+#' one number per cell, the cell total is conserved exactly, and the result does
+#' not depend on the order in which units are updated.
+#'
 #' @param spec a weighting_spec.
 #' @param unknown a 0/1 dummy column (1 = eligibility unknown) or any logical
 #'   condition (unquoted) that is TRUE for unknown-eligibility cases. Evaluated
@@ -151,6 +158,16 @@ step_drop_ineligible <- function(spec, ineligible) {
 #' response-propensity model (four engines, with optional cross-fitting), and
 #' calibration of the respondents to auxiliary totals -- at the unit level or,
 #' through `cluster`, at a coarser level (e.g. the household).
+#'
+#' The three estimators are the same operation with a different inflation factor.
+#' Weighting classes inflate the responding weight to the cell total,
+#' \eqn{f_c = \sum_{i \in c} w_i / \sum_{i \in c} r_i w_i}{f_c = (sum of w over the cell) / (sum of w over the respondents of the cell)}
+#' (with \eqn{r_i = 1}{r_i = 1} if \eqn{i}{i} responds), applied as
+#' \eqn{w_i \leftarrow f_c w_i}{w_i <- f_c * w_i}. A response-propensity model
+#' instead adjusts unit by unit, \eqn{w_i \leftarrow w_i / \hat\phi_i}{w_i <- w_i / phi_hat_i},
+#' with \eqn{\hat\phi_i}{phi_hat_i} the estimated response propensity. Calibration
+#' of the respondents solves for a factor \eqn{v_i}{v_i} that makes the respondents
+#' reproduce a reference total (the two-phase / Sarndal-Lundstrom approach).
 #'
 #' @param spec a weighting_spec.
 #' @param respondent a 0/1 dummy column (1 = responded) or any logical condition

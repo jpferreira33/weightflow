@@ -14,8 +14,8 @@ list with deff, n_eff, cv and n.
 }
 \description{
 Computes Kish's design effect due to unequal weighting,
-\eqn{deff = 1 + CV^2(w) = m \sum w^2 / (\sum w)^2}, and the effective sample
-size \eqn{n_\mathrm{eff} = m / deff} it implies. It is the standard one-number
+\eqn{deff = 1 + CV^2(w) = m \sum w^2 / (\sum w)^2}{deff = 1 + CV^2(w) = m * sum(w^2) / (sum(w))^2}, and the effective sample
+size \eqn{n_\mathrm{eff} = m / deff}{n_eff = m / deff} it implies. It is the standard one-number
 summary of what a weighting cascade cost in precision, and it is what the
 \code{summary()} and \code{plot()} methods of a prepped recipe report step by step.
 }

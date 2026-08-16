@@ -106,6 +106,20 @@ raking, post-stratification and linear (GREG) calibration, optional bounds on
 the adjustment factor, ridge relaxation of the targets, domain partitions and
 one-weight-per-cluster (integrative) calibration.
 }
+\details{
+The calibrated weight is \eqn{w_i = d_i g_i}{w_i = d_i * g_i}, close to the
+incoming weights \eqn{d_i}{d_i} and reproducing the totals
+\eqn{\sum_{i \in s} w_i \mathbf{x}_i = \mathbf{X}}{sum_i w_i x_i = X}, with the
+factor \eqn{g_i}{g_i} minimizing a distance to \eqn{d_i}{d_i}: linear
+\eqn{g_i = 1 + \mathbf{x}_i'\boldsymbol\lambda}{g_i = 1 + x_i'lambda} or
+exponential ("raking") \eqn{g_i = \exp(\mathbf{x}_i'\boldsymbol\lambda)}{g_i = exp(x_i'lambda)}.
+The \code{penalty} (ridge) relaxes the exact constraint to steady extreme weights
+when the auxiliaries are many or collinear, minimizing
+\deqn{\sum_i \frac{(w_i - d_i)^2}{d_i q_i} + \frac{1}{s}\sum_j c_j (\hat X_j - X_j)^2,}{sum_i (w_i - d_i)^2 / (d_i q_i) + (1/s) sum_j c_j (Xhat_j - X_j)^2,}
+where \eqn{c_j}{c_j} is the cost of missing constraint \eqn{j}{j}: as
+\eqn{c_j \to \infty}{c_j -> Inf} the constraint is met exactly, as
+\eqn{c_j \to 0}{c_j -> 0} the weights return to \eqn{d_i}{d_i}.
+}
 \examples{
 # Raking to population margins
 weighting_spec(sample_survey, base_weights = pw) |>
