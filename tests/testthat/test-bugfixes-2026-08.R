@@ -524,6 +524,24 @@ test_that("step_trim_calibrated help example uses a feasible band [5.5, 13.5] th
   expect_true(all(active >= 5.5 - 1e-6 & active <= 13.5 + 1e-6))                 # weights inside the band
 })
 
+test_that("C1b: a classic margin that omits a sample level errors (raking and poststratify)", {
+  d  <- data.frame(region = rep(c("A", "B", "C"), c(20, 20, 10)), pw = rep(1, 50))
+  sp <- weighting_spec(d, base_weights = pw)
+  # region margin omits level C, which IS in the sample -> would leave C
+  # uncalibrated and sum(w) != N; must error in both methods
+  expect_error(
+    prep(step_calibrate(sp, method = "raking", margins = list(region = c(A = 25, B = 25)))),
+    "does not cover")
+  expect_error(
+    prep(step_calibrate(sp, method = "poststratify", margins = list(region = c(A = 25, B = 25)))),
+    "does not cover")
+  # covering every sample level works
+  expect_error(
+    suppressWarnings(suppressMessages(prep(step_calibrate(sp, method = "raking",
+      margins = list(region = c(A = 20, B = 20, C = 10)))))),
+    NA)
+})
+
 test_that("calfun ignored by raking/poststratify now warns (N-15 sibling)", {
   d <- data.frame(region = rep(c("A", "B"), 20), pw = rep(1, 40))
   expect_warning(

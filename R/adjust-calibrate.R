@@ -113,6 +113,19 @@
                           "data holds the codes (convert with haven::as_factor() first)."),
                    v, paste(miss, collapse = ", "),
                    paste(utils::head(have, 15L), collapse = ", ")), call. = FALSE)
+    # C1b: the reverse gap -- a level PRESENT in the sample but ABSENT from the
+    # margin. Those units have no target, so raking/post-stratification leaves
+    # them at their incoming weight and the calibrated total silently misses N
+    # (e.g. sum(w) = 4620 vs N = 4495). A classic margin must cover every sample
+    # level of its variable; error, naming the uncovered one(s).
+    uncovered <- setdiff(have, names(margins[[v]]))
+    if (length(uncovered))
+      stop(sprintf(paste0("Margin '%s' does not cover level(s) present in the sample: %s. ",
+                          "Every level of '%s' observed among the active units needs a target ",
+                          "in the margin, otherwise those units stay uncalibrated and the ",
+                          "weighted total will not reproduce the population size. Add the "
+                          , "missing level(s), or recode them into a covered category."),
+                   v, paste(utils::head(uncovered, 15L), collapse = ", "), v), call. = FALSE)
   }
 }
 
