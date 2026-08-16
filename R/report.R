@@ -94,8 +94,11 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     hd  <- paste0("<th>", hdr, "</th>", collapse = "")
     num <- function(x) format(x, big.mark = ",")
     d3  <- function(x) formatC(x, format = "f", digits = 3)
-    dcell <- function(v) sprintf("<span class='%s'>%s%s</span>",
-                                 if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
+    dcell <- function(v) {
+      if (!is.finite(v)) return("<span class='muted'>&mdash;</span>")   # N-20: deff overflow / NaN
+      sprintf("<span class='%s'>%s%s</span>",
+              if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
+    }
     rows <- vapply(seq_len(nrow(stab)), function(i) sprintf(
       "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
       slab[i], num(stab$n_active[i]), num(stab$sum_wts[i]),
@@ -106,12 +109,18 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   imp_html <- local({
     if (nrow(stab) < 2L) "" else {
       dd <- diff(stab$deff); dc <- diff(stab$cv)
-      tot <- sum(abs(dd)); share <- if (tot > 0) 100 * abs(dd) / tot else rep(0, length(dd))
+      # N-20: deff may overflow to Inf (base weight 1e300) or be NaN (all base
+      # weights 0) with a successful prep(); keep the impact table honest and
+      # non-fatal instead of erroring on "missing value where TRUE/FALSE needed".
+      tot <- sum(abs(dd), na.rm = TRUE)
+      share <- if (tot > 0) 100 * abs(dd) / tot else rep(0, length(dd))
+      share[!is.finite(share)] <- 0
       lab  <- vapply(object$steps, function(s) .step_short(s, lang), "")
-      imax <- if (any(dd > 0)) which.max(dd) else 0L
+      imax <- if (any(dd > 0, na.rm = TRUE)) which.max(dd) else 0L
       eff  <- function(j) {
         x <- dd[j]
-        if (round(x, 3) == 0) .t("negligible impact", "impacto insignificante", lang)
+        if (!is.finite(x)) .t("not available", "no disponible", lang)
+        else if (round(x, 3) == 0) .t("negligible impact", "impacto insignificante", lang)
         else if (x < 0) {
           if (grepl("trim", lab[j], ignore.case = TRUE))
             .t("recovers efficiency (trimming)", "recupera eficiencia (recorte)", lang)
@@ -120,22 +129,28 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
           .t("largest increase in variability", "mayor aumento de variabilidad", lang)
         else .t("increases variability", "aumenta la variabilidad", lang)
       }
-      cell <- function(v) sprintf("<span class='%s'>%s%+.3f</span>",
-                                  if (v > 0.001) "cell-warn" else if (v < -0.001) "cell-ok" else "", if (v > 0.001) "&#9888; " else "", v)
+      cell <- function(v) {
+        if (!is.finite(v)) return("<span class='muted'>&mdash;</span>")
+        sprintf("<span class='%s'>%s%+.3f</span>",
+                if (v > 0.001) "cell-warn" else if (v < -0.001) "cell-ok" else "",
+                if (v > 0.001) "&#9888; " else "", v)
+      }
+      pm3  <- function(v) if (is.finite(v)) sprintf("%+.3f", v) else "&mdash;"
       hd <- paste0("<th>", c(.t("Step", "Paso", lang), "&Delta; deff_K", "&Delta; CV",
                              .t("Contribution to deff_K change", "Contribuci\u00f3n al cambio del deff_K", lang),
                              .t("Effect", "Efecto", lang)), "</th>", collapse = "")
       rows <- vapply(seq_along(dd), function(j) sprintf(
         "<tr><td>%s</td><td>%s</td><td>%s</td><td>%.0f%%</td><td>%s</td></tr>",
-        lab[j], cell(dd[j]), sprintf("%+.3f", dc[j]), share[j], eff(j)),
+        lab[j], cell(dd[j]), pm3(dc[j]), share[j], eff(j)),
         character(1))
       nr <- nrow(stab)
       t_deff <- stab$deff[nr] - stab$deff[1]; t_cv <- stab$cv[nr] - stab$cv[1]
-      t_neff <- if (stab$n_eff[1] > 0) 100 * (stab$n_eff[nr] - stab$n_eff[1]) / stab$n_eff[1] else NA_real_
+      t_neff <- if (isTRUE(stab$n_eff[1] > 0) && is.finite(stab$n_eff[nr]))
+                  100 * (stab$n_eff[nr] - stab$n_eff[1]) / stab$n_eff[1] else NA_real_
       total_row <- sprintf(
         "<tr style='font-weight:600;border-top:2px solid var(--line)'><td>%s</td><td>%s</td><td>%s</td><td></td><td>%s</td></tr>",
         .t("Total (base &rarr; final)", "Total (base &rarr; final)", lang),
-        cell(t_deff), sprintf("%+.3f", t_cv),
+        cell(t_deff), pm3(t_cv),
         if (is.na(t_neff)) "" else .t(sprintf("effective sample %+.0f%%", t_neff),
                                       sprintf("muestra efectiva %+.0f%%", t_neff), lang))
       sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s%s</tbody></table>",
@@ -234,7 +249,10 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
   exec  <- paste0(exec, .status_checklist(object, de_f, object$final_weight, replicates, lang))
   exec  <- paste0(exec, .attention_panel(object, lang))
-  imsg  <- if (de_f$deff < 1.2)
+  imsg  <- if (!is.finite(de_f$deff))
+             .t("the design effect could not be computed — check the weights.",
+                "no se pudo calcular el efecto de diseño — revisá los pesos.", lang)
+           else if (de_f$deff < 1.2)
              .t("weight variability is low.", "la variabilidad de los pesos es baja.", lang)
            else if (de_f$deff < 1.4)
              .t("the efficiency loss is moderate.", "la p\u00e9rdida de eficiencia es moderada.", lang)
@@ -274,8 +292,18 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
                                  else .t("weighting steps", "pasos de ponderaci\u00f3n", lang)))
     if (ncv == 0L) it <- c(it, .t("calibration constraints preserved",
                                   "restricciones de calibraci\u00f3n preservadas", lang))
-    if (!is.null(replicates)) it <- c(it, .t("replicate weights created",
-                                             "pesos r\u00e9plica creados", lang))
+    if (!is.null(replicates)) {
+      rmat  <- replicates$replicates
+      nrp   <- if (!is.null(rmat)) ncol(rmat) else replicates$R
+      nfl   <- if (!is.null(rmat)) sum(apply(rmat, 2, anyNA)) else 0L
+      it <- c(it, if (isTRUE(nrp > 0L) && nfl >= nrp)
+                    .t("replicate weights FAILED (all replicates NA)",
+                       "pesos r\u00e9plica FALLARON (todas las r\u00e9plicas NA)", lang)
+                  else if (nfl > 0L)
+                    .t(sprintf("replicate weights created (%d of %d replicates failed)", nfl, nrp),
+                       sprintf("pesos r\u00e9plica creados (%d de %d r\u00e9plicas fallaron)", nfl, nrp), lang)
+                  else .t("replicate weights created", "pesos r\u00e9plica creados", lang))
+    }
     it <- c(it, .t("report generated", "reporte generado", lang))
     sprintf("<p class='done'><strong>%s</strong> &nbsp; %s</p>",
             lead, paste(it, collapse = " &middot; "))
@@ -319,7 +347,12 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     "<script>", .report_js(), "</script>\n",
     "</body></html>")
 
-  writeLines(html, file)
+  # Write UTF-8 bytes explicitly. Plain writeLines() re-encodes to the native
+  # charset, which mangles accents/symbols in a non-UTF-8 locale (e.g. Windows
+  # latin1) even for lang="en" reports (dates, names in the metadata).
+  con <- file(file, open = "wb")
+  on.exit(close(con), add = TRUE)
+  writeLines(enc2utf8(html), con, useBytes = TRUE)
   if (open) try(utils::browseURL(file), silent = TRUE)
   invisible(file)
 }

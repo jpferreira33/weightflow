@@ -171,7 +171,9 @@
 }
 
 .svg_evolution <- function(labels, y, w = 640L, h = 190L) {
-  n <- length(y); if (n < 2L) return("")
+  # N-20: skip the plot if any deff is non-finite (Inf overflow / NaN from
+  # all-zero base weights); range()/diff()/any()/min() would otherwise error.
+  n <- length(y); if (n < 2L || !all(is.finite(y))) return("")
   disp <- ifelse(seq_len(n) == 1L, "base", as.character(seq_len(n) - 1L))  # base,1,2,...
   ml <- 48; mr <- 14; mt <- 12; mb <- 34; pw <- w - ml - mr; ph <- h - mt - mb
   yr <- range(y); if (diff(yr) == 0) yr <- yr + c(-0.05, 0.05)

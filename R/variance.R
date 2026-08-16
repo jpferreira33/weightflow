@@ -619,7 +619,22 @@ collect_replicate_weights <- function(object, weight_name = ".weight",
                     ndrop, length(valid)), call. = FALSE)
   reps <- reps[, valid, drop = FALSE]
   colnames(reps) <- paste0(prefix, seq_len(ncol(reps)))
+  # N-19 sibling: warn if the point-weight column overwrites an existing one
+  # (collect_weights() already does this).
+  if (weight_name %in% names(out))
+    warning(sprintf("Column `%s` already exists and will be overwritten.", weight_name),
+            call. = FALSE)
   out[[weight_name]] <- object$weights[keep]
+  # N-25: refuse to create duplicate column names. If the data already carries
+  # columns matching the replicate prefix (e.g. a stray `rep_1`), cbind() would
+  # produce two `rep_1` columns and the documented starts_with("rep_") flow would
+  # silently pick the wrong one.
+  clash <- intersect(colnames(reps), names(out))
+  if (length(clash))
+    stop(sprintf(paste0("The data already has column(s) %s, which collide with the ",
+                        "replicate columns produced by prefix = \"%s\". Pass a different ",
+                        "`prefix` (or rename those columns) before collecting."),
+                 paste(sQuote(clash), collapse = ", "), prefix), call. = FALSE)
   out <- cbind(out, as.data.frame(reps))
   rownames(out) <- NULL
   attr(out, "R") <- length(valid)

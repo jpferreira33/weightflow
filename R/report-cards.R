@@ -160,24 +160,43 @@
     kv(.t("Replicates (B)", "R\u00e9plicas (B)", lang), format(rep$R, big.mark = ",")),
     kv(.t("Failed replicates", "R\u00e9plicas fallidas", lang),
        sprintf("%s of %s%s", format(nfail, big.mark = ","), format(nrep, big.mark = ","),
-               if (nfail == 0L) .t(" (all usable)", " (todas utilizables)", lang) else "")),
+               if (nrep == 0L) "" else if (nfail == 0L)
+                 .t(" (all usable)", " (todas utilizables)", lang) else "")),
     kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
     kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
     kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
     kv(.t("Recipe-aware", "Recipe-aware", lang),
-       .t("yes (whole cascade re-run per replicate)", "s\u00ed (toda la cascada por r\u00e9plica)", lang)),
+       if (nrep > 0L && nfail >= nrep)
+         .t("not applicable (all replicates failed)", "no aplica (todas las r\u00e9plicas fallaron)", lang)
+       else .t("yes (whole cascade re-run per replicate)", "s\u00ed (toda la cascada por r\u00e9plica)", lang)),
     if (!is_jack) kv(.t("Seed", "Semilla", lang), na(rep$seed)) else "",
     kv(.t("Cores", "Cores", lang), na(rep$cores)),
     kv(.t("Run time", "Tiempo de ejecuci\u00f3n", lang), tfmt))
-  warn <- if (lonely_n > 0L || mean(pps) < 3) sprintf(
-    "<div class='alert'><strong>%s</strong><p>%s</p></div>",
-    .t("Point of attention", "Punto de atenci\u00f3n", lang),
-    .t(sprintf("%d stratum/strata have a single PSU; with few PSUs per stratum prefer JKn over the rescaling bootstrap, which underestimates the variance.", lonely_n),
-       sprintf("%d estrato(s) con una sola UPM; con pocas UPM por estrato conviene JKn sobre el bootstrap de reescalado, que subestima la varianza.", lonely_n), lang)) else ""
+  al <- function(msg) sprintf("<div class='alert'><strong>%s</strong><p>%s</p></div>",
+                              .t("Point of attention", "Punto de atenci\u00f3n", lang), msg)
+  # N-24: an all-NA replicate matrix cannot yield a variance; say so instead of
+  # implying success elsewhere in the report.
+  fail_alert <- if (nrep == 0L)
+      al(.t("No replicates were produced, so no replication variance is available.",
+            "No se produjeron r\u00e9plicas, as\u00ed que no hay varianza por replicaci\u00f3n disponible.", lang))
+    else if (nfail >= nrep)
+      al(.t(sprintf("All %d replicate(s) failed with NA weights; the replication variance cannot be estimated from these weights.", nrep),
+            sprintf("Las %d r\u00e9plica(s) fallaron con pesos NA; no se puede estimar la varianza por replicaci\u00f3n con estos pesos.", nrep), lang))
+    else ""
+  # N-24: a single-PSU stratum contributes no variance under EITHER the rescaling
+  # bootstrap or the delete-a-PSU jackknife (the lone PSU cannot be deleted), so
+  # switching method does not fix it -- collapsing the strata does.
+  warn <- if (lonely_n > 0L)
+      al(.t(sprintf("%d stratum/strata have a single PSU. A single-PSU stratum contributes no variance under either the rescaling bootstrap or the delete-a-PSU jackknife (the lone PSU cannot be deleted), so both understate the variance. Collapse such strata (lonely_psu = \"collapse\") or redefine the strata rather than switching method.", lonely_n),
+            sprintf("%d estrato(s) con una sola UPM. Un estrato con una sola UPM no aporta varianza ni con el bootstrap de reescalado ni con el jackknife borra-una-UPM (no se puede borrar la \u00fanica UPM), as\u00ed que ambos la subestiman. Conviene colapsar esos estratos (lonely_psu = \"collapse\") o redefinir los estratos, m\u00e1s que cambiar de m\u00e9todo.", lonely_n), lang))
+    else if (mean(pps) < 3)
+      al(.t("Few PSUs per stratum: the replication variance can be unstable. Consider more PSUs per stratum or collapsing sparse strata.",
+            "Pocas UPM por estrato: la varianza por replicaci\u00f3n puede ser inestable. Conviene m\u00e1s UPM por estrato o colapsar los estratos ralos.", lang))
+    else ""
   sprintf(
-    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s<p class='note'>%s</p></div>",
+    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s<p class='note'>%s</p></div>",
     .t("Replication design for variance", "Dise\u00f1o de replicaci\u00f3n para la varianza", lang),
-    body, warn,
+    body, fail_alert, warn,
     .t("Replicate weights carry the variability of every adjustment. For standard errors, CV and confidence intervals of specific estimates, use these weights with the 'survey' or 'srvyr' package.",
        "Los pesos r\u00e9plica arrastran la variabilidad de cada ajuste. Para errores est\u00e1ndar, CV e intervalos de confianza de estimaciones concretas, us\u00e1 estos pesos con 'survey' o 'srvyr'.", lang))
 }

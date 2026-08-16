@@ -450,6 +450,42 @@ test_that("N-15: step_calibrate warns about ignored arguments (cluster with raki
     "ignored")
 })
 
+test_that("N-20: report_weighting() survives a non-finite deff (overflow / all-zero base weights)", {
+  d <- data.frame(id = 1:60, x = factor(rep(c("A", "B"), 30)),
+                  w = rep(1e155, 60),                       # w^2 overflows to Inf -> deff NaN (sum(w) stays finite)
+                  resp = rep(c(TRUE, TRUE, FALSE), 20), y = rnorm(60))
+  fit <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
+    step_nonresponse(respondent = resp, method = "weighting_class", by = "x")))
+  f <- tempfile(fileext = ".html")
+  expect_error(
+    suppressWarnings(suppressMessages(report_weighting(fit, file = f, open = FALSE))),
+    NA)                                                     # must not die on "missing value where TRUE/FALSE needed"
+})
+
+test_that("N-25: collect_replicate_weights() refuses to collide with an existing column", {
+  set.seed(3)
+  d <- data.frame(w = runif(60, 1, 3), str = rep(1:3, each = 20),
+                  psu = rep(1:12, each = 5), rep_1 = 0)          # stray user column
+  p <- suppressMessages(prep(weighting_spec(d, base_weights = w)))
+  b <- suppressWarnings(bootstrap_weights(p, replicates = 5, strata = "str", psu = "psu", seed = 1))
+  expect_error(collect_replicate_weights(b), "prefix")          # rep_1 would be duplicated
+  expect_error(collect_replicate_weights(b, prefix = "boot_"), NA)   # a free prefix works
+})
+
+test_that("N-24: report flags an all-failed replicate set instead of showing success", {
+  set.seed(4)
+  d <- data.frame(w = runif(60, 1, 3), str = rep(1:3, each = 20),
+                  psu = rep(1:12, each = 5), y = rnorm(60))
+  p <- suppressMessages(prep(weighting_spec(d, base_weights = w)))
+  b <- suppressWarnings(bootstrap_weights(p, replicates = 5, strata = "str", psu = "psu", seed = 1))
+  b$replicates[] <- NA_real_                                     # simulate every replicate failing
+  f <- tempfile(fileext = ".html")
+  suppressWarnings(suppressMessages(report_weighting(p, file = f, open = FALSE, replicates = b)))
+  h <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  expect_true(grepl("failed", h, ignore.case = TRUE))           # the failure is surfaced
+  expect_false(grepl("all usable", h, ignore.case = TRUE))      # not shown as usable
+})
+
 test_that("NUEVO-13: duplicate cells in tidy poststrata totals emit a message (still summed)", {
   d   <- data.frame(pw = rep(10, 30), region = sample(c("A", "B", "C"), 30, TRUE))
   tot <- data.frame(region = c("A", "B", "C", "A"), Freq = c(60, 120, 90, 40))  # A duplicated
