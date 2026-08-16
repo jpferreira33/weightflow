@@ -397,6 +397,14 @@ step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL) {
     stop("`by` is only supported with to = \"n\" (each group is rescaled to its own ",
          "active size). With to = \"total\" the whole sample is rescaled to a single ",
          "total; drop `by`, or use to = \"n\".", call. = FALSE)
+  # N4-3: a NAMED scalar (e.g. c(North = 1000)) is a common attempt at a per-group
+  # total; it is not supported and would otherwise scale the whole sample to that
+  # number silently. Reject it (length > 1 and non-finite are caught at prep()).
+  if (to == "total" && !is.null(total) && length(total) == 1L && !is.null(names(total)))
+    stop(sprintf(paste0("`total` must be a single unnamed number; got a named value (%s). ",
+                        "A named scalar is not a per-group total -- step_rescale(to = \"total\") ",
+                        "rescales the whole sample to one number."),
+                 paste(names(total), collapse = ", ")), call. = FALSE)
   step <- structure(
     list(
       label = sprintf("rescale (to %s%s)", to,

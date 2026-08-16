@@ -524,6 +524,47 @@ test_that("step_trim_calibrated help example uses a feasible band [5.5, 13.5] th
   expect_true(all(active >= 5.5 - 1e-6 & active <= 13.5 + 1e-6))                 # weights inside the band
 })
 
+test_that("N4-1: step_calibrate validates maxit/tol (no infinite loop on maxit = 'a')", {
+  d  <- data.frame(region = rep(c("A", "B"), 20), pw = rep(1, 40))
+  sp <- weighting_spec(d, base_weights = pw)
+  expect_error(step_calibrate(sp, method = "raking",
+                              margins = list(region = c(A = 20, B = 20)), maxit = "a"), "maxit")
+  expect_error(step_calibrate(sp, method = "raking",
+                              margins = list(region = c(A = 20, B = 20)), tol = -1), "tol")
+})
+
+test_that("N4-2: step_trim(reference='median') errors on a non-positive median", {
+  st <- structure(list(max_ratio = 3, min_ratio = NULL, reference = "median",
+                       by = NULL, maxit = 10L, redistribute = TRUE, label = "t"),
+                  class = c("step_trim", "weighting_step"))
+  expect_error(apply_step(st, data.frame(x = 1:4), c(-5, -4, -6, 10)), "non-positive")
+})
+
+test_that("N4-3: step_rescale rejects a named scalar total (c(North = 1000))", {
+  sp <- weighting_spec(data.frame(pw = rep(1, 10)), base_weights = pw)
+  expect_error(step_rescale(sp, to = "total", total = c(North = 1000)), "unnamed")
+  expect_error(step_rescale(sp, to = "total", total = 1000), NA)          # unnamed OK
+})
+
+test_that("N4-6: step_assert max_weight_ratio with no active units fails cleanly", {
+  st <- structure(list(max_weight_ratio = 3, on_fail = "warning"),
+                  class = c("step_assert", "weighting_step"))
+  d  <- data.frame(x = 1:10); attr(d, "weightflow_base_w") <- rep(1, 10)
+  expect_warning(apply_step(st, d, rep(0, 10)), "Assertion")              # not a silent pass / base-R warning
+})
+
+test_that("N4-7: design_effect() returns NA when the weights nearly cancel", {
+  expect_true(is.na(design_effect(c(-10, 10 + 1e-8))$deff))               # sum ~ 0 relative to sum|w|
+  expect_false(is.na(design_effect(c(1, 2, 3, 4))$deff))                  # ordinary weights unaffected
+})
+
+test_that("M3 (rest): a named length-1 bound needs `by` in trimmed calibration", {
+  d  <- data.frame(region = rep(c("A", "B"), 20), pw = rep(1, 40))
+  sp <- weighting_spec(d, base_weights = pw) |>
+    step_calibrate(method = "raking", margins = list(region = c(A = 20, B = 20)))
+  expect_error(prep(step_trim_calibrated(sp, ~ region, upper = c(A = 16))), "named")
+})
+
 test_that("C1b: a classic margin that omits a sample level errors (raking and poststratify)", {
   d  <- data.frame(region = rep(c("A", "B", "C"), c(20, 20, 10)), pw = rep(1, 50))
   sp <- weighting_spec(d, base_weights = pw)

@@ -155,6 +155,13 @@ step_calibrate <- function(spec, margins = NULL,
                            maxit = 50L, tol = 1e-6, penalty = NULL) {
   method <- match.arg(method)
   calfun <- match.arg(calfun)
+  # N4-1: validate maxit/tol here too. Unvalidated, `maxit = "a"` made the raking
+  # loop `while (it < "a")` TRUE forever (lexicographic), hanging prep() with no
+  # exit when the margins do not converge; `maxit = NA` gave an opaque error.
+  maxit <- .wf_count(maxit, "maxit", min = 1L)
+  if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol <= 0)
+    stop(sprintf("`tol` must be a single positive finite number; got %s.",
+                 deparse(tol)[1]), call. = FALSE)
   totals_is_df   <- is.data.frame(totals)
   totals_is_list <- is.list(totals) && !is.data.frame(totals) &&
                     length(totals) > 0L &&
@@ -366,7 +373,13 @@ design_effect <- function(w) {
   m  <- length(wa)
   if (m == 0L) return(list(deff = NA_real_, n_eff = 0, cv = NA_real_, n = 0L))
   sw   <- sum(wa)
-  deff <- if (sw == 0) NA_real_ else m * sum(wa^2) / (sw^2)
+  # N4-7: the Kish formula is only meaningful when the weights add up to a
+  # non-trivial total. If they nearly cancel (e.g. negative calibration weights
+  # summing to ~0), sw^2 is tiny and deff explodes to astronomical values that
+  # then flow into the report; return NA instead. For ordinary positive weights
+  # abs(sw) == sum(abs(wa)), so this never triggers a false NA.
+  deff <- if (!is.finite(sw) || abs(sw) <= 1e-9 * sum(abs(wa)))
+            NA_real_ else m * sum(wa^2) / (sw^2)
   deff <- max(deff, 1)                 # guard against floating-point dip below 1
   list(deff = deff, n_eff = m / deff, cv = sqrt(deff - 1), n = m)
 }

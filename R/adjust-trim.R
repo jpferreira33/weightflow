@@ -63,6 +63,17 @@ apply_step.step_trim <- function(step, data, w) {
       gi <- which(cells == g & active)
       if (!length(gi)) next
       med <- stats::median(new_w[gi])
+      # N4-2: a ratio to a non-positive reference is meaningless -- with a negative
+      # median (a group dominated by negative calibration weights) the cap falls
+      # below the implicit floor and the whole group would collapse to weight 0,
+      # inflating the total. Fail loudly instead.
+      if (!is.finite(med) || med <= 0)
+        stop(sprintf(paste0("step_trim(reference = \"median\") needs a positive reference, ",
+                            "but group '%s' has a non-positive median weight (%s), which ",
+                            "happens when the group is dominated by negative calibration ",
+                            "weights. Trim before that calibration, use reference = \"value\" ",
+                            "with an absolute cap, or set `bounds` to keep the weights positive."),
+                     g, format(round(med, 4))), call. = FALSE)
       cap[gi] <- step$max_ratio * med
       if (!is.null(step$min_ratio)) floor_v[gi] <- step$min_ratio * med
     }
@@ -280,7 +291,9 @@ apply_step.step_assert <- function(step, data, w) {
     add("n_eff >= min", de$n_eff, step$min_n_eff, isTRUE(de$n_eff >= step$min_n_eff))
   if (!is.null(step$max_weight_ratio)) {
     if (is.null(base_w)) stop("max_weight_ratio needs the base weights (provided by prep()).")
-    mr <- max(w[active] / base_w[active])
+    # N4-6: with no active units max(numeric(0)) is -Inf and the check would pass
+    # on no data (and warn under warn = 2); NA makes it a clean failure instead.
+    mr <- if (any(active)) max(w[active] / base_w[active]) else NA_real_
     add("max(w/base) <= max", mr, step$max_weight_ratio, isTRUE(mr <= step$max_weight_ratio))
   }
   diag <- do.call(rbind, checks)
@@ -425,10 +438,14 @@ apply_step.step_trim_weights <- function(step, data, w) {
 # unit's group. Used by trimmed calibration for subgroup-specific bounds.
 .expand_bound <- function(b, grp, n, default, nm) {
   if (is.null(b))        return(rep(default, n))
-  if (length(b) == 1L)   return(rep(as.numeric(b), n))
+  # M3: only an UNNAMED single number is a global bound. A named length-1 vector
+  # (e.g. c(North = 16)) is a per-group bound for one group -- fall through so it
+  # requires `by` and is checked for coverage, instead of being applied to all.
+  if (length(b) == 1L && is.null(names(b))) return(rep(as.numeric(b), n))
   if (is.null(grp))
-    stop(sprintf(paste0("`%s` has length > 1 but no `by` was given. Supply `by` ",
-                        "and a named vector of %s bounds per group, or a single number."),
+    stop(sprintf(paste0("`%s` is a named / length > 1 vector but no `by` was given. ",
+                        "Supply `by` and a named vector of %s bounds per group, or pass a ",
+                        "single unnamed number for a global bound."),
                  nm, nm))
   if (is.null(names(b)))
     stop(sprintf(paste0("`%s` must be a NAMED vector (names = the `by` group ",

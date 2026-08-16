@@ -173,6 +173,21 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
              "weight 0. Consider collapsing cells or using a coarser grouping."),
       sum(is.na(diag$factor))))
 
+  # N4-4: rounding can push a weight whose magnitude is below half the rounding
+  # precision (a small, or negative, calibration weight) to exactly 0 -- the
+  # "dropped" marker -- so the unit silently leaves the active set and
+  # collect_weights(). Surface how many.
+  if (identical(step_class, "step_round")) {
+    zeroed <- sum(.wf_active(w_before) & !.wf_active(w_after))
+    if (zeroed > 0L)
+      msgs <- c(msgs, sprintf(
+        paste0("%d unit(s) were rounded to weight 0 and left the active set (their ",
+               "magnitude was below half the rounding precision, e.g. a small or negative ",
+               "calibration weight); they no longer appear in collect_weights(). Round to ",
+               "more decimals, or resolve those weights before rounding."),
+        zeroed))
+  }
+
   # Very small response propensities blow up the 1/p weights; flag it.
   pm <- attr(diag, "p_min")
   if (!is.null(pm) && is.finite(pm) && pm < 0.01)

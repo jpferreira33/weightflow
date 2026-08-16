@@ -329,10 +329,15 @@ test_that(".expand_bound rejects a varying bound without a usable `by`", {
                "no value for these")
 })
 
-test_that(".expand_bound treats a length-1 bound as global, named or not", {
-  # same trap as .ridge_diag: a single named value is NOT a per-group bound
-  expect_equal(.expand_bound(c(a = 1), c("a", "b", "a"), 3L, -Inf, "lower"),
-               rep(1, 3))
+test_that(".expand_bound: unnamed length-1 is global; a named one is per-group", {
+  # an UNNAMED single value is the global bound for every unit
+  expect_equal(.expand_bound(1, c("a", "b", "a"), 3L, -Inf, "lower"), rep(1, 3))
+  # M3/N4-3: a NAMED single value is a per-group bound, not a global one; it must
+  # cover every group, otherwise it errors (silently applying it to all was a trap)
+  expect_error(.expand_bound(c(a = 1), c("a", "b", "a"), 3L, -Inf, "lower"), "no value")
+  # named and covering every group -> mapped per group
+  expect_equal(.expand_bound(c(a = 1, b = 2), c("a", "b", "a"), 3L, -Inf, "lower"),
+               c(1, 2, 1))
 })
 
 # ---------------------------------------------------------------------------
