@@ -82,7 +82,9 @@
   as 0 and inflating the standard error; the achieved-vs-target check
   now runs even under `bounds`, so `converged` reflects the real totals;
   a duplicate category in tidy linear/GREG totals is now summed (not
-  overwritten by the last row); by-domain (`by =`) calibration
+  overwritten by the last row), and a duplicate cell in tidy
+  post-stratification totals is summed with an informative message (so
+  an accidental double-paste is visible); by-domain (`by =`) calibration
   propagates its convergence flag, so the report no longer shows green
   when a single domain failed to converge;
   [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
@@ -138,6 +140,32 @@
   (which used to return `0 +/- 0` for a typo); and `replicates < 2` all
   now error, instead of silently skipping the step, flipping the
   estimator (`isTRUE(1)` is `FALSE`), or returning a meaningless result.
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)’s
+  `warn` / `min_cell_n` / `max_factor` and
+  `step_rescale(to = "total")`’s `total` are validated as well, so a bad
+  value no longer quietly disables a quality check or zeroes every
+  weight. A `prob` / `n_eligible` / `n_selected` given to
+  [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md)
+  that evaluates to a factor now errors (rather than silently using its
+  integer codes), and the output column names (`weight_name`, `prefix`
+  in
+  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
+  /
+  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md))
+  must be non-empty strings (`1` or `""` used to overwrite an existing
+  column silently). Duplicate names in a classic `totals` vector now
+  error (previously only one value was used); calibration arguments the
+  chosen method ignores (`cluster` with raking, `bounds` with
+  post-stratification) raise a warning instead of being dropped
+  silently; and a numeric post-stratification category such as `100000`
+  now matches between the totals and the data regardless of
+  integer/double type or scientific notation.
+- **Documentation.** The package help no longer says weightflow
+  “computes weights only” (it provides recipe-aware bootstrap /
+  jackknife variance and bridges to `survey` / `srvyr`); the
+  [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+  example uses feasible bounds (`[6, 13]`) so it no longer clamps every
+  weight and emits convergence warnings.
 - **Negative weights are now consistent instead of half-counted.** A
   negative weight – a valid, if unusual, output of unbounded linear/GREG
   calibration – is treated as *active* everywhere through a single
