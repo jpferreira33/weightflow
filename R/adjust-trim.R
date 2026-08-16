@@ -271,14 +271,17 @@ apply_step.step_assert <- function(step, data, w) {
       check = name, value = round(value, 3), threshold = thr, pass = pass,
       stringsAsFactors = FALSE)
 
+  # M8: a non-finite deff / n_eff (e.g. all-zero weights) made `de$deff <= max`
+  # return NA, which then blew up `any(!diag$pass)` with "missing value where
+  # TRUE/FALSE needed". isTRUE() turns an unverifiable check into a clean failure.
   if (!is.null(step$max_deff))
-    add("deff <= max", de$deff, step$max_deff, de$deff <= step$max_deff)
+    add("deff <= max", de$deff, step$max_deff, isTRUE(de$deff <= step$max_deff))
   if (!is.null(step$min_n_eff))
-    add("n_eff >= min", de$n_eff, step$min_n_eff, de$n_eff >= step$min_n_eff)
+    add("n_eff >= min", de$n_eff, step$min_n_eff, isTRUE(de$n_eff >= step$min_n_eff))
   if (!is.null(step$max_weight_ratio)) {
     if (is.null(base_w)) stop("max_weight_ratio needs the base weights (provided by prep()).")
     mr <- max(w[active] / base_w[active])
-    add("max(w/base) <= max", mr, step$max_weight_ratio, mr <= step$max_weight_ratio)
+    add("max(w/base) <= max", mr, step$max_weight_ratio, isTRUE(mr <= step$max_weight_ratio))
   }
   diag <- do.call(rbind, checks)
   if (!is.null(diag) && any(!diag$pass)) {

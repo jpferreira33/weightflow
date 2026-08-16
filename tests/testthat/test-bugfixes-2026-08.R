@@ -524,6 +524,46 @@ test_that("step_trim_calibrated help example uses a feasible band [5.5, 13.5] th
   expect_true(all(active >= 5.5 - 1e-6 & active <= 13.5 + 1e-6))                 # weights inside the band
 })
 
+test_that("calfun ignored by raking/poststratify now warns (N-15 sibling)", {
+  d <- data.frame(region = rep(c("A", "B"), 20), pw = rep(1, 40))
+  expect_warning(
+    step_calibrate(weighting_spec(d, base_weights = pw), method = "raking",
+                   margins = list(region = c(A = 20, B = 20)), calfun = "logit"),
+    "calfun")
+  # with method = "linear" calfun applies, so no warning
+  expect_warning(
+    step_calibrate(weighting_spec(d, base_weights = pw), method = "linear",
+                   formula = ~ region, totals = c("(Intercept)" = 40, regionB = 20),
+                   calfun = "raking"),
+    NA)
+})
+
+test_that("A4: step_rescale(by=) is rejected with to='total' and works with to='n'", {
+  d <- data.frame(region = rep(c("A", "B"), 20), pw = rep(1, 40))
+  sp <- weighting_spec(d, base_weights = pw)
+  expect_error(step_rescale(sp, to = "total", total = 100, by = "region"), "by")
+  expect_error(step_rescale(sp, to = "n", by = "region"), NA)          # by is valid here
+  expect_error(step_rescale(sp, to = "total", total = 100), NA)        # no by, fine
+})
+
+test_that("M3: step_trim_weights rejects a named/non-scalar bound", {
+  d  <- data.frame(pw = runif(30, 1, 5))
+  sp <- weighting_spec(d, base_weights = pw)
+  expect_error(step_trim_weights(sp, upper = c(North = 16)), "single unnamed")
+  expect_error(step_trim_weights(sp, lower = c(1, 2)),       "single unnamed")
+  expect_error(step_trim_weights(sp, upper = 16),            NA)        # scalar OK
+})
+
+test_that("M8: step_assert with a non-finite deff fails cleanly instead of crashing", {
+  st <- structure(list(max_deff = 1.5, on_fail = "warning"),
+                  class = c("step_assert", "weighting_step"))
+  # all-zero weights -> design_effect() returns deff = NA; must not error with
+  # "missing value where TRUE/FALSE needed"
+  expect_warning(apply_step(st, data.frame(x = 1:10), rep(0, 10)), "Assertion")
+  st$on_fail <- "error"
+  expect_error(apply_step(st, data.frame(x = 1:10), rep(0, 10)), "Assertion")
+})
+
 test_that("NUEVO-13: duplicate cells in tidy poststrata totals emit a message (still summed)", {
   d   <- data.frame(pw = rep(10, 30), region = sample(c("A", "B", "C"), 30, TRUE))
   tot <- data.frame(region = c("A", "B", "C", "A"), Freq = c(60, 120, 90, 40))  # A duplicated

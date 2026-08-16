@@ -236,6 +236,17 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
                               strict = TRUE, maxit = 50L) {
   method       <- match.arg(method)
   redistribute <- match.arg(redistribute)
+  # M3: this step applies a single absolute band to every unit; it has no `by`.
+  # A named or length > 1 `lower`/`upper` (e.g. `upper = c(North = 16)`) would be
+  # recycled to a scalar and silently applied to everyone. Reject it and point to
+  # step_trim_calibrated(), which does take per-subgroup bounds through `by`.
+  chk_scalar <- function(x, nm) {
+    if (!is.null(x) && (length(x) != 1L || !is.null(names(x))))
+      stop(sprintf(paste0("`%s` in step_trim_weights() must be a single unnamed number; ",
+                          "got %s. For per-group bounds use step_trim_calibrated(by = ...)."),
+                   nm, deparse(x)[1]), call. = FALSE)
+  }
+  chk_scalar(lower, "lower"); chk_scalar(upper, "upper")
   step <- structure(
     list(
       label  = if (method == "potter") "auto weight trimming (Potter MSE)"
@@ -379,6 +390,13 @@ step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
 step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL) {
   to <- match.arg(to)
   if (to == "total" && is.null(total)) stop("to = 'total' requires `total`.")
+  # A4: `by` only makes sense with to = "n" (each group -> its own active size).
+  # With to = "total" the whole sample is scaled to one number, so `by` would be
+  # ignored -- refuse it instead of dropping it silently and mislabelling the step.
+  if (to == "total" && !is.null(by))
+    stop("`by` is only supported with to = \"n\" (each group is rescaled to its own ",
+         "active size). With to = \"total\" the whole sample is rescaled to a single ",
+         "total; drop `by`, or use to = \"n\".", call. = FALSE)
   step <- structure(
     list(
       label = sprintf("rescale (to %s%s)", to,

@@ -225,7 +225,7 @@ step_calibrate <- function(spec, margins = NULL,
                           "it is the partition, and the totals tables carry it as ",
                           "a column."), by))
   }
-  if (calfun == "logit" && is.null(bounds))
+  if (method == "linear" && calfun == "logit" && is.null(bounds))
     stop("calfun = 'logit' requires `bounds` = c(L, U).")
   if (!is.null(bounds)) {
     if (length(bounds) != 2L || bounds[1] >= 1 || bounds[2] <= 1)
@@ -252,6 +252,8 @@ step_calibrate <- function(spec, margins = NULL,
     ignored <- c(ignored, "cluster (only method = 'linear' with equal_within_cluster = TRUE)")
   if (!is.null(bounds) && method != "linear")
     ignored <- c(ignored, "bounds (only method = 'linear')")
+  if (calfun != "linear" && method != "linear")
+    ignored <- c(ignored, "calfun (only method = 'linear'; raking/poststratify use a fixed distance)")
   if (length(ignored))
     warning(sprintf("Argument(s) ignored by this calibration step: %s.",
                     paste(ignored, collapse = "; ")), call. = FALSE)

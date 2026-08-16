@@ -204,6 +204,10 @@
     }
     if (!improved) break
   }
+  # M6: the convergence test runs at the TOP of the loop, so an update made on the
+  # last allowed iteration (it == maxit) is never re-checked. Re-test once here so
+  # a run that actually reached `tol` on its final step is reported as converged.
+  if (!ok && cur < tol) ok <- TRUE
   if (!ok)
     warning("Bounded calibration did not fully converge (bounds may be infeasible).",
             call. = FALSE)
