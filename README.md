@@ -4,7 +4,7 @@
 [![CRAN status](https://www.r-pkg.org/badges/version/weightflow)](https://CRAN.R-project.org/package=weightflow)
 [![CRAN downloads](https://cranlogs.r-pkg.org/badges/weightflow)](https://CRAN.R-project.org/package=weightflow)
 [![R-CMD-check](https://github.com/jpferreira33/weightflow/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jpferreira33/weightflow/actions/workflows/R-CMD-check.yaml)
-[![Codecov test coverage](https://codecov.io/github/jpferreira33/weightflow/graph/badge.svg?token=KSR54WEM88)](https://codecov.io/github/jpferreira33/weightflow)
+[![Codecov test coverage](https://codecov.io/github/jpferreira33/weightflow/graph/badge.svg?token=KSR54WEM88)](https://app.codecov.io/github/jpferreira33/weightflow)
 [![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 <!-- badges: end -->
