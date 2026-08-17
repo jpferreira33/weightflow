@@ -256,12 +256,13 @@ apply_step.step_select_within <- function(step, data, w) {
       any(tapply(as.character(data[[v]])[idx_el], cl, function(z) length(unique(z))) > 1L),
       logical(1))]
     if (length(bad))
-      stop(sprintf(paste0("Model variable(s) %s are not constant within some cluster(s) of ",
-                          "'%s'. Household-level propensity reads one row per cluster, so a ",
-                          "covariate varying inside a cluster would make the fit (and the ",
-                          "weights) depend on row order. Use cluster-level covariates, or drop ",
-                          "`cluster` for a person-level adjustment."),
-                   paste(bad, collapse = ", "), step$cluster), call. = FALSE)
+      warning(sprintf(paste0("Model variable(s) %s are not constant within some cluster(s) of ",
+                            "'%s'. Household-level propensity reads one row per cluster (the ",
+                            "first), so a covariate varying inside a cluster makes the fit (and ",
+                            "the weights) depend on row order. Use cluster-level covariates, ",
+                            "aggregate them per cluster, or drop `cluster` for a person-level ",
+                            "adjustment."),
+                     paste(bad, collapse = ", "), step$cluster), call. = FALSE)
     ddh    <- data[idx_el[match(hhn, cl)], , drop = FALSE]   # one row per household
     ddh$.y <- as.integer(resp_h)
     mw     <- if (is.null(step$weight_model) || isTRUE(step$weight_model)) Wh

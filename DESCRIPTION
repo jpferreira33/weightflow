@@ -5,9 +5,8 @@ Authors@R: c(
     person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy",
            role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-1884-8187")),
-    person("Andrés", "Gutiérrez", role = "ctb",
-           comment = c(ORCID = "0009-0007-2918-1932",
-                       affiliation = "ECLAC - Statistics Division")))
+    person("Andrés", "Gutiérrez", role = "aut",
+           comment = c(ORCID = "0009-0007-2918-1932")))
 Description: Builds survey analysis weights by declaring the whole weighting
     process as an ordered recipe of explicit adjustments and estimating it in a
     single call. The recipe follows the stages of a real household survey:

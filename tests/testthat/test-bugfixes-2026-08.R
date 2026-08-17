@@ -569,10 +569,10 @@ test_that("R5#2: household propensity errors when a model covariate varies withi
   d  <- data.frame(hh = rep(1:10, each = 2), x = 1:20,
                    resp = rep(rep(c(1L, 0L), each = 2), 5), pw = 1)   # x varies within hh
   sp <- weighting_spec(d, base_weights = pw)
-  expect_error(
+  expect_warning(
     prep(step_nonresponse(sp, respondent = resp, method = "propensity",
                           formula = ~ x, cluster = "hh")),
-    "constant within")
+    "depend on row order")
 })
 
 test_that("R5#9: step_nonresponse warns about ignored NULL-default arguments", {
