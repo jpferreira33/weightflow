@@ -171,6 +171,17 @@ apply_step.step_model_calibration <- function(step, data, w) {
     Tx   <- colSums(Xpop)[cn]
     if (anyNA(Tx))
       stop("Inconsistent factor levels between the sample and `population` in x_formula.")
+    # #7: the reverse gap -- a level present in `population` but ABSENT from the
+    # sample. Its column is dropped here, so its population mass is absorbed into
+    # the reference category via the intercept and the calibration totals are
+    # misassigned silently. Error, naming the offending level(s).
+    extra <- setdiff(colnames(Xpop), cn)
+    if (length(extra))
+      stop(sprintf(paste0("`population` has factor level(s) absent from the sample in x_formula: ",
+                          "%s. Their population mass would be absorbed into the reference ",
+                          "category, misassigning the calibration totals. Align the sample and ",
+                          "population factor levels, or drop the extra level(s)."),
+                   paste(utils::head(extra, 10L), collapse = ", ")), call. = FALSE)
   } else {
     # external totals, same two shapes as step_calibrate(method = "linear"):
     #   - tidy: a NAMED LIST (data frame per factor, number per continuous)

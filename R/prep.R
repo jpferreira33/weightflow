@@ -100,6 +100,7 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
 # step_nonresponse(method = "propensity") and step_model_calibration.
 # Refs: Dagdoug, Goga & Haziza (2023); Chernozhukov et al. (2018).
 .crossfit_alert <- function(step) {
+  msgs     <- character(0)
   flexible <- c("tree", "forest", "boost")
   eng <- character(0)
   if (inherits(step, "step_nonresponse") && identical(step$method, "propensity"))
@@ -109,13 +110,19 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
                   character(1))
   hit <- intersect(unique(eng), flexible)
   if (length(hit) && is.null(step$crossfit))
-    return(sprintf(paste0(
+    msgs <- c(msgs, sprintf(paste0(
       "Flexible learner (%s) without cross-fitting: same-sample predictions can ",
       "understate the variance even under recipe-aware replication, because each ",
       "unit stays in the training set of its own prediction. Set crossfit = 5 to ",
       "break it (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018)."),
       paste(hit, collapse = ", ")))
-  NULL
+  # Cross-fitting without a seed draws its folds from the caller's global RNG:
+  # the fold assignment (and thus the result) is not reproducible run to run.
+  if (!is.null(step$crossfit) && is.null(step$crossfit_seed))
+    msgs <- c(msgs, paste0(
+      "cross-fitting without `crossfit_seed` is not reproducible; set `crossfit_seed` ",
+      "for a stable result."))
+  if (length(msgs)) msgs else NULL
 }
 
 # Guard: a haven_labelled (SPSS/Stata) column used in a MODEL FORMULA enters the
@@ -125,7 +132,8 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
 # by the codes, which is correct there); only formula terms are affected.
 .check_step_labelled <- function(step, data) {
   fs   <- Filter(function(f) inherits(f, "formula"),
-                 c(list(step$formula), list(step$x_formula)))
+                 c(list(step$formula), list(step$x_formula),
+                   lapply(step$models, function(m) m$formula)))
   vars <- unique(unlist(lapply(fs, all.vars)))
   vars <- intersect(vars, names(data))
   bad  <- vars[vapply(vars, function(v) inherits(data[[v]], "haven_labelled"),

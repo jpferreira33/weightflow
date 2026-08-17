@@ -70,6 +70,10 @@
 
   totals$.key  <- key_of(totals, vars)
   totals$.Freq <- as.numeric(totals[[count]])
+  if (any(totals$.Freq < 0, na.rm = TRUE))
+    stop(paste0("Post-stratification counts must be non-negative; got negative value(s) ",
+                "in the totals. A negative population count is always a data error."),
+         call. = FALSE)
   # collapse duplicate cells by summing their counts (robust to extra columns).
   # Surface it: summing is right for a census table disaggregated by extra
   # variables, but a message lets an accidental double-paste be caught too.

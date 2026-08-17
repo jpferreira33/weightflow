@@ -192,6 +192,10 @@ step_calibrate <- function(spec, margins = NULL,
                               "(categories) must be present, non-empty and unique; without ",
                               "them the step would silently do nothing."),
                        mv), call. = FALSE)
+        if (any(!is.finite(tv)) || any(tv < 0))
+          stop(sprintf(paste0("Calibration `margins` targets must be finite and non-negative; ",
+                              "got NA/negative value(s) in margin '%s'."),
+                       mv), call. = FALSE)
       }
     }
     if (totals_is_df || totals_is_list) {

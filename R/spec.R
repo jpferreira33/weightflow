@@ -20,10 +20,20 @@
 #' rec <- weighting_spec(sample_survey, base_weights = pw)
 #' rec
 weighting_spec <- function(data, base_weights) {
-  bw <- deparse(substitute(base_weights))
+  bw_expr <- substitute(base_weights)
   if (!is.data.frame(data)) stop("`data` must be a data.frame.")
   if (nrow(data) == 0L) stop("`data` has 0 rows (an upstream filter may have emptied it).")
+  if (anyDuplicated(names(data)))
+    stop(sprintf(paste0("`data` has duplicate column names: %s. Rename them before ",
+                        "building a weighting_spec."),
+                 paste(unique(names(data)[duplicated(names(data))]), collapse = ", ")),
+         call. = FALSE)
+  # Accept a bare column name (NSE) or a length-1 character string naming a column.
+  bw <- if (is.character(bw_expr) && length(bw_expr) == 1L) bw_expr else deparse(bw_expr)
   if (!bw %in% names(data)) stop(sprintf("Base-weight column '%s' not found in the data.", bw))
+  if (!is.numeric(data[[bw]]))
+    stop(sprintf("Base weights must be numeric; column '%s' is a %s.",
+                 bw, class(data[[bw]])[1]), call. = FALSE)
   if (any(is.na(data[[bw]]))) stop("Base weights cannot contain NA.")
   if (!all(is.finite(data[[bw]]))) stop("Base weights must be finite (no Inf or NaN).")
   if (any(data[[bw]] < 0)) stop("Base weights cannot be negative.")

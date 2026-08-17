@@ -369,6 +369,11 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   # Write UTF-8 bytes explicitly. Plain writeLines() re-encodes to the native
   # charset, which mangles accents/symbols in a non-UTF-8 locale (e.g. Windows
   # latin1) even for lang="en" reports (dates, names in the metadata).
+  outdir <- dirname(file)
+  if (!dir.exists(outdir))
+    stop(sprintf(paste0("Cannot write the report: directory '%s' does not exist. ",
+                        "Create it first or choose another path."), outdir),
+         call. = FALSE)
   con <- file(file, open = "wb")
   on.exit(close(con), add = TRUE)
   writeLines(enc2utf8(html), con, useBytes = TRUE)

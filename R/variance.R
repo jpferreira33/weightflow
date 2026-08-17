@@ -545,7 +545,15 @@ as_svydesign <- function(object, ids, strata = NULL, weight_name = ".weight", ..
     if (!weight_name %in% names(df))
       stop(sprintf("Column '%s' not found; pass weight_name=.", weight_name))
   } else stop("`object` must be a prepped recipe or a data frame.")
-  df <- df[df[[weight_name]] > 0, , drop = FALSE]            # drop inactive units
+  # Keep the same active set the rest of the package uses (negatives are active;
+  # only 0 / non-finite are dropped), so svytotal reproduces sum(w * y).
+  wcol <- df[[weight_name]]
+  keep <- .wf_active(wcol)
+  if (any(wcol[keep] < 0))
+    warning(sprintf(paste0("%d negative weight(s) are included in the survey design; ",
+                           "survey variance formulas assume positive weights."),
+                    sum(wcol[keep] < 0)), call. = FALSE)
+  df <- df[keep, , drop = FALSE]                             # drop inactive units
   # accept either a bare column name (string) or a formula; build a safe formula
   f  <- function(v) if (inherits(v, "formula")) v else stats::reformulate(v)
   survey::svydesign(ids = f(ids), strata = if (is.null(strata)) NULL else f(strata),
@@ -557,7 +565,11 @@ as_svydesign <- function(object, ids, strata = NULL, weight_name = ".weight", ..
 as_svrepdesign <- function(object, ...) {
   if (!requireNamespace("survey", quietly = TRUE))
     stop("Install the 'survey' package to use as_svrepdesign().")
-  keep <- object$weights > 0
+  keep <- .wf_active(object$weights)   # keep negatives (active); drop 0 / non-finite
+  if (any(object$weights[keep] < 0))
+    warning(sprintf(paste0("%d negative weight(s) are included in the survey design; ",
+                           "survey variance formulas assume positive weights."),
+                    sum(object$weights[keep] < 0)), call. = FALSE)
   rw    <- object$replicates[keep, , drop = FALSE]
   valid <- which(!apply(rw, 2, anyNA))              # drop failed replicates (NA columns)
   ndrop <- ncol(rw) - length(valid)

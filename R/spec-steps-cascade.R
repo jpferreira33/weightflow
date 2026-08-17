@@ -331,6 +331,13 @@ step_nonresponse <- function(spec, respondent,
     if (!is.null(totals))             ignored <- c(ignored, "totals")
     if (isTRUE(equal_within_cluster)) ignored <- c(ignored, "equal_within_cluster")
   }
+  # #9: further NULL-default arguments that a given method silently ignores.
+  if (method == "propensity" && !is.null(by))
+    ignored <- c(ignored, "by (propensity models use `formula`, not adjustment cells)")
+  if (is.null(crossfit) && !is.null(crossfit_seed))
+    ignored <- c(ignored, "crossfit_seed (only used together with `crossfit`)")
+  if (is.null(totals) && !is.null(count))
+    ignored <- c(ignored, "count (only used with tidy `totals`)")
   if (length(ignored))
     warning(sprintf("For method = \"%s\", these argument(s) are ignored: %s.",
                     method, paste(unique(ignored), collapse = ", ")), call. = FALSE)

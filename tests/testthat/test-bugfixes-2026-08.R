@@ -565,6 +565,25 @@ test_that("M3 (rest): a named length-1 bound needs `by` in trimmed calibration",
   expect_error(prep(step_trim_calibrated(sp, ~ region, upper = c(A = 16))), "named")
 })
 
+test_that("R5#2: household propensity errors when a model covariate varies within the cluster", {
+  d  <- data.frame(hh = rep(1:10, each = 2), x = 1:20,
+                   resp = rep(rep(c(1L, 0L), each = 2), 5), pw = 1)   # x varies within hh
+  sp <- weighting_spec(d, base_weights = pw)
+  expect_error(
+    prep(step_nonresponse(sp, respondent = resp, method = "propensity",
+                          formula = ~ x, cluster = "hh")),
+    "constant within")
+})
+
+test_that("R5#9: step_nonresponse warns about ignored NULL-default arguments", {
+  d  <- data.frame(g = rep(c("A", "B"), 20), resp = rep(c(1, 0), 20), pw = 1)
+  sp <- weighting_spec(d, base_weights = pw)
+  expect_warning(step_nonresponse(sp, respondent = resp, method = "propensity",
+                                  formula = ~ g, by = "g"), "by")
+  expect_warning(step_nonresponse(sp, respondent = resp, method = "weighting_class",
+                                  by = "g", count = "n"), "count")
+})
+
 test_that("R5#1: .step_short escapes a hostile cluster name (XSS)", {
   st <- structure(list(method = "weighting_class",
                        cluster = "hh<img src=x onerror=alert(1)>"),

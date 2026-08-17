@@ -128,6 +128,17 @@ apply_step.step_unknown_eligibility <- function(step, data, w) {
                           "Cluster-level unknown-eligibility redistribution needs every unit ",
                           "assigned to a cluster; assign one (or filter those units) first."),
                    step$cluster), call. = FALSE)
+    # `by` must be constant within each cluster: household-level redistribution
+    # assigns one factor per cluster, so a household spanning two `by` cells would
+    # get order-dependent factors. Mirror the nonresponse weighting_class check.
+    cell_active <- as.character(cells[active])
+    nuniq       <- tapply(cell_active, cl[active], function(z) length(unique(z)))
+    if (any(nuniq > 1L))
+      stop(sprintf(paste0("The `by` grouping is not constant within %d cluster(s) of '%s'. ",
+                          "Household-level unknown-eligibility assigns one factor per cluster; ",
+                          "with `by` varying inside a cluster the result would depend on row ",
+                          "order. Use a cluster-level `by`."),
+                   sum(nuniq > 1L), step$cluster), call. = FALSE)
     for (g in levels(cells)) {
       idx <- which(cells == g & active)
       if (!length(idx)) next
@@ -235,6 +246,22 @@ apply_step.step_select_within <- function(step, data, w) {
 
   } else {                                          # propensity, household level
     if (is.null(step$formula)) stop("method = 'propensity' requires `formula`.")
+    # #2: the household's covariates are read from its FIRST row (match() takes the
+    # first). If a model variable varies within the cluster, the fitted propensity
+    # -- and the weights -- depend on the row order of the data. Require the model
+    # variables to be constant within each cluster, mirroring the weighting_class
+    # guard above.
+    fvars <- intersect(all.vars(step$formula), names(data))
+    bad   <- fvars[vapply(fvars, function(v)
+      any(tapply(as.character(data[[v]])[idx_el], cl, function(z) length(unique(z))) > 1L),
+      logical(1))]
+    if (length(bad))
+      stop(sprintf(paste0("Model variable(s) %s are not constant within some cluster(s) of ",
+                          "'%s'. Household-level propensity reads one row per cluster, so a ",
+                          "covariate varying inside a cluster would make the fit (and the ",
+                          "weights) depend on row order. Use cluster-level covariates, or drop ",
+                          "`cluster` for a person-level adjustment."),
+                   paste(bad, collapse = ", "), step$cluster), call. = FALSE)
     ddh    <- data[idx_el[match(hhn, cl)], , drop = FALSE]   # one row per household
     ddh$.y <- as.integer(resp_h)
     mw     <- if (is.null(step$weight_model) || isTRUE(step$weight_model)) Wh
