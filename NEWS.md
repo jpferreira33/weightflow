@@ -7,6 +7,8 @@
 * **`collect_replicate_weights()` also exports delete-a-PSU jackknife objects**, with the `type` / `scale` / `rscales` needed by `survey` / `srvyr` (first argument renamed `boot` -> `object`).
 * **Iterative recipe refinement.** Adding a step to a prepped recipe clears the results with a message and re-runs the cascade on the next `prep()`, so stale weights cannot be read by accident.
 * **Per-subgroup trimming.** `step_trim_calibrated()` gains a `by` argument and per-group `lower` / `upper` bounds (suggested by Andrés Gutiérrez, ECLAC).
+* **`collect_propensities()`** recovers the per-unit response propensities fitted by a `step_nonresponse(method = "propensity")` step from a prepped recipe, so their distribution can be inspected before the adjusted weights are trusted; it returns the same information whether the adjustment was made at the unit level or, through `cluster`, at the household level (the household propensity is broadcast to its members).
+* **`domain_summary()`** reports, for a study domain (e.g. a department / DAM), how the weights move within each domain at every stage of the cascade -- active units, sum of weights, mean weight and Kish design effect -- so weight movement can be reviewed step by step per domain for quality control (requested by ECLAC).
 
 ## Bug fixes and documentation
 

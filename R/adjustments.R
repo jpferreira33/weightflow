@@ -289,6 +289,18 @@ apply_step.step_select_within <- function(step, data, w) {
       diag <- do.call(rbind, diag)
       if (isTRUE(attr(classh, "collapsed"))) attr(diag, "classes_collapsed") <- TRUE
     }
+    # Retain the full propensity vector, broadcast from households to their
+    # members, so it can be recovered from the prepped object exactly like the
+    # unit-level path (ECLAC request: inspect the NR-model propensities per unit,
+    # with and without `cluster`, before trusting the adjusted weights).
+    mh <- match(cl, hhn)                               # household index per eligible unit
+    attr(diag, "propensity") <- list(
+      p = as.numeric(p)[mh], resp = as.logical(resp_h)[mh], dw = w[idx_el],
+      idx = idx_el, level = "household",
+      covars = data[idx_el, intersect(all.vars(step$formula), names(data)), drop = FALSE],
+      engine = step$engine, formula = step$formula,
+      crossfit = step$crossfit, weight_model = step$weight_model,
+      num_classes = step$num_classes)
     names(factor_h) <- hhn
   }
 
@@ -501,6 +513,7 @@ apply_step.step_nonresponse <- function(step, data, w) {
   # floor/overlap, covariate balance). Out-of-fold p when crossfit is used.
   attr(diag, "propensity") <- list(
     p = as.numeric(p), resp = as.logical(resp_el), dw = w[eligible],
+    idx = idx_el, level = "unit",
     covars = dd[, all.vars(step$formula), drop = FALSE], engine = step$engine,
     formula = step$formula,
     crossfit = step$crossfit, weight_model = step$weight_model,

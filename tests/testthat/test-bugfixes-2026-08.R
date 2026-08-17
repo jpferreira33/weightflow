@@ -565,6 +565,51 @@ test_that("M3 (rest): a named length-1 bound needs `by` in trimmed calibration",
   expect_error(prep(step_trim_calibrated(sp, ~ region, upper = c(A = 16))), "named")
 })
 
+test_that("domain_summary summarises weights per domain at every stage", {
+  fit <- suppressMessages(prep(weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+    step_calibrate(method = "raking", margins = list(region = c(table(population$region))))))
+  ds  <- domain_summary(fit, by = "region")
+  regs <- sort(unique(as.character(sample_survey$region)))
+  ns   <- length(fit$history)                 # base + 2 steps
+  expect_equal(nrow(ds), ns * length(regs))
+  expect_true(all(c("stage", "domain", "n_active", "sum_w", "mean_w", "deff", "n_eff") %in% names(ds)))
+  # after raking, each region's weighted total matches its population total (last stage)
+  last <- ds[ds$stage == levels(ds$stage)[ns], ]
+  tgt  <- table(population$region)
+  expect_equal(as.numeric(last$sum_w[match(names(tgt), last$domain)]),
+               as.numeric(tgt), tolerance = 1e-3)
+  expect_error(domain_summary(fit, by = "nope"), "not found")
+})
+
+test_that("collect_propensities recovers per-unit propensities (unit-level)", {
+  fit <- suppressMessages(prep(weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded, method = "propensity",
+                     formula = ~ sex + region, engine = "logit")))
+  p <- collect_propensities(fit)
+  expect_equal(nrow(p), nrow(sample_survey))
+  expect_true(all(c(".propensity", ".responded", ".weight_in", ".status") %in% names(p)))
+  pv <- p$.propensity[!is.na(p$.propensity)]
+  expect_true(length(pv) > 0 && all(pv > 0 & pv < 1))
+  # .status: modelled units are exactly the eligible respondents + nonrespondents
+  modelled <- p$.status %in% c("eligible respondent", "eligible nonrespondent")
+  expect_equal(sum(modelled), sum(!is.na(p$.propensity)))
+  fit2 <- suppressMessages(prep(weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded, method = "weighting_class", by = "region")))
+  expect_error(collect_propensities(fit2), "No response-propensity step")
+})
+
+test_that("collect_propensities works with cluster and is constant within household", {
+  fit <- suppressWarnings(suppressMessages(prep(weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded, method = "propensity",
+                     formula = ~ region, cluster = "household_id", engine = "logit"))))
+  p <- collect_propensities(fit)
+  d <- p[!is.na(p$.propensity), ]
+  expect_true(nrow(d) > 0 && all(d$.propensity > 0 & d$.propensity < 1))
+  rng <- tapply(d$.propensity, d$household_id, function(z) diff(range(z)))
+  expect_true(max(rng, na.rm = TRUE) < 1e-9)      # household propensity broadcast to members
+})
+
 test_that("R5#2: household propensity errors when a model covariate varies within the cluster", {
   d  <- data.frame(hh = rep(1:10, each = 2), x = 1:20,
                    resp = rep(rep(c(1L, 0L), each = 2), 5), pw = 1)   # x varies within hh
