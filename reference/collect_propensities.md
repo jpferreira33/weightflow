@@ -34,18 +34,25 @@ collect_propensities(object, step = NULL)
 
 ## Value
 
-The sample `data.frame` with four columns appended: `.propensity` (the
-fitted response propensity \\\hat p\\, `NA` for units outside the model,
-i.e. ineligible / already dropped), `.responded` (the response indicator
-the model used), `.weight_in` (the weight reaching the step, see below),
-and `.status`, a factor that labels each unit as
-`"eligible respondent"`, `"eligible nonrespondent"` or
-`"not in propensity model"`. Units not in the propensity model carry
-`NA` in the first three columns. `.weight_in` is the weight *reaching*
-the nonresponse step – it already carries any earlier adjustment
-(unknown-eligibility redistribution, within-cluster selection), not the
-raw base weight – and is the weight the propensity model is fitted with
-(unless `weight_model = FALSE`). The stage-by-stage weights are
+The sample `data.frame` with columns appended: `.propensity` (the fitted
+response propensity \\\hat p\\, `NA` for units outside the model, i.e.
+ineligible / already dropped), `.responded` (the response indicator the
+model used), `.weight_in` (the weight reaching the step, see below),
+`.factor` (the multiplier the step actually applied to the unit),
+`.status` (a factor that labels each unit as `"eligible respondent"`,
+`"eligible nonrespondent"` or `"not in propensity model"`), and, when
+the step uses propensity classes (`num_classes`), `.class` (the assigned
+class). Units not in the propensity model carry `NA` in the per-unit
+columns. `.weight_in` is the weight *reaching* the nonresponse step – it
+already carries any earlier adjustment (unknown-eligibility
+redistribution, within-cluster selection), not the raw base weight. At
+the unit level it is also the weight the propensity model is fitted with
+(unless `weight_model = FALSE`); with `cluster`, the model is fitted at
+the household level with the household weight, which equals `.weight_in`
+only when weights are uniform within the household. `.factor` equals
+\\1/\hat p\\ only when `num_classes = NULL`; with propensity classes it
+is the class-level adjustment, so `1/.propensity` does not reconstruct
+the applied factor – use `.factor`. The stage-by-stage weights are
 available through
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
 and

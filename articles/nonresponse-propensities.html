@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -37,7 +37,7 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../articles/weightflow.html">Get started</a></li>
-<li class="nav-item dropdown">
+<li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
@@ -87,7 +87,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Nonresponse: weighting classes, propensities and calibration</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/HEAD/vignettes/nonresponse-propensities.Rmd" class="external-link"><code>vignettes/nonresponse-propensities.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/master/vignettes/nonresponse-propensities.Rmd" class="external-link"><code>vignettes/nonresponse-propensities.Rmd</code></a></small>
       <div class="d-none name"><code>nonresponse-propensities.Rmd</code></div>
     </div>
 
@@ -116,7 +116,7 @@ the auxiliaries (missing at random). That is, conditional on
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>i</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_i</annotation></semantics></math>,
 responding is independent of the survey outcome
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>y</mi><mi>i</mi></msub><annotation encoding="application/x-tex">y_i</annotation></semantics></math>,</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo>,</mo><msub><mi>y</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>ϕ</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">P(\text{respond} \mid \mathbf{x}_i, y_i) = P(\text{respond} \mid \mathbf{x}_i)
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo>,</mo><msub><mi>y</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>P</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>ϕ</mi><mi>i</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">P(\text{respond} \mid \mathbf{x}_i, y_i) = P(\text{respond} \mid \mathbf{x}_i)
   = \phi_i .</annotation></semantics></math></p>
 <p>Under this assumption the respondents, reweighted by the inverse of
 their response propensity
@@ -217,7 +217,7 @@ create or destroy weight.</p>
 </h2>
 <p>Instead of cells, the probability of responding is modelled from
 auxiliaries known for respondents and nonrespondents alike,</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϕ</mi><mi>i</mi></msub><mo>=</mo><mi>P</mi><mrow><mo stretchy="true" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">\phi_i = P(\text{respond} \mid \mathbf{x}_i),</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϕ</mi><mi>i</mi></msub><mo>=</mo><mi>P</mi><mo stretchy="false" form="prefix">(</mo><mtext mathvariant="normal">respond</mtext><mo>∣</mo><msub><mi>𝐱</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>,</mo></mrow><annotation encoding="application/x-tex">\phi_i = P(\text{respond} \mid \mathbf{x}_i),</annotation></semantics></math></p>
 <p>and estimated by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mover><mi>ϕ</mi><mo accent="true">̂</mo></mover><mi>i</mi></msub><annotation encoding="application/x-tex">\hat\phi_i</annotation></semantics></math>.
 The model is fitted on the active units, weighted by the current
@@ -481,7 +481,7 @@ outcomes.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

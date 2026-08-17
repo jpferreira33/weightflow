@@ -65,6 +65,7 @@ process](reference/figures/flow-diagram.png)
 ## Installation
 
 ``` r
+
 # From CRAN
 install.packages("weightflow")
 
@@ -84,6 +85,7 @@ whole process reproducible and auditable, and it is exactly what lets
 the bootstrap re-run the entire cascade per replicate.
 
 ``` r
+
 library(weightflow)
 
 recipe <- weighting_spec(sample_one, base_weights = pw) |>
@@ -141,6 +143,7 @@ By default the propensity model is fit with the incoming weights; set
 unrelated to response given the covariates (Little & Vartivarian 2003).
 
 ``` r
+
 step_nonresponse(respondent = responded, method = "propensity",
                  formula = ~ region + sex + age, engine = "forest")
 ```
@@ -154,6 +157,7 @@ folds; folds are formed by cluster when a `cluster` is set, so household
 members never leak across folds.
 
 ``` r
+
 step_nonresponse(respondent = responded, method = "propensity",
                  formula = ~ region + sex + age, engine = "boost",
                  crossfit = 5, crossfit_seed = 1)
@@ -174,6 +178,7 @@ exactly (the two-phase case); pass population `totals` to calibrate the
 respondents to external control totals instead.
 
 ``` r
+
 step_nonresponse(respondent = responded, method = "calibration",
                  formula = ~ region + sex)
 ```
@@ -186,6 +191,7 @@ controlled way: a single, scale-free `penalty` trades a little accuracy
 on the totals for much steadier weights.
 
 ``` r
+
 step_calibrate(method = "linear", formula = ~ region + sex,
                totals = pop_totals, penalty = 1)   # smaller = more relaxation
 ```
@@ -197,6 +203,7 @@ minimizes an estimate of bias^2 + variance (Potter 1990), balancing the
 bias of trimming against the variance from extreme weights.
 
 ``` r
+
 step_trim_weights(method = "potter")
 ```
 
@@ -213,6 +220,7 @@ differ by subgroup (`by`), and there is an integrative (one factor per
 household) variant.
 
 ``` r
+
 step_trim_calibrated(~ region + sex, lower = 20, upper = 400)
 ```
 
@@ -225,6 +233,7 @@ several category columns are crossed automatically, and weightflow
 builds the intercept and the dropped reference levels for you.
 
 ``` r
+
 region_sex <- as.data.frame(table(region = population$region, sex = population$sex))
 step_calibrate(method = "poststratify", totals = region_sex, count = "Freq")
 ```
@@ -247,6 +256,7 @@ interactions. Here each region is calibrated to its sex counts *and* to
 its own income total:
 
 ``` r
+
 sex_by_region    <- as.data.frame(table(region = population$region, sex = population$sex))
 income_by_region <- aggregate(income ~ region, population, sum)   # region -> income total
 
@@ -260,6 +270,7 @@ Raking fits the case where, within each region, you know the margins
 their cross):
 
 ``` r
+
 sex_by_region <- as.data.frame(table(region = population$region, sex     = population$sex))
 age_by_region <- as.data.frame(table(region = population$region, age_grp = population$age_grp))
 
@@ -276,6 +287,7 @@ exactly, on categorical and continuous auxiliaries alike, and with the
 integrative option.
 
 ``` r
+
 step_calibrate(method = "linear", formula = ~ region + income,
                totals = list(region = m_region, income = 1.2e6),
                count = "Freq", calfun = "raking")
@@ -289,6 +301,7 @@ Pass them through `x_totals`, in the same tidy shape as linear
 calibration; `population` is then used only for the model predictions.
 
 ``` r
+
 step_model_calibration(
   x_formula  = ~ region + age,
   models     = list(income = y_model(income ~ age + sex, engine = "glm")),
@@ -306,6 +319,7 @@ once. Single-PSU (“lonely”) strata are handled explicitly
 in parallel with `cores`.
 
 ``` r
+
 boot <- bootstrap_weights(spec, replicates = 500, strata = "region", psu = "psu",
                           lonely_psu = "collapse", cores = 4)   # collapse + parallel
 boot_mean(boot, "income")           # estimate, SE and 95% CI
@@ -320,6 +334,7 @@ adjustment. Stratified (JKn) or unstratified (JK1), with the same
 survey/srvyr for any estimand or domain.
 
 ``` r
+
 jk <- jackknife_weights(spec, strata = "region", psu = "psu",
                         lonely_psu = "collapse", cores = 4)
 jack_total(jk, "employed")
@@ -335,6 +350,7 @@ the partial R-indicators: how representative the response is, and which
 variable drives the gap. No new function to call.
 
 ``` r
+
 # printed by summary() when the recipe adjusts for nonresponse:
 # R-indicator (representativity of response): 0.890  (on region, sex)
 ```
@@ -365,6 +381,7 @@ call it assembles:
   panel.
 
 ``` r
+
 report_weighting(fitted, lang = "es",
                  domains    = ~ region + region:sex,   # per-domain reliability card
                  replicates = boot,                     # the replication-design card
@@ -415,6 +432,7 @@ the weights are built, get design-based standard errors with a bootstrap
 that re-runs the **whole recipe** on each replicate:
 
 ``` r
+
 boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu",
                           lonely_psu = "collapse", cores = 4)   # collapse + parallel
 boot_mean(boot, "income")           # estimate, SE and 95% CI

@@ -19,6 +19,7 @@ totals known for $`U`$; and $`\hat\phi_i`$, $`\hat m(x_i)`$ are
 estimated response propensities and outcome predictions.
 
 ``` r
+
 base <- weighting_spec(sample_one, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region",
                            cluster = "household_id") |>
@@ -38,6 +39,7 @@ regression, a regression tree, a random forest, or gradient boosting,
 all through the same `engine` argument.
 
 ``` r
+
 fit_boost <- base |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "boost",
@@ -83,6 +85,7 @@ weightflow it is a single argument, `crossfit = K`; when the step has a
 household never split across folds and there is no leakage.
 
 ``` r
+
 fit_cf <- base |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "boost",
@@ -95,6 +98,7 @@ in-sample boosting with the five-fold cross-fitted model on the same
 data:
 
 ``` r
+
 c(in_sample = design_effect(collect_weights(fit_boost)$.weight)$deff,
   crossfit  = design_effect(collect_weights(fit_cf)$.weight)$deff)
 #> in_sample  crossfit 
@@ -124,6 +128,7 @@ example below fits the outcome model for `income` with gradient boosting
 and cross-fits it:
 
 ``` r
+
 fit_mc <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region") |>
@@ -168,6 +173,7 @@ penalty to the system, making it unit-free. A single, scale-free
 values relax more and tighten the weights.
 
 ``` r
+
 pop_totals <- c("(Intercept)" = nrow(population),
                 regionSouth = sum(population$region == "South"),
                 regionEast  = sum(population$region == "East"),
@@ -213,6 +219,7 @@ weights that remain. The chosen cutoff is the $`\tau`$ with the smallest
 estimated MSE.
 
 ``` r
+
 trimmed_tukey <- base |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex")) |>
@@ -267,6 +274,7 @@ at their bound and the rest move minimally so that every total is still
 met.
 
 ``` r
+
 recipe <- base |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex")) |>
@@ -293,6 +301,7 @@ The region totals are still met after the trim (the differences are
 zero), whereas the weights now sit inside the interval:
 
 ``` r
+
 Xr     <- model.matrix(~ region, sample_one)
 w_cal  <- collect_weights(pre, drop_zero = FALSE)$.weight
 w_trim <- trimmed$final_weight

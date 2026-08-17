@@ -84,6 +84,7 @@ With a single post-stratifying variable, the groups are its categories,
 and `poststratify` takes that one variable:
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region") |>
@@ -110,6 +111,7 @@ per cell, so it reproduces the full cross-table and, unlike the
 shortcut, also accepts bounds:
 
 ``` r
+
 totals_cross <- colSums(model.matrix(~ region * sex, population))
 wf2 <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
@@ -152,6 +154,7 @@ margins, post-stratifying to one at a time, until all marginal totals
 are met simultaneously.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region") |>
@@ -201,6 +204,7 @@ match the total of a quantitative variable, e.g. the population total of
 region, sex and mean age at once:
 
 ``` r
+
 totals <- colSums(model.matrix(~ region + sex + age, population))
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
@@ -241,6 +245,7 @@ distance of Deville and Sarndal enforces the bounds smoothly), trading a
 little exactness for safer weights.
 
 ``` r
+
 totals_rs <- colSums(model.matrix(~ region + sex, population))
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
@@ -270,6 +275,7 @@ calibration finds a single weight per cluster that still meets the
 population totals.
 
 ``` r
+
 totals_rs <- colSums(model.matrix(~ region + sex, population))
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",

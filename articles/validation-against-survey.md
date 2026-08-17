@@ -21,6 +21,7 @@ one-to-one, the recipes below use only the calibration step (no dropping
 or nonresponse), so no rows are removed.
 
 ``` r
+
 d   <- sample_survey
 pop <- population
 
@@ -39,6 +40,7 @@ totals  <- colSums(model.matrix(~ region + sex + age_grp, pop))
 ```
 
 ``` r
+
 # weightflow brand palette (from the pkgdown site)
 wf_primary <- "#3d3580"; wf_violet <- "#7a6ad0"
 wf_green   <- "#1d9e75"; wf_amber  <- "#c9822b"; wf_grey <- "#6b7280"
@@ -82,6 +84,7 @@ compare <- function(w_sv, w_wf, label, base = d$pw) {
 Post-stratifying to the joint population counts of `region` × `sex`.
 
 ``` r
+
 library(survey)
 #> Loading required package: grid
 #> Loading required package: Matrix
@@ -114,6 +117,7 @@ Raking (iterative proportional fitting) to the `region`, `sex` and
 the same precision.
 
 ``` r
+
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "raking", totals = list(reg_tab, sex_tab, age_tab),
                  count = "Freq") |>
@@ -139,6 +143,7 @@ from each to compare their distributions afterwards.
 ### Linear (chi-square) distance – the GREG estimator
 
 ``` r
+
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
                  totals = totals, calfun = "linear") |>
@@ -155,6 +160,7 @@ compare(w_sv, w_wf, "Distance: linear (GREG)")
 ### Raking (exponential) distance – always-positive weights
 
 ``` r
+
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
                  totals = totals, calfun = "raking", maxit = 500, tol = 1e-10) |>
@@ -171,6 +177,7 @@ compare(w_sv, w_wf, "Distance: raking (exponential)")
 ### Logit distance – bounded g-weights
 
 ``` r
+
 bnds <- c(0.5, 2)
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
@@ -194,6 +201,7 @@ raking keeps every weight positive, and logit is bounded by
 construction.
 
 ``` r
+
 gdist <- rbind(
   data.frame(distance = "linear", g = g_linear),
   data.frame(distance = "raking", g = g_raking),
@@ -223,6 +231,7 @@ The base weight `pw` is constant within household here, so the
 constraint is well defined.
 
 ``` r
+
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
                  totals = totals, cluster = "household_id",
@@ -252,6 +261,7 @@ a single call with `by =`. Here each region is calibrated to its own
 calibrating one region at a time.
 
 ``` r
+
 sex_by_region <- as.data.frame(table(region = pop$region, sex     = pop$sex))
 age_by_region <- as.data.frame(table(region = pop$region, age_grp = pop$age_grp))
 
@@ -283,6 +293,7 @@ raking-calibrated weights, we estimate a survey outcome (respondent
 `age`) both ways and compare in a single table:
 
 ``` r
+
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "raking", totals = list(reg_tab, sex_tab, age_tab),
                  count = "Freq") |>
@@ -299,8 +310,8 @@ est <- data.frame(
 est$difference <- est$weightflow - est$survey
 est
 #>     quantity   weightflow       survey    difference
-#> 1  mean(age)     42.38993     42.38993 -4.132232e-10
-#> 2 total(age) 190542.74882 190542.74882 -1.856970e-06
+#> 1  mean(age)     42.38993     42.38993 -4.130882e-10
+#> 2 total(age) 190542.74882 190542.74882 -1.856853e-06
 ```
 
 The design-based standard errors (from `survey`, or from weightflow’s
@@ -316,16 +327,17 @@ linear) agree to machine precision; the iterative ones (raking, logit,
 integrative) agree to the shared convergence tolerance.
 
 ``` r
+
 data.frame(method = names(agree), `max abs weight difference` = unname(agree),
            check.names = FALSE, row.names = NULL)
 #>                                   method max abs weight difference
 #> 1     Post-stratification (region x sex)              1.776357e-15
-#> 2      Raking (region + sex + age group)              7.927343e-08
+#> 2      Raking (region + sex + age group)              7.927345e-08
 #> 3                Distance: linear (GREG)              3.552714e-15
-#> 4         Distance: raking (exponential)              4.440892e-14
-#> 5              Distance: logit (bounded)              5.417888e-14
-#> 6 Integrative (one weight per household)              7.869261e-13
-#> 7         Domain calibration (by region)              3.552714e-15
+#> 4         Distance: raking (exponential)              2.131628e-14
+#> 5              Distance: logit (bounded)              7.105427e-14
+#> 6 Integrative (one weight per household)              8.348877e-14
+#> 7         Domain calibration (by region)              1.776357e-15
 ```
 
 ## Trimmed calibration matches ReGenesees
@@ -343,6 +355,7 @@ run here because ReGenesees is not a dependency; the script
 `trim_calibrated_vs_regenesees.R` reproduces it.
 
 ``` r
+
 # weightflow
 w_wf <- muestra |>
   weighting_spec(base_weights = pw) |>

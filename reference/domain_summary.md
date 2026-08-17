@@ -23,16 +23,20 @@ domain_summary(object, by)
 
 - by:
 
-  the name (string) of a domain column in the data (e.g. `"region"`).
+  the name(s) of one or more domain columns in the data (e.g.
+  `"region"`, or `c("region", "area")` to cross them). Domains are
+  ordered by the factor levels of the column (or numerically for a
+  numeric column); units with a missing domain value are shown as a
+  `"(missing)"` domain rather than dropped silently.
 
 ## Value
 
 A `data.frame` with one row per stage x domain and the columns `stage`
 (an ordered factor: base weights, then `1. <step>`, `2. <step>`, ...),
-`domain`, `n_active` (active units in the domain at that stage), `sum_w`
-(sum of the active weights), `mean_w`, `deff` (the Kish design effect
-within the domain) and `n_eff`. Reading down a domain shows how its
-weight total and dispersion evolve step by step.
+`domain` (an ordered factor), `n_active` (active units in the domain at
+that stage), `sum_w` (sum of the active weights), `mean_w`, `deff` (the
+Kish design effect within the domain) and `n_eff`. Reading down a domain
+shows how its weight total and dispersion evolve step by step.
 
 ## See also
 
@@ -49,16 +53,16 @@ fit <- weighting_spec(sample_survey, base_weights = pw) |>
   prep()
 domain_summary(fit, by = "region")
 #>             stage domain n_active     sum_w    mean_w deff n_eff
-#> 1    base weights   East       96  800.0000  8.333333    1    96
-#> 2    base weights  North      119 1487.5000 12.500000    1   119
-#> 3    base weights  South      121 1210.0000 10.000000    1   121
+#> 1    base weights  North      119 1487.5000 12.500000    1   119
+#> 2    base weights  South      121 1210.0000 10.000000    1   121
+#> 3    base weights   East       96  800.0000  8.333333    1    96
 #> 4    base weights   West      131  873.3333  6.666667    1   131
-#> 5  1. nonresponse   East       52  800.0000 15.384615    1    52
-#> 6  1. nonresponse  North       78 1487.5000 19.070513    1    78
-#> 7  1. nonresponse  South       72 1210.0000 16.805556    1    72
+#> 5  1. nonresponse  North       78 1487.5000 19.070513    1    78
+#> 6  1. nonresponse  South       72 1210.0000 16.805556    1    72
+#> 7  1. nonresponse   East       52  800.0000 15.384615    1    52
 #> 8  1. nonresponse   West       68  873.3333 12.843137    1    68
-#> 9    2. calibrate   East       52  927.0000 17.826923    1    52
-#> 10   2. calibrate  North       78 1570.0000 20.128205    1    78
-#> 11   2. calibrate  South       72 1250.0000 17.361111    1    72
+#> 9    2. calibrate  North       78 1570.0000 20.128205    1    78
+#> 10   2. calibrate  South       72 1250.0000 17.361111    1    72
+#> 11   2. calibrate   East       52  927.0000 17.826923    1    52
 #> 12   2. calibrate   West       68  748.0000 11.000000    1    68
 ```

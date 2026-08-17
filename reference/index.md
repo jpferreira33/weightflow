@@ -62,6 +62,8 @@ Inspect, summarise and report the cascade.
   : Per-unit adjustment factors table
 - [`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
   : Recover the fitted response propensities of a nonresponse step
+- [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md)
+  : Per-unit detail of one step of the cascade
 - [`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
   : Per-domain weight summary at every stage of the cascade
 - [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)

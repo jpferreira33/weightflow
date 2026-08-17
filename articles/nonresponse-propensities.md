@@ -71,6 +71,7 @@ the cells are specified through the `by` argument, which names the
 categorical variables that define them (here, `region`):
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region") |>
@@ -110,6 +111,7 @@ lost). So the weighted total per region after the step equals the
 base-weight total before it:
 
 ``` r
+
 before <- tapply(sample_survey$pw,  sample_survey$region, sum)
 after  <- tapply(wf$final_weight,   sample_survey$region, sum)
 round(cbind(before, after, diff = after - before), 6)
@@ -144,6 +146,7 @@ to a misspecified model.
 ### Logistic regression
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "logit",
@@ -197,6 +200,7 @@ forest and boosting typically yield the largest, the weighting classes
 the smallest.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "tree",
@@ -207,6 +211,7 @@ design_effect(wf$final_weight)$deff
 ```
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "forest",
@@ -234,6 +239,7 @@ out-of-sample and free of this optimism. weightflow provides it through
 the `crossfit` argument:
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "forest",
@@ -261,6 +267,7 @@ if they are related (Little and Vartivarian 2003). Only the model fit
 changes; the adjustment always uses the incoming weights.
 
 ``` r
+
 f <- function(wm) weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "propensity",
                    formula = ~ region + sex + age, engine = "logit",
@@ -281,6 +288,7 @@ counts once with its weight, and the redistribution (or the propensity
 model) is done over households, then assigned to their members.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = "region", cluster = "household_id") |>
@@ -308,6 +316,7 @@ exactly. Supply `totals` to calibrate to external population totals
 instead.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "calibration",
                    formula = ~ region + sex) |>
@@ -347,6 +356,7 @@ Validation. The respondents, reweighted, reproduce the auxiliary totals
 of all active units before the step:
 
 ``` r
+
 X      <- model.matrix(~ region + sex, sample_survey)
 resp   <- sample_survey$responded == 1
 before <- colSums(sample_survey$pw * X)               # respondents + nonrespondents
@@ -365,6 +375,7 @@ integrative: the responding members of a household share one calibration
 factor, so the weights stay constant within household.
 
 ``` r
+
 wf <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "calibration",
                    formula = ~ region, cluster = "household_id",
