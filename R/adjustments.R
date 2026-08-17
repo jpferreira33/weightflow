@@ -294,13 +294,22 @@ apply_step.step_select_within <- function(step, data, w) {
     # unit-level path (ECLAC request: inspect the NR-model propensities per unit,
     # with and without `cluster`, before trusting the adjusted weights).
     mh <- match(cl, hhn)                               # household index per eligible unit
+    pclassh <- if (!is.null(step$num_classes)) classh[mh] else NULL   # class per eligible unit
     attr(diag, "propensity") <- list(
       p = as.numeric(p)[mh], resp = as.logical(resp_h)[mh], dw = w[idx_el],
-      idx = idx_el, level = "household",
+      idx = idx_el, level = "household", class = pclassh,
       covars = data[idx_el, intersect(all.vars(step$formula), names(data)), drop = FALSE],
       engine = step$engine, formula = step$formula,
       crossfit = step$crossfit, weight_model = step$weight_model,
       num_classes = step$num_classes)
+    # Native per-unit detail (broadcast household -> members) for
+    # collect_step_detail(); .weight_in/.factor come centrally from `history`.
+    ud_det <- data.frame(.propensity = as.numeric(p)[mh],
+                         .responded  = as.logical(resp_h)[mh],
+                         stringsAsFactors = FALSE)
+    if (!is.null(pclassh)) ud_det$.class <- pclassh
+    attr(diag, "unit_detail") <- list(idx = idx_el, detail = ud_det,
+                                      step = "step_nonresponse", level = "household")
     names(factor_h) <- hhn
   }
 
@@ -511,9 +520,10 @@ apply_step.step_nonresponse <- function(step, data, w) {
   attr(diag, "p_min") <- min(p[resp_el], na.rm = TRUE)   # smallest propensity among respondents (drives 1/p)
   # Keep what the report needs to diagnose the ML propensities (calibration,
   # floor/overlap, covariate balance). Out-of-fold p when crossfit is used.
+  pclass <- if (!is.null(step$num_classes)) class else NULL   # per-eligible-unit class
   attr(diag, "propensity") <- list(
     p = as.numeric(p), resp = as.logical(resp_el), dw = w[eligible],
-    idx = idx_el, level = "unit",
+    idx = idx_el, level = "unit", class = pclass,
     covars = dd[, all.vars(step$formula), drop = FALSE], engine = step$engine,
     formula = step$formula,
     crossfit = step$crossfit, weight_model = step$weight_model,
@@ -521,5 +531,13 @@ apply_step.step_nonresponse <- function(step, data, w) {
     cal_slope = tryCatch(unname(stats::coef(suppressWarnings(stats::glm(
       as.integer(resp_el) ~ stats::qlogis(pmin(pmax(p, 1e-6), 1 - 1e-6)),
       family = stats::binomial(), weights = w[eligible])))[2]), error = function(e) NA_real_))
+  # Native per-unit detail for collect_step_detail() (.weight_in/.factor are
+  # supplied centrally by the accessor from `history`, so they are NOT stored here).
+  ud_det <- data.frame(.propensity = as.numeric(p),
+                       .responded  = as.logical(resp_el),
+                       stringsAsFactors = FALSE)
+  if (!is.null(pclass)) ud_det$.class <- pclass
+  attr(diag, "unit_detail") <- list(idx = idx_el, detail = ud_det,
+                                    step = "step_nonresponse", level = "unit")
   list(weights = new_w, diagnostics = diag)
 }

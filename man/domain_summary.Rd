@@ -9,15 +9,19 @@ domain_summary(object, by)
 \arguments{
 \item{object}{a prepped \code{weighting_spec} (the output of \code{\link[=prep]{prep()}}).}
 
-\item{by}{the name (string) of a domain column in the data (e.g. \code{"region"}).}
+\item{by}{the name(s) of one or more domain columns in the data (e.g.
+\code{"region"}, or \code{c("region", "area")} to cross them). Domains are ordered by
+the factor levels of the column (or numerically for a numeric column); units
+with a missing domain value are shown as a \code{"(missing)"} domain rather than
+dropped silently.}
 }
 \value{
 A \code{data.frame} with one row per stage x domain and the columns
 \code{stage} (an ordered factor: base weights, then \verb{1. <step>}, \verb{2. <step>},
-...), \code{domain}, \code{n_active} (active units in the domain at that stage),
-\code{sum_w} (sum of the active weights), \code{mean_w}, \code{deff} (the Kish design
-effect within the domain) and \code{n_eff}. Reading down a domain shows how its
-weight total and dispersion evolve step by step.
+...), \code{domain} (an ordered factor), \code{n_active} (active units in the domain at
+that stage), \code{sum_w} (sum of the active weights), \code{mean_w}, \code{deff} (the Kish
+design effect within the domain) and \code{n_eff}. Reading down a domain shows how
+its weight total and dispersion evolve step by step.
 }
 \description{
 For quality control by study domain (for example a department / DAM), this

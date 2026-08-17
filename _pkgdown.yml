@@ -101,6 +101,7 @@ reference:
   - plot.prepped_weighting_spec
   - weight_factors
   - collect_propensities
+  - collect_step_detail
   - domain_summary
   - design_effect
   - report_weighting

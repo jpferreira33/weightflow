@@ -14,18 +14,26 @@ one propensity step. If \code{NULL} (default) and there is a single propensity
 step it is used; with several, the last one is used with a message.}
 }
 \value{
-The sample \code{data.frame} with four columns appended: \code{.propensity}
+The sample \code{data.frame} with columns appended: \code{.propensity}
 (the fitted response propensity \eqn{\hat p}{phat}, \code{NA} for units outside
 the model, i.e. ineligible / already dropped), \code{.responded} (the response
 indicator the model used), \code{.weight_in} (the weight reaching the step, see
-below), and \code{.status}, a factor that labels each unit as \code{"eligible respondent"},
-\code{"eligible nonrespondent"} or \code{"not in propensity model"}. Units not in the
-propensity model carry \code{NA} in the first three columns. \code{.weight_in} is the
-weight \emph{reaching} the nonresponse step -- it already carries any earlier
-adjustment (unknown-eligibility redistribution, within-cluster selection),
-not the raw base weight -- and is the weight the propensity model is fitted
-with (unless \code{weight_model = FALSE}). The stage-by-stage weights are
-available through \code{\link[=weight_factors]{weight_factors()}} and \code{\link[=domain_summary]{domain_summary()}}.
+below), \code{.factor} (the multiplier the step actually applied to the unit),
+\code{.status} (a factor that labels each unit as \code{"eligible respondent"},
+\code{"eligible nonrespondent"} or \code{"not in propensity model"}), and, when the
+step uses propensity classes (\code{num_classes}), \code{.class} (the assigned class).
+Units not in the propensity model carry \code{NA} in the per-unit columns.
+\code{.weight_in} is the weight \emph{reaching} the nonresponse step -- it already
+carries any earlier adjustment (unknown-eligibility redistribution,
+within-cluster selection), not the raw base weight. At the unit level it is
+also the weight the propensity model is fitted with (unless
+\code{weight_model = FALSE}); with \code{cluster}, the model is fitted at the household
+level with the household weight, which equals \code{.weight_in} only when weights
+are uniform within the household. \code{.factor}
+equals \eqn{1/\hat p}{1/phat} only when \code{num_classes = NULL}; with propensity
+classes it is the class-level adjustment, so \code{1/.propensity} does not
+reconstruct the applied factor -- use \code{.factor}. The stage-by-stage weights
+are available through \code{\link[=weight_factors]{weight_factors()}} and \code{\link[=domain_summary]{domain_summary()}}.
 }
 \description{
 A \code{step_nonresponse(method = "propensity")} step fits a response-propensity
