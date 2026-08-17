@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -37,7 +37,7 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../articles/weightflow.html">Get started</a></li>
-<li class="active nav-item dropdown">
+<li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
@@ -87,7 +87,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Validation against the survey package</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/master/vignettes/validation-against-survey.Rmd" class="external-link"><code>vignettes/validation-against-survey.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/HEAD/vignettes/validation-against-survey.Rmd" class="external-link"><code>vignettes/validation-against-survey.Rmd</code></a></small>
       <div class="d-none name"><code>validation-against-survey.Rmd</code></div>
     </div>
 
@@ -197,7 +197,7 @@ or nonresponse), so no rows are removed.</p>
 <span><span class="va">w_sv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_ps</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Post-stratification (region x sex)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/poststratify-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/poststratify-1.png" class="r-plt" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="raking">Raking<a class="anchor" aria-label="anchor" href="#raking"></a>
@@ -218,7 +218,7 @@ precision.</p>
 <span><span class="va">w_sv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_rk</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Raking (region + sex + age group)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/raking-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/raking-1.png" class="r-plt" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="calibration-distances">Calibration distances<a class="anchor" aria-label="anchor" href="#calibration-distances"></a>
@@ -241,7 +241,7 @@ g-weights from each to compare their distributions afterwards.</p>
 <span>                          calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">g_linear</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: linear (GREG)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/greg-linear-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/greg-linear-1.png" class="r-plt" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="raking-exponential-distance-always-positive-weights">Raking (exponential) distance – always-positive weights<a class="anchor" aria-label="anchor" href="#raking-exponential-distance-always-positive-weights"></a>
@@ -256,7 +256,7 @@ g-weights from each to compare their distributions afterwards.</p>
 <span>                          calfun <span class="op">=</span> <span class="st">"raking"</span>, maxit <span class="op">=</span> <span class="fl">500</span>, epsilon <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">g_raking</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: raking (exponential)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/greg-raking-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/greg-raking-1.png" class="r-plt" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="logit-distance-bounded-g-weights">Logit distance – bounded g-weights<a class="anchor" aria-label="anchor" href="#logit-distance-bounded-g-weights"></a>
@@ -273,7 +273,7 @@ g-weights from each to compare their distributions afterwards.</p>
 <span>                          calfun <span class="op">=</span> <span class="st">"logit"</span>, bounds <span class="op">=</span> <span class="va">bnds</span>, maxit <span class="op">=</span> <span class="fl">500</span>, epsilon <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">g_logit</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: logit (bounded)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/greg-logit-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/greg-logit-1.png" class="r-plt" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="distribution-of-the-adjustment-factors">Distribution of the adjustment factors<a class="anchor" aria-label="anchor" href="#distribution-of-the-adjustment-factors"></a>
@@ -298,7 +298,7 @@ bounded by construction.</p>
 <span>                subtitle <span class="op">=</span> <span class="st">"g = final / base, by calibration distance"</span>,</span>
 <span>                x <span class="op">=</span> <span class="st">"g (adjustment factor)"</span>, y <span class="op">=</span> <span class="st">"density"</span>, fill <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">theme_wf</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/gdist-1.png" class="r-plt" alt="" width="720" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/gdist-1.png" class="r-plt" width="720" style="display: block; margin: auto;"></p>
 </div>
 </div>
 <div class="section level2">
@@ -329,7 +329,7 @@ well defined.</p>
 <span><span class="co">#&gt; max within-household weight range (weightflow): 0</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Integrative (one weight per household)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/integrative-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/integrative-1.png" class="r-plt" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="domain-partitioned-calibration">Domain (partitioned) calibration<a class="anchor" aria-label="anchor" href="#domain-partitioned-calibration"></a>
@@ -360,7 +360,7 @@ at a time.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Domain calibration (by region)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/domain-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/domain-1.png" class="r-plt" width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="estimates-agree-too">Estimates agree too<a class="anchor" aria-label="anchor" href="#estimates-agree-too"></a>
@@ -385,8 +385,8 @@ raking-calibrated weights, we estimate a survey outcome (respondent
 <span><span class="va">est</span><span class="op">$</span><span class="va">difference</span> <span class="op">&lt;-</span> <span class="va">est</span><span class="op">$</span><span class="va">weightflow</span> <span class="op">-</span> <span class="va">est</span><span class="op">$</span><span class="va">survey</span></span>
 <span><span class="va">est</span></span>
 <span><span class="co">#&gt;     quantity   weightflow       survey    difference</span></span>
-<span><span class="co">#&gt; 1  mean(age)     42.38993     42.38993 -4.130882e-10</span></span>
-<span><span class="co">#&gt; 2 total(age) 190542.74882 190542.74882 -1.856853e-06</span></span></code></pre></div>
+<span><span class="co">#&gt; 1  mean(age)     42.38993     42.38993 -4.132232e-10</span></span>
+<span><span class="co">#&gt; 2 total(age) 190542.74882 190542.74882 -1.856970e-06</span></span></code></pre></div>
 <p>The design-based standard errors (from <code>survey</code>, or from
 weightflow’s recipe-aware bootstrap) are the subject of the <em>Variance
 estimation</em> article; here the point is that the calibrated point
@@ -405,12 +405,12 @@ tolerance.</p>
 <span>           check.names <span class="op">=</span> <span class="cn">FALSE</span>, row.names <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                                   method max abs weight difference</span></span>
 <span><span class="co">#&gt; 1     Post-stratification (region x sex)              1.776357e-15</span></span>
-<span><span class="co">#&gt; 2      Raking (region + sex + age group)              7.927345e-08</span></span>
+<span><span class="co">#&gt; 2      Raking (region + sex + age group)              7.927343e-08</span></span>
 <span><span class="co">#&gt; 3                Distance: linear (GREG)              3.552714e-15</span></span>
-<span><span class="co">#&gt; 4         Distance: raking (exponential)              2.131628e-14</span></span>
-<span><span class="co">#&gt; 5              Distance: logit (bounded)              7.105427e-14</span></span>
-<span><span class="co">#&gt; 6 Integrative (one weight per household)              8.348877e-14</span></span>
-<span><span class="co">#&gt; 7         Domain calibration (by region)              1.776357e-15</span></span></code></pre></div>
+<span><span class="co">#&gt; 4         Distance: raking (exponential)              4.440892e-14</span></span>
+<span><span class="co">#&gt; 5              Distance: logit (bounded)              5.417888e-14</span></span>
+<span><span class="co">#&gt; 6 Integrative (one weight per household)              7.869261e-13</span></span>
+<span><span class="co">#&gt; 7         Domain calibration (by region)              3.552714e-15</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="trimmed-calibration-matches-regenesees">Trimmed calibration matches ReGenesees<a class="anchor" aria-label="anchor" href="#trimmed-calibration-matches-regenesees"></a>
@@ -435,11 +435,11 @@ script <code>trim_calibrated_vs_regenesees.R</code> reproduces it.</p>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/collect_weights.html">collect_weights</a></span><span class="op">(</span>drop_zero <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># ReGenesees</span></span>
-<span><span class="va">des</span>   <span class="op">&lt;-</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu">e.svydesign</span><span class="op">(</span>data <span class="op">=</span> <span class="va">muestra</span>, ids <span class="op">=</span> <span class="op">~</span> <span class="va">id</span>, weights <span class="op">=</span> <span class="op">~</span> <span class="va">pw</span><span class="op">)</span></span>
-<span><span class="va">templ</span> <span class="op">&lt;-</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu">fill.template</span><span class="op">(</span>universe <span class="op">=</span> <span class="va">universo</span>,</span>
-<span>           template <span class="op">=</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu">pop.template</span><span class="op">(</span><span class="va">des</span>, calmodel <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">cal</span>   <span class="op">&lt;-</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu">e.calibrate</span><span class="op">(</span><span class="va">des</span>, df.population <span class="op">=</span> <span class="va">templ</span>, calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span></span>
-<span><span class="va">w_rg</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu">trimcal</span><span class="op">(</span><span class="va">cal</span>, w.range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">lo</span>, <span class="va">up</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">des</span>   <span class="op">&lt;-</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu"><a href="https://diegozardetto.github.io/ReGenesees/reference/e.svydesign.html" class="external-link">e.svydesign</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">muestra</span>, ids <span class="op">=</span> <span class="op">~</span> <span class="va">id</span>, weights <span class="op">=</span> <span class="op">~</span> <span class="va">pw</span><span class="op">)</span></span>
+<span><span class="va">templ</span> <span class="op">&lt;-</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu"><a href="https://diegozardetto.github.io/ReGenesees/reference/fill.template.html" class="external-link">fill.template</a></span><span class="op">(</span>universe <span class="op">=</span> <span class="va">universo</span>,</span>
+<span>           template <span class="op">=</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu"><a href="https://diegozardetto.github.io/ReGenesees/reference/pop.template.html" class="external-link">pop.template</a></span><span class="op">(</span><span class="va">des</span>, calmodel <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">cal</span>   <span class="op">&lt;-</span> <span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu"><a href="https://diegozardetto.github.io/ReGenesees/reference/e.calibrate.html" class="external-link">e.calibrate</a></span><span class="op">(</span><span class="va">des</span>, df.population <span class="op">=</span> <span class="va">templ</span>, calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span></span>
+<span><span class="va">w_rg</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="fu">ReGenesees</span><span class="fu">::</span><span class="fu"><a href="https://diegozardetto.github.io/ReGenesees/reference/trimcal.html" class="external-link">trimcal</a></span><span class="op">(</span><span class="va">cal</span>, w.range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">lo</span>, <span class="va">up</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="what-weightflow-adds">What weightflow adds<a class="anchor" aria-label="anchor" href="#what-weightflow-adds"></a>
@@ -467,7 +467,7 @@ weights back to <code>survey</code>/<code>srvyr</code>. ```</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

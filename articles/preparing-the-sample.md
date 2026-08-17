@@ -96,6 +96,7 @@ response rates, plus a contingency cushion for a worse-than-expected
 field:
 
 ``` math
+
 n_{\text{released}} \;=\; \frac{n_C}{\widehat{E}\times\widehat{R}}\;(1+c),
 ```
 
@@ -141,7 +142,6 @@ Deriving the flags from the disposition code is a direct recode, for
 example:
 
 ``` r
-
 dat$unknown_elig <- as.integer(dat$disposition %in%
                                  c("noncontact", "undelivered", "not_worked"))
 dat$ineligible   <- as.integer(dat$disposition %in%
@@ -187,7 +187,6 @@ reached or are household nonresponse; in reached households one person
 is selected and may or may not respond.
 
 ``` r
-
 dat <- sample_one
 
 # the whole field disposition in a single column, matching the tree above
@@ -208,7 +207,6 @@ write the condition on `disposition` directly; the two give the same
 flag.
 
 ``` r
-
 # the indicator column and the equivalent condition on `disposition` agree
 identical(dat$ineligible == 1L, dat$disposition == "ineligible")
 #> [1] TRUE
@@ -224,7 +222,6 @@ the `disposition` column, the single field-outcome variable the sample
 carries.
 
 ``` r
-
 dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
 
@@ -283,7 +280,6 @@ resolved cases, ineligibles drop out, and respondents are inflated to
 carry the nonrespondents.
 
 ``` r
-
 summary(fitted)
 #> 
 #> == Weighting specification (weightflow) ==
@@ -384,7 +380,6 @@ equivalent, and it is the style the other articles use, so the recipes
 there look like this:
 
 ``` r
-
 fitted2 <- weighting_spec(dat, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region",
                            cluster = "household_id") |>

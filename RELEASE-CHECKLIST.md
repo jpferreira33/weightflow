@@ -9,22 +9,25 @@ the “Already handled” line is done and does NOT need to be redone.
 2.  **NEWS**: rename the `## Development version` heading to
     `# weightflow 0.2.0` (and delete the “Install with
     remotes::install_github(…)” line at its end).
-3.  **Regenerate docs**: `devtools::document()`.
+3.  **Regenerate docs**:
+    [`devtools::document()`](https://devtools.r-lib.org/reference/document.html).
 4.  **Full local check** (must be 0 / 0 / 0):
     `devtools::check(env_vars = c("_R_CHECK_SYSTEM_CLOCK_" = "0"))`.
-5.  **Spelling & URLs**: `devtools::spell_check()`;
-    `urlchecker::url_check()`.
+5.  **Spelling & URLs**:
+    [`devtools::spell_check()`](https://devtools.r-lib.org/reference/spell_check.html);
+    [`urlchecker::url_check()`](https://rdrr.io/pkg/urlchecker/man/url_check.html).
 6.  **Multiplatform** (all green — with the version bumped, the previous
     “insufficient version” WARNING is gone):
-    `devtools::check_win_devel()`, `check_win_release()`,
-    `check_win_oldrelease()`; and trigger the R-hub workflow (Actions
-    -\> rhub.yaml -\> Run workflow).
+    [`devtools::check_win_devel()`](https://devtools.r-lib.org/reference/check_win.html),
+    `check_win_release()`, `check_win_oldrelease()`; and trigger the
+    R-hub workflow (Actions -\> rhub.yaml -\> Run workflow).
 7.  **Update `cran-comments.md`** with the environments you actually
     ran.
 8.  **Rebuild the pkgdown site** and deploy
     ([`pkgdown::deploy_to_branch()`](https://pkgdown.r-lib.org/reference/deploy_to_branch.html)
     or let the CI workflow do it).
-9.  **Submit**: `devtools::submit_cran()`.
+9.  **Submit**:
+    [`devtools::submit_cran()`](https://devtools.r-lib.org/reference/submit_cran.html).
 10. **After acceptance**: `git tag v0.2.0 && git push --tags`; bump to
     the next development version and start a new NEWS section.
 
