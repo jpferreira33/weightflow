@@ -1,6 +1,9 @@
-# Rescale (normalize) the weights
+# Rescale the weights to a fixed sum
 
-Rescale (normalize) the weights
+Multiplies the active weights by a single constant so that they add up
+to a chosen total: either the number of active units (mean weight 1) or
+an arbitrary number. Use it as a presentation step, when the analysis
+wants normalized weights rather than population-scale ones.
 
 ## Usage
 

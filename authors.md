@@ -5,9 +5,8 @@
 - **Juan Pablo Ferreira**. Author, maintainer.
   [](https://orcid.org/0000-0002-1884-8187)
 
-- **Andrés Gutiérrez**. Contributor.
-  [](https://orcid.org/0009-0007-2918-1932)  
-  ECLAC - Statistics Division
+- **Andrés Gutiérrez**. Author.
+  [](https://orcid.org/0009-0007-2918-1932)
 
 ## Citation
 

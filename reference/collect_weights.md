@@ -1,6 +1,9 @@
 # Extract the data with the computed weights
 
-Extract the data with the computed weights
+Returns the sample as a `data.frame` with the final analysis weight
+attached as a column, ready to hand to an estimation routine. By default
+the units that left the cascade (weight 0) are dropped, so what comes
+back is the responding, in-scope sample and its weights.
 
 ## Usage
 

@@ -1,7 +1,10 @@
 # Unknown-eligibility adjustment
 
-Redistributes the weight of unknown-eligibility cases among the
-known-eligibility cases, within the cells defined by `by`.
+Redistributes the weight of the cases whose eligibility was never
+resolved onto the resolved cases of the same adjustment cell, so the
+resolved units stand in for the unresolved share of the frame. Reach for
+it as the first step of the cascade, while the known-ineligible units
+are still in the data.
 
 ## Usage
 
@@ -41,6 +44,15 @@ The input `weighting_spec` with this step appended to its recipe. The
 step is recorded only; it is evaluated when
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 is called.
+
+## Details
+
+Within each cell \\c\\ the resolved cases are scaled up to also carry
+the unresolved ones, \$\$w_i^{\mathrm{out}} = w_i \\ \frac{\sum\_{j \in
+c} w_j}{\sum\_{j \in c,\\ \mathrm{resolved}} w_j},\$\$ with every weight
+on the right the weight *entering* the step, so the ratio is one number
+per cell, the cell total is conserved exactly, and the result does not
+depend on the order in which units are updated.
 
 ## Examples
 

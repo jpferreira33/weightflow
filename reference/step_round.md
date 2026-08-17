@@ -1,9 +1,10 @@
 # Round the final weights
 
-Optional step, typically the last one (after calibration). Simple
-rounding ("nearest") slightly breaks the calibrated totals;
-"preserve_total" uses the largest-remainder method to keep the exact
-total.
+Rounds the weights to a given number of decimals, either unit by unit
+(`"nearest"`) or with the largest-remainder method (`"preserve_total"`),
+which keeps the weighted total exactly. Typically the last step of a
+recipe, after calibration, when the weights have to be delivered as
+integers or with a fixed number of decimals.
 
 ## Usage
 

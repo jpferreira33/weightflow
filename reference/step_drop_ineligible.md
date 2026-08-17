@@ -1,8 +1,13 @@
 # Drop ineligible (out-of-scope) units
 
-Sets the weight of known-ineligible units to zero so they leave the
-cascade (excluded from every later step and from collect_weights). No
-redistribution is done.
+Sets the weight of the units known to be outside the target population
+to zero, so they leave the cascade and take no part in any later step or
+in
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md).
+Their weight is discarded, not redistributed: the weight total is meant
+to fall by exactly the mass they carried. Use it once eligibility has
+been resolved, immediately after
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md).
 
 ## Usage
 

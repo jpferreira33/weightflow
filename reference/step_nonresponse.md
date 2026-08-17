@@ -1,16 +1,12 @@
 # Nonresponse adjustment
 
-Inflates the weights of respondents to represent the nonrespondents,
-under the assumption that response is ignorable given the information
-used. The response propensity can be estimated by weighting classes
-(cells), by a model ("propensity"), with engines ranging from logistic
-regression to machine learning (regression tree, random forest, gradient
-boosting), or the adjustment can be made by calibrating the respondents
-to auxiliary totals ("calibration", the two-phase / Sarndal-Lundstrom
-approach). Optional K-fold cross-fitting estimates the propensity
-out-of-sample to avoid the overfitting that flexible engines can
-introduce. The adjustment can be applied at the person or, via
-`cluster`, the household level.
+Inflates the weights of the eligible respondents so they also represent
+the eligible nonrespondents, under the assumption that response is
+ignorable given the information used. Three estimators are available –
+weighting classes, a response-propensity model (four engines, with
+optional cross-fitting), and calibration of the respondents to auxiliary
+totals – at the unit level or, through `cluster`, at a coarser level
+(e.g. the household).
 
 ## Usage
 
@@ -195,6 +191,18 @@ The input `weighting_spec` with this step appended to its recipe. The
 step is recorded only; it is evaluated when
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 is called.
+
+## Details
+
+The three estimators are the same operation with a different inflation
+factor. Weighting classes inflate the responding weight to the cell
+total, \\f_c = \sum\_{i \in c} w_i / \sum\_{i \in c} r_i w_i\\ (with
+\\r_i = 1\\ if \\i\\ responds), applied as \\w_i \leftarrow f_c w_i\\. A
+response-propensity model instead adjusts unit by unit, \\w_i \leftarrow
+w_i / \hat\phi_i\\, with \\\hat\phi_i\\ the estimated response
+propensity. Calibration of the respondents solves for a factor \\v_i\\
+that makes the respondents reproduce a reference total (the two-phase /
+Sarndal-Lundstrom approach).
 
 ## Examples
 

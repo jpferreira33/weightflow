@@ -1,10 +1,11 @@
-# Delete-a-PSU jackknife replicate weights that re-apply the recipe
+# Recipe-aware delete-a-PSU jackknife replicate weights
 
 Builds jackknife replicate weights by deleting one primary sampling unit
-(PSU) at a time and re-running the whole recipe on each replicate, so
-the replicate weights carry the variability of every adjustment (like
-[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md),
-but with the delete-a-PSU jackknife instead of a resampling bootstrap).
+(PSU) at a time and re-running the **entire** weighting recipe on each
+replicate. This is the deterministic sibling of
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md):
+same recipe-aware variance, no random number generation, and a replicate
+count fixed by the design rather than chosen by the analyst.
 
 ## Usage
 

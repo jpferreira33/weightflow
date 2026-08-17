@@ -1,12 +1,10 @@
 # Jackknife estimate, standard error and confidence interval
 
 Applies a statistic to the point weights and to every delete-a-PSU
-replicate, and summarises it with the stratified jackknife (JKn)
-variance \$\$\sum_h \frac{n_h - 1}{n_h} \sum\_{i \in h}
-(\theta\_{(hi)} - \bar\theta_h)^2,\$\$ where \\\theta\_{(hi)}\\ is the
-estimate with PSU \\i\\ of stratum \\h\\ deleted and \\\bar\theta_h\\
-the mean of those over the stratum. No finite population correction is
-applied.
+replicate, and returns the estimate with its stratified jackknife (JKn)
+standard error and a normal confidence interval. `jack_total()` and
+`jack_mean()` are the shortcuts for a weighted total and a weighted mean
+of one column.
 
 ## Usage
 
@@ -40,6 +38,15 @@ jack_mean(jack, variable)
 ## Value
 
 A data frame with `estimate`, `se`, `ci_lower`, `ci_upper`.
+
+## Details
+
+The stratified (JKn) variance sums each stratum's delete-a-PSU spread,
+\$\$\widehat V\_{JK} = \sum_h \frac{n_h - 1}{n_h}\sum\_{i \in
+h}\big(\hat\theta\_{(hi)} - \hat\theta_h\big)^2,\$\$ with
+\\\hat\theta\_{(hi)}\\ the estimate with PSU \\i\\ of stratum \\h\\
+deleted and \\\hat\theta_h\\ their within-stratum mean; the unstratified
+JK1 uses a single stratum. No finite population correction is applied.
 
 ## Note
 

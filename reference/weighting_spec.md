@@ -1,7 +1,12 @@
 # Start a weighting specification
 
-Creates an inert recipe object. Nothing is computed until prep() is
-called.
+Opens a weighting recipe on a sample and its design base weights. The
+object it returns is inert: it holds the data, the name of the
+base-weight column and an empty list of steps, and computes nothing.
+Every `step_*()` function takes such an object and returns it with one
+more step appended;
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+estimates the result.
 
 ## Usage
 

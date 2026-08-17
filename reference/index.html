@@ -72,6 +72,13 @@
 
         </dt>
         <dd>weightflow: declarative survey weighting</dd>
+
+        <dt>
+
+          <code><a href="weightflow-concepts.html">weightflow-concepts</a></code>
+
+        </dt>
+        <dd>Conventions shared by every weightflow step</dd>
       </dl></div><div class="section level2">
       <h2 id="build-and-run-a-recipe">Build and run a recipe<a class="anchor" aria-label="anchor" href="#build-and-run-a-recipe"></a></h2>
 
@@ -138,7 +145,7 @@
           <code><a href="step_select_within.html">step_select_within()</a></code>
 
         </dt>
-        <dd>Within-household selection adjustment</dd>
+        <dd>Within-cluster selection adjustment</dd>
 
         <dt>
 
@@ -159,21 +166,21 @@
           <code><a href="step_model_calibration.html">step_model_calibration()</a></code>
 
         </dt>
-        <dd>Model calibration (model-assisted, Wu &amp; Sitter 2001)</dd>
+        <dd>Model-assisted calibration (Wu and Sitter 2001)</dd>
 
         <dt>
 
           <code><a href="step_trim.html">step_trim()</a></code>
 
         </dt>
-        <dd>Trim extreme weights</dd>
+        <dd>Trim extreme weights against a ratio</dd>
 
         <dt>
 
           <code><a href="step_trim_weights.html">step_trim_weights()</a></code>
 
         </dt>
-        <dd>Automatic weight trimming (survey-style)</dd>
+        <dd>Automatic weight trimming to an absolute band</dd>
 
         <dt>
 
@@ -194,14 +201,14 @@
           <code><a href="step_rescale.html">step_rescale()</a></code>
 
         </dt>
-        <dd>Rescale (normalize) the weights</dd>
+        <dd>Rescale the weights to a fixed sum</dd>
 
         <dt>
 
           <code><a href="step_assert.html">step_assert()</a></code>
 
         </dt>
-        <dd>Assert conditions on the weights at this point of the cascade</dd>
+        <dd>Assert quality conditions on the weights</dd>
       </dl></div><div class="section level2">
       <h2 id="diagnostics-and-reporting">Diagnostics and reporting<a class="anchor" aria-label="anchor" href="#diagnostics-and-reporting"></a></h2>
 
@@ -235,6 +242,20 @@
 
         <dt>
 
+          <code><a href="collect_propensities.html">collect_propensities()</a></code>
+
+        </dt>
+        <dd>Recover the fitted response propensities of a nonresponse step</dd>
+
+        <dt>
+
+          <code><a href="domain_summary.html">domain_summary()</a></code>
+
+        </dt>
+        <dd>Per-domain weight summary at every stage of the cascade</dd>
+
+        <dt>
+
           <code><a href="design_effect.html">design_effect()</a></code>
 
         </dt>
@@ -245,7 +266,7 @@
           <code><a href="report_weighting.html">report_weighting()</a></code>
 
         </dt>
-        <dd>Build a nice HTML report of the weighting recipe</dd>
+        <dd>Self-contained HTML quality report for a weighting recipe</dd>
       </dl></div><div class="section level2">
       <h2 id="variance-estimation">Variance estimation<a class="anchor" aria-label="anchor" href="#variance-estimation"></a></h2>
 
@@ -261,7 +282,7 @@
           <code><a href="bootstrap_weights.html">bootstrap_weights()</a></code>
 
         </dt>
-        <dd>Bootstrap replicate weights that re-apply the recipe</dd>
+        <dd>Recipe-aware bootstrap replicate weights</dd>
 
         <dt>
 
@@ -275,7 +296,7 @@
           <code><a href="jackknife_weights.html">jackknife_weights()</a></code>
 
         </dt>
-        <dd>Delete-a-PSU jackknife replicate weights that re-apply the recipe</dd>
+        <dd>Recipe-aware delete-a-PSU jackknife replicate weights</dd>
 
         <dt>
 
@@ -297,6 +318,20 @@
 
         </dt>
         <dd>Collect replicate weights into a data frame ready for srvyr</dd>
+
+        <dt>
+
+          <code><a href="print.weightflow_boot.html">print(<i>&lt;weightflow_boot&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Print a bootstrap replicate-weight object</dd>
+
+        <dt>
+
+          <code><a href="print.weightflow_jack.html">print(<i>&lt;weightflow_jack&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Print a jackknife replicate-weight object</dd>
       </dl></div><div class="section level2">
       <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a></h2>
 
@@ -312,28 +347,28 @@
           <code><a href="population.html">population</a></code>
 
         </dt>
-        <dd>Example target population for weightflow</dd>
+        <dd>Synthetic target population (sampling frame)</dd>
 
         <dt>
 
           <code><a href="sample_survey.html">sample_survey</a></code>
 
         </dt>
-        <dd>Example survey sample (take-all roster)</dd>
+        <dd>Synthetic person sample with a take-all household roster</dd>
 
         <dt>
 
           <code><a href="sample_one.html">sample_one</a></code>
 
         </dt>
-        <dd>Example survey sample (select-one-person, multistage)</dd>
+        <dd>Synthetic address sample with one selected person per household</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Juan Pablo Ferreira.</p>
+  <p>Developed by Juan Pablo Ferreira, Andrés Gutiérrez.</p>
 </div>
 
 <div class="pkgdown-footer-right">

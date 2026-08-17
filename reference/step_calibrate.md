@@ -1,13 +1,12 @@
 # Calibration to population totals
 
 Adjusts the weights so that the weighted sample reproduces known
-population totals of auxiliary variables, while staying as close as
-possible to the input weights (Deville & Sarndal 1992). Supports raking
-(IPF on categorical margins), post-stratification, and linear/GREG
-calibration, optionally bounded (a logit distance or explicit bounds on
-the calibration factor). For linear calibration, `penalty` enables ridge
-(penalized) calibration, which relaxes the targets to control extreme
-weights when there are many auxiliaries.
+population totals of auxiliary variables, while moving the incoming
+weights as little as possible. This is the calibration estimator of
+Deville and Sarndal (1992), with raking, post-stratification and linear
+(GREG) calibration, optional bounds on the adjustment factor, ridge
+relaxation of the targets, domain partitions and one-weight-per-cluster
+(integrative) calibration.
 
 ## Usage
 
@@ -139,6 +138,20 @@ The input `weighting_spec` with this step appended to its recipe. The
 step is recorded only; it is evaluated when
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 is called.
+
+## Details
+
+The calibrated weight is \\w_i = d_i g_i\\, close to the incoming
+weights \\d_i\\ and reproducing the totals \\\sum\_{i \in s} w_i
+\mathbf{x}\_i = \mathbf{X}\\, with the factor \\g_i\\ minimizing a
+distance to \\d_i\\: linear \\g_i = 1 +
+\mathbf{x}\_i'\boldsymbol\lambda\\ or exponential ("raking") \\g_i =
+\exp(\mathbf{x}\_i'\boldsymbol\lambda)\\. The `penalty` (ridge) relaxes
+the exact constraint to steady extreme weights when the auxiliaries are
+many or collinear, minimizing \$\$\sum_i \frac{(w_i - d_i)^2}{d_i q_i} +
+\frac{1}{s}\sum_j c_j (\hat X_j - X_j)^2,\$\$ where \\c_j\\ is the cost
+of missing constraint \\j\\: as \\c_j \to \infty\\ the constraint is met
+exactly, as \\c_j \to 0\\ the weights return to \\d_i\\.
 
 ## Examples
 

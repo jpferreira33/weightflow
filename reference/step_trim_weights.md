@@ -1,14 +1,11 @@
-# Automatic weight trimming (survey-style)
+# Automatic weight trimming to an absolute band
 
-Caps weights into `[lower, upper]` and redistributes the change among
-the untrimmed units to preserve the total. With
-`redistribute = "uniform"` the change is shared equally among the
-untrimmed units (and cases already trimmed are never reused), exactly
-mirroring survey::trimWeights(); the default `"proportional"` shares it
-in proportion to the untrimmed weights, keeping their relative sizes. By
-default no weight may fall below 1, and the upper cap is chosen by an
-automatic rule: the Tukey far-out fence (Q3 + 3\*IQR) or, with
-`method = "potter"`, Potter's MSE-optimal cutoff.
+Caps the weights into an absolute interval `[lower, upper]` and hands
+the removed mass back to the units that were not capped, so the weighted
+total is preserved. This is the step to use when you have **not
+calibrated yet** (or will calibrate afterwards) and you want the cutoff
+chosen from the data rather than argued for: with `upper = NULL` it
+picks one by the Tukey far-out fence or by Potter's MSE rule.
 
 ## Usage
 

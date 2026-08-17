@@ -1,10 +1,11 @@
-# Within-household selection adjustment
+# Within-cluster selection adjustment
 
-When one (or a subsample) of the units is selected within each cluster,
-the selected unit represents all eligible units in the cluster, so the
+Undoes one stage of subsampling inside a cluster: when only some of the
+eligible units of a household (or dwelling, or area segment) were
+selected, the selected ones must represent the whole cluster, so their
 weight is multiplied by the inverse of the within-cluster selection
-probability. Apply it after the (cluster-level) eligibility adjustment
-and before the nonresponse adjustment.
+probability. Apply it after the cluster-level eligibility and
+nonresponse steps and before the person-level nonresponse step.
 
 ## Usage
 
@@ -68,7 +69,7 @@ weighting_spec(df, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. within-household selection
+#>   1. within-cluster selection
 #> Status  : not estimated
 #> 
 
@@ -80,7 +81,7 @@ weighting_spec(df, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. within-household selection
+#>   1. within-cluster selection
 #> Status  : not estimated
 #> 
 ```

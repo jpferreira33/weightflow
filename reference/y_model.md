@@ -1,6 +1,12 @@
 # Specify a working model for a study variable y
 
-Specify a working model for a study variable y
+Declares the working model that
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
+fits for one study variable: a formula, a learner (a linear/`glm` model
+or a machine-learning method such as a regression tree, a random forest
+or gradient boosting) and, for `glm`, a family. It builds no model and
+touches no data – it records the specification that the calibration step
+will fit on the sample and predict over the population.
 
 ## Usage
 
@@ -37,7 +43,7 @@ a model specification list.
 y_model(income ~ age + sex, engine = "glm")
 #> $formula
 #> income ~ age + sex
-#> <environment: 0x556701fd0520>
+#> <environment: 0x563835c27af8>
 #> 
 #> $engine
 #> [1] "glm"

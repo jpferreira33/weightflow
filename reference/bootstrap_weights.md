@@ -1,10 +1,12 @@
-# Bootstrap replicate weights that re-apply the recipe
+# Recipe-aware bootstrap replicate weights
 
 Builds bootstrap replicate weights by resampling primary sampling units
-(PSUs) with replacement within strata and re-running the whole recipe on
-each replicate. Because every adjustment (nonresponse, calibration, ...)
-is recomputed per replicate, the resulting replicate weights propagate
-the variability introduced by each weighting stage.
+(PSUs) with replacement within strata and re-running the **entire**
+weighting recipe on each replicate – every estimated stage (nonresponse,
+calibration, model calibration, trimming), not just one. Reach for this
+when those stages are estimated from the sample and you want their
+uncertainty inside the standard error, instead of conditioning on them
+as if they were known.
 
 ## Usage
 

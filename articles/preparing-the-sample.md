@@ -259,7 +259,7 @@ fitted
 #>   1. unknown eligibility (by household_id)
 #>   2. drop ineligible
 #>   3. nonresponse (weighting class, by household_id)
-#>   4. within-household selection
+#>   4. within-cluster selection
 #>   5. nonresponse (weighting class)
 #> Status  : estimated (prep)
 #> 
@@ -293,7 +293,7 @@ summary(fitted)
 #>   1. unknown eligibility (by household_id)
 #>   2. drop ineligible
 #>   3. nonresponse (weighting class, by household_id)
-#>   4. within-household selection
+#>   4. within-cluster selection
 #>   5. nonresponse (weighting class)
 #> Status  : estimated (prep)
 #> 
@@ -331,7 +331,7 @@ summary(fitted)
 #>   West        85      18 1.211765
 #> Kish deff: 1.054 -> 1.039   |   n_eff: 346 -> 303
 #> 
-#> --- Step 4: within-household selection ---
+#> --- Step 4: within-cluster selection ---
 #>   using mean_factor min_factor max_factor
 #>  1/prob        2.26          1      9.052
 #> Kish deff: 1.039 -> 1.460   |   n_eff: 303 -> 216

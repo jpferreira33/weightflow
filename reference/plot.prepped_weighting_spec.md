@@ -1,6 +1,13 @@
 # Diagnostic plots for the weights
 
-Diagnostic plots for the weights
+Draws the weighting cascade: one histogram of the adjustment factor per
+step, plus a four-panel summary of the final weights, the cumulative
+factor, base against final weight, and the design effect by stage. Base
+graphics only, no dependencies. Use it after
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+to see *how* the weights moved, where
+[summary()](https://jpferreira33.github.io/weightflow/reference/summary.prepped_weighting_spec.md)
+tells you *by how much*.
 
 ## Usage
 

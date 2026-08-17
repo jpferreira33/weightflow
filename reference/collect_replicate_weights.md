@@ -1,17 +1,13 @@
 # Collect replicate weights into a data frame ready for srvyr
 
-Returns the data with the point weight and the replicate weights as
-columns, so it can be fed directly to
+Returns the data with the point weight and every replicate weight as
+ordinary columns, plus the replication design as attributes. This is the
+form
 [`srvyr::as_survey_rep()`](http://gdfe.co/srvyr/reference/as_survey_rep.md)
-(or
-[`survey::svrepdesign()`](https://rdrr.io/pkg/survey/man/svrepdesign.html)).
-Works for both a bootstrap (`weightflow_boot`) and a delete-a-PSU
-jackknife (`weightflow_jack`). Replicate columns are full (combined)
-weights, so use `combined.weights = TRUE` and `mse = TRUE`; the correct
-`type`, `scale` and `rscales` for the object are attached as attributes
-(`"type"`, `"scale"`, `"rscales"`) – for a bootstrap `scale = 1 / R`,
-`rscales = 1`; for the jackknife `scale = 1`, `rscales = (n_h - 1)/n_h`
-per replicate.
+and
+[`survey::svrepdesign()`](https://rdrr.io/pkg/survey/man/svrepdesign.html)
+expect, and the form to write out when the analysis continues in another
+session, another script or another language.
 
 ## Usage
 

@@ -1,22 +1,11 @@
 # Trimmed calibration (range-restricted, totals-preserving)
 
-Trims already-calibrated weights into an absolute interval
-`[lower, upper]` **while preserving the calibration totals** of
-`formula`. Unlike
-[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
-(which caps and then redistributes the trimmed mass, so the calibration
-constraints are broken), this is a bounded re-calibration: it finds the
-weights closest to the incoming ones that both lie in `[lower, upper]`
-and still reproduce the totals the incoming weights achieve (the
-generalized exponential method of Folsom & Singh 2000). The
-absolute-weight bound is imposed as a per-unit factor bound
-`w_new / w in [lower/w, upper/w]` on top of the incoming weights, using
-the range-restricted Euclidean distance (`calfun = "linear"`, the
-default) or the multiplicative one (`calfun = "raking"`). Weights inside
-the range that are not needed to restore the totals stay put; the
-out-of-range ones saturate at their bound and the rest move as little as
-possible. If the range is too tight to preserve every total, the totals
-that cannot be met are relaxed and a warning is raised.
+Pulls already-calibrated weights into an absolute interval
+`[lower, upper]` without breaking the calibration: instead of capping
+and redistributing, it re-solves a bounded calibration whose targets are
+the totals the incoming weights already reproduce, optionally with its
+own band per subgroup through `by`. It is the only one of the three
+trimming steps that leaves the calibration totals intact.
 
 ## Usage
 
@@ -100,45 +89,47 @@ is called.
 
 ## Details
 
+The absolute-weight bound is imposed as a per-unit factor bound
+`w_new / w in [lower/w, upper/w]` on top of the incoming weights, using
+a bounded (range-restricted) calibration with the truncated
+Deville-Sarndal distances: the range-restricted Euclidean distance
+(`calfun = "linear"`, the default) or the multiplicative one
+(`calfun = "raking"`). Weights inside the range that are not needed to
+restore the totals stay put; the out-of-range ones saturate at their
+bound and the rest move as little as possible. If the range is too tight
+to preserve every total, the totals that cannot be met are relaxed and a
+warning is raised.
+
 This step is meant to run **after** a
 [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md):
 it acts on the positive incoming weights and leaves dropped units
 (weight 0) alone.
 
-## References
-
-Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model
-for sampling weight calibration for extreme values, nonresponse, and
-poststratification. *ASA Proceedings of the Section on Survey Research
-Methods*, 598-603.
-
 ## Examples
 
 ``` r
-# calibrate, then trim the calibrated weights into [50, 400] without breaking
-# the region/sex totals
+# calibrate, then trim the calibrated weights into [5.5, 13.5] without breaking
+# the region/sex totals (the calibrated weights of sample_survey live in ~[5.4, 14])
 weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region)),
                                 sex    = c(table(population$sex)))) |>
-  step_trim_calibrated(~ region + sex, lower = 50, upper = 400) |>
+  step_trim_calibrated(~ region + sex, lower = 5.5, upper = 13.5) |>
   prep()
-#> Warning: Bounded calibration did not fully converge (bounds may be infeasible).
-#> Warning: Trimmed calibration could not both stay within [50, 400] and preserve every total (max relative deviation = 7.75e+00). The range may be infeasible; widen the bounds or relax the constraints.
 #> 
 #> == Weighting specification (weightflow) ==
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
 #>   1. calibration (raking)
-#>   2. trimmed calibration [50, 400]
+#>   2. trimmed calibration [5.5, 13.5]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
 #>                         stage n_active sum_wts cv_wts deff_kish n_eff
 #>                          base      467    4371  0.236     1.056   442
 #>        stage_1_step_calibrate      467    4495  0.295     1.087   430
-#>  stage_2_step_trim_calibrated      467   23350  0.000     1.000   467
+#>  stage_2_step_trim_calibrated      467    4495  0.297     1.088   429
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and

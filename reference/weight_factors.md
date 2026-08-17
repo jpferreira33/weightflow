@@ -1,8 +1,12 @@
 # Per-unit adjustment factors table
 
-Returns a data.frame with the weight at each stage and the factor of
-each step (stage weight / previous-stage weight), handy for custom
-plots.
+Unrolls the cascade into a `data.frame`: the weight of every unit at
+every stage, plus the factor each step applied to it. This is the tidy
+form of
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)'s
+`$history`, and the starting point for any diagnostic that
+[plot()](https://jpferreira33.github.io/weightflow/reference/plot.prepped_weighting_spec.md)
+does not already draw.
 
 ## Usage
 

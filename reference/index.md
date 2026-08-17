@@ -5,6 +5,8 @@
 - [`weightflow`](https://jpferreira33.github.io/weightflow/reference/weightflow-package.md)
   [`weightflow-package`](https://jpferreira33.github.io/weightflow/reference/weightflow-package.md)
   : weightflow: declarative survey weighting
+- [`weightflow-concepts`](https://jpferreira33.github.io/weightflow/reference/weightflow-concepts.md)
+  : Conventions shared by every weightflow step
 
 ## Build and run a recipe
 
@@ -28,25 +30,25 @@ The staged adjustments, applied in the order you pipe them.
 - [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md)
   : Drop ineligible (out-of-scope) units
 - [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md)
-  : Within-household selection adjustment
+  : Within-cluster selection adjustment
 - [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
   : Nonresponse adjustment
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
   : Calibration to population totals
 - [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
-  : Model calibration (model-assisted, Wu & Sitter 2001)
+  : Model-assisted calibration (Wu and Sitter 2001)
 - [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md)
-  : Trim extreme weights
+  : Trim extreme weights against a ratio
 - [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
-  : Automatic weight trimming (survey-style)
+  : Automatic weight trimming to an absolute band
 - [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
   : Trimmed calibration (range-restricted, totals-preserving)
 - [`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md)
   : Round the final weights
 - [`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md)
-  : Rescale (normalize) the weights
+  : Rescale the weights to a fixed sum
 - [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
-  : Assert conditions on the weights at this point of the cascade
+  : Assert quality conditions on the weights
 
 ## Diagnostics and reporting
 
@@ -58,10 +60,14 @@ Inspect, summarise and report the cascade.
   : Diagnostic plots for the weights
 - [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
   : Per-unit adjustment factors table
+- [`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+  : Recover the fitted response propensities of a nonresponse step
+- [`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
+  : Per-domain weight summary at every stage of the cascade
 - [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
   : Kish design effect from unequal weighting
 - [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
-  : Build a nice HTML report of the weighting recipe
+  : Self-contained HTML quality report for a weighting recipe
 
 ## Variance estimation
 
@@ -69,13 +75,13 @@ Bootstrap and jackknife that re-apply the recipe, plus survey/srvyr
 bridges.
 
 - [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
-  : Bootstrap replicate weights that re-apply the recipe
+  : Recipe-aware bootstrap replicate weights
 - [`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
   [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
   [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
   : Bootstrap estimate, standard error and confidence interval
 - [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
-  : Delete-a-PSU jackknife replicate weights that re-apply the recipe
+  : Recipe-aware delete-a-PSU jackknife replicate weights
 - [`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
   [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
   [`jack_mean()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
@@ -85,12 +91,16 @@ bridges.
   : Export weightflow weights to a survey design
 - [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
   : Collect replicate weights into a data frame ready for srvyr
+- [`print(`*`<weightflow_boot>`*`)`](https://jpferreira33.github.io/weightflow/reference/print.weightflow_boot.md)
+  : Print a bootstrap replicate-weight object
+- [`print(`*`<weightflow_jack>`*`)`](https://jpferreira33.github.io/weightflow/reference/print.weightflow_jack.md)
+  : Print a jackknife replicate-weight object
 
 ## Example data
 
 - [`population`](https://jpferreira33.github.io/weightflow/reference/population.md)
-  : Example target population for weightflow
+  : Synthetic target population (sampling frame)
 - [`sample_survey`](https://jpferreira33.github.io/weightflow/reference/sample_survey.md)
-  : Example survey sample (take-all roster)
+  : Synthetic person sample with a take-all household roster
 - [`sample_one`](https://jpferreira33.github.io/weightflow/reference/sample_one.md)
-  : Example survey sample (select-one-person, multistage)
+  : Synthetic address sample with one selected person per household

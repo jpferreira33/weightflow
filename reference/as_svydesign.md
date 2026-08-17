@@ -1,12 +1,15 @@
 # Export weightflow weights to a survey design
 
-`as_svydesign()` builds a linearization (ultimate-cluster) design from a
-prepped recipe, treating the final weights as fixed; `as_svrepdesign()`
-builds a replicate-weights design from a bootstrap (`weightflow_boot`)
-or jackknife (`weightflow_jack`) object. Both require the 'survey'
-package. With the replicate-weights design you can estimate any
-statistic for any domain (`svytotal`, `svymean`, `svyratio`, `svyby`,
-...).
+`as_svydesign()` builds a linearization (ultimate-cluster)
+`survey.design` from a prepped recipe, treating the final weights as
+fixed constants. `as_svrepdesign()` builds a replicate-weights
+`svyrep.design` from a
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+or
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+object. Both are the bridge to the `survey` package, and therefore to
+`svytotal()`, `svymean()`, `svyratio()`, `svyby()`, `svyglm()` and
+domain estimation generally.
 
 ## Usage
 

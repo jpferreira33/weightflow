@@ -4,15 +4,11 @@
 
 ### New features
 
-- **Diagnostics report suite.** A card per step reads the bias-variance
-  trade-off each adjustment bought, with quality alerts: trimming
-  (winsorization accounting, bias cost, Potter curve, sensitivity),
-  linear calibration (g-range, distance, collinearity, per-constraint
-  influence, efficiency, per-domain table), ML propensity models
-  (calibration by decile, Brier, balance, AUC in context, overfitting
-  gap), and nonresponse by calibration (implicit propensity phi-hat =
-  1/g, information level, auxiliary quality) – all under one diagnostic
-  language.
+- **Diagnostics report suite.**
+  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
+  gains a per-step card reading the bias-variance trade-off of each
+  adjustment, with quality alerts for trimming, calibration,
+  machine-learning propensity models and nonresponse-by-calibration.
 - **Honest variance for machine-learning adjustments.** A flexible
   learner (tree / forest / boost) run without `crossfit` now raises an
   alert, since same-sample predictions can understate the variance even
@@ -29,183 +25,29 @@
 - **Per-subgroup trimming.**
   [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
   gains a `by` argument and per-group `lower` / `upper` bounds
-  (suggested by Andrés Gutiérrez, ECLAC).
+  (requested by ECLAC).
+- **[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)**
+  recovers the per-unit response propensities fitted by a
+  `step_nonresponse(method = "propensity")` step from a prepped recipe,
+  so their distribution can be inspected before the adjusted weights are
+  trusted; it returns the same information whether the adjustment was
+  made at the unit level or, through `cluster`, at the household level
+  (the household propensity is broadcast to its members). Requested by
+  ECLAC.
+- **[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)**
+  reports, for a study domain (e.g. a department / DAM), how the weights
+  move within each domain at every stage of the cascade – active units,
+  sum of weights, mean weight and Kish design effect – so weight
+  movement can be reviewed step by step per domain for quality control
+  (requested by ECLAC).
 
-### Bug fixes
+### Bug fixes and documentation
 
-- **Bad inputs now fail loudly instead of corrupting silently.**
-  Non-finite base weights, 0-row data, missing `respondent` / `unknown`
-  / `ineligible` flags among in-scope units, raking /
-  post-stratification margin levels that match no unit, and `haven` /
-  SPSS-labelled columns used in a model formula now error; near-constant
-  propensities collapse to a single class with an alert instead of
-  failing.
-- **Report correctness.** No longer crashes on a single-covariate logit
-  propensity; the trimming narrative reports mass loss honestly instead
-  of claiming preservation; numeric categories in tidy tables display in
-  natural order; the condition number is shown in plain language;
-  user-supplied names are HTML-escaped. A non-finite design effect –
-  `Inf` from an overflowed weight sum or `NaN` from all-zero base
-  weights, both reachable after a successful
-  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
-  – no longer aborts the report with “missing value where TRUE/FALSE
-  needed”; the impact table shows a dash and the design-effect line
-  explains it could not be computed. The HTML is written as explicit
-  UTF-8 bytes, so accents and symbols in user metadata survive on a
-  non-UTF-8 locale (e.g. Windows latin1), including in English-language
-  reports.
-- **Weighting correctness.** Empty adjustment cells are set to weight 0;
-  `NA` auxiliaries error; `lonely_psu = "collapse"` nests PSU ids within
-  their stratum; `step_trim(reference = "median", by = )` uses each
-  group’s median; `tol` is honored in bounded / non-linear calibration.
-- **Smaller conveniences.**
-  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
-  warns when overwriting `.weight`;
-  [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
-  accepts a prepped recipe;
-  [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  accepts formulas;
-  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
-  drops failed replicates; parallel replicates fall back to serial on
-  Windows; raking is faster on large samples.
-- **New alerts** for very small response propensities and
-  partially-responding households.
-- **Missing or malformed data now errors instead of biasing silently.**
-  `NA` in a raking / post-stratification margin variable, a propensity
-  model covariate, or a bootstrap / jackknife stratum or PSU; a
-  household-level nonresponse `by` cell that varies within the cluster;
-  `equal_within_cluster = TRUE` with non-uniform incoming base weights;
-  a tidy linear/GREG total for a category with no units in the sample;
-  an `NA` in a post-stratification counts column; and a classic
-  `margins` entry given as an unnamed numeric vector (previously a
-  silent no-op) all stop with a clear message rather than passing units
-  through untouched, producing `NA` weights, or leaking the uncovered
-  mass into the reference category. Missing values in a nonresponse /
-  eligibility `by` cell now form an explicit `(missing)` group with a
-  warning, instead of a silent, ambiguous `"NA"` cell.
-- **Honest replicate variance and calibration totals.**
-  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
-  /
-  [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
-  drop a failed replicate (and report how many) instead of counting it
-  as 0 and inflating the standard error; the achieved-vs-target check
-  now runs even under `bounds`, so `converged` reflects the real totals;
-  a duplicate category in tidy linear/GREG totals is now summed (not
-  overwritten by the last row), and a duplicate cell in tidy
-  post-stratification totals is summed with an informative message (so
-  an accidental double-paste is visible); by-domain (`by =`) calibration
-  propagates its convergence flag, so the report no longer shows green
-  when a single domain failed to converge;
-  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
-  restores the global RNG on exit, so its internal per-replicate seeding
-  no longer leaks into the caller’s random stream; and
-  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
-  drops failed replicates (with a warning), like
-  [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md),
-  instead of carrying all-NA columns that made `srvyr` return NA
-  standard errors; and
-  [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
-  is skipped inside bootstrap / jackknife replicates (a quality
-  checkpoint applies to the final weights, not to replicate weights,
-  whose design effect is structurally larger), so a checkpoint the point
-  weights pass no longer makes every replicate fail with `se = NaN`; a
-  bootstrap / jackknife worker killed mid-run (e.g. out of memory under
-  `mclapply`) becomes a counted failed replicate instead of being
-  silently dropped or coercing the weight matrix to character; and the
-  stratified jackknife rescales its per-stratum contribution when some
-  delete-a-PSU replicates fail, so the variance is no longer biased low.
-  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
-  now errors instead of producing duplicate column names when the data
-  already carries a column matching the replicate prefix (e.g. a stray
-  `rep_1`), which used to make the documented
-  `srvyr::as_survey_rep(starts_with("rep_"))` flow silently pick the
-  wrong column, and warns (like
-  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md))
-  when its point-weight column overwrites an existing one.
-  [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
-  no longer reports success when every replicate failed: an all-`NA`
-  replicate set raises a point-of-attention alert, the “Recipe-aware”
-  row reads “not applicable”, the summary line says the replicate
-  weights failed, and the lonely-PSU advice is corrected – a single-PSU
-  stratum contributes no variance under *either* the rescaling bootstrap
-  or the delete-a-PSU jackknife (the lone PSU cannot be deleted), so it
-  points to collapsing strata rather than switching method.
-- **Trimming and diagnostics.** `step_trim_weights(lower = NULL)` means
-  “no floor” instead of erroring; the Potter MSE curve is drawn again,
-  with a readable, compactly-labelled axis;
-  [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
-  works on a zero-step recipe;
-  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
-  drops `NA` weights cleanly instead of inserting phantom all-`NA` rows;
-  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
-  and
-  [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md)
-  require `lower < upper` (resp. `min_ratio < max_ratio`) once the
-  automatic cap is resolved, and the mass-change alert now fires in both
-  directions (inflation as well as loss); and a non-finite (`Inf`/`NaN`)
-  weight produced mid-cascade now errors at the step that produced it,
-  instead of propagating silently into the final weights and
-  diagnostics.
-- **Stricter argument validation.** A zero-length `by` (e.g. from a
-  [`grepl()`](https://rdrr.io/r/base/grep.html) filter that matched
-  nothing), an invalid `maxit` (`0`, `NA`, non-integer) in
-  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
-  /
-  [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
-  a non-logical `weight_model` (such as `1` or `"yes"`); a confidence
-  `level` outside `(0, 1)` (e.g. `95`); a `variable` that is not a
-  column of the data in
-  [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
-  /
-  [`jack_total()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
-  /
-  [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
-  /
-  [`jack_mean()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
-  (which used to return `0 +/- 0` for a typo); and `replicates < 2` all
-  now error, instead of silently skipping the step, flipping the
-  estimator (`isTRUE(1)` is `FALSE`), or returning a meaningless result.
-  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)’s
-  `warn` / `min_cell_n` / `max_factor` and
-  `step_rescale(to = "total")`’s `total` are validated as well, so a bad
-  value no longer quietly disables a quality check or zeroes every
-  weight. A `prob` / `n_eligible` / `n_selected` given to
-  [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md)
-  that evaluates to a factor now errors (rather than silently using its
-  integer codes), and the output column names (`weight_name`, `prefix`
-  in
-  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
-  /
-  [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md))
-  must be non-empty strings (`1` or `""` used to overwrite an existing
-  column silently). Duplicate names in a classic `totals` vector now
-  error (previously only one value was used); calibration arguments the
-  chosen method ignores (`cluster` with raking, `bounds` with
-  post-stratification) raise a warning instead of being dropped
-  silently; and a numeric post-stratification category such as `100000`
-  now matches between the totals and the data regardless of
-  integer/double type or scientific notation.
-- **Documentation.** The package help no longer says weightflow
-  “computes weights only” (it provides recipe-aware bootstrap /
-  jackknife variance and bridges to `survey` / `srvyr`); the
-  [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
-  example uses feasible bounds (`[6, 13]`) so it no longer clamps every
-  weight and emits convergence warnings.
-- **Negative weights are now consistent instead of half-counted.** A
-  negative weight – a valid, if unusual, output of unbounded linear/GREG
-  calibration – is treated as *active* everywhere through a single
-  predicate (`is.finite(w) & w != 0`): it takes part in later steps, is
-  counted by
-  [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
-  and the stage funnel, and is kept by
-  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md),
-  so the reported totals and design effect match the weights actually
-  returned. (Previously the cascade froze it,
-  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
-  dropped it, and the calibration diagnostics were computed on the
-  positive subset only, so a re-calibration reported totals that were
-  not the real ones.) A new alert reports how many units received a
-  negative calibration weight and points to `bounds`.
+- Robustness and correctness fixes for uncommon edge cases – malformed
+  or degenerate inputs, replicate-variance accounting, and the HTML
+  report – each covered by a regression test.
+- Documentation overhaul: help pages reviewed and rewritten, estimator
+  formulas added to the details, and a new `?weightflow-concepts` page.
 
 ## weightflow 1.0.0
 

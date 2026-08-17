@@ -1,8 +1,10 @@
 # Bootstrap estimate, standard error and confidence interval
 
-Applies a statistic to the point weights and to every replicate, and
-summarises it with the bootstrap variance \\(1/B)\sum(\theta^\*\_b -
-\hat\theta)^2\\.
+Applies a statistic to the point weights and to every bootstrap
+replicate, and returns the estimate with its bootstrap standard error
+and a normal confidence interval. `boot_total()` and `boot_mean()` are
+the two shortcuts you will use most: a weighted total and a weighted
+mean of one column.
 
 ## Usage
 
@@ -36,3 +38,13 @@ boot_mean(boot, variable)
 ## Value
 
 A data frame with `estimate`, `se`, `ci_lower`, `ci_upper`.
+
+## Details
+
+The bootstrap variance takes the replicate estimates
+\\\hat\theta^{\*}\_b\\ around the point estimate \\\hat\theta\\ (the
+`mse = TRUE` convention of `survey`), over the \\R\\ valid replicates (a
+failed replicate is dropped, not counted), \$\$\widehat
+V\_{\mathrm{boot}}(\hat\theta) =
+\frac{1}{R}\sum\_{b=1}^{R}\big(\hat\theta^{\*}\_b -
+\hat\theta\big)^2.\$\$

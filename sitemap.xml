@@ -23,15 +23,19 @@
 <url><loc>https://jpferreira33.github.io/weightflow/reference/as_svydesign.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/collect_propensities.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/collect_weights.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/design_effect.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/domain_summary.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/index.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/jackknife_weights.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/plot.prepped_weighting_spec.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/population.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/prep.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/print.weightflow_boot.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/print.weightflow_jack.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/report_weighting.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/sample_one.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/sample_survey.html</loc></url>
@@ -49,6 +53,7 @@
 <url><loc>https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/summary.prepped_weighting_spec.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/weight_factors.html</loc></url>
+<url><loc>https://jpferreira33.github.io/weightflow/reference/weightflow-concepts.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/weightflow-package.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/weighting_spec.html</loc></url>
 <url><loc>https://jpferreira33.github.io/weightflow/reference/y_model.html</loc></url>

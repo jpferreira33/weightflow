@@ -1,10 +1,14 @@
-# Model calibration (model-assisted, Wu & Sitter 2001)
+# Model-assisted calibration (Wu and Sitter 2001)
 
-Fits a working model for each study variable y, predicts over the
-population, and calibrates the weights so that the sample total of each
-prediction equals its population total (model-assisted efficiency). It
-also calibrates to the X totals (consistency with the auxiliary
-controls).
+Fits a working model for each study variable, predicts it over the whole
+population, and calibrates the weights so that the sample total of every
+prediction matches its population total, on top of the usual auxiliary
+totals – which may come from the population frame itself or from an
+external source (a census table, an administrative register). Reach for
+it when you hold, or can supply, those control totals and the outcome is
+well predicted by the auxiliaries: the predictions act as extra, highly
+relevant controls and buy precision that calibrating on `x` alone
+cannot.
 
 ## Usage
 
@@ -106,6 +110,21 @@ is called.
 Requires COMPLETE auxiliary information: a data.frame `population` with
 the `x_formula` columns and the model predictors for the whole
 population (or a reference frame/census).
+
+The predictions \\\hat y_i\\ enter as extra constraints, \\\sum\_{i \in
+s} w_i \hat y_i = \sum\_{i \in U} \hat y_i\\, solved together with the
+benchmark auxiliary totals \\\mathbf{X}\\. When the working model is
+linear this reduces to GREG; a nonlinear learner adds efficiency through
+the prediction constraint while the totals \\\mathbf{X}\\ preserve
+design consistency even if the model is misspecified.
+
+## References
+
+Wu, C. and Sitter, R. R. (2001). A model-calibration approach to using
+complete auxiliary information from survey data. *Journal of the
+American Statistical Association*, 96(453), 185-193.
+[doi:10.1198/016214501750333054](https://doi.org/10.1198/016214501750333054)
+.
 
 ## Examples
 

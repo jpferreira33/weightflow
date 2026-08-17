@@ -1,8 +1,10 @@
-# Assert conditions on the weights at this point of the cascade
+# Assert quality conditions on the weights
 
-A checkpoint that does NOT change the weights; it verifies conditions
-and fails (error) or warns if they are not met. Useful to guard a
-production pipeline (tidymodels-style tests inside the recipe).
+A checkpoint that leaves the weights untouched and instead verifies that
+they meet quality thresholds at this point of the cascade, raising an
+error or a warning when they do not. Use it to stop a production
+pipeline before bad weights are published, in the spirit of a validation
+step inside a recipe.
 
 ## Usage
 
