@@ -94,7 +94,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
              .t("CV of weights", "CV de los pesos", lang),
              .t("deff_K", "deff_K", lang),
              .t("Effective n (n_eff)", "n efectivo (n_eff)", lang))
-    hd  <- paste0("<th>", hdr, "</th>", collapse = "")
+    hd  <- paste0("<th scope='col'>", hdr, "</th>", collapse = "")
     num <- function(x) format(x, big.mark = ",")
     d3  <- function(x) formatC(x, format = "f", digits = 3)
     dcell <- function(v) {
@@ -106,7 +106,9 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
       slab[i], num(stab$n_active[i]), num(stab$sum_wts[i]),
       d3(stab$cv[i]), dcell(stab$deff[i]), num(stab$n_eff[i])), character(1))
-    sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+    sprintf("<table class='stagetbl'><caption class='sr-only'>%s</caption><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+            .t("Per-stage weight summary: active units, sum of weights, CV, design effect and effective sample size at each stage.",
+               "Resumen de pesos por etapa: unidades activas, suma de pesos, CV, efecto de dise&ntilde;o y tama&ntilde;o de muestra efectivo en cada etapa.", lang),
             hd, paste(rows, collapse = ""))
   })
   imp_html <- local({
@@ -139,7 +141,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
                 if (v > 0.001) "&#9888; " else "", v)
       }
       pm3  <- function(v) if (is.finite(v)) sprintf("%+.3f", v) else "&mdash;"
-      hd <- paste0("<th>", c(.t("Step", "Paso", lang), "&Delta; deff_K", "&Delta; CV",
+      hd <- paste0("<th scope='col'>", c(.t("Step", "Paso", lang), "&Delta; deff_K", "&Delta; CV",
                              .t("Contribution to deff_K change", "Contribuci\u00f3n al cambio del deff_K", lang),
                              .t("Effect", "Efecto", lang)), "</th>", collapse = "")
       rows <- vapply(seq_along(dd), function(j) sprintf(
@@ -156,9 +158,11 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
         cell(t_deff), pm3(t_cv),
         if (is.na(t_neff)) "" else .t(sprintf("effective sample %+.0f%%", t_neff),
                                       sprintf("muestra efectiva %+.0f%%", t_neff), lang))
-      sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s%s</tbody></table>",
+      sprintf("<p class='muted'>%s</p><table class='stagetbl'><caption class='sr-only'>%s</caption><thead><tr>%s</tr></thead><tbody>%s%s</tbody></table>",
               .t("Impact of each weighting step (change vs the previous stage)",
                  "Impacto de cada paso de ponderaci\u00f3n (cambio respecto de la etapa anterior)", lang),
+              .t("Impact of each weighting step on the design effect, CV and effective sample size.",
+                 "Impacto de cada paso de ponderaci&oacute;n sobre el efecto de dise&ntilde;o, el CV y el tama&ntilde;o de muestra efectivo.", lang),
               hd, paste(rows, collapse = ""), total_row)
     }
   })
@@ -286,15 +290,25 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       identical(attr(st$diagnostics, "converged"), FALSE), logical(1)))
     nal <- sum(vapply(object$steps, function(st)
       !is.null(st$alerts) && length(st$alerts) > 0L, logical(1)))
-    nis <- ncv + nal
+    # \u00a71.1: the calibration can converge exactly and then a later rounding/trimming
+    # step move the totals off target. Read the real post-calibration drift so the
+    # closing line cannot claim "constraints preserved" while the drift table shows
+    # a 1.2% deviation. A drift above 1% is itself a point of attention.
+    md <- attr(drift, "maxdev")
+    drift_att <- !is.null(md) && is.finite(md) && md >= 1
+    nis <- ncv + nal + drift_att
     lead <- if (nis == 0L)
       .t("Recipe completed successfully.", "Receta completada con \u00e9xito.", lang)
     else .t(sprintf("Recipe completed with %d point%s of attention.", nis, if (nis == 1L) "" else "s"),
             sprintf("Receta completada con %d punto%s de atenci\u00f3n.", nis, if (nis == 1L) "" else "s"), lang)
     it <- c(sprintf("%d %s", ns, if (ns == 1L) .t("weighting step", "paso de ponderaci\u00f3n", lang)
                                  else .t("weighting steps", "pasos de ponderaci\u00f3n", lang)))
-    if (ncv == 0L) it <- c(it, .t("calibration constraints preserved",
-                                  "restricciones de calibraci\u00f3n preservadas", lang))
+    if (ncv == 0L)
+      it <- c(it, if (is.null(md) || !is.finite(md) || md < 0.05)
+                    .t("calibration constraints preserved",
+                       "restricciones de calibraci\u00f3n preservadas", lang)
+                  else .t(sprintf("calibration totals within %.2f%% of target after rounding/trimming", md),
+                          sprintf("totales de calibraci\u00f3n dentro de %.2f%% del objetivo tras redondeo/recorte", md), lang))
     if (!is.null(replicates)) {
       rmat  <- replicates$replicates
       nrp   <- if (!is.null(rmat)) ncol(rmat) else replicates$R
@@ -318,7 +332,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   # HTML assembled by named interpolation (paste0), not a positional sprintf, so
   # sections cannot be misaligned when one is added or removed.
   html <- paste0(
-    sprintf("<!DOCTYPE html><html lang='%s'><head><meta charset='utf-8'>\n", lang),
+    sprintf("<!DOCTYPE html><html lang='%s'><head><meta charset='utf-8'>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n", lang),
     sprintf("<title>%s</title>", .t("weightflow report", "reporte weightflow", lang)), .report_css(), "</head><body>\n",
     sprintf("<h1>weightflow &mdash; %s</h1>\n", .t("weighting recipe", "receta de ponderaci\u00f3n", lang)),
     sprintf("<p class='muted'>%s: <code>%s</code> &nbsp;|&nbsp; %d %s</p>\n",
@@ -327,7 +341,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     "<p class='prov'>", prov, "</p>\n",
     "<div class='toolbar noprint'><button type='button' id='wf-pdf' class='wfbtn'>",
       .t("Download PDF", "Descargar PDF", lang), "</button></div>\n",
-    toc_html, "\n",
+    "<nav aria-label=\"Contents\">", toc_html, "</nav>\n",
+    "<main>\n",
     meta_html, "\n",
     "<div class='cards'>", cards, "</div>\n",
     racct, "\n",
@@ -346,7 +361,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     steps_html, "\n</details>\n",
     drift, "\n",
     done_txt, "\n",
-    "<p class='foot'>", foot_txt, "</p>\n",
+    "</main>\n",
+    "<footer><p class='foot'>", foot_txt, "</p></footer>\n",
     "<script>", .report_js(), "</script>\n",
     "</body></html>")
 

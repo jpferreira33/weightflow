@@ -37,6 +37,21 @@
   gL <- list(); dL <- list(); covL <- list(); aidxL <- list()
   chi2 <- 0; calfun <- NULL; bounds <- NULL; cform <- NULL; conv <- logical(0)
   doms  <- unique(dom[active])
+  # #4: a domain present in `totals` but with NO unit in the sample would never be
+  # iterated, so its control total is silently dropped and the calibrated weights
+  # fall short of the intended population size. Surface it.
+  tot_doms <- if (is.data.frame(step$totals)) unique(as.character(step$totals[[byvar]]))
+              else if (is.list(step$totals))
+                unique(unlist(lapply(step$totals, function(t)
+                  if (is.data.frame(t) && byvar %in% names(t)) as.character(t[[byvar]]) else NULL)))
+              else NULL
+  miss_dom <- setdiff(tot_doms, doms)
+  if (length(miss_dom))
+    warning(sprintf(paste0("The calibration `totals` include domain(s) of '%s' with no unit in ",
+                          "the sample: %s. Their control totals are dropped, so the weighted ",
+                          "total does not reach the intended population size. Check the domain ",
+                          "coverage of the sample and the totals."),
+                    byvar, paste(utils::head(miss_dom, 10L), collapse = ", ")), call. = FALSE)
   for (d in doms) {
     idx_d  <- which(dom == d)
     step_d <- step
@@ -367,6 +382,21 @@ apply_step.step_calibrate <- function(step, data, w) {
   }
   diag <- do.call(rbind, diag)
   attr(diag, "iterations") <- it
-  attr(diag, "converged")  <- (maxdiff < step$tol)
+  # #5: the iteration skips any cell whose weights sum to <= 0 (e.g. from negative
+  # GREG weights), so `maxdiff` alone can report convergence with that margin
+  # grossly unmet. Verify the achieved totals against the targets: a cell off by
+  # more than a small relative tolerance means the margin was not met.
+  reldev <- abs(diag$achieved - diag$target) / pmax(abs(diag$target), 1)
+  conv   <- (maxdiff < step$tol) && all(is.finite(reldev)) && max(reldev) < 1e-3
+  if (!conv && maxdiff < step$tol) {
+    bad <- diag[!is.finite(reldev) | reldev >= 1e-3, , drop = FALSE]
+    warning(sprintf(paste0("Raking iterations converged but %d margin cell(s) were not met ",
+                          "(e.g. %s = %s: target %s, achieved %s), typically a cell whose ",
+                          "weights sum to <= 0 and cannot be raked. The returned weights do not ",
+                          "satisfy these margins."),
+                    nrow(bad), bad$variable[1], bad$category[1],
+                    format(round(bad$target[1])), format(round(bad$achieved[1]))), call. = FALSE)
+  }
+  attr(diag, "converged") <- conv
   list(weights = new_w, diagnostics = diag)
 }

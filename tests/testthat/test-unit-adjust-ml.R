@@ -77,15 +77,11 @@ test_that(".crossfit_predict shrinks K when there are fewer clusters than folds"
   expect_equal(nf, 2L)
 })
 
-test_that(".crossfit_predict skips a fold that would leave no training rows", {
-  called <- FALSE
-  fp <- function(train_idx, nd_idx) {
-    called <<- TRUE
-    lapply(nd_idx, function(i) rep(1, length(i)))
-  }
-  out <- .crossfit_predict(5, 1, fit_predict = fp)   # K = 1 -> no training set
-  expect_false(called)
-  expect_true(all(out == 0))
+test_that(".crossfit_predict errors instead of scoring 0 when fewer than 2 folds form", {
+  # R5#6: a single fold leaves no training set; the old behaviour scored those
+  # units 0 (-> 1e-6 propensities -> weights x1e6). It must now fail loudly.
+  fp <- function(train_idx, nd_idx) lapply(nd_idx, function(i) rep(1, length(i)))
+  expect_error(.crossfit_predict(5, 1, fit_predict = fp), "at least 2 folds")
 })
 
 test_that(".crossfit_predict is reproducible and restores the RNG state", {

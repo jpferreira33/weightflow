@@ -70,6 +70,7 @@
     nm = (nm || "").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
     return "weightflow-" + (nm || "table") + "-" + i + ".csv";
   }
+  window.addEventListener("beforeprint", function(){ document.querySelectorAll("details").forEach(function(d){ d.open = true; }); });
   var pdf = document.getElementById("wf-pdf");
   if (pdf) pdf.onclick = function(){ window.print(); };
   var tables = document.querySelectorAll("table"), i = 0;
@@ -88,6 +89,7 @@
 
 .report_css <- function() "<style>
 :root{--ink:#1a1a2e;--mut:#6b7280;--line:#e5e7eb;--accent:#3d3580;--bg:#f7f7fb}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
 color:var(--ink);max-width:980px;margin:32px auto;padding:0 20px;background:#fff;line-height:1.45}
 h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:28px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}

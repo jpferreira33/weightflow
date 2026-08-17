@@ -59,13 +59,26 @@
     fold     <- cf[as.character(cluster_id)]
   }
   K <- length(unique(fold))                  # may shrink if few clusters
-  out <- numeric(n)
+  # #6: with a single (or single effective) fold, every unit is in the test set
+  # and none in train; the loop would leave those predictions at 0, which become
+  # 1e-6 propensities and weights x1e6. Fail loudly, and use NA (not 0) so any
+  # unpredicted unit is caught rather than silently scored 0.
+  if (K < 2L)
+    stop(sprintf(paste0("Cross-fitting needs at least 2 folds, but only %d could be formed ",
+                        "(too few %s to split). Use crossfit = NULL for in-sample fitting, ",
+                        "fewer folds, or more %s."),
+                 K, if (is.null(cluster_id)) "units" else "clusters",
+                 if (is.null(cluster_id)) "units" else "clusters"), call. = FALSE)
+  out <- rep(NA_real_, n)
   for (k in sort(unique(fold))) {
     test_idx  <- which(fold == k)
     train_idx <- which(fold != k)
     if (!length(train_idx)) next
     out[test_idx] <- fit_predict(train_idx, list(test_idx))[[1]]
   }
+  if (anyNA(out))
+    stop("Cross-fitting left some units without an out-of-fold prediction (a fold had no ",
+         "training data). Reduce the number of folds or use crossfit = NULL.", call. = FALSE)
   out
 }
 

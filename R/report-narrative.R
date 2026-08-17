@@ -61,11 +61,25 @@
         else .t("nonresponse adjustment (calibration)",
                 "ajuste por no respuesta (calibraci\u00f3n)", lang))
     }
-    return(switch(m,
-      weighting_class = .t("nonresponse adjustment (weighting classes)",
-                           "ajuste por no respuesta (clases de ponderaci\u00f3n)", lang),
-      propensity = .t(sprintf("nonresponse adjustment (propensity, %s)", step$engine),
-                      sprintf("ajuste por no respuesta (propensi\u00f3n, %s)", step$engine), lang)))
+    # \u00a71.3: two nonresponse steps (e.g. one at household level via `cluster`, one
+    # at person level) otherwise get identical labels. Append the level so they
+    # are distinct in the pipeline and tables. Avoid the word "by" for the cluster
+    # (that is the adjustment-cell argument), say "at the <cluster> level".
+    # Escape user-controlled identifiers (cluster = a column name, engine) before
+    # they enter the HTML: .step_short() feeds the exec summary, pipeline diagram,
+    # per-stage table, anchors and titles, so an unescaped column name is an XSS
+    # vector in a report built from third-party data. Everything else is escaped.
+    cl  <- .html_escape(step$cluster)
+    eng <- .html_escape(step$engine)
+    lvl <- if (!is.null(step$cluster))
+             .t(sprintf(", at the %s level", cl),
+                sprintf(", a nivel %s", cl), lang) else ""
+    base <- switch(m,
+      weighting_class = .t("nonresponse adjustment (weighting classes",
+                           "ajuste por no respuesta (clases de ponderaci\u00f3n", lang),
+      propensity = .t(sprintf("nonresponse adjustment (propensity, %s", eng),
+                      sprintf("ajuste por no respuesta (propensi\u00f3n, %s", eng), lang))
+    return(paste0(base, lvl, ")"))
   }
   if (inherits(step, "step_calibrate")) {
     vp <- .vars_phrase(.aux_vars(step), lang); greg <- identical(step$method, "linear")

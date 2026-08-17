@@ -53,7 +53,11 @@ apply_step.step_trim <- function(step, data, w) {
 
   # Define the cap and floor per unit according to the reference
   base_w <- attr(data, "weightflow_base_w")
-  cap   <- numeric(n); floor_v <- rep(0, n)
+  # #8: no `min_ratio` means "no floor" (-Inf), not a floor of 0. A floor of 0
+  # would clamp a legitimate active negative weight (a valid GREG output) up to 0,
+  # the "dropped" marker, so the unit silently leaves the cascade while the total
+  # is preserved (no alert fires). Only a supplied `min_ratio` sets a real floor.
+  cap   <- numeric(n); floor_v <- rep(-Inf, n)
   if (step$reference == "base") {
     if (is.null(base_w)) stop("reference = 'base' requires the base weights (provided by prep()).")
     cap[]     <- step$max_ratio * base_w

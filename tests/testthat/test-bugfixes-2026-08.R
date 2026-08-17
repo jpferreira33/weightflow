@@ -565,6 +565,36 @@ test_that("M3 (rest): a named length-1 bound needs `by` in trimmed calibration",
   expect_error(prep(step_trim_calibrated(sp, ~ region, upper = c(A = 16))), "named")
 })
 
+test_that("R5#1: .step_short escapes a hostile cluster name (XSS)", {
+  st <- structure(list(method = "weighting_class",
+                       cluster = "hh<img src=x onerror=alert(1)>"),
+                  class = c("step_nonresponse", "weighting_step"))
+  out <- .step_short(st, "en")
+  expect_false(grepl("<img", out, fixed = TRUE))     # payload not raw
+  expect_true(grepl("&lt;img", out, fixed = TRUE))   # escaped
+})
+
+test_that("R5#3: .eval_cond rejects a flag whose length != nrow(data)", {
+  bad <- rep(TRUE, 20)
+  expect_error(.eval_cond(quote(bad), data.frame(x = 1:10), env = environment()),
+               "one value per unit")
+})
+
+test_that("R5#6: cross-fitting errors with fewer than 2 effective folds", {
+  expect_error(
+    .crossfit_predict(n = 10, K = 5, cluster_id = rep("A", 10),
+                      fit_predict = function(tr, te) list(rep(0.5, length(te[[1]])))),
+    "at least 2 folds")
+})
+
+test_that("R5#8: step_trim without min_ratio does not floor a negative weight to 0", {
+  st <- structure(list(label = "t", max_ratio = 100, min_ratio = NULL, reference = "value",
+                       redistribute = TRUE, by = NULL, maxit = 50L),
+                  class = c("step_trim", "weighting_step"))
+  res <- apply_step(st, data.frame(x = 1:4), c(-5, 10, 20, 30))
+  expect_true(any(res$weights < 0))     # the -5 stays negative, not raised to 0 (dropped)
+})
+
 test_that("C1b: a classic margin that omits a sample level errors (raking and poststratify)", {
   d  <- data.frame(region = rep(c("A", "B", "C"), c(20, 20, 10)), pw = rep(1, 50))
   sp <- weighting_spec(d, base_weights = pw)

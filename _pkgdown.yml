@@ -71,6 +71,7 @@ reference:
 - title: Overview
   contents:
   - weightflow-package
+  - weightflow-concepts
 - title: Build and run a recipe
   desc: Define the recipe, estimate it, and pull the weights out.
   contents:

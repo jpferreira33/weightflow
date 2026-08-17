@@ -113,8 +113,16 @@
 # data.frame -> HTML table
 .df_to_html <- function(df) {
   if (is.null(df) || !nrow(df)) return("<p class='muted'>no diagnostics</p>")
-  for (nm in names(df)) if (is.numeric(df[[nm]])) df[[nm]] <- round(df[[nm]], 4)
-  hd <- paste0("<th>", .html_escape(names(df)), "</th>", collapse = "")
+  # Integer-valued numeric columns (counts, calibration targets/totals) get a
+  # thousands separator so they read like the header tiles ("1,570", not "1570");
+  # display only, never touches a value used in a computation.
+  for (nm in names(df)) if (is.numeric(df[[nm]])) {
+    col <- df[[nm]]; fin <- is.finite(col)
+    df[[nm]] <- if (any(fin) && all(col[fin] == round(col[fin])))
+      format(col, big.mark = ",", trim = TRUE)
+    else round(col, 4)
+  }
+  hd <- paste0("<th scope='col'>", .html_escape(names(df)), "</th>", collapse = "")
   rows <- apply(df, 1, function(r)
     paste0("<tr>", paste0("<td>", .html_escape(as.character(r)), "</td>", collapse = ""), "</tr>"))
   sprintf("<table><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
@@ -268,8 +276,8 @@
   vl <- if (!is.null(refline) && refline >= xr[1] && refline <= xr[2])
     paste0(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#6b7280" stroke-dasharray="4 3"/>',
                    sx(refline), mt, sx(refline), mt + ph),
-           sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#6b7280">factor = 1</text>',
-                   sx(refline) + 3, mt + 9)) else ""
+           sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#6b7280">%s</text>',
+                   sx(refline) + 3, mt + 9, .t("factor = 1", "factor = 1", lang))) else ""
   .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, .t("count", "conteo", lang), sx, sy),
                     bars, vl), w, h)
 }
@@ -349,12 +357,14 @@
   rows <- do.call(rbind, rows)
   if (is.null(rows) || !nrow(rows)) return("")
   maxdev <- max(abs(rows[["dev %"]]), na.rm = TRUE)
-  sprintf(
+  out <- sprintf(
     .t("<h2>Calibration drift</h2>
 <p class='muted'>Steps after calibration (trimming, rounding, rescaling) move the weighted totals away from the calibration targets. <code>achieved</code> is recomputed at the final weights; max deviation %.2f%%.</p>%s",
        "<h2>Deriva de calibraci\u00f3n</h2>
 <p class='muted'>Los pasos posteriores a la calibraci\u00f3n (recorte, redondeo, reescalado) alejan los totales ponderados de los objetivos de calibraci\u00f3n. <code>logrado</code> se recalcula con los pesos finales; desviaci\u00f3n m\u00e1xima %.2f%%.</p>%s", lang),
     maxdev, .df_to_html(rows))
+  attr(out, "maxdev") <- maxdev            # so the closing checklist can read the real drift
+  out
 }
 
 # Variables of the dataset a step refers to (captured expressions + by/cluster
@@ -390,16 +400,17 @@
 # variables each step used shown as chips. Pure HTML/CSS (no graphics device).
 .pipeline_diagram <- function(object, lang) {
   nodes <- sprintf(
-    "<div class='node node-end'><div class='nl'>Base weights</div><div class='nv'><code>%s</code></div></div>",
-    .html_escape(object$base_weights))
+    "<div class='node node-end'><div class='nl'>%s</div><div class='nv'><code>%s</code></div></div>",
+    .t("Base weights", "Pesos base", lang), .html_escape(object$base_weights))
   for (i in seq_along(object$steps)) {
     s <- object$steps[[i]]
     nodes <- c(nodes, sprintf(
       "<div class='node'><div class='nl'><span class='num'>%d</span>%s</div>%s</div>",
       i, .step_short(s, lang), .chips(.step_vars(s))))
   }
-  nodes <- c(nodes,
-    "<div class='node node-end'><div class='nl'>Final weights</div><div class='nv'><code>.weight</code></div></div>")
+  nodes <- c(nodes, sprintf(
+    "<div class='node node-end'><div class='nl'>%s</div><div class='nv'><code>.weight</code></div></div>",
+    .t("Final weights", "Pesos finales", lang)))
   hn  <- object$history
   act <- if (!is.null(hn)) vapply(hn, function(w) sum(.wf_active(w)), integer(1)) else integer(0)
   arrows <- vapply(seq_len(length(nodes) - 1L), function(t) {
@@ -449,11 +460,13 @@
 # tightens), remaining variance (falling), and their sum, over the candidate
 # thresholds, with the chosen cutoff marked. The two terms are on different
 # scales -- this draws the raw heuristic and labels it an approximation.
-.svg_potter <- function(grid, bias2, varc, mse, chosen, lang = "en", w = 360, h = 190) {
+.svg_potter <- function(grid, bias2, varc, mse, chosen, lang = "en", w = 360, h = 214) {
   ok <- is.finite(grid) & is.finite(mse) & is.finite(bias2) & is.finite(varc)
   grid <- grid[ok]; bias2 <- bias2[ok]; varc <- varc[ok]; mse <- mse[ok]
   if (length(grid) < 3L) return("")
-  ml <- 56; mr <- 12; mt <- 12; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
+  # Legend sits in a horizontal row in the bottom band, so reserve extra bottom
+  # margin (mb) below the x-axis label instead of overlapping the top-left corner.
+  ml <- 56; mr <- 12; mt <- 12; mb <- 56; pw <- w - ml - mr; ph <- h - mt - mb
   xr <- range(grid); if (diff(xr) == 0) xr <- xr + c(-1, 1)
   yr <- c(0, max(mse, varc, bias2, 1e-9))
   sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
@@ -464,8 +477,9 @@
     sx(chosen), mt, sx(chosen), mt + ph)
   vtx <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#c0392b">%s</text>',
     sx(chosen), mt + 9, .t("chosen", "elegido", lang))
-  leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#3d3580">MSE</text><text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">bias&sup2;</text><text x="%.1f" y="%.1f" font-size="10" fill="#e8941f">var</text>',
-    ml + 6, mt + 10, ml + 6, mt + 22, ml + 44, mt + 22)
+  ly <- h - 8   # single legend row in the reserved bottom band, no overlap
+  leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#3d3580">MSE</text><text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">bias&sup2;</text><text x="%.1f" y="%.1f" font-size="10" fill="#e8941f">var</text><text x="%.1f" y="%.1f" font-size="10" fill="#c0392b">%s</text>',
+    ml, ly, ml + 40, ly, ml + 92, ly, ml + 122, ly, .t("chosen", "elegido", lang))
   sprintf("<div class='chart1'>%s</div>",
     .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr,
                .t("upper threshold", "umbral superior", lang), "bias&sup2; + var", sx, sy,

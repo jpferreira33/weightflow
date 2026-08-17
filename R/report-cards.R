@@ -99,7 +99,7 @@
   num <- function(x) format(round(x), big.mark = ",")
   dcell <- function(v) if (is.na(v)) "&ndash;" else
     sprintf("<span class='%s'>%s%s</span>", if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
-  hd <- paste0("<th>", c(.t("Domain", "Dominio", lang),
+  hd <- paste0("<th scope='col'>", c(.t("Domain", "Dominio", lang),
                          .t("Active units (n)", "Unidades activas (n)", lang),
                          .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
                          .t("CV of weights", "CV de los pesos", lang),
@@ -287,14 +287,34 @@
     "Symbols: R = eligible respondents, NR = eligible nonrespondents, NE = ineligibles, U = unknown eligibility, n = total (the disposition counts above; the weighted column uses their base-weighted sums). AAPOR Standard Definitions. e is the eligibility rate among cases of known eligibility (proportional / CASRO allocation). The response rate is shown in three variants, from most to least conservative by how the unknown-eligibility cases (U) are treated: RR1 counts all U as eligible, R / (R + NR + U); RR3 counts the estimated fraction e&middot;U (CASRO), R / (R + NR + e&middot;U); RR5 excludes U, R / (R + NR). Thus RR1 &le; RR3 &le; RR5 (no partials are distinguished, so RR1=RR2, RR3=RR4, RR5=RR6). The weighted column uses the base (design) weights.",
     "S\u00edmbolos: R = elegibles respondentes, NR = elegibles no respondentes, NE = inelegibles, U = elegibilidad desconocida, n = total (los conteos de la tabla de arriba; la columna ponderada usa sus sumas ponderadas por el peso base). AAPOR Standard Definitions. e es la tasa de elegibilidad entre casos de elegibilidad conocida (asignaci\u00f3n proporcional / CASRO). La tasa de respuesta se muestra en tres variantes, de la m\u00e1s a la menos conservadora seg\u00fan c\u00f3mo se tratan los casos de elegibilidad desconocida (U): RR1 cuenta todos los U como elegibles, R / (R + NR + U); RR3 cuenta la fracci\u00f3n estimada e&middot;U (CASRO), R / (R + NR + e&middot;U); RR5 excluye los U, R / (R + NR). As\u00ed RR1 &le; RR3 &le; RR5 (no se distinguen parciales, por lo que RR1=RR2, RR3=RR4, RR5=RR6). La columna ponderada usa el peso base (de dise\u00f1o).",
     lang)
-  sprintf("<div class='meta racct'><h4>%s</h4>
-    <table class='params'><thead><tr><th>%s</th><th class='r'>%s</th><th class='r'>%%</th><th class='r'>%s</th></tr></thead><tbody>%s</tbody></table>
-    <table class='params' style='margin-top:10px'><thead><tr><th>%s</th><th class='r'>%s</th><th class='r'>%s</th></tr></thead><tbody>%s</tbody></table>
+  # 1.2: when the recipe declares no eligibility steps, U and NE are 0 by
+  # construction and RR1 = RR3 = RR5. Say so, so the reader does not misread three
+  # identical rates as "there were no unknown-eligibility / ineligible cases".
+  note_elig <- if (!length(iu) && !length(id))
+    sprintf("<p class='note' style='color:#b45309'>%s</p>",
+      .t(paste0("This recipe declares no eligibility steps, so U (unknown eligibility) and NE ",
+                "(ineligible) are 0 by construction and RR1 = RR3 = RR5. The rates reflect the ",
+                "declared steps, not that no such cases existed; add step_unknown_eligibility() / ",
+                "step_drop_ineligible() to model eligibility."),
+         paste0("Esta receta no declara pasos de elegibilidad, por lo que U (elegibilidad ",
+                "desconocida) y NE (inelegibles) son 0 por construcci\u00f3n y RR1 = RR3 = RR5. Las ",
+                "tasas reflejan los pasos declarados, no que no existieran esos casos; agreg\u00e1 ",
+                "step_unknown_eligibility() / step_drop_ineligible() para modelar la elegibilidad."),
+         lang)) else ""
+  cap_disp <- .t("AAPOR disposition of the issued sample: counts, percentage and base-weighted sums by outcome category.",
+                 "Disposici&oacute;n AAPOR de la muestra emitida: conteos, porcentaje y sumas ponderadas por el peso base seg&uacute;n categor&iacute;a de resultado.", lang)
+  cap_rate <- .t("AAPOR eligibility and response rates, unweighted and base-weighted.",
+                 "Tasas AAPOR de elegibilidad y respuesta, sin ponderar y ponderadas por el peso base.", lang)
+  sprintf("<div class='meta racct'><h4>%s</h4>%s
+    <table class='params'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%%</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
+    <table class='params' style='margin-top:10px'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     <p class='note'>%s</p></div>",
-    .t("Fieldwork outcomes (AAPOR)", "Resultados del trabajo de campo (AAPOR)", lang),
+    .t("Fieldwork outcomes (AAPOR)", "Resultados del trabajo de campo (AAPOR)", lang), note_elig,
+    cap_disp,
     .t("Disposition", "Disposici\u00f3n", lang),
     .t("n (cases)", "n (casos)", lang),
     .t("weighted (base)", "ponderado (base)", lang), arows,
+    cap_rate,
     .t("Rate", "Tasa", lang),
     .t("unweighted", "sin ponderar", lang),
     .t("weighted (base)", "ponderado (base)", lang), rrows, foot)
@@ -308,6 +328,7 @@
   known <- c(
     survey          = .t("Statistical operation", "Operaci\u00f3n estad\u00edstica", lang),
     reference_period= .t("Reference period", "Per\u00edodo de referencia", lang),
+    wave            = .t("Wave / period", "Onda / periodo", lang),
     geography       = .t("Geographic coverage", "Cobertura geogr\u00e1fica", lang),
     producer        = .t("Producer / unit", "Productor / unidad", lang),
     author          = .t("Prepared by", "Elaborado por", lang),
@@ -320,14 +341,17 @@
     notes           = .t("Notes", "Notas", lang))
   row <- function(k, v) sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>",
                                 k, .html_escape(as.character(v)))
-  rows <- row(.t("GSBPM sub-process", "Subproceso GSBPM", lang), "5.6 Calculate weights")
+  rows <- row(.t("GSBPM sub-process", "Subproceso GSBPM", lang),
+              .t("5.6 Calculate weights", "5.6 Calcular ponderaciones", lang))
   for (k in names(known)) if (!is.null(md[[k]]) && nzchar(as.character(md[[k]])))
     rows <- paste0(rows, row(known[[k]], md[[k]]))
   for (k in setdiff(names(md), names(known)))
     if (nzchar(k) && !is.null(md[[k]]) && nzchar(as.character(md[[k]])))
       rows <- paste0(rows, row(.html_escape(k), md[[k]]))
-  sprintf("<div class='meta'><h4>%s</h4><table class='params'>%s</table></div>",
+  sprintf("<div class='meta'><h4>%s</h4><table class='params'><caption class='sr-only'>%s</caption>%s</table></div>",
           .t("Reference metadata (SIMS / GSBPM 5.6)", "Metadatos de referencia (SIMS / GSBPM 5.6)", lang),
+          .t("Reference metadata: key survey and calibration concepts (SIMS / GSBPM 5.6).",
+             "Metadatos de referencia: conceptos clave de la encuesta y la calibraci&oacute;n (SIMS / GSBPM 5.6).", lang),
           rows)
 }
 
@@ -393,7 +417,7 @@
   cal_html <- ""
   if (length(br) >= 3L) {
     g  <- cut(p, breaks = br, include.lowest = TRUE)
-    hd <- paste0("<th>", c(.t("Decile of &phi;&#770;", "Decil de &phi;&#770;", lang), "n",
+    hd <- paste0("<th scope='col'>", c(.t("Decile of &phi;&#770;", "Decil de &phi;&#770;", lang), "n",
                            .t("Predicted", "Predicho", lang),
                            .t("Observed", "Observado", lang),
                            .t("Diff.", "Dif.", lang)), "</th>", collapse = "")
@@ -446,7 +470,7 @@
       })
       bal <- do.call(rbind, rr)
       if (!is.null(bal) && nrow(bal)) {
-        hd <- paste0("<th>", c(.t("Covariate", "Covariable", lang),
+        hd <- paste0("<th scope='col'>", c(.t("Covariate", "Covariable", lang),
                      .t("Std. diff. before", "Dif. estand. antes", lang),
                      .t("Std. diff. after", "Dif. estand. despu\u00e9s", lang)),
                      "</th>", collapse = "")
@@ -537,7 +561,7 @@
     if (length(imp) && !is.null(names(imp))) {
       imp <- sort(imp, decreasing = TRUE); top <- utils::head(imp, 5L)
       rel <- 100 * top / sum(imp)
-      hd  <- paste0("<th>", c(.t("Variable", "Variable", lang),
+      hd  <- paste0("<th scope='col'>", c(.t("Variable", "Variable", lang),
                               .t("Importance (%)", "Importancia (%)", lang)), "</th>", collapse = "")
       irows <- vapply(seq_along(top), function(i)
         sprintf("<tr><td>%s</td><td>%.1f%%</td></tr>", .html_escape(names(top)[i]), rel[i]), character(1))
@@ -629,7 +653,7 @@
       ycor <- if (length(ynm)) lapply(ynm, function(yy) { y <- suppressWarnings(as.numeric(yv[[yy]]))
         vapply(colnames(mm), function(nm) wcor(mm[resp2, nm], y[resp2], dwa[resp2]), numeric(1)) }) else list()
       d3b <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
-      hd <- paste0("<th>", c(.t("Auxiliary", "Auxiliar", lang),
+      hd <- paste0("<th scope='col'>", c(.t("Auxiliary", "Auxiliar", lang),
              .t("Explains response (std. diff.)", "Explica respuesta (dif. estand.)", lang),
              vapply(ynm, function(yy) sprintf(.t("Corr. with %s", "Corr. con %s", lang), .html_escape(yy)), character(1))),
              "</th>", collapse = "")
@@ -725,7 +749,7 @@
         sprintf("<tr><td>%s</td><td>%s</td></tr>", .html_escape(v),
                 if (is.finite(r2)) sprintf("%.1f%%", 100 * max(r2, 0)) else "&ndash;")
       }, character(1))
-      eff <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th></tr></thead><tbody>%s</tbody></table>",
+      eff <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th scope='col'>%s</th><th scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>",
         .t("Expected efficiency gain: weighted R&sup2; of each outcome on the auxiliaries -- roughly the variance reduction the calibration buys for a total of that outcome.",
            "Ganancia de eficiencia esperada: R&sup2; ponderado de cada variable sobre los auxiliares -- aproximadamente la reducci\u00f3n de varianza que la calibraci\u00f3n logra para un total de esa variable.", lang),
         .t("Outcome", "Variable", lang), .t("Expected var. reduction", "Reducci\u00f3n de var. esperada", lang),
@@ -745,7 +769,7 @@
         tot <- sum(abs(contrib))
         if (is.finite(tot) && tot > 0) {
           sh <- 100 * abs(contrib) / tot; ord <- order(-sh); cn2 <- colnames(Xi)
-          hd <- paste0("<th>", c(.t("Constraint", "Restricci\u00f3n", lang),
+          hd <- paste0("<th scope='col'>", c(.t("Constraint", "Restricci\u00f3n", lang),
                                  .t("Share of movement", "% del movimiento", lang)), "</th>", collapse = "")
           irows <- vapply(ord, function(i) sprintf("<tr><td>%s</td><td>%.0f%%</td></tr>",
                           .html_escape(cn2[i]), sh[i]), character(1))
@@ -771,7 +795,7 @@
 .calib_domain_table <- function(dm, lang) {
   d3 <- function(x) if (!is.finite(x)) "&ndash;" else formatC(x, format = "f", digits = 3)
   nf <- function(x) if (!is.finite(x)) "&ndash;" else format(round(x), big.mark = ",", trim = TRUE)
-  hd <- paste0("<th>", c(.t("Domain", "Dominio", lang), "n", .t("g range", "rango de g", lang),
+  hd <- paste0("<th scope='col'>", c(.t("Domain", "Dominio", lang), "n", .t("g range", "rango de g", lang),
                .t("neg.", "neg.", lang), .t("at bounds", "en cotas", lang), .t("collinearity", "colinealidad", lang),
                .t("converged", "convergi\u00f3", lang)), "</th>", collapse = "")
   ord <- order(-dm$n_neg, dm$converged, -(dm$g_max - dm$g_min))
@@ -835,7 +859,7 @@
   brow <- function(lab, b) sprintf("<tr><td class='k'>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
     lab, nf(b["nn"]), sf(b["sb"]), sf(b["sa"]), sf(b["sa"] - b["sb"]))
   acct <- sprintf(
-    "<table class='params'><thead><tr><th>%s</th><th>n</th><th>%s</th><th>%s</th><th>%s</th></tr></thead><tbody>%s%s%s</tbody></table>",
+    "<table class='params'><thead><tr><th scope='col'>%s</th><th scope='col'>n</th><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>%s</th></tr></thead><tbody>%s%s%s</tbody></table>",
     .t("band", "banda", lang), .t("sum before", "suma antes", lang), .t("sum after", "suma despues", lang),
     .t("mass moved", "masa movida", lang),
     brow(.t("below floor", "bajo cota inf.", lang), b_lo),
@@ -869,7 +893,7 @@
         if (is.finite(sh) && is.finite(se) && se > 0) sprintf("%+.2f", sh / se) else "&ndash;",
         if (is.finite(se)) sf(se) else "&ndash;")
     }, character(1))
-    bias <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th><th>%s</th><th>SE</th></tr></thead><tbody>%s</tbody></table>",
+    bias <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>SE</th></tr></thead><tbody>%s</tbody></table>",
       .t("Bias cost: how much the trim moved each estimated mean, as a percent and in standard errors of the (post-trim) estimate. Small multiples of an SE are cheap; large ones are the price paid for the variance reduction.",
          "Costo en sesgo: cu\u00e1nto movi\u00f3 el recorte cada media estimada, en porcentaje y en errores est\u00e1ndar del estimador (post-recorte). M\u00faltiplos chicos de un SE son baratos; grandes son el precio de la reducci\u00f3n de varianza.", lang),
       .t("outcome", "variable", lang), .t("shift", "corrimiento", lang), .t("shift (SE)", "corrim. (SE)", lang),
@@ -883,7 +907,7 @@
       conc <- if (max(sh) > 60) sprintf("<p class='note'>%s</p>", .t(
         sprintf("The trimmed units concentrate in one domain (%s: %s): the induced bias is localized, not spread across the sample.", .html_escape(names(tb)[which.max(sh)]), pf(max(sh))),
         sprintf("Las unidades recortadas se concentran en un dominio (%s: %s): el sesgo inducido es localizado, no repartido en la muestra.", .html_escape(names(tb)[which.max(sh)]), pf(max(sh))), lang)) else ""
-      bias <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th><th>%%</th></tr></thead><tbody>%s</tbody></table>%s",
+      bias <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>%%</th></tr></thead><tbody>%s</tbody></table>%s",
         .t("Where the trimmed units fall (pass y_vars for the estimator shift itself). Concentration in one cell means the bias is localized there.",
            "D\u00f3nde caen las unidades recortadas (pas\u00e1 y_vars para el corrimiento del estimador). Concentraci\u00f3n en una celda implica sesgo localizado.", lang),
         .t("domain", "dominio", lang), .t("trimmed", "recortadas", lang), paste(rows, collapse = ""), conc)
@@ -912,7 +936,7 @@
         if (is.finite(dk)) formatC(dk, format = "f", digits = 3) else "&ndash;",
         if (is.finite(ysh)) sprintf("%+.1f%%", ysh) else "&ndash;")
     }, character(1))
-    sens <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>%s</th><th>deff</th><th>%s</th></tr></thead><tbody>%s</tbody></table>",
+    sens <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>deff</th><th scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>",
       .t("Sensitivity: the cutoff at multiples of the chosen threshold -- units trimmed, resulting deff and (with y) the estimator shift. A flat block means the decision is robust. Clip-based approximation.",
          "Sensibilidad: el corte en m\u00faltiplos del umbral elegido -- unidades recortadas, deff resultante y (con y) el corrimiento del estimador. Un bloque plano indica decisi\u00f3n robusta. Aproximaci\u00f3n por recorte simple.", lang),
       .t("threshold", "umbral", lang), .t("trimmed", "recortadas", lang), .t("y shift", "corrim. y", lang),
@@ -947,7 +971,7 @@
     rows <- vapply(ord, function(i) sprintf("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>[%s, %s]</td></tr>",
       .html_escape(as.character(dd$dom[i])), nf(dd$n[i]), nf(dd$at_lo[i]), nf(dd$at_hi[i]),
       formatC(dd$fmin[i], format = "f", digits = 3), formatC(dd$fmax[i], format = "f", digits = 3)), character(1))
-    variant <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th>%s</th><th>n</th><th>%s</th><th>%s</th><th>%s</th></tr></thead><tbody>%s</tbody></table>",
+    variant <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th scope='col'>%s</th><th scope='col'>n</th><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>",
       .t("Per subgroup: units at the lower / upper bound and the range of the adjustment factor. Subgroups straining against their bounds are listed first.",
          "Por subgrupo: unidades en la cota inferior / superior y el rango del factor de ajuste. Los subgrupos que fuerzan sus cotas van primero.", lang),
       .t("subgroup", "subgrupo", lang), .t("at lower", "en inf.", lang), .t("at upper", "en sup.", lang),

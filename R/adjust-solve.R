@@ -13,6 +13,15 @@
   if (is.null(expr)) return(NULL)
   if (is.null(env)) env <- baseenv()
   out <- eval(expr, envir = data, enclos = env)
+  # A flag/condition must have exactly one value per unit. A global vector of the
+  # wrong length (typically passed after the data was filtered) would otherwise be
+  # recycled or truncated silently, quietly misassigning dispositions.
+  if (length(out) != nrow(data))
+    stop(sprintf(paste0("The disposition flag/condition evaluated to length %d, but the data ",
+                        "has %d row(s); it must have one value per unit. This usually means a ",
+                        "global vector was passed after the data was filtered -- pass a column ",
+                        "of the data, or a condition evaluated on it."),
+                 length(out), nrow(data)), call. = FALSE)
   if (is.numeric(out)) {
     if (!all(out %in% c(0, 1, NA)))
       stop("A 0/1 dummy was expected, but other values were found.")
