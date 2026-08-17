@@ -100,6 +100,8 @@ reference:
   - summary.prepped_weighting_spec
   - plot.prepped_weighting_spec
   - weight_factors
+  - collect_propensities
+  - domain_summary
   - design_effect
   - report_weighting
 - title: Variance estimation
@@ -111,6 +113,8 @@ reference:
   - jackknife_estimate
   - as_svydesign
   - collect_replicate_weights
+  - print.weightflow_boot
+  - print.weightflow_jack
 - title: Example data
   contents:
   - population
