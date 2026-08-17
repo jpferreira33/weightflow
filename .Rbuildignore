@@ -19,3 +19,6 @@
 ^respaldos$
 \.DS_Store$
 ^\.Rhistory$
+^\.__
+^CRAN-SUBMISSION$
+^RELEASE-CHECKLIST\.md$
