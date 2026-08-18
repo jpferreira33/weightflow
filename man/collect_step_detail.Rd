@@ -20,7 +20,10 @@ step, carrying every earlier adjustment) and \code{.factor} (the multiplier the
 step applied to each unit, \code{NA} where the incoming weight is zero) appended,
 plus any native columns of the chosen step (for a propensity step:
 \code{.propensity}, \code{.responded}, and \code{.class} when propensity classes are used),
-which are \code{NA} outside the units the step covers.
+which are \code{NA} outside the units the step covers. Here \code{.factor} is defined
+for every unit with a nonzero incoming weight, so an active unit the step did
+not touch reports \code{.factor = 1}; this differs from \code{\link[=collect_propensities]{collect_propensities()}},
+where \code{.factor} is \code{NA} outside the propensity model (see its \code{.status}).
 }
 \description{
 A generic companion to \code{\link[=collect_weights]{collect_weights()}} that returns, for a single step, the
