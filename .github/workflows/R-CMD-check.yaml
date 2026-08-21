@@ -28,6 +28,9 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # A heavy/system-dependent optional package (archive, xgboost) failing to
+      # install on one matrix leg should not fail the whole check.
+      _R_CHECK_FORCE_SUGGESTS_: false
 
     steps:
       - uses: actions/checkout@v6
