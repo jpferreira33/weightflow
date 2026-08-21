@@ -79,6 +79,7 @@ reference:
   - prep
   - collect_weights
   - y_model
+  - reference_sample
 - title: Adjustment steps
   desc: The staged adjustments, applied in the order you pipe them.
   contents:

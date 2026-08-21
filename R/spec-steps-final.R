@@ -1,5 +1,52 @@
 # further step constructors: model-assisted calibration, assert, weight trimming (Tukey/Potter), calibration-preserving trimming, rescale.
 
+#' Use a weighted survey as the calibration reference instead of a frame
+#'
+#' Wraps a reference-survey microdata `data.frame` together with its design
+#' weights so it can be passed as the `population` argument of
+#' [step_model_calibration()] (and any step that takes a `population` frame).
+#' The calibration totals are then the *weighted* sums over the reference survey
+#' -- an estimate of the population totals -- instead of unweighted sums over a
+#' full frame. This is the model-assisted / two-survey setup: fit the model on
+#' your sample, project it onto a larger reference survey, and calibrate to the
+#' weighted totals of the projection (Wu and Sitter 2001; Kim and Rao 2012).
+#'
+#' A reference survey with all weights equal to 1 reproduces the plain-frame
+#' behaviour exactly. Note that the sampling variance of the reference survey's
+#' totals is not yet propagated into the recipe-aware replicate variance; treat
+#' the totals as fixed for now (a reasonable approximation when the reference is
+#' much larger than the sample, and the same assumption made when calibrating to
+#' another survey's published totals).
+#'
+#' @param data a `data.frame` of reference-survey microdata, with the columns
+#'   used in `x_formula` and the model predictors.
+#' @param weights either the name (string) of a positive weight column in `data`,
+#'   or a numeric vector with one weight per row.
+#' @return `data` tagged so that `step_model_calibration()` weights its totals by
+#'   `weights`. It is still an ordinary `data.frame`.
+#' @seealso [step_model_calibration()]
+#' @examples
+#' ref <- reference_sample(population, weights = rep(1, nrow(population)))
+#' @export
+reference_sample <- function(data, weights) {
+  if (!is.data.frame(data))
+    stop("`data` must be a data.frame (the reference survey microdata).", call. = FALSE)
+  w <- if (is.character(weights) && length(weights) == 1L) {
+    if (!weights %in% names(data))
+      stop(sprintf("Weights column '%s' not found in the reference `data`.", weights), call. = FALSE)
+    data[[weights]]
+  } else weights
+  if (!is.numeric(w) || length(w) != nrow(data))
+    stop("`weights` must be the name of a weight column, or a numeric vector with ",
+         "one value per row of `data`.", call. = FALSE)
+  if (anyNA(w) || any(!is.finite(w)) || any(w <= 0))
+    stop("Reference-sample weights must be finite and strictly positive ",
+         "(no NA, zero or negative weights).", call. = FALSE)
+  attr(data, "wf_ref_weights") <- as.numeric(w)
+  class(data) <- unique(c("wf_reference_sample", class(data)))
+  data
+}
+
 #' Model-assisted calibration (Wu and Sitter 2001)
 #'
 #' Fits a working model for each study variable, predicts it over the whole
@@ -27,7 +74,10 @@
 #' @param models named list of models created with y_model(). The names label
 #'   the prediction constraints.
 #' @param population population data.frame with the auxiliary and predictor
-#'   columns (the y variables are not needed; they are predicted). Always
+#'   columns (the y variables are not needed; they are predicted). May instead be
+#'   a weighted reference survey wrapped with [reference_sample()], in which case
+#'   the totals are the design-weighted sums over that survey (estimated totals)
+#'   rather than unweighted sums over a full frame. Always
 #'   required: the model-assisted block predicts each y over every population
 #'   unit, which cannot be done from aggregated totals.
 #' @param x_totals optional population totals for the consistency auxiliaries

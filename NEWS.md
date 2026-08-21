@@ -1,3 +1,9 @@
+# weightflow 1.2.0 (development)
+
+## New features
+
+* **`reference_sample()`** lets `step_model_calibration()` calibrate to a weighted reference survey instead of a full population frame: the model is fit on the sample, projected onto the reference survey, and the calibration targets are the design-weighted totals of the projection (an estimate of the population totals). A reference with all weights equal to 1 reproduces the plain-frame behaviour exactly. The sampling variance of the reference totals is not yet propagated into the replicate variance (treated as fixed for now).
+
 # weightflow 1.1.0
 
 ## New features

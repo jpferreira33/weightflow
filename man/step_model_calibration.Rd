@@ -26,7 +26,10 @@ step_model_calibration(
 the prediction constraints.}
 
 \item{population}{population data.frame with the auxiliary and predictor
-columns (the y variables are not needed; they are predicted). Always
+columns (the y variables are not needed; they are predicted). May instead be
+a weighted reference survey wrapped with \code{\link[=reference_sample]{reference_sample()}}, in which case
+the totals are the design-weighted sums over that survey (estimated totals)
+rather than unweighted sums over a full frame. Always
 required: the model-assisted block predicts each y over every population
 unit, which cannot be done from aggregated totals.}
 

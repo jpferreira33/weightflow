@@ -147,15 +147,28 @@ apply_step.step_trim <- function(step, data, w) {
   list(weights = new_w, diagnostics = diag)
 }
 
+# Weighted total of a per-reference-unit prediction, with an alignment guard so a
+# reference survey with NA predictors (which drops rows) fails loudly, not silently.
+.wf_ref_total <- function(pred, w_ref) {
+  if (length(pred) != length(w_ref))
+    stop("The reference sample (reference_sample()) has missing values (NA) in the ",
+         "model predictors; every reference unit needs complete predictors for the ",
+         "projection. Impute or drop them first.", call. = FALSE)
+  sum(w_ref * pred)
+}
+
 # --- Model calibration (Wu & Sitter 2001) ----------------------------------
 # Calibrates simultaneously to the X totals (consistency) and to the population
-# totals of each model y prediction (model-assisted efficiency).
+# totals of each model y prediction (model-assisted efficiency). `population` may
+# be a full frame (unweighted sums) or a weighted reference survey wrapped with
+# reference_sample() (weighted sums = estimated totals).
 apply_step.step_model_calibration <- function(step, data, w) {
   active <- .wf_active(w)
   new_w  <- w
   d      <- w[active]
   sdata  <- data[active, , drop = FALSE]
   pop    <- step$population
+  w_ref  <- attr(pop, "wf_ref_weights")   # non-NULL only for reference_sample()
 
   # Consistency block: X auxiliaries
   X  <- stats::model.matrix(step$x_formula, data = sdata)
@@ -168,7 +181,11 @@ apply_step.step_model_calibration <- function(step, data, w) {
   if (is.null(step$x_totals)) {
     # from the population frame, as before
     Xpop <- stats::model.matrix(step$x_formula, data = pop)
-    Tx   <- colSums(Xpop)[cn]
+    if (!is.null(w_ref) && nrow(Xpop) != length(w_ref))
+      stop("The reference sample (reference_sample()) has missing values (NA) in ",
+           "`x_formula`; every reference unit needs complete auxiliaries. Impute or ",
+           "drop them first.", call. = FALSE)
+    Tx   <- if (is.null(w_ref)) colSums(Xpop)[cn] else colSums(Xpop * w_ref)[cn]
     if (anyNA(Tx))
       stop("Inconsistent factor levels between the sample and `population` in x_formula.")
     # #7: the reverse gap -- a level present in `population` but ABSENT from the
@@ -207,7 +224,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
     if (is.null(step$crossfit)) {
       preds        <- .model_predict(m, sdata, d, list(sdata, pop))
       mu_cols[[k]] <- preds[[1]]          # prediction on the sample
-      Tmu[k]       <- sum(preds[[2]])     # population total of the prediction
+      Tmu[k]       <- if (is.null(w_ref)) sum(preds[[2]]) else .wf_ref_total(preds[[2]], w_ref)
     } else {
       cl_cf <- if (!is.null(step$cluster)) as.character(sdata[[step$cluster]]) else NULL
       mu_cols[[k]] <- .crossfit_predict(   # out-of-fold predictions on the sample
@@ -215,7 +232,8 @@ apply_step.step_model_calibration <- function(step, data, w) {
         fit_predict = function(tr, te_list)
           .model_predict(m, sdata[tr, , drop = FALSE], d[tr],
                          lapply(te_list, function(te) sdata[te, , drop = FALSE])))
-      Tmu[k] <- sum(.model_predict(m, sdata, d, list(pop))[[1]])  # full model -> pop total
+      p_pop  <- .model_predict(m, sdata, d, list(pop))[[1]]       # full model on the reference/frame
+      Tmu[k] <- if (is.null(w_ref)) sum(p_pop) else .wf_ref_total(p_pop, w_ref)
     }
   }
 
