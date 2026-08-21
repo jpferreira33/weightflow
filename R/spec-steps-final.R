@@ -313,6 +313,10 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #'   (default) trims each unit on its own.
 #' @param maxit integer. Maximum iterations for the bounded solver.
 #' @param tol numeric. Convergence tolerance for the bounded solver.
+#' @references Deville, J.-C. and Sarndal, C.-E. (1992). Calibration estimators in
+#'   survey sampling. Journal of the American Statistical Association, 87, 376-382.
+#'   \doi{10.2307/2290268}. The totals-preserving trimming solves a bounded
+#'   (range-restricted) calibration with the truncated distances introduced there.
 #' @examples
 #' # calibrate, then trim the calibrated weights into [5.5, 13.5] without breaking
 #' # the region/sex totals (the calibrated weights of sample_survey live in ~[5.4, 14])

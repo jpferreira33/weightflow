@@ -17,9 +17,9 @@
   row <- function(k, v) sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>", k, v)
   rows <- paste0(
     row("min", .fmt_num(min(wnz), "weight")),
-    row("p1", .fmt_num(qs[1], "weight")),
+    row(.t("1st percentile", "percentil 1", lang), .fmt_num(qs[1], "weight")),
     row(.t("median", "mediana", lang), .fmt_num(med, "weight")),
-    row("p99", .fmt_num(qs[3], "weight")),
+    row(.t("99th percentile", "percentil 99", lang), .fmt_num(qs[3], "weight")),
     row("max", .fmt_num(max(wnz), "weight")),
     row(.t("max/min ratio", "raz\u00f3n max/min", lang), .fmt_num(max(wnz) / min(wnz), "prop")),
     row(.t("negative weights", "pesos negativos", lang), .fmt_num(sum(fin < 0), "count")),
@@ -32,8 +32,11 @@
     return(paste0("<table class='params'>", rows, "</table><p class='muted'>", note, "</p>"))
   hist <- tryCatch(.svg_hist(wnz, xlab = .t("final weight", "peso final", lang), refline = NULL),
                    error = function(e) "")
-  sprintf("<table class='params'>%s</table><p class='muted'>%s</p><div class='wdhist'>%s</div>",
-    rows, note, hist)
+  hblock <- if (nzchar(hist))
+    sprintf("<div class='viz-h'>%s</div><div class='wdhist'>%s</div>",
+            .t("Distribution of final survey weights", "Distribuci&oacute;n de los pesos finales", lang), hist)
+  else ""
+  sprintf("<table class='params'>%s</table><p class='muted'>%s</p>%s", rows, note, hblock)
 }
 
 .report_js <- function() '
@@ -109,7 +112,7 @@ code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:13px}
 .mv{font-size:22px;font-weight:650}.ml{color:var(--mut);font-size:12px;margin-top:2px}
 table{border-collapse:collapse;width:100%;font-size:13px;margin:4px 0}
 th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+th{color:var(--mut);font-weight:600;font-size:11px;text-transform:none;letter-spacing:normal}
 .stagetbl th{text-transform:none;letter-spacing:normal;font-size:11.5px}
 .params td.k{color:var(--mut);width:42%;font-weight:600}
 .racct td.r,.racct th.r{text-align:right;font-variant-numeric:tabular-nums;width:auto}.racct td.k{font-weight:600;color:var(--ink)}
@@ -120,7 +123,7 @@ background:var(--accent);color:#fff;border-radius:50%;font-size:13px}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media(max-width:680px){.cols{grid-template-columns:1fr}}
 .viz{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
-.viz svg{max-width:100%;height:auto}.viz-h{margin-top:14px}.wdhist{margin-top:12px;max-width:480px}.wdhist svg{width:100%;height:auto}
+.viz svg{max-width:100%;height:auto}.viz-h{margin-top:14px;text-align:center;font-weight:600;color:var(--accent)}.wdhist{margin:12px auto 0;max-width:480px}.wdhist svg{width:100%;height:auto}
 .chart1{margin-top:10px;max-width:440px}.chart1 svg{width:100%;height:auto}
 .pgrid{display:grid;grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:18px;align-items:center;margin-top:8px}
 .pgrid .chart1{margin-top:0}.pgrid-note{font-size:0.92em;line-height:1.5}

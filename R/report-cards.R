@@ -206,7 +206,7 @@
 # eligibility / nonresponse steps we reconstruct the disposition of every case
 # -- ineligible (out of scope), unknown eligibility, eligible respondent,
 # eligible nonrespondent -- and report the eligibility rate e (proportional /
-# CASRO allocation), the e-adjusted response rate RR3 = R / (R + NR + e*U) and
+# CASRO allocation), the e-adjusted response rate RR3 = ER / (ER + ENR + e*UNK) and
 # the nonresponse rate, both unweighted and weighted by the base (design)
 # weights. Returns "" when the recipe has no nonresponse step.
 .response_account <- function(object, lang) {
@@ -248,17 +248,17 @@
   ru <- rate(cnt[["R"]],  cnt[["NR"]],  cnt[["NE"]],  cnt[["U"]])
   rw <- rate(wsum[["R"]], wsum[["NR"]], wsum[["NE"]], wsum[["U"]])
 
-  f0  <- function(x) format(round(x), big.mark = ",")
+  f0  <- function(x) format(round(x), big.mark = ",", scientific = FALSE)
   pct <- function(x) sprintf("%.1f%%", 100 * x / cnt[["T"]])
   prr <- function(x) if (is.na(x)) "&ndash;" else sprintf("%.1f%%", 100 * x)
   sym <- function(lbl, sy) sprintf(
     "%s <span class='muted' style='font-family:ui-monospace,Menlo,monospace'>(%s)</span>", lbl, sy)
   lab <- list(
     T  = sym(.t("Total sample (issued cases)", "Muestra total (casos emitidos)", lang), "n"),
-    NE = sym(.t("Ineligible / out of scope", "Inelegibles / fuera de alcance", lang), "NE"),
-    U  = sym(.t("Unknown eligibility", "Elegibilidad desconocida", lang), "U"),
-    R  = sym(.t("Eligible respondents", "Elegibles respondentes", lang), "R"),
-    NR = sym(.t("Eligible nonrespondents", "Elegibles no respondentes", lang), "NR"))
+    NE = sym(.t("Ineligible / out of scope", "Inelegibles / fuera de alcance", lang), "IN"),
+    U  = sym(.t("Unknown eligibility", "Elegibilidad desconocida", lang), "UNK"),
+    R  = sym(.t("Eligible respondents", "Elegibles respondentes", lang), "ER"),
+    NR = sym(.t("Eligible nonrespondents", "Elegibles no respondentes", lang), "ENR"))
   arows <- paste(vapply(c("T", "NE", "U", "R", "NR"), function(k)
     sprintf("<tr><td class='k'>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'>%s</td></tr>",
             lab[[k]], f0(cnt[[k]]),
@@ -271,33 +271,33 @@
     "<div class='muted' style='font-weight:400;font-family:ui-monospace,Menlo,monospace;margin-top:2px'>%s</div>", f)
   rrows <- paste0(
     rrow(paste0(.t("Eligibility rate (e)", "Tasa de elegibilidad (e)", lang),
-                fx("e = (R + NR) / (R + NR + NE)")), ru[["e"]], rw[["e"]]),
+                fx("e = (ER + ENR) / (ER + ENR + IN)")), ru[["e"]], rw[["e"]]),
     rrow(paste0(.t("Response rate &mdash; all unknowns eligible (AAPOR RR1)",
                    "Tasa de respuesta &mdash; todos los desconocidos elegibles (AAPOR RR1)", lang),
-                fx("RR1 = R / (R + NR + U)")), ru[["rr_all"]], rw[["rr_all"]]),
+                fx("RR1 = ER / (ER + ENR + UNK)")), ru[["rr_all"]], rw[["rr_all"]]),
     rrow(paste0(.t("Response rate &mdash; e-adjusted (AAPOR RR3, CASRO)",
                    "Tasa de respuesta &mdash; ajustada por e (AAPOR RR3, CASRO)", lang),
-                fx("RR3 = R / (R + NR + e&middot;U)")), ru[["rr_e"]], rw[["rr_e"]]),
+                fx("RR3 = ER / (ER + ENR + e&middot;UNK)")), ru[["rr_e"]], rw[["rr_e"]]),
     rrow(paste0(.t("Response rate &mdash; unknowns excluded (AAPOR RR5)",
                    "Tasa de respuesta &mdash; desconocidos excluidos (AAPOR RR5)", lang),
-                fx("RR5 = R / (R + NR)")), ru[["rr_no"]], rw[["rr_no"]]),
+                fx("RR5 = ER / (ER + ENR)")), ru[["rr_no"]], rw[["rr_no"]]),
     rrow(.t("Nonresponse rate (1 &minus; RR3)", "Tasa de no respuesta (1 &minus; RR3)", lang),
          ru[["nrr"]], rw[["nrr"]]))
   foot <- .t(
-    "Symbols: R = eligible respondents, NR = eligible nonrespondents, NE = ineligibles, U = unknown eligibility, n = total (the disposition counts above; the weighted column uses their base-weighted sums). AAPOR Standard Definitions. e is the eligibility rate among cases of known eligibility (proportional / CASRO allocation). The response rate is shown in three variants, from most to least conservative by how the unknown-eligibility cases (U) are treated: RR1 counts all U as eligible, R / (R + NR + U); RR3 counts the estimated fraction e&middot;U (CASRO), R / (R + NR + e&middot;U); RR5 excludes U, R / (R + NR). Thus RR1 &le; RR3 &le; RR5 (no partials are distinguished, so RR1=RR2, RR3=RR4, RR5=RR6). The weighted column uses the base (design) weights.",
-    "S\u00edmbolos: R = elegibles respondentes, NR = elegibles no respondentes, NE = inelegibles, U = elegibilidad desconocida, n = total (los conteos de la tabla de arriba; la columna ponderada usa sus sumas ponderadas por el peso base). AAPOR Standard Definitions. e es la tasa de elegibilidad entre casos de elegibilidad conocida (asignaci\u00f3n proporcional / CASRO). La tasa de respuesta se muestra en tres variantes, de la m\u00e1s a la menos conservadora seg\u00fan c\u00f3mo se tratan los casos de elegibilidad desconocida (U): RR1 cuenta todos los U como elegibles, R / (R + NR + U); RR3 cuenta la fracci\u00f3n estimada e&middot;U (CASRO), R / (R + NR + e&middot;U); RR5 excluye los U, R / (R + NR). As\u00ed RR1 &le; RR3 &le; RR5 (no se distinguen parciales, por lo que RR1=RR2, RR3=RR4, RR5=RR6). La columna ponderada usa el peso base (de dise\u00f1o).",
+    "Symbols: ER = eligible respondents, ENR = eligible nonrespondents, IN = ineligibles, UNK = unknown eligibility, n = total (the disposition counts above; the weighted column uses their base-weighted sums). Response rates follow the AAPOR Standard Definitions; the set notation (ER, ENR, IN, UNK) follows Valliant, Dever and Kreuter (2018, sec. 13.4), who map the AAPOR disposition codes into these sets. e is the eligibility rate among cases of known eligibility (proportional / CASRO allocation). The response rate is shown in three variants, from most to least conservative by how the unknown-eligibility cases (UNK) are treated: RR1 counts all UNK as eligible, ER / (ER + ENR + UNK); RR3 counts the estimated fraction e&middot;UNK (CASRO), ER / (ER + ENR + e&middot;UNK); RR5 excludes UNK, ER / (ER + ENR). Thus RR1 &le; RR3 &le; RR5 (no partials are distinguished, so RR1=RR2, RR3=RR4, RR5=RR6). The weighted column uses the base (design) weights.",
+    "S\u00edmbolos: ER = elegibles respondentes, ENR = elegibles no respondentes, IN = inelegibles, UNK = elegibilidad desconocida, n = total (los conteos de la tabla de arriba; la columna ponderada usa sus sumas ponderadas por el peso base). AAPOR Standard Definitions; la notaci&oacute;n de conjuntos (ER, ENR, IN, UNK) sigue a Valliant, Dever y Kreuter (2018, sec. 13.4), que mapean los c&oacute;digos de disposici&oacute;n de AAPOR a estos conjuntos. e es la tasa de elegibilidad entre casos de elegibilidad conocida (asignaci\u00f3n proporcional / CASRO). La tasa de respuesta se muestra en tres variantes, de la m\u00e1s a la menos conservadora seg\u00fan c\u00f3mo se tratan los casos de elegibilidad desconocida (UNK): RR1 cuenta todos los UNK como elegibles, ER / (ER + ENR + UNK); RR3 cuenta la fracci\u00f3n estimada e&middot;UNK (CASRO), ER / (ER + ENR + e&middot;UNK); RR5 excluye los UNK, ER / (ER + ENR). As\u00ed RR1 &le; RR3 &le; RR5 (no se distinguen parciales, por lo que RR1=RR2, RR3=RR4, RR5=RR6). La columna ponderada usa el peso base (de dise\u00f1o).",
     lang)
   # 1.2: when the recipe declares no eligibility steps, U and NE are 0 by
   # construction and RR1 = RR3 = RR5. Say so, so the reader does not misread three
   # identical rates as "there were no unknown-eligibility / ineligible cases".
   note_elig <- if (!length(iu) && !length(id))
     sprintf("<p class='note' style='color:#b45309'>%s</p>",
-      .t(paste0("This recipe declares no eligibility steps, so U (unknown eligibility) and NE ",
+      .t(paste0("This recipe declares no eligibility steps, so UNK (unknown eligibility) and IN ",
                 "(ineligible) are 0 by construction and RR1 = RR3 = RR5. The rates reflect the ",
                 "declared steps, not that no such cases existed; add step_unknown_eligibility() / ",
                 "step_drop_ineligible() to model eligibility."),
-         paste0("Esta receta no declara pasos de elegibilidad, por lo que U (elegibilidad ",
-                "desconocida) y NE (inelegibles) son 0 por construcci\u00f3n y RR1 = RR3 = RR5. Las ",
+         paste0("Esta receta no declara pasos de elegibilidad, por lo que UNK (elegibilidad ",
+                "desconocida) y IN (inelegibles) son 0 por construcci\u00f3n y RR1 = RR3 = RR5. Las ",
                 "tasas reflejan los pasos declarados, no que no existieran esos casos; agreg\u00e1 ",
                 "step_unknown_eligibility() / step_drop_ineligible() para modelar la elegibilidad."),
          lang)) else ""
@@ -417,7 +417,7 @@
   cal_html <- ""
   if (length(br) >= 3L) {
     g  <- cut(p, breaks = br, include.lowest = TRUE)
-    hd <- paste0("<th scope='col'>", c(.t("Decile of &phi;&#770;", "Decil de &phi;&#770;", lang), "n",
+    hd <- paste0("<th scope='col'>", c(.t("Propensity deciles", "Deciles de propensi&oacute;n", lang), "n",
                            .t("Predicted", "Predicho", lang),
                            .t("Observed", "Observado", lang),
                            .t("Diff.", "Dif.", lang)), "</th>", collapse = "")
@@ -581,7 +581,10 @@
               d3(auc), d3(auc_in), d3(auc_in - auc)), lang))
   }
 
-  ov <- tryCatch(.svg_overlap(p, resp, dw, lang), error = function(e) "")
+  ov <- tryCatch(.svg_overlap(p, resp, dw, lang,
+                   title = .t("Common support of estimated response propensities",
+                              "Soporte com&uacute;n de las propensiones de respuesta estimadas", lang)),
+                 error = function(e) "")
   if (nzchar(ov)) ov <- sprintf("<div class='wdhist'>%s</div>", ov)
   sprintf("<div class='ri'><h4>%s</h4>%s%s%s<p class='note'>%s</p><p class='muted'>%s</p>%s<p class='muted'>%s</p>%s%s</div>",
           .t("Propensity model diagnostics", "Diagn\u00f3sticos del modelo de propensi\u00f3n", lang),
@@ -615,9 +618,10 @@
   row <- function(k, v) sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>", k, v)
   excl <- if (n_bad > 0) .t(sprintf(" (excluding %d unit(s) with non-positive g)", n_bad),
                             sprintf(" (excluye %d unidad(es) con g no positivo)", n_bad), lang) else ""
-  dist <- paste0(row(paste0("min<span class='muted'>", excl, "</span>"), d3(q[1])), row("p1", d3(q[2])),
+  dist <- paste0(row(paste0("min<span class='muted'>", excl, "</span>"), d3(q[1])),
+                 row(.t("1st percentile", "percentil 1", lang), d3(q[2])),
                  row(.t("median", "mediana", lang), d3(q[3])),
-                 row("p99", d3(q[4])), row("max", d3(q[5])))
+                 row(.t("99th percentile", "percentil 99", lang), d3(q[4])), row("max", d3(q[5])))
   note <- .t(
     sprintf("Implicit response propensity &phi;&#770; = 1/g, recovered from the calibration g-weights. Information level: <strong>%s</strong>. Respondents with &phi;&#770; &gt; 1 (g &lt; 1): %s; non-positive g: %s. A large share with &phi;&#770; &gt; 1 signals the auxiliary vector pushes the wrong way for part of the sample (Sarndal and Lundstrom 2005).",
             info_lab, pc1(pct_gt1), pc1(pct_neg)),

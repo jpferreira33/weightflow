@@ -71,9 +71,9 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   cards <- paste0(
     .metric(.t("Cases", "Casos", lang), format(length(fin), big.mark = ",")),
     .metric(.t("Active (final)", "Activas (final)", lang), format(de_f$n, big.mark = ",")),
-    .metric(.t("Sum of weights", "Suma de pesos", lang), format(round(sum(fin)), big.mark = ",")),
+    .metric(.t("Sum of weights", "Suma de pesos", lang), format(round(sum(fin)), big.mark = ",", scientific = FALSE)),
     .metric(.t("Final deff_K", "deff_K final", lang), sprintf("%.3f", de_f$deff)),
-    .metric(.t("Effective n", "n efectivo", lang), format(round(de_f$n_eff), big.mark = ",")))
+    .metric(.t("Effective n", "n efectivo", lang), format(round(de_f$n_eff), big.mark = ",", scientific = FALSE)))
 
   # Stage summary table
   stab <- data.frame(
@@ -95,7 +95,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
              .t("deff_K", "deff_K", lang),
              .t("Effective n (n_eff)", "n efectivo (n_eff)", lang))
     hd  <- paste0("<th scope='col'>", hdr, "</th>", collapse = "")
-    num <- function(x) format(x, big.mark = ",")
+    num <- function(x) format(x, big.mark = ",", scientific = FALSE)
     d3  <- function(x) formatC(x, format = "f", digits = 3)
     dcell <- function(v) {
       if (!is.finite(v)) return("<span class='muted'>&mdash;</span>")   # N-20: deff overflow / NaN
@@ -120,7 +120,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       tot <- sum(abs(dd), na.rm = TRUE)
       share <- if (tot > 0) 100 * abs(dd) / tot else rep(0, length(dd))
       share[!is.finite(share)] <- 0
-      lab  <- vapply(object$steps, function(s) .step_short(s, lang), "")
+      lab  <- vapply(seq_along(object$steps),
+                     function(j) sprintf("%d &middot; %s", j, .step_short(object$steps[[j]], lang)), "")
       imax <- if (any(dd > 0, na.rm = TRUE)) which.max(dd) else 0L
       eff  <- function(j) {
         x <- dd[j]
@@ -169,7 +170,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   stab_html <- paste0(stab_html, imp_html,
     sprintf("<p class='muted'>%s</p>",
             .t("Kish design effect by stage (0 = base, 1..k as in the table above); &#9650; largest increase, &#9660; recovered efficiency", "Efecto de dise\u00f1o de Kish por etapa (base y 1..k seg\u00fan la tabla de arriba); &#9650; mayor aumento, &#9660; eficiencia recuperada", lang)),
-    .svg_evolution(stab$stage, stab$deff),
+    .svg_evolution(stab$stage, stab$deff, lang = lang),
     sprintf("<p class='note'>%s</p>",
             .t("Read these changes in context: a rise at a calibration step need not mean lost precision (calibration to informative auxiliaries can raise the design effect while lowering variance), whereas a rise at a nonresponse step trades variance for reduced bias. See the note at the foot of the report.",
                "Le\u00e9 estos cambios en contexto: un aumento en un paso de calibraci\u00f3n no implica necesariamente p\u00e9rdida de precisi\u00f3n (la calibraci\u00f3n a auxiliares informativos puede aumentar el efecto de dise\u00f1o y a la vez reducir la varianza), mientras que un aumento en un paso de no respuesta cambia varianza por menor sesgo. Ver la nota al pie del reporte.", lang)))

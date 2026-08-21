@@ -89,3 +89,9 @@ weighting_spec(sample_survey, base_weights = pw) |>
   step_trim_calibrated(~ region + sex, lower = 5.5, upper = 13.5) |>
   prep()
 }
+\references{
+Deville, J.-C. and Sarndal, C.-E. (1992). Calibration estimators in
+survey sampling. Journal of the American Statistical Association, 87, 376-382.
+\doi{10.2307/2290268}. The totals-preserving trimming solves a bounded
+(range-restricted) calibration with the truncated distances introduced there.
+}
