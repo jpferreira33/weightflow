@@ -39,7 +39,13 @@ carrying every earlier adjustment) and `.factor` (the multiplier the
 step applied to each unit, `NA` where the incoming weight is zero)
 appended, plus any native columns of the chosen step (for a propensity
 step: `.propensity`, `.responded`, and `.class` when propensity classes
-are used), which are `NA` outside the units the step covers.
+are used), which are `NA` outside the units the step covers. Here
+`.factor` is defined for every unit with a nonzero incoming weight, so
+an active unit the step did not touch reports `.factor = 1`; this
+differs from
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md),
+where `.factor` is `NA` outside the propensity model (see its
+`.status`).
 
 ## See also
 

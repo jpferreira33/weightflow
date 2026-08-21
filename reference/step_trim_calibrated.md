@@ -105,6 +105,14 @@ This step is meant to run **after** a
 it acts on the positive incoming weights and leaves dropped units
 (weight 0) alone.
 
+## References
+
+Deville, J.-C. and Sarndal, C.-E. (1992). Calibration estimators in
+survey sampling. Journal of the American Statistical Association, 87,
+376-382. [doi:10.2307/2290268](https://doi.org/10.2307/2290268) . The
+totals-preserving trimming solves a bounded (range-restricted)
+calibration with the truncated distances introduced there.
+
 ## Examples
 
 ``` r

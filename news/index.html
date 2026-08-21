@@ -58,7 +58,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.1.0" id="weightflow-110">weightflow 1.1.0<a class="anchor" aria-label="anchor" href="#weightflow-110"></a></h2>
+<h2 class="pkg-version" data-toc-text="1.1.0" id="weightflow-110">weightflow 1.1.0<a class="anchor" aria-label="anchor" href="#weightflow-110"></a></h2><p class="text-muted">CRAN release: 2026-08-19</p>
 <div class="section level3">
 <h3 id="new-features-1-1-0">New features<a class="anchor" aria-label="anchor" href="#new-features-1-1-0"></a></h3>
 <ul><li>
@@ -72,9 +72,11 @@
 <li>
 <strong>Per-subgroup trimming.</strong> <code><a href="../reference/step_trim_calibrated.html">step_trim_calibrated()</a></code> gains a <code>by</code> argument and per-group <code>lower</code> / <code>upper</code> bounds (requested by ECLAC).</li>
 <li>
-<strong><code><a href="../reference/collect_propensities.html">collect_propensities()</a></code></strong> recovers the per-unit response propensities fitted by a <code>step_nonresponse(method = "propensity")</code> step from a prepped recipe, so their distribution can be inspected before the adjusted weights are trusted; it returns the same information whether the adjustment was made at the unit level or, through <code>cluster</code>, at the household level (the household propensity is broadcast to its members). Requested by ECLAC.</li>
+<strong><code><a href="../reference/collect_propensities.html">collect_propensities()</a></code></strong> recovers the per-unit response propensities fitted by a <code>step_nonresponse(method = "propensity")</code> step from a prepped recipe, so their distribution can be inspected before the adjusted weights are trusted; it returns the same information whether the adjustment was made at the unit level or, through <code>cluster</code>, at the household level (the household propensity is broadcast to its members). It also returns <code>.factor</code> (the multiplier actually applied to each unit) and, with propensity classes, <code>.class</code>; note that <code>1/.propensity</code> reconstructs the applied factor only when <code>num_classes = NULL</code>. Requested by ECLAC.</li>
 <li>
-<strong><code><a href="../reference/domain_summary.html">domain_summary()</a></code></strong> reports, for a study domain (e.g. a department / DAM), how the weights move within each domain at every stage of the cascade – active units, sum of weights, mean weight and Kish design effect – so weight movement can be reviewed step by step per domain for quality control (requested by ECLAC).</li>
+<strong><code><a href="../reference/collect_step_detail.html">collect_step_detail()</a></code></strong> is a generic companion to <code><a href="../reference/collect_weights.html">collect_weights()</a></code>: for any step it returns the weight each unit received (<code>.weight_in</code>) and the multiplier the step applied (<code>.factor</code>, read from the stored stage weights so <code>.weight_in * .factor</code> equals the outgoing weight by construction), plus that step’s native per-unit quantities when it exposes them (for a propensity step, <code>.propensity</code> and <code>.class</code>).</li>
+<li>
+<strong><code><a href="../reference/domain_summary.html">domain_summary()</a></code></strong> reports, for a study domain (e.g. a department / DAM), how the weights move within each domain at every stage of the cascade – active units, sum of weights, mean weight and Kish design effect – so weight movement can be reviewed step by step per domain for quality control (requested by ECLAC). Domains follow their factor / numeric order, a missing domain value is shown as an explicit <code>(missing)</code> domain, and <code>by</code> accepts several columns (crossed).</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-and-documentation-1-1-0">Bug fixes and documentation<a class="anchor" aria-label="anchor" href="#bug-fixes-and-documentation-1-1-0"></a></h3>

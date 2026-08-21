@@ -110,7 +110,10 @@ step, carrying every earlier adjustment) and <code>.factor</code> (the multiplie
 step applied to each unit, <code>NA</code> where the incoming weight is zero) appended,
 plus any native columns of the chosen step (for a propensity step:
 <code>.propensity</code>, <code>.responded</code>, and <code>.class</code> when propensity classes are used),
-which are <code>NA</code> outside the units the step covers.</p>
+which are <code>NA</code> outside the units the step covers. Here <code>.factor</code> is defined
+for every unit with a nonzero incoming weight, so an active unit the step did
+not touch reports <code>.factor = 1</code>; this differs from <code><a href="collect_propensities.html">collect_propensities()</a></code>,
+where <code>.factor</code> is <code>NA</code> outside the propensity model (see its <code>.status</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -2,6 +2,8 @@
 
 ## weightflow 1.1.0
 
+CRAN release: 2026-08-19
+
 ### New features
 
 - **Diagnostics report suite.**
@@ -32,14 +34,27 @@
   so their distribution can be inspected before the adjusted weights are
   trusted; it returns the same information whether the adjustment was
   made at the unit level or, through `cluster`, at the household level
-  (the household propensity is broadcast to its members). Requested by
-  ECLAC.
+  (the household propensity is broadcast to its members). It also
+  returns `.factor` (the multiplier actually applied to each unit) and,
+  with propensity classes, `.class`; note that `1/.propensity`
+  reconstructs the applied factor only when `num_classes = NULL`.
+  Requested by ECLAC.
+- **[`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md)**
+  is a generic companion to
+  [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md):
+  for any step it returns the weight each unit received (`.weight_in`)
+  and the multiplier the step applied (`.factor`, read from the stored
+  stage weights so `.weight_in * .factor` equals the outgoing weight by
+  construction), plus that step’s native per-unit quantities when it
+  exposes them (for a propensity step, `.propensity` and `.class`).
 - **[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)**
   reports, for a study domain (e.g. a department / DAM), how the weights
   move within each domain at every stage of the cascade – active units,
   sum of weights, mean weight and Kish design effect – so weight
   movement can be reviewed step by step per domain for quality control
-  (requested by ECLAC).
+  (requested by ECLAC). Domains follow their factor / numeric order, a
+  missing domain value is shown as an explicit `(missing)` domain, and
+  `by` accepts several columns (crossed).
 
 ### Bug fixes and documentation
 
