@@ -124,6 +124,7 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     set.seed(rseeds[b])                       # only matters if a step is stochastic
     sp <- spec; sp$data[[bw]] <- bw0 * facs[[b]]
     attr(sp$data, "wf_replicate") <- TRUE          # step_assert becomes a no-op in replicates
+    attr(sp$data, "wf_replicate_idx") <- b         # pairs with a reference_sample() replicate column
     tryCatch(prep(sp)$final_weight, error = function(e) rep(NA_real_, n))
   }
   fw_list <- .par_lapply(seq_len(replicates), one_rep, cores = cores,

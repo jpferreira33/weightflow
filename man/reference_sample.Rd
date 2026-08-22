@@ -4,7 +4,7 @@
 \alias{reference_sample}
 \title{Use a weighted survey as the calibration reference instead of a frame}
 \usage{
-reference_sample(data, weights)
+reference_sample(data, weights, replicates = NULL)
 }
 \arguments{
 \item{data}{a \code{data.frame} of reference-survey microdata, with the columns
@@ -12,6 +12,11 @@ used in \code{x_formula} and the model predictors.}
 
 \item{weights}{either the name (string) of a positive weight column in \code{data},
 or a numeric vector with one weight per row.}
+
+\item{replicates}{optional numeric matrix (or data.frame) of replicate weights
+for the reference survey -- one row per reference unit, one column per
+replicate -- used to propagate the reference sampling variance through
+\code{\link[=bootstrap_weights]{bootstrap_weights()}}. \code{NULL} (default) treats the totals as fixed.}
 }
 \value{
 \code{data} tagged so that \code{step_model_calibration()} weights its totals by
@@ -29,9 +34,12 @@ weighted totals of the projection (Wu and Sitter 2001; Kim and Rao 2012).
 }
 \details{
 A reference survey with all weights equal to 1 reproduces the plain-frame
-behaviour exactly. Note that the sampling variance of the reference survey's
-totals is not yet propagated into the recipe-aware replicate variance; treat
-the totals as fixed for now (a reasonable approximation when the reference is
+behaviour exactly. To propagate the reference survey's own sampling variance
+into the recipe-aware bootstrap, pass its replicate weights through
+\code{replicates}: each bootstrap replicate then re-estimates the totals from the
+paired reference replicate (Opsomer and Erciulescu 2021), so the extra
+variance from estimating the totals is captured. Without \code{replicates} the
+totals are treated as fixed (a reasonable approximation when the reference is
 much larger than the sample, and the same assumption made when calibrating to
 another survey's published totals).
 }

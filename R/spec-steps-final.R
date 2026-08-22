@@ -12,9 +12,12 @@
 #' weighted totals of the projection (Wu and Sitter 2001; Kim and Rao 2012).
 #'
 #' A reference survey with all weights equal to 1 reproduces the plain-frame
-#' behaviour exactly. Note that the sampling variance of the reference survey's
-#' totals is not yet propagated into the recipe-aware replicate variance; treat
-#' the totals as fixed for now (a reasonable approximation when the reference is
+#' behaviour exactly. To propagate the reference survey's own sampling variance
+#' into the recipe-aware bootstrap, pass its replicate weights through
+#' `replicates`: each bootstrap replicate then re-estimates the totals from the
+#' paired reference replicate (Opsomer and Erciulescu 2021), so the extra
+#' variance from estimating the totals is captured. Without `replicates` the
+#' totals are treated as fixed (a reasonable approximation when the reference is
 #' much larger than the sample, and the same assumption made when calibrating to
 #' another survey's published totals).
 #'
@@ -22,13 +25,17 @@
 #'   used in `x_formula` and the model predictors.
 #' @param weights either the name (string) of a positive weight column in `data`,
 #'   or a numeric vector with one weight per row.
+#' @param replicates optional numeric matrix (or data.frame) of replicate weights
+#'   for the reference survey -- one row per reference unit, one column per
+#'   replicate -- used to propagate the reference sampling variance through
+#'   [bootstrap_weights()]. `NULL` (default) treats the totals as fixed.
 #' @return `data` tagged so that `step_model_calibration()` weights its totals by
 #'   `weights`. It is still an ordinary `data.frame`.
 #' @seealso [step_model_calibration()]
 #' @examples
 #' ref <- reference_sample(population, weights = rep(1, nrow(population)))
 #' @export
-reference_sample <- function(data, weights) {
+reference_sample <- function(data, weights, replicates = NULL) {
   if (!is.data.frame(data))
     stop("`data` must be a data.frame (the reference survey microdata).", call. = FALSE)
   w <- if (is.character(weights) && length(weights) == 1L) {
@@ -43,6 +50,16 @@ reference_sample <- function(data, weights) {
     stop("Reference-sample weights must be finite and strictly positive ",
          "(no NA, zero or negative weights).", call. = FALSE)
   attr(data, "wf_ref_weights") <- as.numeric(w)
+  if (!is.null(replicates)) {
+    R <- as.matrix(replicates)
+    if (!is.numeric(R) || nrow(R) != nrow(data) || ncol(R) < 2L)
+      stop("`replicates` must be a numeric matrix (or data.frame) with one row per ",
+           "reference unit and at least 2 replicate-weight columns.", call. = FALSE)
+    if (anyNA(R) || any(!is.finite(R)) || any(R < 0))
+      stop("Reference replicate weights must be finite and non-negative (no NA).", call. = FALSE)
+    dimnames(R) <- NULL
+    attr(data, "wf_ref_replicates") <- R
+  }
   class(data) <- unique(c("wf_reference_sample", class(data)))
   data
 }

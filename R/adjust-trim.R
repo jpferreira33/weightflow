@@ -169,6 +169,16 @@ apply_step.step_model_calibration <- function(step, data, w) {
   sdata  <- data[active, , drop = FALSE]
   pop    <- step$population
   w_ref  <- attr(pop, "wf_ref_weights")   # non-NULL only for reference_sample()
+  # In a bootstrap replicate, re-estimate the reference totals from the paired
+  # replicate column of the reference survey (Opsomer & Erciulescu 2021), so the
+  # reference's sampling variance propagates. Point prep, or no replicate weights
+  # supplied, falls back to the point reference weights (totals treated as fixed).
+  if (!is.null(w_ref)) {
+    rep_mat <- attr(pop, "wf_ref_replicates")
+    ridx    <- attr(data, "wf_replicate_idx")
+    if (!is.null(rep_mat) && !is.null(ridx))
+      w_ref <- rep_mat[, ((ridx - 1L) %% ncol(rep_mat)) + 1L]
+  }
 
   # Consistency block: X auxiliaries
   X  <- stats::model.matrix(step$x_formula, data = sdata)

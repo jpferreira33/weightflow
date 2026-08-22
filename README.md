@@ -7,6 +7,7 @@
 [![Codecov test coverage](https://codecov.io/github/jpferreira33/weightflow/graph/badge.svg?token=KSR54WEM88)](https://app.codecov.io/github/jpferreira33/weightflow)
 [![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Mentioned in Awesome Official Statistics](https://awesome.re/mentioned-badge.svg)](http://www.awesomeofficialstatistics.org)
 <!-- badges: end -->
 
 > Declarative, pipeable survey weighting in base R: from design weights to
