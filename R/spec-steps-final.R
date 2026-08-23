@@ -28,7 +28,10 @@
 #' @param replicates optional numeric matrix (or data.frame) of replicate weights
 #'   for the reference survey -- one row per reference unit, one column per
 #'   replicate -- used to propagate the reference sampling variance through
-#'   [bootstrap_weights()]. `NULL` (default) treats the totals as fixed.
+#'   [bootstrap_weights()]. `NULL` (default) treats the totals as fixed. Note that
+#'   only [bootstrap_weights()] pairs the reference replicates and propagates this
+#'   variance; [jackknife_weights()] treats the estimated totals as fixed even when
+#'   `replicates` is supplied, so use the bootstrap when this component matters.
 #' @return `data` tagged so that `step_model_calibration()` weights its totals by
 #'   `weights`. It is still an ordinary `data.frame`.
 #' @seealso [step_model_calibration()]
@@ -245,6 +248,16 @@ step_model_calibration <- function(spec, x_formula, models, population,
 step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
                         min_n_eff = NULL, on_fail = c("error", "warning")) {
   on_fail <- match.arg(on_fail)
+  # Validate the thresholds: a non-numeric threshold (e.g. "500") would be
+  # compared lexicographically at apply time, silently inverting the assertion.
+  .chk_thr <- function(x, nm) {
+    if (!is.null(x) && (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x <= 0))
+      stop(sprintf("`%s` must be a single positive finite number (or NULL).", nm),
+           call. = FALSE)
+  }
+  .chk_thr(max_deff, "max_deff")
+  .chk_thr(max_weight_ratio, "max_weight_ratio")
+  .chk_thr(min_n_eff, "min_n_eff")
   step <- structure(
     list(
       label            = "assert (checkpoint)",
@@ -352,7 +365,9 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #' and a warning is raised.
 #'
 #' This step is meant to run **after** a `step_calibrate()`: it acts on the
-#' positive incoming weights and leaves dropped units (weight 0) alone.
+#' active incoming weights (including any negative weights an unbounded linear
+#' calibration produced, which it can bring back into `[lower, upper]`) and
+#' leaves dropped units (weight 0) alone.
 #'
 #' @param spec a weighting_spec.
 #' @param formula the auxiliaries whose calibration totals must be preserved
@@ -403,6 +418,9 @@ step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
   if (missing(formula) || !inherits(formula, "formula"))
     stop("`formula` must be a formula naming the auxiliaries to preserve, ",
          "e.g. ~ region + age_group.")
+  maxit <- .wf_count(maxit, "maxit", min = 1L)
+  if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol <= 0)
+    stop("`tol` must be a single positive finite number.", call. = FALSE)
   if (is.null(lower) && is.null(upper))
     stop("Supply at least one of `lower` / `upper` (the absolute weight bounds).")
   # `lower`/`upper` may be a single number (same bound for every unit) or, with

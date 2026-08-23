@@ -54,11 +54,28 @@ caps a weight at three times its reference.
 or design structure} take character strings: \code{by}, \code{cluster}, and \code{strata} /
 \code{psu} in the variance functions. So it is \code{step_nonresponse(respondent = responded, by = "region")} -- \code{responded} bare, \code{"region"} quoted.
 
+\strong{The same concept, different argument names.} A few concepts are named
+differently across functions for historical reasons. The correspondence, so
+you do not have to guess:
+\itemize{
+\item \emph{Weight bounds}: \code{\link[=step_trim]{step_trim()}} uses \code{max_ratio} / \code{min_ratio} (a ratio),
+while \code{\link[=step_trim_weights]{step_trim_weights()}} and \code{\link[=step_trim_calibrated]{step_trim_calibrated()}} use \code{upper} /
+\code{lower} (absolute weights). See "Three scales for weight bounds" above.
+\item \emph{Primary sampling unit}: \code{\link[=as_svydesign]{as_svydesign()}} names it \code{ids}, while
+\code{\link[=bootstrap_weights]{bootstrap_weights()}} and \code{\link[=jackknife_weights]{jackknife_weights()}} name it \code{psu}. Both mean the
+cluster identifier.
+\item \emph{Calibration form vs distance}: in \code{\link[=step_calibrate]{step_calibrate()}}, \code{method} selects the
+family ("raking", "poststratify", "linear"); \code{calfun} selects the distance
+function ("linear", "logit", "raking") and applies only when \code{method = "linear"}. So \code{method = "linear"} and \code{calfun = "linear"} are not the same
+knob.
+}
+
 \strong{Reading the diagnostics.} \code{\link[=prep]{prep()}} returns an object that carries the weight
 at every stage (\verb{$history}, a named list of vectors), one entry per step
 (\verb{$steps}, each with its own \verb{$diagnostics} table and \verb{$alerts}), and the
 recipe-level \verb{$alerts}. Rather than read those directly, use \code{\link[=summary]{summary()}} for the
-stage-by-stage audit, \code{\link[=plot]{plot()}} for the visual cascade, \code{\link[=weight_factors]{weight_factors()}} for
-the per-unit factor table, \code{\link[=design_effect]{design_effect()}} for the Kish design effect, and
+stage-by-stage audit, \code{\link[=weighting_alerts]{weighting_alerts()}} / \code{\link[=has_alerts]{has_alerts()}} for the quality
+incidents, \code{\link[=plot]{plot()}} for the visual cascade, \code{\link[=weight_factors]{weight_factors()}} for the per-unit
+factor table, \code{\link[=design_effect]{design_effect()}} for the Kish design effect, and
 \code{\link[=report_weighting]{report_weighting()}} for the full self-contained HTML report.
 }

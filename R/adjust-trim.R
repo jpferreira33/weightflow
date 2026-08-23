@@ -189,7 +189,15 @@ apply_step.step_model_calibration <- function(step, data, w) {
   cn <- colnames(X)
   # X totals may come from the frame (default) or from an external source.
   if (is.null(step$x_totals)) {
-    # from the population frame, as before
+    # from the population frame, as before. Guard NA first: model.matrix() would
+    # silently drop rows with missing auxiliaries (default na.omit), so colSums()
+    # below would undercount and the calibration totals would be understated.
+    pv <- intersect(all.vars(step$x_formula), names(pop))
+    if (length(pv) && anyNA(pop[, pv, drop = FALSE]))
+      stop("`population` (the calibration frame or reference_sample) has missing ",
+           "values (NA) in the x_formula variables; those rows would be dropped ",
+           "silently and the calibration totals understated. Impute or drop them first.",
+           call. = FALSE)
     Xpop <- stats::model.matrix(step$x_formula, data = pop)
     if (!is.null(w_ref) && nrow(Xpop) != length(w_ref))
       stop("The reference sample (reference_sample()) has missing values (NA) in ",
@@ -268,6 +276,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
     cl <- as.character(data[[step$cluster]])[active]
     if (anyNA(cl))
       stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
+    .wf_assert_uniform_within_cluster(d, cl, step$cluster)
     hh   <- unique(cl)
     n_h  <- as.numeric(tapply(d, cl, length)[hh])   # persons per household
     Wsum <- as.numeric(tapply(d, cl, sum)[hh])      # total base weight in household
@@ -501,7 +510,7 @@ apply_step.step_trim_weights <- function(step, data, w) {
 }
 
 apply_step.step_trim_calibrated <- function(step, data, w) {
-  active <- .wf_active(w)                      # only positive calibration weights
+  active <- .wf_active(w)                      # active weights (may include negatives)
   if (!any(active)) return(list(weights = w, diagnostics = NULL))
   new_w <- w
   d     <- w[active]                   # incoming weights = base for this step
@@ -531,8 +540,11 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
   # Absolute-weight bound -> factor bound. Always bounded, so go straight to the
   # Deville-Sarndal iterative solver (honouring this step's own maxit/tol).
   if (!step$equal_within_cluster) {
-    # unit level: per-unit factor bound f_k in [lower/w_k, upper/w_k]
-    bnd  <- cbind(lower / d, upper / d)
+    # unit level: per-unit factor bound so that w_k = d_k * f_k stays in
+    # [lower, upper]. Dividing by a NEGATIVE incoming weight flips the inequality,
+    # so take the min/max per row instead of assuming lower/d <= upper/d (which
+    # would invert the interval and pin negative-weight units at `upper`).
+    bnd  <- cbind(pmin(lower / d, upper / d), pmax(lower / d, upper / d))
     gsol <- .calib_ds(X, d, Tvec, calfun = step$calfun, bounds = bnd,
                       maxit = step$maxit, tol = step$tol)
     f    <- as.numeric(gsol)
@@ -554,7 +566,7 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
     d_h   <- Wsum / n_h                                  # common household weight
     lo_h  <- as.numeric(tapply(lower, cl, function(x) x[1])[hh])  # bound per household
     up_h  <- as.numeric(tapply(upper, cl, function(x) x[1])[hh])
-    bnd_h <- cbind(lo_h / d_h, up_h / d_h)
+    bnd_h <- cbind(pmin(lo_h / d_h, up_h / d_h), pmax(lo_h / d_h, up_h / d_h))
     gsol  <- .calib_ds(Xbar, Wsum, Tvec, calfun = step$calfun, bounds = bnd_h,
                        maxit = step$maxit, tol = step$tol)
     fh    <- as.numeric(gsol); names(fh) <- hh

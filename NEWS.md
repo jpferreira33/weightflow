@@ -3,6 +3,29 @@
 ## New features
 
 * **`reference_sample()`** lets `step_model_calibration()` calibrate to a weighted reference survey instead of a full population frame: the model is fit on the sample, projected onto the reference survey, and the calibration targets are the design-weighted totals of the projection (an estimate of the population totals). A reference with all weights equal to 1 reproduces the plain-frame behaviour exactly. Passing the reference survey's replicate weights through `replicates=` propagates its sampling variance through the recipe-aware bootstrap (each replicate re-estimates the totals from the paired reference replicate; Opsomer and Erciulescu 2021); without them the totals are treated as fixed.
+* **`step_calibrate()` accepts a `reference_sample()` too** (all three methods: raking, poststratify, linear/GREG). Pass `population = reference_sample(...)` with a `formula` naming the calibration variables; the targets are the design-weighted sums over the reference, and their sampling variance propagates through the bootstrap when replicate weights are supplied.
+* **The HTML report reflects estimated control totals.** When `step_calibrate()` or `step_model_calibration()` calibrate to a `reference_sample()`, the step narrative states the totals are estimated (not census figures) and whether their sampling variance is propagated (replicate weights supplied; Opsomer and Erciulescu 2021) or treated as fixed; the replication card carries the matching note.
+* **`weighting_alerts()` and `has_alerts()`** read the quality incidents recorded by `prep()`. Every incident now lands in `$alerts`, including warnings a step raises internally (such as a calibration that could not meet its constraints), so `$alerts` is the single reliable channel for programmatic quality control even when the surrounding warnings were suppressed.
+
+## Bug fixes and documentation
+
+* `step_trim()` now validates `max_ratio` and `min_ratio` at construction time, rejecting values outside their domain (a multiplier greater than 1 for `reference = "base"/"median"`, an absolute cap greater than 0 for `reference = "value"`; `min_ratio` greater than 0). Out-of-domain values previously passed silently and could produce negative or empty weight vectors.
+* `?weightflow-concepts` gains a correspondence table for arguments that name the same concept differently across functions (`max_ratio`/`min_ratio` vs `lower`/`upper`; `psu` vs `ids`; `method` vs `calfun`).
+* `step_assert()` now validates `max_deff`, `min_n_eff` and `max_weight_ratio` as numbers; a non-numeric threshold (e.g. `"500"`) used to be compared lexicographically at apply time, silently inverting the assertion.
+* `step_trim_calibrated()` now brings negative incoming weights (a valid unbounded-GREG output) back into `[lower, upper]` instead of pinning them at `upper`: the per-unit factor bound is taken as the min/max of `lower/w` and `upper/w`, which a negative weight would otherwise invert.
+* Raking to tidy margins now verifies the achieved totals against the targets after it stabilises (as the classic raking already did), so a cell with a non-positive weight sum that is skipped every sweep no longer reports `converged = TRUE` with the margin unmet.
+* `step_model_calibration()` with a plain population frame now errors on missing values in the auxiliaries instead of letting `model.matrix()` drop those rows silently and understate the calibration totals.
+* `boot_mean()` / `jack_mean()` and `collect_replicate_weights()` now treat active negative weights consistently with the totals estimators and `as_svydesign()`/`as_svrepdesign()` (they are kept, not dropped), so the two export routes describe the same sample.
+* Numeric cell keys are now formatted element by element, so a control total carrying a level absent from the sample no longer shifts the shared formatting and triggers a false "no population total" coverage error.
+* `bounds`, `maxit`, `tol` and `digits` are now validated in the constructors that lacked it (`step_calibrate`, `step_nonresponse(method = "calibration")`, `step_trim_calibrated`, `step_round`); non-numeric or `NA` values gave opaque downstream errors, and a character `tol`/`maxit` could "converge" at iteration 0.
+* Linear (GREG) calibration to tidy totals now rejects a counts column with missing values up front, instead of failing later with "subscript out of bounds".
+* `report_weighting()` no longer crashes with `step_trim_weights(lower = NULL)` (a legal "no floor"); the narrative shows `-Inf` for the missing bound.
+* The report's CSV export neutralises spreadsheet formula injection (cells starting with `= + - @`, tab or CR) and quotes cells containing line breaks.
+* Integrative calibration (`equal_within_cluster = TRUE`) now refuses non-constant within-cluster weights in every path -- nonresponse-by-calibration and `step_model_calibration()`, not only `step_calibrate()` -- so the one-weight-per-cluster promise cannot be broken silently (extracted into one shared guard).
+* The delete-a-PSU jackknife bridge to `survey` (`as_svrepdesign()` and `collect_replicate_weights()`) now rescales by `(n_h - 1) / m_h` with `m_h` the surviving replicates per stratum when some replicates fail, matching `jackknife_estimate()`; previously the variance was biased low.
+* The R-indicator is evaluated in the nonresponse step's captured environment, so a `respondent` expression that references a user-environment object no longer makes the indicator silently disappear from `summary()` and the report.
+* Post-stratification and raking diagnostics now carry a per-cell sample count `n`, so the documented `min_cell_n` small-cell alert (Kalton and Flores-Cervantes) actually fires for those steps, not only for weighting classes.
+* `reference_sample()` documents that only `bootstrap_weights()` propagates the estimated-totals variance; `jackknife_weights()` treats the totals as fixed.
 
 # weightflow 1.1.0
 

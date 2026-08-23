@@ -392,6 +392,7 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
     clr <- as.character(data[[step$cluster]])[eligible][resp_e]
     if (anyNA(clr))
       stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
+    .wf_assert_uniform_within_cluster(dr, clr, step$cluster)
     hh   <- unique(clr)
     n_h  <- as.numeric(tapply(dr, clr, length)[hh])          # responding members
     Wsum <- as.numeric(tapply(dr, clr, sum)[hh])             # base weight in household

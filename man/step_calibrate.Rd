@@ -18,7 +18,8 @@ step_calibrate(
   bounds = NULL,
   maxit = 50L,
   tol = 1e-06,
-  penalty = NULL
+  penalty = NULL,
+  population = NULL
 )
 }
 \arguments{
@@ -93,6 +94,14 @@ model.matrix columns). The cost is scale-free: a large value keeps the
 constraint (near) exact, a small value relaxes it to control extreme weights
 when there are many auxiliaries. Under ridge the achieved totals no longer
 match the targets exactly; the diagnostics report the deviation.}
+
+\item{population}{(all methods) a \code{\link[=reference_sample]{reference_sample()}} (or a plain frame) from
+which the calibration targets are computed, instead of passing \code{margins} /
+\code{totals}. Give \code{formula} naming the calibration variables; the targets are
+the design-weighted sums over the reference (raking margins, poststratify
+cells, or linear model-matrix totals). If the reference carries replicate
+weights, \code{\link[=bootstrap_weights]{bootstrap_weights()}} propagates its sampling variance. Not
+combined with \code{margins} / \code{totals} or \code{by}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

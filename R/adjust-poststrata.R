@@ -63,7 +63,13 @@
     # to both the totals and the sample through this same function, so they align.
     parts <- lapply(vars, function(v) {
       x <- df[[v]]
-      if (is.numeric(x)) format(x, scientific = FALSE, trim = TRUE) else as.character(x)
+      # Format each value INDEPENDENTLY: a vectorised format() applies a common
+      # width/decimals to the whole vector, so format(c(1, 2)) is "1","2" but
+      # format(c(1, 1.5, 2)) is "1.0","1.5","2.0". If the totals carry a level
+      # (e.g. 1.5) absent from the sample, the shared vector would stop matching.
+      if (is.numeric(x))
+        vapply(x, function(z) format(z, scientific = FALSE, trim = TRUE), character(1))
+      else as.character(x)
     })
     do.call(paste, c(parts, sep = "\r"))
   }
@@ -158,6 +164,7 @@
       target     = target,
       prev_total = cur,
       factor     = fac,
+      n          = length(idx),        # active sample units in the cell (min_cell_n alert)
       stringsAsFactors = FALSE
     )
   }
@@ -245,13 +252,32 @@
         category = gsub("\r", " x ", key),
         target   = m$cells$.Freq[i],
         achieved = sum(new_w[idx]),
+        n        = length(idx),          # active sample units in the cell (min_cell_n alert)
         stringsAsFactors = FALSE
       )
     }
   }
   diag <- do.call(rbind, diag)
   attr(diag, "iterations") <- it
-  attr(diag, "converged")  <- (maxdiff < tol)
+  # Post-verification (as in the classic raking, fix #5): converging on the
+  # sweep-to-sweep change does not guarantee the margins are met. A cell whose
+  # weight sum stays <= 0 (e.g. after an unbounded linear calibration) is skipped
+  # every sweep, contributing nothing to maxdiff, so `converged` could be TRUE
+  # with that margin still off. Check the achieved totals against the targets.
+  rel_dev <- abs(diag$achieved - diag$target) / (abs(diag$target) + 1)
+  targets_ok <- max(rel_dev) <= 1e-4      # loose: a genuinely skipped cell is off by ~100%
+  attr(diag, "converged") <- (maxdiff < tol) && targets_ok
+  if ((maxdiff < tol) && !targets_ok) {                 # silent-miss case
+    off <- which(rel_dev > 1e-4)
+    k   <- seq_len(min(3L, length(off)))
+    warning(sprintf(paste0(
+      "Raking stabilised but %d margin cell(s) are not met (max relative deviation ",
+      "= %.2e). This usually means a cell has a non-positive weight sum (e.g. after ",
+      "an unbounded linear calibration) and was skipped every sweep. Cells: %s."),
+      length(off), max(rel_dev),
+      paste(sprintf("%s=%s", diag$variable[off][k], diag$category[off][k]), collapse = ", ")),
+      call. = FALSE)
+  }
   if (!is.null(rec$note)) attr(diag, "reconcile") <- rec$note
   list(weights = new_w, diagnostics = diag)
 }
@@ -290,6 +316,19 @@
 
   X  <- stats::model.matrix(formula, data = data[active, , drop = FALSE])
   cn <- colnames(X)
+
+  # NA in a counts column would make that margin's N NA, drop it from the
+  # reconciliation, and later crash at rec$factors[[v]] with "subscript out of
+  # bounds". Reject it early with a clear message (as the post-stratification
+  # path does), before the size is computed.
+  for (v in names(totals)) {
+    t <- totals[[v]]
+    if (is.data.frame(t) && count %in% names(t) &&
+        anyNA(suppressWarnings(as.numeric(t[[count]]))))
+      stop(sprintf(paste0("The totals for '%s' have missing or non-numeric values in ",
+                          "the counts column '%s'; provide a finite count for every ",
+                          "category."), v, count), call. = FALSE)
+  }
 
   # population size N: if the categorical margins disagree, reconcile them to
   # the LARGEST (the intercept is that N; each margin is rescaled below).

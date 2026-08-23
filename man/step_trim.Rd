@@ -19,9 +19,11 @@ step_trim(
 
 \item{max_ratio}{number. Upper cap. Its meaning depends on \code{reference}. E.g.
 with reference = "base" and max_ratio = 4, no weight may exceed 4 times its
-design weight.}
+design weight. Must be greater than 1 for reference = "base"/"median" (a
+multiplier) and greater than 0 for reference = "value" (an absolute weight).}
 
-\item{min_ratio}{number or NULL. Lower floor (same units as max_ratio).}
+\item{min_ratio}{number or NULL. Lower floor (same units as max_ratio); if
+supplied, must be greater than 0 and below \code{max_ratio}.}
 
 \item{reference}{"base" (multiple of each unit's base weight),
 "median" (multiple of the median of current weights) or

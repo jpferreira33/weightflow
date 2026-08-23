@@ -16,7 +16,10 @@ or a numeric vector with one weight per row.}
 \item{replicates}{optional numeric matrix (or data.frame) of replicate weights
 for the reference survey -- one row per reference unit, one column per
 replicate -- used to propagate the reference sampling variance through
-\code{\link[=bootstrap_weights]{bootstrap_weights()}}. \code{NULL} (default) treats the totals as fixed.}
+\code{\link[=bootstrap_weights]{bootstrap_weights()}}. \code{NULL} (default) treats the totals as fixed. Note that
+only \code{\link[=bootstrap_weights]{bootstrap_weights()}} pairs the reference replicates and propagates this
+variance; \code{\link[=jackknife_weights]{jackknife_weights()}} treats the estimated totals as fixed even when
+\code{replicates} is supplied, so use the bootstrap when this component matters.}
 }
 \value{
 \code{data} tagged so that \code{step_model_calibration()} weights its totals by

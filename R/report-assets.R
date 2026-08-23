@@ -52,7 +52,11 @@
   }
   function cell(t){
     t = (t == null ? "" : String(t)).trim();
-    if (t.indexOf(",") >= 0 || t.indexOf(Q) >= 0) t = Q + t.split(Q).join(Q + Q) + Q;
+    var SQ = String.fromCharCode(39), CR = String.fromCharCode(13), TAB = String.fromCharCode(9);
+    var bad = "=+-@" + TAB + CR;
+    if (t.length && bad.indexOf(t.charAt(0)) >= 0) t = SQ + t;
+    if (t.indexOf(",") >= 0 || t.indexOf(Q) >= 0 || t.indexOf(NL) >= 0 || t.indexOf(CR) >= 0)
+      t = Q + t.split(Q).join(Q + Q) + Q;
     return t;
   }
   function tableCsv(tbl){

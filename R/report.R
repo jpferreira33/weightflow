@@ -271,7 +271,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
             de_f$deff, format(round(de_f$n_eff), big.mark = ","), imsg),
     sprintf("Interpretaci\u00f3n: el efecto de dise\u00f1o de Kish es %.3f (muestra efectiva %s); %s",
             de_f$deff, format(round(de_f$n_eff), big.mark = ","), imsg), lang)))
-  repl_html <- .replication_card(replicates, lang)
+  repl_html <- .replication_card(replicates, lang, object)
   domain_html <- .domain_reliability(object, domains, lang)
   step_anchors <- paste(vapply(seq_along(object$steps), function(i)
     sprintf("<a href='#step-%d'>%d</a>", i, i), character(1)), collapse = " ")

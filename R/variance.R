@@ -218,7 +218,7 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
 print.weightflow_boot <- function(x, ...) {
   cat("<weightflow bootstrap>\n")
   cat(sprintf("  replicates : %d\n", x$R))
-  cat(sprintf("  units      : %d (active: %d)\n", nrow(x$replicates), sum(x$weights > 0)))
+  cat(sprintf("  units      : %d (active: %d)\n", nrow(x$replicates), sum(.wf_active(x$weights))))
   cat(sprintf("  strata     : %s\n", if (is.null(x$strata)) "(none)" else x$strata))
   cat(sprintf("  psu        : %s\n", if (is.null(x$psu)) "(unit-level)" else x$psu))
   invisible(x)
@@ -278,7 +278,7 @@ boot_total <- function(boot, variable) {
 boot_mean <- function(boot, variable) {
   variable <- .wf_var(variable, boot)
   bootstrap_estimate(boot, function(w, d) {
-    x <- d[[variable]]; ok <- !is.na(x) & w > 0
+    x <- d[[variable]]; ok <- !is.na(x) & .wf_active(w)   # keep active negatives, as totals do
     sum(w[ok] * x[ok]) / sum(w[ok])
   })
 }
@@ -416,7 +416,7 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
 print.weightflow_jack <- function(x, ...) {
   cat("<weightflow jackknife>\n")
   cat(sprintf("  replicates : %d (delete-a-PSU)\n", x$R))
-  cat(sprintf("  units      : %d (active: %d)\n", nrow(x$replicates), sum(x$weights > 0)))
+  cat(sprintf("  units      : %d (active: %d)\n", nrow(x$replicates), sum(.wf_active(x$weights))))
   cat(sprintf("  strata     : %s\n", if (is.null(x$strata)) "(none)" else x$strata))
   cat(sprintf("  psu        : %s\n", if (is.null(x$psu)) "(unit-level)" else x$psu))
   invisible(x)
@@ -506,7 +506,7 @@ jack_total <- function(jack, variable) {
 jack_mean <- function(jack, variable) {
   variable <- .wf_var(variable, jack)
   jackknife_estimate(jack, function(w, d) {
-    x <- d[[variable]]; ok <- !is.na(x) & w > 0
+    x <- d[[variable]]; ok <- !is.na(x) & .wf_active(w)   # keep active negatives, as totals do
     sum(w[ok] * x[ok]) / sum(w[ok])
   })
 }
@@ -591,14 +591,22 @@ as_svrepdesign <- function(object, ...) {
       type = "bootstrap", combined.weights = TRUE,
       scale = 1 / Rv, rscales = rep(1, Rv), mse = TRUE, ...)
   } else if (inherits(object, "weightflow_jack")) {
-    # delete-a-PSU jackknife: full (combined) replicate weights with per-replicate
-    # scale (n_h - 1)/n_h; survey centers at the point estimate (mse = TRUE).
+    # delete-a-PSU jackknife: full (combined) replicate weights; survey centers at
+    # the point estimate (mse = TRUE). When some replicates failed, the per-replicate
+    # scale must be (n_h - 1)/m_h with m_h the SURVIVING replicates in the stratum,
+    # not (n_h - 1)/n_h -- otherwise survey sums m_h < n_h terms with the full-n_h
+    # scale and biases the variance low (matches jackknife_estimate()'s correction).
+    strat_v <- object$rep_stratum[valid]
+    nh_v    <- object$rep_nh[valid]
+    mh_v    <- stats::ave(seq_along(strat_v), strat_v, FUN = length)  # survivors per stratum
+    rsc     <- (nh_v - 1) / mh_v
+    rsc[mh_v < 2L] <- 0          # a stratum reduced to <2 replicates contributes no variance
     survey::svrepdesign(
       data = object$data[keep, , drop = FALSE],
       weights = object$weights[keep],
       repweights = rw,
       type = "other", combined.weights = TRUE,
-      scale = 1, rscales = ((object$rep_nh - 1) / object$rep_nh)[valid],
+      scale = 1, rscales = rsc,
       mse = TRUE, ...)
   } else {
     stop("`object` must be a weightflow_boot or weightflow_jack object.")
@@ -644,7 +652,10 @@ collect_replicate_weights <- function(object, weight_name = ".weight",
     stop("`object` must be a weightflow_boot or weightflow_jack object.")
   weight_name <- .wf_outname(weight_name, "weight_name")
   prefix      <- .wf_outname(prefix, "prefix")
-  keep <- if (drop_zero) object$weights > 0 else rep(TRUE, length(object$weights))
+  # Keep active units: finite and non-zero. Negative weights (a valid unbounded
+  # linear-calibration output) are ACTIVE and are kept, matching as_svrepdesign()
+  # and the totals estimators; only weight 0 / non-finite are dropped.
+  keep <- if (drop_zero) .wf_active(object$weights) else rep(TRUE, length(object$weights))
   out  <- object$data[keep, , drop = FALSE]
   reps <- object$replicates[keep, , drop = FALSE]
   # Drop failed replicates (all-NA columns) so downstream survey / srvyr does not
@@ -682,11 +693,18 @@ collect_replicate_weights <- function(object, weight_name = ".weight",
   attr(out, "R") <- length(valid)
   # Replication design for survey/srvyr, correct per method: the bootstrap uses
   # scale 1/R with unit rscales; the delete-a-PSU jackknife uses scale 1 with
-  # per-replicate rscales (n_h - 1)/n_h (survey type = "other").
+  # per-replicate rscales (n_h - 1)/m_h, where m_h is the SURVIVING replicates in
+  # the stratum (= n_h when none failed), so dropping a failed replicate does not
+  # bias the variance low -- consistent with jackknife_estimate() and as_svrepdesign().
   if (inherits(object, "weightflow_jack")) {
+    strat_v <- object$rep_stratum[valid]
+    nh_v    <- object$rep_nh[valid]
+    mh_v    <- stats::ave(seq_along(strat_v), strat_v, FUN = length)
+    rsc     <- (nh_v - 1) / mh_v
+    rsc[mh_v < 2L] <- 0
     attr(out, "type")    <- "other"
     attr(out, "scale")   <- 1
-    attr(out, "rscales") <- ((object$rep_nh - 1) / object$rep_nh)[valid]
+    attr(out, "rscales") <- rsc
   } else {
     attr(out, "type")    <- "bootstrap"
     attr(out, "scale")   <- 1 / length(valid)

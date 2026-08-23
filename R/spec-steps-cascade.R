@@ -346,10 +346,17 @@ step_nonresponse <- function(spec, respondent,
     # Calibration approach to nonresponse (two-phase; Sarndal & Lundstrom 2005).
     if (is.null(formula))
       stop("nonresponse method = 'calibration' requires `formula` (the auxiliaries).")
+    maxit <- .wf_count(maxit, "maxit", min = 1L)
+    if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol <= 0)
+      stop("`tol` must be a single positive finite number.", call. = FALSE)
     if (calfun == "logit" && is.null(bounds))
       stop("calfun = 'logit' requires `bounds` = c(L, U).")
-    if (!is.null(bounds) && (length(bounds) != 2L || bounds[1] >= 1 || bounds[2] <= 1))
-      stop("`bounds` must be c(L, U) with L < 1 < U.")
+    if (!is.null(bounds)) {
+      if (!is.numeric(bounds) || length(bounds) != 2L || anyNA(bounds) || any(!is.finite(bounds)))
+        stop("`bounds` must be a numeric vector c(L, U) of two finite numbers.")
+      if (bounds[1] >= 1 || bounds[2] <= 1)
+        stop("`bounds` must be c(L, U) with L < 1 < U.")
+    }
     if (!is.null(penalty)) {
       if (!is.null(bounds) || calfun == "logit")
         stop("`penalty` (ridge) cannot be combined with bounded calibration.")

@@ -133,7 +133,7 @@
 
 # Optional card: replication design for variance (from a weightflow_boot /
 # weightflow_jack object passed via `replicates`). Reads only stored metadata.
-.replication_card <- function(rep, lang) {
+.replication_card <- function(rep, lang, object = NULL) {
   if (is.null(rep) || !inherits(rep, c("weightflow_boot", "weightflow_jack")))
     return("")
   is_jack <- inherits(rep, "weightflow_jack")
@@ -193,10 +193,27 @@
       al(.t("Few PSUs per stratum: the replication variance can be unstable. Consider more PSUs per stratum or collapsing sparse strata.",
             "Pocas UPM por estrato: la varianza por replicaci\u00f3n puede ser inestable. Conviene m\u00e1s UPM por estrato o colapsar los estratos ralos.", lang))
     else ""
+  # Note when the recipe calibrates to totals ESTIMATED from a reference survey:
+  # say whether their sampling variance is propagated here or omitted (fixed).
+  ref_note <- ""
+  if (!is.null(object) && !is.null(object$steps)) {
+    hit <- Filter(function(s) inherits(s$population, "wf_reference_sample"), object$steps)
+    if (length(hit)) {
+      has_rep <- any(vapply(hit, function(s) !is.null(attr(s$population, "wf_ref_replicates")),
+                            logical(1)))
+      ref_note <- if (has_rep)
+        sprintf("<p class='note'>%s</p>", .t(
+          "Some control totals are estimated from a reference survey; their sampling variance is propagated through these replicates (each replicate re-estimates the totals from the paired reference replicate; Opsomer and Erciulescu 2021).",
+          "Algunos totales de control se estiman a partir de una encuesta de referencia; su variabilidad muestral se propaga en estas r\u00e9plicas (cada r\u00e9plica reestima los totales desde la r\u00e9plica pareada de la referencia; Opsomer y Erciulescu 2021).", lang))
+      else
+        al(.t("Some control totals are estimated from a reference survey but were treated as fixed (no reference replicate weights supplied), so this replication variance omits their sampling error and may be understated.",
+              "Algunos totales de control se estiman a partir de una encuesta de referencia pero se trataron como fijos (sin pesos r\u00e9plica de la referencia), as\u00ed que esta varianza por replicaci\u00f3n omite su error muestral y puede quedar subestimada.", lang))
+    }
+  }
   sprintf(
-    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s<p class='note'>%s</p></div>",
+    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s<p class='note'>%s</p></div>",
     .t("Replication design for variance", "Dise\u00f1o de replicaci\u00f3n para la varianza", lang),
-    body, fail_alert, warn,
+    body, fail_alert, warn, ref_note,
     .t("Replicate weights carry the variability of every adjustment. For standard errors, CV and confidence intervals of specific estimates, use these weights with the 'survey' or 'srvyr' package.",
        "Los pesos r\u00e9plica arrastran la variabilidad de cada ajuste. Para errores est\u00e1ndar, CV e intervalos de confianza de estimaciones concretas, us\u00e1 estos pesos con 'survey' o 'srvyr'.", lang))
 }

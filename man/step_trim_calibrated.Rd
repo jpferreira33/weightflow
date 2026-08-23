@@ -77,7 +77,9 @@ is too tight to preserve every total, the totals that cannot be met are relaxed
 and a warning is raised.
 
 This step is meant to run \strong{after} a \code{step_calibrate()}: it acts on the
-positive incoming weights and leaves dropped units (weight 0) alone.
+active incoming weights (including any negative weights an unbounded linear
+calibration produced, which it can bring back into \verb{[lower, upper]}) and
+leaves dropped units (weight 0) alone.
 }
 \examples{
 # calibrate, then trim the calibrated weights into [5.5, 13.5] without breaking
