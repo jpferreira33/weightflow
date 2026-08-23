@@ -14,6 +14,7 @@
 ^CRAN-SUBMISSION$
 ^CONTRIBUTING\.md$
 ^paper$
+^dev$
 ^ech_data$
 ^vignettes/articles$
 ^respaldos$

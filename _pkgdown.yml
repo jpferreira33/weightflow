@@ -51,12 +51,14 @@ articles:
   - calibration
   - calibration-totals
   - model-calibration
+  - reference-survey
   - trimming
   - advanced-methods
 - title: Reporting
   navbar: Reporting
   contents:
   - quality-report
+  - inspecting-auditing
 - title: Case study
   navbar: Case study
   contents:

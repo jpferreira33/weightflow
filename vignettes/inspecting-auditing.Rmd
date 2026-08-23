@@ -1,0 +1,110 @@
+---
+title: "Inspecting and auditing the cascade"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Inspecting and auditing the cascade}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+A weightflow recipe is meant to be *audited*, not just run. Every step records
+what it did, and there are two complementary ways to read it back:
+
+- the self-contained **HTML report** (`report_weighting()`), for a visual,
+  shareable walk-through; and
+- the **programmatic quality-control (QC) surface** shown here, for scripted
+  checks you can wire into a production pipeline.
+
+This vignette is the programmatic path: run a recipe, gate it on the quality
+alerts, then drill down unit by unit and domain by domain.
+
+```{r setup}
+library(weightflow)
+
+fit <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   engine = "logit", formula = ~ region + sex + age) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex)))) |>
+  prep()
+```
+
+## Every step has a stable id
+
+Printing the recipe shows each step with a unique id (`<class>_<k>`). The id is
+the handle you use everywhere below; you can also set it yourself with
+`step_*(..., id = "my_name")`.
+
+```{r print}
+fit
+```
+
+## The quality-alert gate
+
+`prep()` records every quality incident in one place, regardless of whether the
+surrounding warnings were shown or suppressed. `has_alerts()` is the gate;
+`weighting_alerts()` returns the messages, each tagged with the step that raised
+it. This is the hook to stop a publication when something is off:
+
+```{r alerts}
+has_alerts(fit)
+weighting_alerts(fit)
+
+if (has_alerts(fit)) {
+  message("Review needed before dissemination:")
+  for (a in weighting_alerts(fit)) message("  - ", a)
+}
+```
+
+## Unit by unit: what did a step do?
+
+`collect_step_detail()` returns, for a chosen step, the weight each unit brought
+in (`.weight_in`), the multiplier the step applied (`.factor`, so
+`.weight_in * .factor` is the outgoing weight), plus that step's native
+per-unit quantities. Select the step by its id:
+
+```{r step-detail}
+det <- collect_step_detail(fit, step = "nonresponse_1")
+head(det)
+```
+
+For a nonresponse propensity step, `collect_propensities()` recovers the fitted
+response propensities directly, so you can inspect their distribution before
+trusting the adjusted weights:
+
+```{r propensities}
+props <- collect_propensities(fit)
+summary(props$.propensity)
+```
+
+## Domain by domain: is each domain reliable?
+
+`domain_summary()` reports, for each study domain, how the weights move at every
+stage of the cascade (active units, sum of weights, mean weight and the Kish
+design effect), so weight movement can be reviewed per domain, not only overall:
+
+```{r domains}
+domain_summary(fit, by = "region")
+```
+
+A domain whose design effect jumps or whose active count collapses is where to
+look first.
+
+## HTML report vs programmatic QC
+
+Use the two together:
+
+- `report_weighting(fit)` for the human-facing document, for reviewers, a
+  methods annex, or a training session.
+- `weighting_alerts()`, `collect_step_detail()`, `collect_propensities()` and
+  `domain_summary()` for automated acceptance rules in a script: fail the run if
+  `has_alerts()` flags a critical incident, if a domain's design effect exceeds a
+  threshold, or if a propensity model produced extreme factors.
+
+The recipe object, its ids and its alerts are stable across runs, so the same QC
+script keeps working as the recipe evolves.

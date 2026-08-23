@@ -127,6 +127,13 @@ Set `open = TRUE` to launch the report in a browser, or pass `file` to choose th
 path. `lang = "es"` produces the narrative in Spanish. `narrative = FALSE` gives
 the previous tables-only report, and `plots = FALSE` drops the per-step visuals.
 
-The variance card documents the design of the replication. The standard errors,
-CVs and confidence intervals of specific estimates are computed downstream with
-the `survey` or `srvyr` package (see the Variance estimation article).
+The variance card documents the design of the replication (including the degrees
+of freedom and whether a finite-population correction was applied), and it flags
+when a calibration targeted estimated totals from a `reference_sample()`. The
+standard errors, CVs and confidence intervals of specific estimates are computed
+downstream with the `survey` or `srvyr` package (see the Variance estimation
+article).
+
+The HTML report is the human-facing view. For the same information as a
+programmatic quality-control surface (alerts as a gate, per-unit and per-domain
+inspection), see `vignette("inspecting-auditing")`.

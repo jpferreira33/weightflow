@@ -267,3 +267,9 @@ assumptions. Using propensity classes (`num_classes`) rather than the direct
 $1/\hat\phi_i$ keeps the adjustment stable when the model is imperfect, at the cost of
 some efficiency. In all cases, model the response on auxiliaries that are both
 predictive of responding and related to the survey outcomes.
+
+## See also
+
+To recover the fitted propensities and see, unit by unit, what the adjustment
+did, use `collect_propensities()` and `collect_step_detail()`; the full
+quality-control flow is in `vignette("inspecting-auditing")`.

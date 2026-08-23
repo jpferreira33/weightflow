@@ -264,6 +264,13 @@ auxiliaries are known at the unit level for the whole population, the
 model-calibration approach (see the *Model calibration* article) can be more
 efficient still.
  
+## See also
+
+To calibrate to a **survey** instead of a census frame (estimated totals, with
+their variance propagated), see `vignette("reference-survey")`. To inspect what
+each step did unit by unit and gate a run on the quality alerts, see
+`vignette("inspecting-auditing")`.
+
 ## References
 
 - Deville, J.-C., & Sarndal, C.-E. (1992). Calibration estimators in survey
