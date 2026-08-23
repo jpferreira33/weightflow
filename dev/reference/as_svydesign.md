@@ -8,8 +8,12 @@ fixed constants. `as_svrepdesign()` builds a replicate-weights
 or
 [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_weights.md)
 object. Both are the bridge to the `survey` package, and therefore to
-`svytotal()`, `svymean()`, `svyratio()`, `svyby()`, `svyglm()` and
-domain estimation generally.
+[`svytotal()`](https://rdrr.io/pkg/survey/man/surveysummary.html),
+[`svymean()`](https://rdrr.io/pkg/survey/man/surveysummary.html),
+[`svyratio()`](https://rdrr.io/pkg/survey/man/svyratio.html),
+[`svyby()`](https://rdrr.io/pkg/survey/man/svyby.html),
+[`svyglm()`](https://rdrr.io/pkg/survey/man/svyglm.html) and domain
+estimation generally.
 
 ## Usage
 
