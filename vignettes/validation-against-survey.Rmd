@@ -95,7 +95,7 @@ compare <- function(w_sv, w_wf, label, base = d$pw) {
 
 Post-stratifying to the joint population counts of `region` × `sex`.
 
-```{r poststratify, eval = has_survey}
+```{r poststratify, eval = has_survey, fig.alt = "Scatter of weightflow versus survey weights for post-stratification, points on the identity line."}
 library(survey)
 ps_tab <- as.data.frame(table(region = pop$region, sex = pop$sex))
 
@@ -116,7 +116,7 @@ compare(w_sv, w_wf, "Post-stratification (region x sex)")
 Raking (iterative proportional fitting) to the `region`, `sex` and `age_grp`
 margins. We tighten `survey`'s convergence so both solve to the same precision.
 
-```{r raking, eval = has_survey}
+```{r raking, eval = has_survey, fig.alt = "Scatter of weightflow versus survey weights for raking, points on the identity line."}
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "raking", totals = list(reg_tab, sex_tab, age_tab),
                  count = "Freq") |>
@@ -139,7 +139,7 @@ distributions afterwards.
 
 ### Linear (chi-square) distance -- the GREG estimator
 
-```{r greg-linear, eval = has_survey}
+```{r greg-linear, eval = has_survey, fig.alt = "Scatter of weightflow versus survey weights for linear GREG calibration, points on the identity line."}
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
                  totals = totals, calfun = "linear") |>
@@ -153,7 +153,7 @@ compare(w_sv, w_wf, "Distance: linear (GREG)")
 
 ### Raking (exponential) distance -- always-positive weights
 
-```{r greg-raking, eval = has_survey}
+```{r greg-raking, eval = has_survey, fig.alt = "Scatter of weightflow versus survey weights for raking-distance calibration, points on the identity line."}
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
                  totals = totals, calfun = "raking", maxit = 500, tol = 1e-10) |>
@@ -167,7 +167,7 @@ compare(w_sv, w_wf, "Distance: raking (exponential)")
 
 ### Logit distance -- bounded g-weights
 
-```{r greg-logit, eval = has_survey}
+```{r greg-logit, eval = has_survey, fig.alt = "Scatter of weightflow versus survey weights for logit-distance calibration, points on the identity line."}
 bnds <- c(0.5, 2)
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
@@ -187,7 +187,7 @@ The distance function shapes how far the weights move. The linear distance is
 symmetric (and can dip below the dashed line at `g = 1`), raking keeps every
 weight positive, and logit is bounded by construction.
 
-```{r gdist, eval = show_plot, fig.width = 6, fig.height = 3.6}
+```{r gdist, eval = show_plot, fig.width = 6, fig.height = 3.6, fig.alt = "Density curves of the adjustment factors for the linear, raking and logit distances, centred near one."}
 gdist <- rbind(
   data.frame(distance = "linear", g = g_linear),
   data.frame(distance = "raking", g = g_raking),
@@ -213,7 +213,7 @@ equal_within_cluster = TRUE`). `survey` reaches the same result through
 `aggregate.stage` (Vanderhoeft 2001). The base weight `pw` is constant within
 household here, so the constraint is well defined.
 
-```{r integrative, eval = has_survey}
+```{r integrative, eval = has_survey, fig.alt = "Scatter of weightflow versus survey weights for integrative one-weight-per-household calibration, points on the identity line."}
 wf <- weighting_spec(d, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex + age_grp,
                  totals = totals, cluster = "household_id",
@@ -239,7 +239,7 @@ call with `by =`. Here each region is calibrated to its own `sex` and `age_grp`
 distributions; `survey` reaches the same weights by calibrating one region at a
 time.
 
-```{r domain, eval = has_survey}
+```{r domain, eval = has_survey, fig.alt = "Scatter of weightflow versus survey weights for domain-partitioned calibration, points on the identity line."}
 sex_by_region <- as.data.frame(table(region = pop$region, sex     = pop$sex))
 age_by_region <- as.data.frame(table(region = pop$region, age_grp = pop$age_grp))
 

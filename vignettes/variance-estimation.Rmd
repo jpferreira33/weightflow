@@ -44,7 +44,7 @@ of every stage.
 within strata and re-runs the recipe on each replicate. Pass the **inert**
 recipe (do not call `prep()` first): the bootstrap preps it once per replicate.
 
-```{r recipe}
+```{r recipe, warning = FALSE}
 dat <- sample_one
 dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
@@ -153,7 +153,7 @@ replicate weights again carry the variability of every stage.
 `jackknife_weights()` builds the stratified delete-a-PSU jackknife (JKn) with
 `strata`/`psu`; the unstratified JK1 follows from `strata = NULL`.
 
-```{r jackknife}
+```{r jackknife, warning = FALSE}
 jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 jk
 
@@ -189,7 +189,7 @@ some strata are sampled at 10 or 20 percent. Pass the fraction to
 by stratum. The correction folds $(1 - f_h)$ into the Rao-Wu rescaling, so
 `fpc = NULL` reproduces the uncorrected result exactly.
 
-```{r fpc}
+```{r fpc, warning = FALSE}
 boot0 <- bootstrap_weights(spec, replicates = 200, strata = "region",
                            psu = "psu", seed = 2024, progress = FALSE)
 bootf <- bootstrap_weights(spec, replicates = 200, strata = "region",
