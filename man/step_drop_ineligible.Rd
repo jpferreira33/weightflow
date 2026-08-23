@@ -4,13 +4,17 @@
 \alias{step_drop_ineligible}
 \title{Drop ineligible (out-of-scope) units}
 \usage{
-step_drop_ineligible(spec, ineligible)
+step_drop_ineligible(spec, ineligible, id = NULL)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
 
 \item{ineligible}{a 0/1 dummy column (1 = ineligible) or any logical
 condition (unquoted) that is TRUE for out-of-scope units.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

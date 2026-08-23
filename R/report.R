@@ -72,7 +72,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     .metric(.t("Cases", "Casos", lang), format(length(fin), big.mark = ",")),
     .metric(.t("Active (final)", "Activas (final)", lang), format(de_f$n, big.mark = ",")),
     .metric(.t("Sum of weights", "Suma de pesos", lang), format(round(sum(fin)), big.mark = ",", scientific = FALSE)),
-    .metric(.t("Final deff_K", "deff_K final", lang), sprintf("%.3f", de_f$deff)),
+    .metric(.t("Final deff_K", "deff_K final", lang),
+            if (is.finite(de_f$deff)) sprintf("%.3f", de_f$deff) else "&mdash;"),
     .metric(.t("Effective n", "n efectivo", lang), format(round(de_f$n_eff), big.mark = ",", scientific = FALSE)))
 
   # Stage summary table
@@ -99,8 +100,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     d3  <- function(x) formatC(x, format = "f", digits = 3)
     dcell <- function(v) {
       if (!is.finite(v)) return("<span class='muted'>&mdash;</span>")   # N-20: deff overflow / NaN
-      sprintf("<span class='%s'>%s%s</span>",
-              if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
+      sprintf("<span class='%s'>%s%s</span>",                            # amber at deff >= 1.4
+              if (v >= 1.4) "cell-warn" else "cell-ok", if (v >= 1.4) "&#9888; " else "", d3(v))
     }
     rows <- vapply(seq_len(nrow(stab)), function(i) sprintf(
       "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>",
@@ -304,13 +305,18 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
             sprintf("Receta completada con %d punto%s de atenci\u00f3n.", nis, if (nis == 1L) "" else "s"), lang)
     it <- c(sprintf("%d %s", ns, if (ns == 1L) .t("weighting step", "paso de ponderaci\u00f3n", lang)
                                  else .t("weighting steps", "pasos de ponderaci\u00f3n", lang)))
-    if (ncv == 0L)
+    # Only claim "calibration constraints preserved" when the recipe actually has
+    # a constraint-imposing step (one that records a `converged` attribute); a
+    # recipe with no calibration has no constraints to preserve.
+    has_constraints <- any(vapply(object$steps, function(st)
+      !is.null(attr(st$diagnostics, "converged")), logical(1)))
+    if (has_constraints && ncv == 0L)
       it <- c(it, if (is.null(md) || !is.finite(md) || md < 0.05)
                     .t("calibration constraints preserved",
                        "restricciones de calibraci\u00f3n preservadas", lang)
                   else .t(sprintf("calibration totals within %.2f%% of target after rounding/trimming", md),
                           sprintf("totales de calibraci\u00f3n dentro de %.2f%% del objetivo tras redondeo/recorte", md), lang))
-    if (!is.null(replicates)) {
+    if (!is.null(replicates) && inherits(replicates, c("weightflow_boot", "weightflow_jack"))) {
       rmat  <- replicates$replicates
       nrp   <- if (!is.null(rmat)) ncol(rmat) else replicates$R
       nfl   <- if (!is.null(rmat)) sum(apply(rmat, 2, anyNA)) else 0L
@@ -338,7 +344,9 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     sprintf("<h1>weightflow &mdash; %s</h1>\n", .t("weighting recipe", "receta de ponderaci\u00f3n", lang)),
     sprintf("<p class='muted'>%s: <code>%s</code> &nbsp;|&nbsp; %d %s</p>\n",
             .t("Base weights", "Pesos base", lang), .html_escape(object$base_weights),
-            length(object$steps), .t("steps", "pasos", lang)),
+            length(object$steps),
+            if (length(object$steps) == 1L) .t("step", "paso", lang)
+            else .t("steps", "pasos", lang)),
     "<p class='prov'>", prov, "</p>\n",
     "<div class='toolbar noprint'><button type='button' id='wf-pdf' class='wfbtn'>",
       .t("Download PDF", "Descargar PDF", lang), "</button></div>\n",

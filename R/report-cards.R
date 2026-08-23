@@ -15,8 +15,10 @@
     sprintf("This report documents the construction of %s. %d adjustment %s applied: %s. The final weights have a Kish design effect of %.3f (effective sample size %s%s).",
             what, n, if (n == 1L) "step was" else "steps were", listed, de_f$deff,
             format(round(de_f$n_eff), big.mark = ","), ri_s),
-    sprintf("Este reporte documenta la construcci\u00f3n de %s. Se aplicaron %d paso%s de ajuste: %s. Los pesos finales tienen un efecto de dise\u00f1o de Kish de %.3f (tama\u00f1o de muestra efectivo %s%s).",
-            what, n, if (n == 1L) "" else "s", listed, de_f$deff,
+    sprintf("Este reporte documenta la construcci\u00f3n de %s. %s de ajuste: %s. Los pesos finales tienen un efecto de dise\u00f1o de Kish de %.3f (tama\u00f1o de muestra efectivo %s%s).",
+            what,
+            if (n == 1L) "Se aplic\u00f3 1 paso" else sprintf("Se aplicaron %d pasos", n),
+            listed, de_f$deff,
             format(round(de_f$n_eff), big.mark = ","), ri_s),
     lang)
   sprintf("<div class='exec'><h4>%s</h4><p>%s</p></div>",
@@ -97,8 +99,10 @@
   fin <- object$final_weight
   d3  <- function(x) formatC(x, format = "f", digits = 3)
   num <- function(x) format(round(x), big.mark = ",")
+  # Amber at deff >= 1.4, the same "substantial efficiency loss" threshold used by
+  # the closing interpretation, so the table and the text agree.
   dcell <- function(v) if (is.na(v)) "&ndash;" else
-    sprintf("<span class='%s'>%s%s</span>", if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
+    sprintf("<span class='%s'>%s%s</span>", if (v >= 1.4) "cell-warn" else "cell-ok", if (v >= 1.4) "&#9888; " else "", d3(v))
   hd <- paste0("<th scope='col'>", c(.t("Domain", "Dominio", lang),
                          .t("Active units (n)", "Unidades activas (n)", lang),
                          .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
@@ -164,6 +168,11 @@
                  .t(" (all usable)", " (todas utilizables)", lang) else "")),
     kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
     kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
+    if (!is.null(rep$df))
+      kv(.t("Degrees of freedom", "Grados de libertad", lang), format(rep$df, big.mark = ",")) else "",
+    kv(.t("Finite-population correction", "Correcci&oacute;n de poblaci&oacute;n finita (FPC)", lang),
+       if (is.null(rep$fpc)) .t("none (with replacement)", "ninguna (con reemplazo)", lang)
+       else .t("applied", "aplicada", lang)),
     kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
     kv(.t("Recipe-aware", "Recipe-aware", lang),
        if (nrep > 0L && nfail >= nrep)
@@ -441,10 +450,11 @@
     rows <- vapply(levels(g), function(l) {
       sidx <- which(g == l); pd <- wm(p[sidx], dw[sidx])
       ob <- wm(as.numeric(resp[sidx]), dw[sidx]); dif <- ob - pd
-      sprintf("<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td><span class='%s'>%+.3f</span></td></tr>",
-              .html_escape(l), length(sidx), d3(pd), d3(ob),
-              if (is.finite(dif) && abs(dif) > 0.05) "cell-warn" else "cell-ok",
-              if (is.finite(dif)) dif else 0)
+      dcell <- if (!is.finite(dif)) "<span class='muted'>&mdash;</span>"
+               else sprintf("<span class='%s'>%+.3f</span>",
+                            if (abs(dif) > 0.05) "cell-warn" else "cell-ok", dif)
+      sprintf("<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+              .html_escape(l), length(sidx), d3(pd), d3(ob), dcell)
     }, character(1))
     cal_html <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
                         hd, paste(rows, collapse = ""))
@@ -680,8 +690,8 @@
              "</th>", collapse = "")
       arows <- vapply(seq_along(colnames(mm)), function(i) {
         yc <- if (length(ycor)) paste(vapply(ycor, function(v) sprintf("<td>%s</td>", d3b(v[i])), character(1)), collapse = "") else ""
-        sprintf("<tr><td>%s</td><td>%+.3f</td>%s</tr>", .html_escape(colnames(mm)[i]),
-                if (is.finite(sdif[i])) sdif[i] else 0, yc) }, character(1))
+        sprintf("<tr><td>%s</td><td>%s</td>%s</tr>", .html_escape(colnames(mm)[i]),
+                if (is.finite(sdif[i])) sprintf("%+.3f", sdif[i]) else "&mdash;", yc) }, character(1))
       aux_html <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
         .t("Auxiliary-vector quality (Sarndal-Lundstrom): a good auxiliary should explain response (large |std. diff.|) and, ideally, the outcomes y (large |corr.|). Auxiliaries near zero add little to the nonresponse correction.",
            "Calidad del vector auxiliar (Sarndal-Lundstrom): un buen auxiliar deber\u00eda explicar la respuesta (|dif. estand.| grande) y, idealmente, las y (|corr.| grande). Los auxiliares cerca de cero aportan poco a la correcci\u00f3n por no respuesta.", lang),
@@ -739,7 +749,7 @@
         sprintf("<span class='%s'>%s</span>", if (n_neg > 0) "cell-warn" else "cell-ok", nf(n_neg))),
     if (!is.null(bnd)) row(.t("at lower bound", "en cota inferior", lang), nf(sum(abs(g - bnd[1]) < 1e-6))) else "",
     if (!is.null(bnd)) row(.t("at upper bound", "en cota superior", lang), nf(sum(abs(g - bnd[2]) < 1e-6))) else "",
-    row(.t("chi-square distance &Sigma;(w&minus;d)&sup2;/d", "distancia chi-cuadrado &Sigma;(w&minus;d)&sup2;/d", lang), nf(cd$chi2)),
+    row(.t("chi-square distance &Sigma;(w&minus;d)&sup2;/d", "distancia chi-cuadrado &Sigma;(w&minus;d)&sup2;/d", lang), d3(cd$chi2)),
     row(.t("Auxiliary collinearity", "Colinealidad de auxiliares", lang),
         if (isTRUE(cd$pooled)) .t("per domain (see table below)", "por dominio (ver tabla abajo)", lang)
         else .kappa_cell(cd$cond, lang)))

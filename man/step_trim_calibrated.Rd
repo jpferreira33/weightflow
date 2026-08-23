@@ -14,7 +14,8 @@ step_trim_calibrated(
   cluster = NULL,
   equal_within_cluster = FALSE,
   maxit = 100L,
-  tol = 1e-07
+  tol = 1e-07,
+  id = NULL
 )
 }
 \arguments{
@@ -52,6 +53,10 @@ applies to that common household weight. Requires \code{cluster}. FALSE
 \item{maxit}{integer. Maximum iterations for the bounded solver.}
 
 \item{tol}{numeric. Convergence tolerance for the bounded solver.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

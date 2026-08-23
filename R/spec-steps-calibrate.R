@@ -152,6 +152,9 @@
 #'                  totals = list(sex_by_region, age_by_region),
 #'                  count = "Freq", by = "region") |>
 #'   prep()
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
+#'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_calibrate <- function(spec, margins = NULL,
@@ -160,7 +163,7 @@ step_calibrate <- function(spec, margins = NULL,
                            cluster = NULL, equal_within_cluster = FALSE,
                            calfun = c("linear", "logit", "raking"), bounds = NULL,
                            maxit = 50L, tol = 1e-6, penalty = NULL,
-                           population = NULL) {
+                           population = NULL, id = NULL) {
   method <- match.arg(method)
   calfun <- match.arg(calfun)
   # N4-1: validate maxit/tol here too. Unvalidated, `maxit = "a"` made the raking
@@ -187,6 +190,12 @@ step_calibrate <- function(spec, margins = NULL,
       stop(paste0("'", method, "' requires either `margins` (a named list) or ",
                   "`totals` (a data frame, or a list of data frames for raking, ",
                   "with category columns and a counts column named by `count`)."))
+    # CR-2: both supplied -> the tidy `totals` path wins and `margins` would be
+    # dropped silently, against the package's "ignored arguments warn" policy.
+    if (has_margins && (totals_is_df || totals_is_list))
+      warning(sprintf(paste0("Both `margins` and `totals` were supplied for method = \"%s\"; ",
+                            "`totals` takes precedence and `margins` is ignored."), method),
+              call. = FALSE)
     if (has_margins) {
       bad <- setdiff(names(margins), names(spec$data))
       if (length(bad))
@@ -219,11 +228,13 @@ step_calibrate <- function(spec, margins = NULL,
   } else {                                   # linear
     if (is.null(formula) || is.null(totals))
       stop("method = 'linear' requires `formula` and `totals`.")
-    if (totals_is_df) {
-      if (is.null(count) || !is.character(count) || length(count) != 1L ||
-          !count %in% names(totals))
-        stop("When `totals` is a data frame, `count` must name the counts column of `totals`.")
-    }
+    if (totals_is_df)
+      stop(paste0("method = 'linear' does not take a single data frame as `totals` ",
+                  "(that is the post-stratification format). Use a named numeric vector ",
+                  "aligned with the model.matrix columns, e.g. c(`(Intercept)` = N, ",
+                  "regionSouth = ...), or the tidy NAMED list with one data frame/number ",
+                  "per auxiliary, e.g. totals = list(region = <df>, age = <number>)."),
+           call. = FALSE)
     if (totals_is_list) {
       # tidy linear: named list of data frames (categorical) / numbers (continuous)
       if (is.null(names(totals)))
@@ -316,7 +327,7 @@ step_calibrate <- function(spec, margins = NULL,
     ),
     class = c("step_calibrate", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
 
 # --- Optional step: weight trimming ----------------------------------------
@@ -352,11 +363,14 @@ step_calibrate <- function(spec, margins = NULL,
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_trim(max_ratio = 3, reference = "base")
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
+#'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim <- function(spec, max_ratio, min_ratio = NULL,
                       reference = c("base", "median", "value"),
-                      redistribute = TRUE, by = NULL, maxit = 50L) {
+                      redistribute = TRUE, by = NULL, maxit = 50L, id = NULL) {
   reference <- match.arg(reference)
   if (missing(max_ratio)) stop("`max_ratio` is required.", call. = FALSE)
   if (!is.numeric(max_ratio) || length(max_ratio) != 1L || !is.finite(max_ratio))
@@ -395,7 +409,7 @@ step_trim <- function(spec, max_ratio, min_ratio = NULL,
     ),
     class = c("step_trim", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
 
 #' Kish design effect from unequal weighting
@@ -456,9 +470,12 @@ design_effect <- function(w) {
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_round(digits = 0) |> prep()
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
+#'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
-step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total")) {
+step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total"), id = NULL) {
   method <- match.arg(method)
   if (!is.numeric(digits) || length(digits) != 1L || !is.finite(digits) ||
       digits < 0 || digits != round(digits))
@@ -473,7 +490,7 @@ step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total"
     ),
     class = c("step_round", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
 
 # --- Model calibration (Wu & Sitter 2001) ----------------------------------

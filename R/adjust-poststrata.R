@@ -265,10 +265,10 @@
   # every sweep, contributing nothing to maxdiff, so `converged` could be TRUE
   # with that margin still off. Check the achieved totals against the targets.
   rel_dev <- abs(diag$achieved - diag$target) / (abs(diag$target) + 1)
-  targets_ok <- max(rel_dev) <= 1e-4      # loose: a genuinely skipped cell is off by ~100%
+  targets_ok <- max(rel_dev) <= 1e-3      # same tolerance as the classic raking post-check
   attr(diag, "converged") <- (maxdiff < tol) && targets_ok
   if ((maxdiff < tol) && !targets_ok) {                 # silent-miss case
-    off <- which(rel_dev > 1e-4)
+    off <- which(rel_dev > 1e-3)
     k   <- seq_len(min(3L, length(off)))
     warning(sprintf(paste0(
       "Raking stabilised but %d margin cell(s) are not met (max relative deviation ",

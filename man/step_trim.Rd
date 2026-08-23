@@ -11,7 +11,8 @@ step_trim(
   reference = c("base", "median", "value"),
   redistribute = TRUE,
   by = NULL,
-  maxit = 50L
+  maxit = 50L,
+  id = NULL
 )
 }
 \arguments{
@@ -36,6 +37,10 @@ afterwards you can use FALSE: calibration restores the totals.}
 \item{by}{character. Groups within which to redistribute (optional).}
 
 \item{maxit}{integer. Maximum cap+redistribution iterations.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

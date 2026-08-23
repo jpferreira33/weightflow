@@ -104,7 +104,9 @@
   aa  <- suppressWarnings(as.numeric(as.character(df$achieved)))
   rel <- 100 * (aa - tt) / tt
   nm  <- .t("rel. diff (%)", "dif. rel. (%)", lang)
-  df[[nm]] <- ifelse(is.finite(rel), ifelse(abs(rel) < 5e-9, "0.00%", sprintf("%+.2f%%", rel)), "-")
+  # < 0.005 rounds to 0.00 at two decimals, so show a plain "0.00%" (no misleading
+  # "+0.00%" sign); non-finite (e.g. target 0) shows "-", not a green "+0.000".
+  df[[nm]] <- ifelse(is.finite(rel), ifelse(abs(rel) < 0.005, "0.00%", sprintf("%+.2f%%", rel)), "-")
   new <- setdiff(names(df), nm)
   ord <- append(new, nm, after = match("achieved", new))
   df[, ord, drop = FALSE]

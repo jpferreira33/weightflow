@@ -120,7 +120,13 @@ apply_step.step_trim <- function(step, data, w) {
       # spread the excess proportionally among those within band
       free <- gi[new_w[gi] < cap[gi] & new_w[gi] > floor_v[gi]]
       if (!length(free)) break                  # nowhere to redistribute
-      new_w[free] <- new_w[free] + excess * new_w[free] / sum(new_w[free])
+      # Proportional-to-weight redistribution assumes positive weights. If the
+      # free set's weight sum is not clearly positive (negative weights from an
+      # earlier GREG), the proportional factor explodes or flips sign -- fall back
+      # to an EQUAL split, which still preserves the total.
+      sf <- sum(new_w[free])
+      if (sf > 1e-9) new_w[free] <- new_w[free] + excess * new_w[free] / sf
+      else           new_w[free] <- new_w[free] + excess / length(free)
     }
     it_global <- max(it_global, it)
   }
@@ -234,6 +240,16 @@ apply_step.step_model_calibration <- function(step, data, w) {
                "`x_formula`.\nExpected: %s"), paste(cn, collapse = ", ")))
     Tx <- as.numeric(totvec[cn]); names(Tx) <- cn
   }
+
+  # The models predict on `pop`; NA in a model predictor there would reach the
+  # engine (glm errors; rpart imputes silently via surrogates), so the projected
+  # totals would be wrong. Guard the predictors on the frame, as we do for x_formula.
+  mvars <- unique(unlist(lapply(step$models, function(m) all.vars(m$formula[[3L]]))))
+  mvars <- intersect(mvars, names(pop))
+  if (length(mvars) && anyNA(pop[, mvars, drop = FALSE]))
+    stop("`population` has missing values (NA) in a y_model predictor; those rows would ",
+         "reach the model engine (an error, or silent surrogate imputation). Impute or drop ",
+         "them first.", call. = FALSE)
 
   # Model-assisted block: one prediction column per model y
   mu_cols <- list(); Tmu <- numeric(0)
@@ -441,9 +457,12 @@ apply_step.step_trim_weights <- function(step, data, w) {
       wv[over]  <- upper
       wv[under] <- lower
       free <- wv < upper & wv > lower
-      if (abs(net) > 1e-12 && any(free))          # redistribute to preserve total
-        wv[free] <- wv[free] + net * wv[free] / sum(wv[free])
-      else if (abs(net) > 1e-12)
+      sf   <- sum(wv[free])
+      if (abs(net) > 1e-12 && any(free)) {        # redistribute to preserve total
+        # equal split when the free weights are not clearly positive (see step_trim)
+        if (sf > 1e-9) wv[free] <- wv[free] + net * wv[free] / sf
+        else           wv[free] <- wv[free] + net / sum(free)
+      } else if (abs(net) > 1e-12)
         unredist <- unredist + net                # nowhere to redistribute: mass lost
       if (!step$strict) break
     }

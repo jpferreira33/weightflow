@@ -4,7 +4,7 @@
 \alias{step_rescale}
 \title{Rescale the weights to a fixed sum}
 \usage{
-step_rescale(spec, to = c("n", "total"), total = NULL, by = NULL)
+step_rescale(spec, to = c("n", "total"), total = NULL, by = NULL, id = NULL)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
@@ -16,6 +16,10 @@ or "total" (weights sum to \code{total}).}
 
 \item{by}{character. Rescale within these groups (optional). With to = "n",
 each group sums to its own active count.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

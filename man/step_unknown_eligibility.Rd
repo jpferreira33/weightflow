@@ -4,7 +4,7 @@
 \alias{step_unknown_eligibility}
 \title{Unknown-eligibility adjustment}
 \usage{
-step_unknown_eligibility(spec, unknown, by = NULL, cluster = NULL)
+step_unknown_eligibility(spec, unknown, by = NULL, cluster = NULL, id = NULL)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
@@ -21,6 +21,10 @@ its (uniform) weight, the weight of unknown-eligibility clusters is
 redistributed among the known ones, and the adjusted weight is assigned to
 every member. Use this when unknown-eligibility units have no roster (one
 row per address) while resolved units are expanded by person.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

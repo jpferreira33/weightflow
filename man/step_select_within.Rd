@@ -4,7 +4,13 @@
 \alias{step_select_within}
 \title{Within-cluster selection adjustment}
 \usage{
-step_select_within(spec, prob = NULL, n_eligible = NULL, n_selected = NULL)
+step_select_within(
+  spec,
+  prob = NULL,
+  n_eligible = NULL,
+  n_selected = NULL,
+  id = NULL
+)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
@@ -24,6 +30,10 @@ single number (same subsample size in every household) or an unquoted column
 (subsample size varying by household). The weight is multiplied by
 n_eligible / n_selected (equivalent to prob = n_selected/n_eligible).
 Defaults to 1. Only used together with \code{n_eligible}.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

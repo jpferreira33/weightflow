@@ -52,9 +52,13 @@ domain_summary <- function(object, by) {
     dom_levels <- levels(f)
   }
   # Missing domain values become an explicit "(missing)" domain (show, don't drop).
+  # If a literal "(missing)" category already exists, use a distinct label so the
+  # real category and the NAs stay separate and factor() does not get duplicate
+  # levels (which would error).
   if (any(is.na(dom))) {
-    dom[is.na(dom)] <- "(missing)"
-    dom_levels <- c(dom_levels, "(missing)")
+    lbl <- utils::tail(make.unique(c(dom_levels, "(missing)")), 1L)
+    dom[is.na(dom)] <- lbl
+    dom_levels <- c(dom_levels, lbl)
   }
 
   h   <- object$history

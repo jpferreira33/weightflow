@@ -14,7 +14,8 @@ step_model_calibration(
   cluster = NULL,
   equal_within_cluster = FALSE,
   crossfit = NULL,
-  crossfit_seed = NULL
+  crossfit_seed = NULL,
+  id = NULL
 )
 }
 \arguments{
@@ -67,6 +68,10 @@ replication (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018), so it
 is recommended whenever a model uses a non-glm engine.}
 
 \item{crossfit_seed}{integer or NULL. Seed for reproducible fold assignment.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

@@ -26,6 +26,13 @@
 #' @param strata,psu column names of the stratum and the PSU. If `psu` is NULL
 #'   each unit is its own PSU; if `strata` is NULL a single stratum is assumed.
 #' @param m PSUs drawn per stratum (default `n - 1`).
+#' @param fpc optional first-stage finite-population correction: the name of a
+#'   column holding the first-stage sampling fraction f_h (constant within
+#'   stratum, in `[0, 1]`), a single number applied to every stratum, or a numeric
+#'   vector named by stratum level. `NULL` (default) is the with-replacement
+#'   bootstrap (no correction). The correction folds `(1 - f_h)` into the Rao-Wu
+#'   rescaling (Rao, Wu and Yue 1992; Beaumont and Patak 2012); `f_h = 0`
+#'   reproduces the uncorrected result. Only available for the bootstrap.
 #' @param lonely_psu how to treat strata with a single PSU (which a
 #'   with-replacement bootstrap cannot resample): "certainty" (default) treats
 #'   them as self-representing, so they contribute no bootstrap variance, and
@@ -51,7 +58,7 @@
 #' boot_total(boot, "responded")
 #' @export
 bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
-                              psu = NULL, m = NULL,
+                              psu = NULL, m = NULL, fpc = NULL,
                               lonely_psu = c("certainty", "collapse"),
                               seed = NULL, cores = 1L, progress = TRUE) {
   if (!inherits(object, "weighting_spec"))
@@ -81,11 +88,40 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     as.character(data[[psu]])
   }
   .assert_design_complete(data, strata, psu)
+  # First-stage sampling fraction f_h for the finite-population correction, resolved
+  # to one value per row NOW (before any lonely-PSU collapse), keyed by stratum.
+  # f = 0 (the default) reproduces the with-replacement bootstrap exactly.
+  fvec <- rep(0, n)
+  if (!is.null(fpc)) {
+    fvec <- if (is.character(fpc) && length(fpc) == 1L) {
+      if (!fpc %in% names(data)) stop(sprintf("`fpc` column '%s' not found.", fpc), call. = FALSE)
+      as.numeric(data[[fpc]])
+    } else if (is.numeric(fpc) && length(fpc) == 1L) {
+      rep(as.numeric(fpc), n)
+    } else if (is.numeric(fpc) && !is.null(names(fpc))) {
+      out <- unname(fpc[st])
+      if (anyNA(out)) stop("`fpc` (named vector) is missing some stratum level(s).", call. = FALSE)
+      as.numeric(out)
+    } else stop("`fpc` must be a column name, a single number, or a numeric vector named by stratum.",
+                call. = FALSE)
+    if (any(!is.finite(fvec)) || any(fvec < 0 | fvec > 1))
+      stop("`fpc` (first-stage sampling fraction) must be in [0, 1].", call. = FALSE)
+  }
   if (lonely_psu == "collapse") {
     cl <- paste(st, cl, sep = "||")     # nest PSU ids so distinct PSUs stay distinct after merging strata
     st <- .collapse_lonely(st, cl)
   }
   hs <- unique(st)
+  # f_h per final stratum; a collapsed pseudo-stratum must have a single fraction.
+  fh_by <- stats::setNames(numeric(length(hs)), hs)
+  for (h in hs) {
+    fu <- unique(fvec[st == h])
+    if (length(fu) != 1L)
+      stop(sprintf(paste0("`fpc` is not constant within stratum '%s'. Collapsing strata with ",
+                          "different sampling fractions is not valid; give them the same fpc, or ",
+                          "do not collapse them."), h), call. = FALSE)
+    fh_by[[h]] <- fu
+  }
   if (!is.null(seed)) set.seed(seed)
 
   # --- Phase 1 (serial, uses the RNG): draw every resampling factor vector and a
@@ -111,7 +147,11 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
       if (nh < 2L) { fac[idx] <- 1; if (b == 1L) singleton <- c(singleton, h); next }
       mh   <- if (is.null(m)) nh - 1L else min(as.integer(m), nh - 1L)
       cnt  <- tabulate(sample.int(nh, mh, replace = TRUE), nbins = nh)
-      lam  <- 1 - sqrt(mh / (nh - 1)) + sqrt(mh / (nh - 1)) * (nh / mh) * cnt
+      # Rao-Wu rescaling, with the (1 - f_h) finite-population correction folded
+      # into the scale term (Rao, Wu and Yue 1992; Beaumont and Patak 2012). With
+      # f_h = 0 this is the plain with-replacement bootstrap. E[lambda] = 1 always.
+      ah   <- sqrt(mh * (1 - fh_by[[h]]) / (nh - 1))
+      lam  <- 1 - ah + ah * (nh / mh) * cnt
       names(lam) <- psus
       fac[idx] <- lam[cl[idx]]
     }
@@ -145,9 +185,13 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (failed > 0L)
     warning(failed, " replicate(s) failed to converge and were set to NA.")
 
+  # Degrees of freedom = (total PSUs) - (strata), the standard survey convention,
+  # computed post-collapse. Used by the t / percentile confidence intervals.
+  df <- sum(vapply(hs, function(h) length(unique(cl[st == h])), integer(1))) - length(hs)
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = replicates,
                  base_weights = bw, method = "bootstrap", lonely_psu = lonely_psu,
+                 fpc = fpc, df = df,
                  seed = seed, cores = as.integer(cores),
                  elapsed = as.numeric(difftime(Sys.time(), t0, units = "secs"))),
             class = "weightflow_boot")
@@ -221,6 +265,8 @@ print.weightflow_boot <- function(x, ...) {
   cat(sprintf("  units      : %d (active: %d)\n", nrow(x$replicates), sum(.wf_active(x$weights))))
   cat(sprintf("  strata     : %s\n", if (is.null(x$strata)) "(none)" else x$strata))
   cat(sprintf("  psu        : %s\n", if (is.null(x$psu)) "(unit-level)" else x$psu))
+  if (!is.null(x$df)) cat(sprintf("  df         : %d%s\n", x$df,
+      if (!is.null(x$fpc)) "  (fpc applied)" else ""))
   invisible(x)
 }
 
@@ -240,28 +286,49 @@ print.weightflow_boot <- function(x, ...) {
 #' @param boot a `weightflow_boot` object.
 #' @param statistic a function `function(w, data)` returning a numeric scalar
 #'   (or vector) given a weight vector and the data.
-#' @param level confidence level for the (normal) interval.
+#' @param level confidence level for the interval.
+#' @param ci_type interval type: "normal" (default, z-based), "t" (Student t with
+#'   the design degrees of freedom, wider and less anticonservative with few PSUs),
+#'   or "percentile" (empirical quantiles of the valid replicates).
+#' @param df degrees of freedom for the t interval; `NULL` (default) uses the
+#'   design df stored on the object (total PSUs minus strata).
 #' @return A data frame with `estimate`, `se`, `ci_lower`, `ci_upper`.
 #' @export
-bootstrap_estimate <- function(boot, statistic, level = 0.95) {
+bootstrap_estimate <- function(boot, statistic, level = 0.95,
+                               ci_type = c("normal", "t", "percentile"), df = NULL) {
   if (!inherits(boot, "weightflow_boot")) stop("`boot` must be a weightflow_boot object.")
   .wf_level(level)
+  ci_type <- match.arg(ci_type)
+  df <- if (is.null(df)) boot$df else df
   theta_hat <- statistic(boot$weights, boot$data)
   thetas    <- apply(boot$replicates, 2L, function(w) statistic(w, boot$data))
-  z <- stats::qnorm(1 - (1 - level) / 2)
-  if (is.matrix(thetas)) {
-    good <- apply(is.finite(thetas), 2L, all)
-    dev  <- thetas[, good, drop = FALSE] - theta_hat
-    se   <- sqrt(rowMeans(dev^2))
+  a   <- (1 - level) / 2
+  mat <- is.matrix(thetas)
+  good   <- if (mat) apply(is.finite(thetas), 2L, all) else is.finite(thetas)
+  nvalid <- sum(good)
+  if (nvalid < length(good))
+    warning(length(good) - nvalid, " non-finite replicate(s) dropped.")
+  if (mat) { dev <- thetas[, good, drop = FALSE] - theta_hat; se <- sqrt(rowMeans(dev^2)) }
+  else       se <- sqrt(mean((thetas[good] - theta_hat)^2))
+  if (ci_type == "percentile") {
+    if (nvalid < 50L)
+      warning("A percentile interval with fewer than 50 valid replicates is unstable.", call. = FALSE)
+    qf <- function(v) stats::quantile(v, c(a, 1 - a), names = FALSE, na.rm = TRUE)
+    if (mat) { q <- apply(thetas[, good, drop = FALSE], 1L, qf); lo <- q[1, ]; hi <- q[2, ] }
+    else     { q <- qf(thetas[good]); lo <- q[1]; hi <- q[2] }
   } else {
-    good <- is.finite(thetas)
-    se   <- sqrt(mean((thetas[good] - theta_hat)^2))
+    crit <- if (ci_type == "t") {
+      if (is.null(df) || !is.finite(df) || df <= 0)
+        stop(sprintf(paste0("A t interval needs positive degrees of freedom, but the design has ",
+                            "df = %s (e.g. one PSU per stratum). Use ci_type = \"normal\", ",
+                            "collapse lonely strata, or pass `df`."),
+                     if (is.null(df)) "NULL" else as.character(df)), call. = FALSE)
+      stats::qt(1 - a, df)
+    } else stats::qnorm(1 - a)
+    lo <- theta_hat - crit * se; hi <- theta_hat + crit * se
   }
-  if (sum(good) < length(good))
-    warning(length(good) - sum(good), " non-finite replicate(s) dropped.")
-  data.frame(estimate = theta_hat, se = se,
-             ci_lower = theta_hat - z * se, ci_upper = theta_hat + z * se,
-             row.names = if (is.matrix(thetas)) rownames(thetas) else NULL)
+  data.frame(estimate = theta_hat, se = se, ci_lower = lo, ci_upper = hi,
+             row.names = if (mat) rownames(thetas) else NULL)
 }
 
 #' @rdname bootstrap_estimate
@@ -393,10 +460,12 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
   if (failed > 0L)
     warning(failed, " replicate(s) failed and were set to NA.")
 
+  # Degrees of freedom = (total PSUs) - (strata): one delete-a-PSU replicate per PSU.
+  df <- length(rep_stratum) - length(unique(rep_stratum))
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = R,
                  rep_stratum = rep_stratum, rep_nh = rep_nh, base_weights = bw,
-                 method = "jackknife", lonely_psu = lonely_psu,
+                 method = "jackknife", lonely_psu = lonely_psu, df = df,
                  cores = as.integer(cores),
                  elapsed = as.numeric(difftime(Sys.time(), t0, units = "secs"))),
             class = "weightflow_jack")
@@ -419,6 +488,7 @@ print.weightflow_jack <- function(x, ...) {
   cat(sprintf("  units      : %d (active: %d)\n", nrow(x$replicates), sum(.wf_active(x$weights))))
   cat(sprintf("  strata     : %s\n", if (is.null(x$strata)) "(none)" else x$strata))
   cat(sprintf("  psu        : %s\n", if (is.null(x$psu)) "(unit-level)" else x$psu))
+  if (!is.null(x$df)) cat(sprintf("  df         : %d\n", x$df))
   invisible(x)
 }
 
@@ -439,7 +509,12 @@ print.weightflow_jack <- function(x, ...) {
 #' @param jack a `weightflow_jack` object.
 #' @param statistic a function `function(w, data)` returning a numeric scalar (or
 #'   vector) given a weight vector and the data.
-#' @param level confidence level for the (normal) interval.
+#' @param level confidence level for the interval.
+#' @param ci_type interval type: "normal" (default) or "t" (Student t with the
+#'   design degrees of freedom). The percentile interval is not defined for the
+#'   jackknife.
+#' @param df degrees of freedom for the t interval; `NULL` (default) uses the
+#'   design df stored on the object (total PSUs minus strata).
 #' @param variable name of the variable to estimate (for `jack_total`/`jack_mean`).
 #' @return A data frame with `estimate`, `se`, `ci_lower`, `ci_upper`.
 #' @note `jack_total()` / `jack_mean()` center the replicate deviations on the
@@ -455,12 +530,23 @@ print.weightflow_jack <- function(x, ...) {
 #' jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 #' jackknife_estimate(jk, function(w, d) sum(w * d$employed, na.rm = TRUE))
 #' @export
-jackknife_estimate <- function(jack, statistic, level = 0.95) {
+jackknife_estimate <- function(jack, statistic, level = 0.95,
+                               ci_type = c("normal", "t"), df = NULL) {
   if (!inherits(jack, "weightflow_jack")) stop("`jack` must be a weightflow_jack object.")
   .wf_level(level)
+  ci_type <- match.arg(ci_type)   # percentile is not a jackknife interval
+  df <- if (is.null(df)) jack$df else df
+  a  <- (1 - level) / 2
+  crit <- if (ci_type == "t") {
+    if (is.null(df) || !is.finite(df) || df <= 0)
+      stop(sprintf(paste0("A t interval needs positive degrees of freedom, but the design has ",
+                          "df = %s. Use ci_type = \"normal\", collapse lonely strata, or pass `df`."),
+                   if (is.null(df)) "NULL" else as.character(df)), call. = FALSE)
+    stats::qt(1 - a, df)
+  } else stats::qnorm(1 - a)
+  z <- crit
   theta_hat <- statistic(jack$weights, jack$data)
   thetas    <- apply(jack$replicates, 2L, function(w) statistic(w, jack$data))
-  z <- stats::qnorm(1 - (1 - level) / 2)
   strat <- jack$rep_stratum
 
   jkn_var <- function(th, nh_vec) {                 # th: numeric over replicates

@@ -8,8 +8,8 @@
       Data    : 467 cases
       Base wts: pw
       Steps   :
-        1. nonresponse (weighting class)
-        2. calibration (raking)
+        1. nonresponse (weighting class)  [nonresponse_1]
+        2. calibration (raking)  [calibrate_1]
       Status  : estimated (prep)
       
       Stage summary:
@@ -33,8 +33,8 @@
       Data    : 467 cases
       Base wts: pw
       Steps   :
-        1. nonresponse (weighting class)
-        2. calibration (raking)
+        1. nonresponse (weighting class)  [nonresponse_1]
+        2. calibration (raking)  [calibrate_1]
       Status  : estimated (prep)
       
       Stage summary:

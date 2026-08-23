@@ -23,7 +23,8 @@ step_nonresponse(
   penalty = NULL,
   equal_within_cluster = FALSE,
   maxit = 50L,
-  tol = 1e-06
+  tol = 1e-06,
+  id = NULL
 )
 }
 \arguments{
@@ -132,6 +133,10 @@ the adjustment keeps the weights constant within household. Requires
 
 \item{maxit, tol}{(method = "calibration") convergence control for the bounded
 or exponential-distance calibration solver.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

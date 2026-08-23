@@ -6,7 +6,13 @@
 \alias{boot_mean}
 \title{Bootstrap estimate, standard error and confidence interval}
 \usage{
-bootstrap_estimate(boot, statistic, level = 0.95)
+bootstrap_estimate(
+  boot,
+  statistic,
+  level = 0.95,
+  ci_type = c("normal", "t", "percentile"),
+  df = NULL
+)
 
 boot_total(boot, variable)
 
@@ -18,7 +24,14 @@ boot_mean(boot, variable)
 \item{statistic}{a function \verb{function(w, data)} returning a numeric scalar
 (or vector) given a weight vector and the data.}
 
-\item{level}{confidence level for the (normal) interval.}
+\item{level}{confidence level for the interval.}
+
+\item{ci_type}{interval type: "normal" (default, z-based), "t" (Student t with
+the design degrees of freedom, wider and less anticonservative with few PSUs),
+or "percentile" (empirical quantiles of the valid replicates).}
+
+\item{df}{degrees of freedom for the t interval; \code{NULL} (default) uses the
+design df stored on the object (total PSUs minus strata).}
 
 \item{variable}{name of the variable to estimate.}
 }

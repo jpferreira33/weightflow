@@ -19,7 +19,8 @@ step_calibrate(
   maxit = 50L,
   tol = 1e-06,
   penalty = NULL,
-  population = NULL
+  population = NULL,
+  id = NULL
 )
 }
 \arguments{
@@ -102,6 +103,10 @@ the design-weighted sums over the reference (raking margins, poststratify
 cells, or linear model-matrix totals). If the reference carries replicate
 weights, \code{\link[=bootstrap_weights]{bootstrap_weights()}} propagates its sampling variance. Not
 combined with \code{margins} / \code{totals} or \code{by}.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

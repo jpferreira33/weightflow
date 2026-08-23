@@ -180,12 +180,15 @@ reference_sample <- function(data, weights, replicates = NULL) {
 #' w <- fit_hh$final_weight
 #' max(tapply(w[w > 0], sample_survey$household_id[w > 0],
 #'            function(x) diff(range(x))))    # 0: one weight per household
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
+#'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_model_calibration <- function(spec, x_formula, models, population,
                                    x_totals = NULL, count = "Freq",
                                    cluster = NULL, equal_within_cluster = FALSE,
-                                   crossfit = NULL, crossfit_seed = NULL) {
+                                   crossfit = NULL, crossfit_seed = NULL, id = NULL) {
   if (!inherits(spec, "weighting_spec"))
     stop("The first argument must be a weighting_spec.")
   if (missing(x_formula) || missing(models) || missing(population))
@@ -221,7 +224,7 @@ step_model_calibration <- function(spec, x_formula, models, population,
     ),
     class = c("step_model_calibration", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
 
 # --- Optional step: assertions / checkpoint --------------------------------
@@ -239,6 +242,8 @@ step_model_calibration <- function(spec, x_formula, models, population,
 #'   ratio (per active unit).
 #' @param min_n_eff numeric or NULL. Minimum acceptable effective sample size.
 #' @param on_fail "error" (stop the cascade) or "warning".
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out; defaults to a derived `"<class>_<k>"`.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_assert(max_deff = 5, on_fail = "warning") |> prep()
@@ -246,7 +251,7 @@ step_model_calibration <- function(spec, x_formula, models, population,
 #'   recipe. The check is recorded only; it is evaluated when `prep()` is called
 #'   and does not modify the weights.
 step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
-                        min_n_eff = NULL, on_fail = c("error", "warning")) {
+                        min_n_eff = NULL, on_fail = c("error", "warning"), id = NULL) {
   on_fail <- match.arg(on_fail)
   # Validate the thresholds: a non-numeric threshold (e.g. "500") would be
   # compared lexicographically at apply time, silently inverting the assertion.
@@ -268,7 +273,7 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
     ),
     class = c("step_assert", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
 
 # --- Optional step: automatic weight trimming ------------------------------
@@ -308,12 +313,15 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
 #'   step_trim_weights(method = "potter") |> prep()
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
+#'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim_weights <- function(spec, lower = 1, upper = NULL,
                               method = c("tukey", "potter"),
                               redistribute = c("proportional", "uniform"),
-                              strict = TRUE, maxit = 50L) {
+                              strict = TRUE, maxit = 50L, id = NULL) {
   method       <- match.arg(method)
   redistribute <- match.arg(redistribute)
   # M3: this step applies a single absolute band to every unit; it has no `by`.
@@ -340,7 +348,7 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
     ),
     class = c("step_trim_weights", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
 
 # --- Optional step: trimmed (range-restricted) calibration -----------------
@@ -408,12 +416,15 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #'                                 sex    = c(table(population$sex)))) |>
 #'   step_trim_calibrated(~ region + sex, lower = 5.5, upper = 13.5) |>
 #'   prep()
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
+#'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
                                  calfun = c("linear", "raking"), by = NULL,
                                  cluster = NULL, equal_within_cluster = FALSE,
-                                 maxit = 100L, tol = 1e-7) {
+                                 maxit = 100L, tol = 1e-7, id = NULL) {
   calfun <- match.arg(calfun)
   if (missing(formula) || !inherits(formula, "formula"))
     stop("`formula` must be a formula naming the auxiliaries to preserve, ",
@@ -453,7 +464,7 @@ step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
     ),
     class = c("step_trim_calibrated", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
 
 # --- Optional step: rescale / normalize weights ----------------------------
@@ -474,9 +485,12 @@ step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_rescale(to = "n") |> prep()
+#' @param id optional string: a stable identifier for this step, shown in the
+#'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
+#'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
-step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL) {
+step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL, id = NULL) {
   to <- match.arg(to)
   if (to == "total" && is.null(total)) stop("to = 'total' requires `total`.")
   # A4: `by` only makes sense with to = "n" (each group -> its own active size).
@@ -504,5 +518,5 @@ step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL) {
     ),
     class = c("step_rescale", "weighting_step")
   )
-  .add_step(spec, step)
+  .add_step(spec, step, id = id)
 }
