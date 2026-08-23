@@ -1,0 +1,248 @@
+# Model-assisted calibration (Wu and Sitter 2001)
+
+Fits a working model for each study variable, predicts it over the whole
+population, and calibrates the weights so that the sample total of every
+prediction matches its population total, on top of the usual auxiliary
+totals – which may come from the population frame itself or from an
+external source (a census table, an administrative register). Reach for
+it when you hold, or can supply, those control totals and the outcome is
+well predicted by the auxiliaries: the predictions act as extra, highly
+relevant controls and buy precision that calibrating on `x` alone
+cannot.
+
+## Usage
+
+``` r
+step_model_calibration(
+  spec,
+  x_formula,
+  models,
+  population,
+  x_totals = NULL,
+  count = "Freq",
+  cluster = NULL,
+  equal_within_cluster = FALSE,
+  crossfit = NULL,
+  crossfit_seed = NULL,
+  id = NULL
+)
+```
+
+## Arguments
+
+- spec:
+
+  a weighting_spec.
+
+- x_formula:
+
+  formula of the consistency auxiliaries, e.g. ~ sex + region.
+
+- models:
+
+  named list of models created with y_model(). The names label the
+  prediction constraints.
+
+- population:
+
+  population data.frame with the auxiliary and predictor columns (the y
+  variables are not needed; they are predicted). May instead be a
+  weighted reference survey wrapped with
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/dev/reference/reference_sample.md),
+  in which case the totals are the design-weighted sums over that survey
+  (estimated totals) rather than unweighted sums over a full frame.
+  Always required: the model-assisted block predicts each y over every
+  population unit, which cannot be done from aggregated totals.
+
+- x_totals:
+
+  optional population totals for the consistency auxiliaries
+  (`x_formula`), for when they come from an external source rather than
+  from `population` (e.g. an official control total, a variable not
+  present in the frame). Two shapes, the same as
+  `step_calibrate(method = "linear")`: the tidy format, a named list
+  matching the formula terms with a data frame (all categories + a
+  counts column named by `count`) per factor and a single number per
+  continuous total; or the classic model-matrix vector (intercept plus
+  treatment contrasts). When NULL (default) the X totals are taken from
+  `population`. When given, the X totals no longer require `x_formula`
+  columns to exist in `population` (only in the sample), and
+  `population` is used only for the model predictions.
+
+- count:
+
+  name of the counts column in the tidy `x_totals` data frames. Only
+  used when `x_totals` is given in the tidy (data-frame) format.
+
+- cluster:
+
+  name of the cluster id column (e.g. "household"), for equal weights
+  within the cluster.
+
+- equal_within_cluster:
+
+  logical. If TRUE, integrative calibration: a single weight per
+  cluster. Requires `cluster` and that the incoming weight be uniform
+  within the cluster.
+
+- crossfit:
+
+  integer or NULL. If given (K \>= 2 folds), the outcome models are
+  fitted by K-fold cross-fitting: the sample predictions are out-of-fold
+  (each unit predicted by a model that did not see it), which avoids
+  overfitting with flexible engines; the population total of the
+  predictions uses the full model. Folds are formed by `cluster` when
+  given. NULL (default) fits and predicts in-sample. For flexible
+  learners cross-fitting is also what keeps the variance honest:
+  same-sample residuals are shrunk by overfitting and can understate the
+  variance even under recipe-aware replication (Dagdoug, Goga and Haziza
+  2023; Chernozhukov et al. 2018), so it is recommended whenever a model
+  uses a non-glm engine.
+
+- crossfit_seed:
+
+  integer or NULL. Seed for reproducible fold assignment.
+
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/dev/reference/prep.md)
+is called.
+
+## Details
+
+Requires COMPLETE auxiliary information: a data.frame `population` with
+the `x_formula` columns and the model predictors for the whole
+population (or a reference frame/census).
+
+The predictions \\\hat y_i\\ enter as extra constraints, \\\sum\_{i \in
+s} w_i \hat y_i = \sum\_{i \in U} \hat y_i\\, solved together with the
+benchmark auxiliary totals \\\mathbf{X}\\. When the working model is
+linear this reduces to GREG; a nonlinear learner adds efficiency through
+the prediction constraint while the totals \\\mathbf{X}\\ preserve
+design consistency even if the model is misspecified.
+
+## References
+
+Wu, C. and Sitter, R. R. (2001). A model-calibration approach to using
+complete auxiliary information from survey data. *Journal of the
+American Statistical Association*, 96(453), 185-193.
+[doi:10.1198/016214501750333054](https://doi.org/10.1198/016214501750333054)
+.
+
+## Examples
+
+``` r
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population = population) |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (weighting class)  [nonresponse_1]
+#>   2. model calibration (1 y variables)  [model_calibration_1]
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                           stage n_active sum_wts cv_wts deff_kish n_eff
+#>                            base      467    4371  0.236     1.056   442
+#>        stage_1_step_nonresponse      270    4371  0.144     1.021   265
+#>  stage_2_step_model_calibration      270    4495  0.212     1.045   258
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# with cross-fitting (out-of-fold predictions, avoids overfitting)
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population = population, crossfit = 5, crossfit_seed = 1) |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (weighting class)  [nonresponse_1]
+#>   2. model calibration (1 y variables)  [model_calibration_1]
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                           stage n_active sum_wts cv_wts deff_kish n_eff
+#>                            base      467    4371  0.236     1.056   442
+#>        stage_1_step_nonresponse      270    4371  0.144     1.021   265
+#>  stage_2_step_model_calibration      270    4495  0.212     1.045   258
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# consistency totals from an external source (tidy format): a data frame per
+# factor and a single number per continuous total. `population` is still used
+# for the model predictions. Adjust for nonresponse first, since the outcome
+# is only observed for respondents.
+m_region <- as.data.frame(table(region = population$region))
+weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ region + age,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population = population,
+    x_totals   = list(region = m_region, age = sum(population$age)),
+    count      = "Freq") |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. nonresponse (weighting class)  [nonresponse_1]
+#>   2. model calibration (1 y variables)  [model_calibration_1]
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                           stage n_active sum_wts cv_wts deff_kish n_eff
+#>                            base      467    4371  0.236     1.056   442
+#>        stage_1_step_nonresponse      270    4371  0.144     1.021   265
+#>  stage_2_step_model_calibration      270    4495  0.212     1.045   258
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+
+# equal weights within a household (integrative, Lemaitre-Dufour): one weight
+# per cluster, so person and household estimates stay coherent. The final
+# weights are constant within each cluster among its active members.
+fit_hh <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ sex + region,
+    models     = list(income = y_model(income ~ age + sex, engine = "glm")),
+    population  = population,
+    cluster = "household_id", equal_within_cluster = TRUE) |>
+  prep()
+w <- fit_hh$final_weight
+max(tapply(w[w > 0], sample_survey$household_id[w > 0],
+           function(x) diff(range(x))))    # 0: one weight per household
+#> [1] 0
+```

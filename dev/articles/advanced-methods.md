@@ -1,0 +1,336 @@
+# Machine learning, cross-fitting and robust calibration
+
+The *Get started* article builds a weighting recipe with classical
+tools: weighting classes for nonresponse, raking for calibration, a
+fixed-fence trim. This article covers the methods that go one step
+further: flexible learners for the response propensity, cross-fitting to
+keep them honest, penalized calibration, and data-driven trimming. Each
+is opt-in: the defaults are the classical methods, and a single argument
+switches the richer one on.
+
+We use the bundled `sample_one` design (a multistage select-one survey)
+and resolve eligibility, household nonresponse and within-household
+selection first, so that the examples below start from a clean staged
+sample.
+
+Throughout, $`s`$ denotes the sample and $`U`$ the population
+(universe); $`w_i`$ is the weight of unit $`i`$; $`X`$ are auxiliary
+totals known for $`U`$; and $`\hat\phi_i`$, $`\hat m(x_i)`$ are
+estimated response propensities and outcome predictions.
+
+``` r
+base <- weighting_spec(sample_one, base_weights = pw) |>
+  step_unknown_eligibility(unknown = unknown_elig, by = "region",
+                           cluster = "household_id") |>
+  step_drop_ineligible(ineligible = ineligible) |>
+  step_nonresponse(respondent = hh_responded, method = "weighting_class",
+                   by = "region", cluster = "household_id") |>
+  step_select_within(prob = p_within)
+```
+
+## Flexible propensities
+
+Weighting classes assume response is ignorable within cells. A
+response-propensity model relaxes that: it estimates `P(respond)` from
+the auxiliaries and adjusts by the inverse propensity (optionally
+grouped into classes). weightflow can fit that model with logistic
+regression, a regression tree, a random forest, or gradient boosting,
+all through the same `engine` argument.
+
+``` r
+fit_boost <- base |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   formula = ~ region + sex + age, engine = "boost",
+                   num_classes = 5) |>
+  prep()
+```
+
+Gradient boosting captures nonlinearities and interactions among the
+predictors without you specifying them. That flexibility is useful when
+nonresponse depends on the covariates in complicated ways, but it comes
+with a risk.
+
+## The overfitting problem
+
+A flexible learner that predicts the same units it was trained on fits
+them *too* well. The estimated propensities are pulled toward the
+observed outcomes, so some respondents get artificially low fitted
+propensities. Since the nonresponse adjustment multiplies the weight by
+the inverse propensity,
+
+``` math
+w_i^{\text{nr}} = \frac{w_i^{\text{prev}}}{\hat\phi_i},
+```
+
+a propensity $`\hat\phi_i`$ that is biased toward zero produces an
+enormous weight. The result is a handful of extreme weights that inflate
+the variance, exactly what weighting is meant to avoid.
+
+The design effect makes this visible. With in-sample boosting, a single
+propensity class can carry a factor an order of magnitude larger than
+the rest, and the Kish design effect
+$`\text{deff} = 1 + \text{CV}^2(w)`$ climbs accordingly.
+
+## Cross-fitting
+
+Cross-fitting breaks the circularity. The sample is split into K folds;
+the propensity of each unit is predicted by a model trained on the
+*other* folds, so no unit informs its own prediction. This is the
+survey-weighting counterpart of the cross-fitting used in
+double/debiased machine learning (Chernozhukov et al., 2018). In
+weightflow it is a single argument, `crossfit = K`; when the step has a
+`cluster`, the folds are formed by cluster, so members of the same
+household never split across folds and there is no leakage.
+
+``` r
+fit_cf <- base |>
+  step_nonresponse(respondent = responded, method = "propensity",
+                   formula = ~ region + sex + age, engine = "boost",
+                   num_classes = 5, crossfit = 5, crossfit_seed = 1) |>
+  prep()
+```
+
+The Kish design effect makes the difference concrete. Compare the
+in-sample boosting with the five-fold cross-fitted model on the same
+data:
+
+``` r
+c(in_sample = design_effect(collect_weights(fit_boost)$.weight)$deff,
+  crossfit  = design_effect(collect_weights(fit_cf)$.weight)$deff)
+#> in_sample  crossfit 
+#>  2.393923  1.491576
+```
+
+In-sample boosting overfits and inflates the design effect;
+cross-fitting removes that in-sample optimism and brings it back down.
+The out-of-sample propensities are also smoother, so the quantile-based
+classes come out balanced. The estimates barely change; the *stability*
+of the weights does.
+
+Cross-fitting is available wherever a model is fitted. In
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/dev/reference/step_model_calibration.md)
+it plays the same role: a working model $`\hat m(x)`$ is fitted for each
+outcome $`y`$, and the weights are calibrated so that the weighted
+sample total of the prediction matches its population total,
+
+``` math
+\sum_{i \in s} w_i\,\hat m(x_i) = \sum_{i \in U} \hat m(x_i).
+```
+
+With `crossfit = K`, the sample predictions $`\hat m(x_i)`$ on the left
+are made out-of-fold (each unit predicted by a model that did not see
+it), while the population total on the right uses the full model. The
+example below fits the outcome model for `income` with gradient boosting
+and cross-fits it:
+
+``` r
+fit_mc <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_model_calibration(
+    x_formula  = ~ region + sex,
+    models     = list(income = y_model(income ~ age + sex + region,
+                                       engine = "boost")),
+    population = population, crossfit = 5, crossfit_seed = 1) |>
+  prep()
+
+fit_mc$steps[[2]]$diagnostics
+#>              constraint            type   target achieved
+#> (Intercept) (Intercept) X (consistency)     4495     4495
+#> regionSouth regionSouth X (consistency)     1250     1250
+#> regionEast   regionEast X (consistency)      927      927
+#> regionWest   regionWest X (consistency)      748      748
+#> sexM               sexM X (consistency)     2184     2184
+#> income           income       y (model) 89966496 89966496
+```
+
+The calibration still solves its system exactly, so the achieved totals
+match the targets; cross-fitting only changes how the predictions that
+enter the system are formed, removing the in-sample optimism of the
+flexible learner.
+
+## Ridge (penalized) calibration
+
+Calibration forces the weighted sample to reproduce known population
+totals. With many control variables, forcing every constraint *exactly*
+can again push the weights to extremes. Ridge calibration relaxes the
+constraints in a controlled way: each target is allowed a small,
+penalized deviation. In the linear case the calibration system
+$`A\lambda = (X - \hat X)`$ gains a penalty on its diagonal,
+
+``` math
+\big(A + \operatorname{diag}(s / c_j)\big)\,\lambda = X - \hat X,
+```
+
+where $`c_j`$ is the cost of constraint $`j`$ and $`s`$ scales the
+penalty to the system, making it unit-free. A single, scale-free
+`penalty` governs the trade-off: large values stay (almost) exact, small
+values relax more and tighten the weights.
+
+``` r
+pop_totals <- c("(Intercept)" = nrow(population),
+                regionSouth = sum(population$region == "South"),
+                regionEast  = sum(population$region == "East"),
+                regionWest  = sum(population$region == "West"),
+                sexM        = sum(population$sex == "M"))
+
+fit_ridge <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "linear", formula = ~ region + sex,
+                 totals = pop_totals, penalty = 1) |>
+  prep()
+
+fit_ridge$steps[[2]]$diagnostics
+#>                variable target achieved deviation
+#> (Intercept) (Intercept)   4495  4438.23    -56.77
+#> regionSouth regionSouth   1250  1237.24    -12.76
+#> regionEast   regionEast    927   848.83    -78.17
+#> regionWest   regionWest    748   841.12     93.12
+#> sexM               sexM   2184  2236.07     52.07
+```
+
+Under ridge the achieved totals no longer match the targets exactly; the
+`deviation` column reports the (small) gap, which is the price paid for
+steadier weights. As `penalty` decreases, the deviations grow and the
+calibration factors concentrate around one.
+
+## Potter (MSE-optimal) trimming
+
+Trimming caps extreme weights, but the cap is usually picked by hand.
+Potter’s method chooses it from the data. Writing $`\tau`$ for the
+candidate cutoff (weights above $`\tau`$ are capped), the method
+evaluates a grid of values of $`\tau`$ and minimizes an estimate of the
+mean squared error of the weighted total,
+
+``` math
+\text{MSE}(\tau) = \text{bias}(\tau)^2 + \text{var}(\tau),
+```
+
+balancing the bias introduced by trimming at $`\tau`$ (related to the
+weight removed above the cutoff) against the variance contributed by the
+weights that remain. The chosen cutoff is the $`\tau`$ with the smallest
+estimated MSE.
+
+``` r
+trimmed_tukey <- base |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = c("region", "sex")) |>
+  step_trim_weights(method = "tukey") |>
+  prep()
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+
+trimmed_potter <- base |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = c("region", "sex")) |>
+  step_trim_weights(method = "potter") |>
+  prep()
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+
+trimmed_tukey$steps[[6]]$diagnostics[, c("method", "upper", "n_capped")]
+#>   method  upper n_capped
+#> 1  tukey 91.367        1
+trimmed_potter$steps[[6]]$diagnostics[, c("method", "upper", "n_capped")]
+#>   method  upper n_capped
+#> 1 potter 60.127        4
+```
+
+The two rules give different cutoffs: the Tukey far-out fence is a
+fixed, conservative rule, while Potter searches for the cutoff that
+minimizes estimated MSE, often more aggressive, capping a few more
+weights when that lowers the overall error.
+
+### Redistributing the trimmed mass
+
+The weight removed by capping is shared among the untrimmed units. With
+`redistribute = "proportional"` (the default) they keep their relative
+sizes; with `redistribute = "uniform"` each untrimmed unit receives the
+same amount, which reproduces
+[`survey::trimWeights()`](https://rdrr.io/pkg/survey/man/trimWeights.html)
+exactly.
+
+## Calibration-preserving trimming
+
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim_weights.md)
+caps extreme weights and redistributes the excess, which breaks any
+calibration the recipe had achieved.
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim_calibrated.md)
+instead trims the already-calibrated weights into an absolute interval
+`[lower, upper]` while preserving the calibration totals (a bounded
+re-calibration, the generalized exponential method of Folsom and Singh
+2000). Weights inside the interval stay put; out-of-range ones saturate
+at their bound and the rest move minimally so that every total is still
+met.
+
+``` r
+recipe <- base |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = c("region", "sex")) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region))))
+
+pre <- prep(recipe)
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+w   <- collect_weights(pre, drop_zero = FALSE)$.weight
+w   <- w[w > 0]
+lo  <- as.numeric(quantile(w, 0.05)); up <- as.numeric(quantile(w, 0.95))
+
+trimmed <- recipe |>
+  step_trim_calibrated(~ region, lower = lo, upper = up) |>
+  prep()
+#> Warning: Missing values in the cell variable(s) `by` were grouped into a
+#> '(missing)' cell. Those units are adjusted within their own cell; recode the
+#> NAs if that is not intended.
+```
+
+The region totals are still met after the trim (the differences are
+zero), whereas the weights now sit inside the interval:
+
+``` r
+Xr     <- model.matrix(~ region, sample_one)
+w_cal  <- collect_weights(pre, drop_zero = FALSE)$.weight
+w_trim <- trimmed$final_weight
+round(rbind(after_calibration = colSums(w_cal  * Xr),
+            after_trim        = colSums(w_trim * Xr),
+            difference        = colSums((w_trim - w_cal) * Xr)), 6)
+#>                   (Intercept) regionSouth regionEast regionWest
+#> after_calibration        4495        1250        927        748
+#> after_trim               4495        1250        927        748
+#> difference                  0           0          0          0
+range(w_trim[w_trim > 0])
+#> [1]  6.649002 50.461100
+```
+
+With `equal_within_cluster = TRUE` and a `cluster`, the trimming is
+integrative: one factor per household, so weights that were constant
+within household stay constant.
+
+## Putting it together
+
+These methods compose like any other step, and the recipe-aware
+bootstrap covers them automatically: because it re-applies the whole
+recipe on each replicate (re-fitting the propensity model, re-running
+the cross-fitting, re-solving the calibration), the standard errors
+reflect the variability these methods introduce, not just the final
+weights. See the *Variance estimation* article for the bootstrap, and
+*Get started* for the staged logic these methods plug into.
+
+## References
+
+- Chernozhukov, V., et al. (2018). Double/debiased machine learning for
+  treatment and structural parameters. *The Econometrics Journal*,
+  21(1), C1–C68.
+- Breidt, F. J., & Opsomer, J. D. (2017). Model-assisted survey
+  estimation with modern prediction techniques. *Statistical Science*,
+  32(2), 190–205.
+- Bardsley, P., & Chambers, R. L. (1984). Multipurpose estimation from
+  unbalanced samples. *Applied Statistics*, 33(3), 290–299.
+- Potter, F. J. (1990). A study of procedures to identify and trim
+  extreme sample weights. *Proc. ASA Survey Research Methods Section*,
+  225–230.

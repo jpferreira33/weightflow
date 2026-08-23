@@ -1,0 +1,77 @@
+# Drop ineligible (out-of-scope) units
+
+Sets the weight of the units known to be outside the target population
+to zero, so they leave the cascade and take no part in any later step or
+in
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_weights.md).
+Their weight is discarded, not redistributed: the weight total is meant
+to fall by exactly the mass they carried. Use it once eligibility has
+been resolved, immediately after
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/dev/reference/step_unknown_eligibility.md).
+
+## Usage
+
+``` r
+step_drop_ineligible(spec, ineligible, id = NULL)
+```
+
+## Arguments
+
+- spec:
+
+  a weighting_spec.
+
+- ineligible:
+
+  a 0/1 dummy column (1 = ineligible) or any logical condition
+  (unquoted) that is TRUE for out-of-scope units.
+
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/dev/reference/prep.md)
+is called.
+
+## Details
+
+Apply it AFTER step_unknown_eligibility: ineligibles must be present and
+NOT flagged as unknown during that step, so they take part in the
+known-eligibility group and receive their share of the redistributed
+unknown weight. Their weight is then correctly discarded here (it
+represents the ineligible share of the unknown units, which are out of
+scope).
+
+## Examples
+
+``` r
+df <- transform(sample_survey,
+                ineligible = as.integer(region == "West" & age > 90))
+weighting_spec(df, base_weights = pw) |>
+  step_drop_ineligible(ineligible = ineligible) |>
+  prep()
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. drop ineligible  [drop_ineligible_1]
+#> Status  : estimated (prep)
+#> 
+#> Stage summary:
+#>                         stage n_active sum_wts cv_wts deff_kish n_eff
+#>                          base      467    4371  0.236     1.056   442
+#>  stage_1_step_drop_ineligible      466    4364  0.236     1.055   442
+#> 
+#> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
+#> n_eff = n_active / deff_kish. Both worsen with each adjustment and
+#> improve with trimming.
+#> 
+```

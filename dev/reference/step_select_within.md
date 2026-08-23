@@ -1,0 +1,100 @@
+# Within-cluster selection adjustment
+
+Undoes one stage of subsampling inside a cluster: when only some of the
+eligible units of a household (or dwelling, or area segment) were
+selected, the selected ones must represent the whole cluster, so their
+weight is multiplied by the inverse of the within-cluster selection
+probability. Apply it after the cluster-level eligibility and
+nonresponse steps and before the person-level nonresponse step.
+
+## Usage
+
+``` r
+step_select_within(
+  spec,
+  prob = NULL,
+  n_eligible = NULL,
+  n_selected = NULL,
+  id = NULL
+)
+```
+
+## Arguments
+
+- spec:
+
+  a weighting_spec.
+
+- prob:
+
+  unquoted column with the within-household selection probability of the
+  selected person (need not be 1/n_eligible). The weight is multiplied
+  by 1/prob.
+
+- n_eligible:
+
+  unquoted column with the number of eligible persons in the household,
+  for simple random selection within the household. When a single person
+  is selected (the default), the weight is multiplied by n_eligible
+  (equivalent to prob = 1/n_eligible).
+
+- n_selected:
+
+  optional number of persons selected per household under simple random
+  selection, when more than one person is subsampled. Either a single
+  number (same subsample size in every household) or an unquoted column
+  (subsample size varying by household). The weight is multiplied by
+  n_eligible / n_selected (equivalent to prob = n_selected/n_eligible).
+  Defaults to 1. Only used together with `n_eligible`.
+
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
+## Value
+
+The input `weighting_spec` with this step appended to its recipe. The
+step is recorded only; it is evaluated when
+[`prep()`](https://jpferreira33.github.io/weightflow/dev/reference/prep.md)
+is called.
+
+## Details
+
+Despite the name, the cluster need not be a household and the unit need
+not be a person: the step is the generic within-cluster subsampling
+adjustment. In a multi-stage design it can appear more than once – e.g.
+dwellings selected within sampled area segments, then persons selected
+within dwellings – each occurrence undoing one stage of subsampling.
+
+## Examples
+
+``` r
+# simple random selection of one eligible person per household
+df <- transform(sample_survey,
+                n_elig = ave(person_id, household_id, FUN = length))
+weighting_spec(df, base_weights = pw) |>
+  step_select_within(n_eligible = n_elig)
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. within-cluster selection  [select_within_1]
+#> Status  : not estimated
+#> 
+
+# simple random selection of two eligible persons per household
+weighting_spec(df, base_weights = pw) |>
+  step_select_within(n_eligible = n_elig, n_selected = 2)
+#> 
+#> == Weighting specification (weightflow) ==
+#> Data    : 467 cases
+#> Base wts: pw
+#> Steps   :
+#>   1. within-cluster selection  [select_within_1]
+#> Status  : not estimated
+#> 
+```
