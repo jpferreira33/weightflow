@@ -21,6 +21,7 @@ factor per household), and a totals-preserving rounding. We add a small
 bootstrap so the report can also document the variance design.
 
 ``` r
+
 totals_r <- colSums(model.matrix(~ region, population))
 
 spec <- weighting_spec(sample_survey, base_weights = pw) |>

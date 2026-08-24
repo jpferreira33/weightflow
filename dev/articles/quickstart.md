@@ -77,6 +77,7 @@ household sample, `sample_survey`, drawn from a known `population`), so
 every line below actually runs.
 
 ``` r
+
 str(sample_survey[, c("pw", "region", "sex", "unknown_elig", "responded")])
 #> 'data.frame':    467 obs. of  5 variables:
 #>  $ pw          : num  12.5 12.5 12.5 12.5 12.5 12.5 12.5 12.5 12.5 12.5 ...
@@ -94,6 +95,7 @@ counts column. [`table()`](https://rdrr.io/r/base/table.html) already
 produces exactly that shape (its counts column is named `Freq`):
 
 ``` r
+
 m_region <- as.data.frame(table(region = population$region))
 m_sex    <- as.data.frame(table(sex    = population$sex))
 m_region
@@ -105,6 +107,7 @@ m_region
 ```
 
 ``` r
+
 fit <- weighting_spec(sample_survey, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_nonresponse(respondent = responded, method = "weighting_class",
@@ -121,6 +124,7 @@ is where the recipe is actually estimated. Everything before it only
 returns the data with the final weight attached as `.weight`:
 
 ``` r
+
 w <- collect_weights(fit)
 summary(w$.weight)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
@@ -135,6 +139,7 @@ step by step, reporting how many units each stage touched, how weights
 changed, and diagnostics such as the design effect:
 
 ``` r
+
 summary(fit)
 #> 
 #> == Weighting specification (weightflow) ==

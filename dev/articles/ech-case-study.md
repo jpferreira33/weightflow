@@ -32,6 +32,7 @@ from the build servers. The figures and tables are those produced by
 running the code locally.
 
 ``` r
+
 library(weightflow)
 library(dplyr)
 library(tidyr)
@@ -49,6 +50,7 @@ file and a companion file with the stratum and primary sampling unit
 (PSU) of each household. We download both and unpack them.
 
 ``` r
+
 dir_ine <- "ech_data"
 if (!dir.exists(dir_ine)) dir.create(dir_ine)
 
@@ -76,6 +78,7 @@ starting point. Expanding the sample by `w_ech` gives the finite
 population `U`, the ground truth.
 
 ``` r
+
 df_raw <- read_sav(file.path(dir_ine, "HyP_2019_Terceros.sav"))
 info   <- read_sav(file.path(dir_ine, "ESTRATO_UPM_ECH2019.sav"))
 
@@ -121,6 +124,7 @@ recoverable by the class adjustment; the age part is left for
 calibration to recover through the age margins.
 
 ``` r
+
 set.seed(2023)
 
 hh <- sample_ech_full |>
@@ -175,6 +179,7 @@ eligibility was induced at random, we scale the totals by the eligible
 share.
 
 ``` r
+
 elig_factor <- mean(hh$eligible)
 cal_formula <- ~ age_grp + sex + region
 XU     <- model.matrix(cal_formula, data = U)
@@ -191,6 +196,7 @@ single weight per household (integrated household weighting,
 Lemaitre-Dufour), as an official household survey requires.
 
 ``` r
+
 fitted <- weighting_spec(sample_ech, base_weights = base_weight) |>
   step_unknown_eligibility(unknown = unknown_elig == 1, by = "region",
                            cluster = "id_household") |>
@@ -233,6 +239,7 @@ adjustment by stratum recovers the between-strata part of that bias, and
 calibration to age, sex and region recovers the rest.
 
 ``` r
+
 y <- sample_ech$poverty
 stage_phat <- sapply(fitted$history, function(w) {
   ok <- w > 0 & !is.na(y); sum(w[ok] * y[ok]) / sum(w[ok])
@@ -281,6 +288,7 @@ calibration shows up as aligned points, because every member of a
 household receives the same factor.
 
 ``` r
+
 h    <- fitted$history
 labs <- gsub("^stage_[0-9]+_step_", "", names(h))
 
@@ -310,6 +318,7 @@ means the step left a unit untouched; mass away from one shows where,
 and how hard, the step worked.
 
 ``` r
+
 ggplot(pairs |> mutate(factor = cur / prev), aes(factor)) +
   geom_histogram(bins = 30, fill = wf_lav, color = "white") +
   geom_vline(xintercept = 1, color = wf_amber, linewidth = 0.7) +
@@ -329,6 +338,7 @@ The Kish design effect summarises the variance cost of unequal weights
 at each stage.
 
 ``` r
+
 data.frame(
   stage = labs,
   deff  = round(vapply(h, function(w) design_effect(w)$deff, numeric(1)), 3)
@@ -364,6 +374,7 @@ parallelised, so the replicate weights are **bit-identical** regardless
 of the number of cores — only the wall-clock time changes.
 
 ``` r
+
 core_grid   <- unique(c(1, 2, 4, parallel::detectCores()))
 boot_timing <- data.frame(cores = core_grid, seconds = NA_real_, identical = NA)
 ref <- NULL
@@ -386,6 +397,7 @@ The wall-clock time drops with the number of cores, with identical
 replicate weights throughout:
 
 ``` r
+
 knitr::kable(boot_timing, digits = 2,
              caption = "Bootstrap of 1000 replicates: time and speedup by cores")
 ```
@@ -397,6 +409,7 @@ the pipeline recovers the population poverty rate with honest
 uncertainty.
 
 ``` r
+
 reps <- apply(boot$replicates, 2, function(w) {
   ok <- w > 0 & !is.na(y); sum(w[ok] * y[ok]) / sum(w[ok])
 })

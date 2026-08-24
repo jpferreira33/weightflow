@@ -22,6 +22,7 @@ The rest of this article shows each on the bundled `sample_survey` data,
 starting from a common calibrated recipe.
 
 ``` r
+
 base <- weighting_spec(sample_survey, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region") |>
   step_nonresponse(respondent = responded, method = "propensity",
@@ -55,6 +56,7 @@ automatically. Two rules are available through `method`:
   often more aggressive.
 
 ``` r
+
 tukey  <- base |> step_trim_weights(method = "tukey")  |> prep()
 potter <- base |> step_trim_weights(method = "potter") |> prep()
 
@@ -75,6 +77,7 @@ which reproduces
 exactly).
 
 ``` r
+
 uniform <- base |>
   step_trim_weights(upper = 2500, redistribute = "uniform") |>
   prep()
@@ -92,6 +95,7 @@ or `"value"` (an absolute number). Here every weight is capped at four
 times the median:
 
 ``` r
+
 by_median <- base |>
   step_trim(max_ratio = 4, reference = "median", redistribute = FALSE) |>
   prep()
@@ -105,6 +109,7 @@ are trimmed on their own scale instead of against a single global
 median.
 
 ``` r
+
 by_region <- base |>
   step_trim(max_ratio = 4, reference = "median", by = "region",
             redistribute = FALSE) |>
@@ -144,6 +149,7 @@ factor $`g_i = w_i^\star / w_i \in
 [L/w_i,\ U/w_i]`$, which is what the solver enforces.
 
 ``` r
+
 w   <- collect_weights(fit0, drop_zero = FALSE)$.weight
 pos <- w[w > 0]
 lo  <- as.numeric(quantile(pos, 0.05)); up <- as.numeric(quantile(pos, 0.95))
@@ -157,6 +163,7 @@ The totals are still reproduced after the trim (the differences are
 zero), while the weights now sit inside the interval:
 
 ``` r
+
 X <- model.matrix(~ region + sex, sample_survey)
 round(colSums((trimmed$final_weight - w) * X), 6)
 #> (Intercept) regionSouth  regionEast  regionWest        sexM 
@@ -175,6 +182,7 @@ Here each region gets its own bounds, taken from that region’s 5th and
 95th percentiles:
 
 ``` r
+
 lo_by <- tapply(w, sample_survey$region, function(x) as.numeric(quantile(x[x > 0], 0.05)))
 up_by <- tapply(w, sample_survey$region, function(x) as.numeric(quantile(x[x > 0], 0.95)))
 lo_by                                   # a vector named by the levels of `by`
@@ -207,6 +215,7 @@ the crossing of two variables you first build the interaction column and
 pass that. For region-by-sex cells:
 
 ``` r
+
 d <- sample_survey
 d$reg_sex <- interaction(d$region, d$sex, sep = "_", drop = TRUE)
 

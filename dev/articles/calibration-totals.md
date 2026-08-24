@@ -20,6 +20,7 @@ methods, so you can pick whichever matches the data you already have.
 We use the bundled example data throughout.
 
 ``` r
+
 data(population)
 data(sample_survey)
 ```
@@ -37,6 +38,7 @@ Here we build the population counts with
 a `Freq` column), then pass `count = "Freq"`.
 
 ``` r
+
 region_totals <- as.data.frame(table(region = population$region))
 region_totals
 #>   region Freq
@@ -56,6 +58,7 @@ sum(collect_weights(ps)$.weight)   # sums to the population size N
 The classic equivalent uses `margins`, a named list of named vectors:
 
 ``` r
+
 ps_classic <- weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "poststratify",
                  margins = list(region = c(table(population$region)))) |>
@@ -75,6 +78,7 @@ post-strata. You do **not** need to build a single collapsed cell
 variable by hand.
 
 ``` r
+
 rs_totals <- as.data.frame(table(region = population$region,
                                  sex    = population$sex))
 head(rs_totals)
@@ -106,6 +110,7 @@ full cross-tabulation, only the marginal totals. In the tidy format you
 pass a **list** of data frames, one per margin.
 
 ``` r
+
 m_region <- as.data.frame(table(region = population$region))
 m_sex    <- as.data.frame(table(sex    = population$sex))
 
@@ -121,6 +126,7 @@ sum(collect_weights(rk)$.weight)
 The classic equivalent uses `margins`:
 
 ``` r
+
 rk_classic <- weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region)),
@@ -156,6 +162,7 @@ this way is the norm in established survey-calibration tools, and it is
 precisely the part that trips people up.
 
 ``` r
+
 # The classic model-matrix vector: intercept = N, and region *without* its
 # reference level (the first, "North"), with model.matrix column names.
 pop_tot <- c("(Intercept)" = nrow(population),
@@ -181,6 +188,7 @@ internally, including the intercept and the omitted reference category,
 so you never handle them.
 
 ``` r
+
 lin_tidy <- weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "linear", formula = ~ region + sex,
                  totals = list(region = m_region, sex = m_sex),
@@ -201,6 +209,7 @@ number. Here we add `income`; because `income` is observed only for
 respondents in this example, we calibrate the respondent subsample.
 
 ``` r
+
 resp <- subset(sample_survey, responded == 1)
 
 lin_mixed <- weighting_spec(resp, base_weights = pw) |>
@@ -242,6 +251,7 @@ across regions, which is exactly what a global cross could not express
 with these marginal-only benchmarks.
 
 ``` r
+
 # benchmarks known BY REGION: a sex margin and an age-group margin per region.
 pop  <- transform(population,
   age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
@@ -281,6 +291,7 @@ Here we use the exponential (raking) distance so the weights stay
 positive:
 
 ``` r
+
 inc_by_region <- aggregate(income ~ region, population, sum)   # region, income
 resp <- subset(sample_survey, responded == 1)
 
@@ -327,6 +338,7 @@ model without being a control total, and a control total need not enter
 the model.
 
 ``` r
+
 resp <- subset(sample_survey, responded == 1)
 
 mc <- weighting_spec(resp, base_weights = pw) |>

@@ -35,6 +35,7 @@ not call
 first): the bootstrap preps it once per replicate.
 
 ``` r
+
 dat <- sample_one
 dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
@@ -96,6 +97,7 @@ deviation across the $`B`$ replicates,
 ```
 
 ``` r
+
 boot_mean(boot,  "income")     # mean income
 #>   estimate       se ci_lower ci_upper
 #> 1 21615.21 884.4228 19881.77 23348.65
@@ -111,6 +113,7 @@ For any other statistic, pass a function of the weights and the data to
 [`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_estimate.md):
 
 ``` r
+
 bootstrap_estimate(boot, function(w, d) {
   ok <- !is.na(d$income) & w > 0
   stats::median(rep(d$income[ok], times = round(w[ok])))   # weighted median (approx.)
@@ -126,6 +129,7 @@ builds an ultimate-cluster linearization design from a prepped recipe.
 It is fast, but treats the calibration as fixed.
 
 ``` r
+
 fitted <- prep(spec)
 #> Warning: Missing values in the cell variable(s) `by` were grouped into a
 #> '(missing)' cell. Those units are adjusted within their own cell; recode the
@@ -140,6 +144,7 @@ To keep the recipe’s adjustments in the variance while still using
 survey, feed it the bootstrap replicate weights from method 1:
 
 ``` r
+
 rep_des <- as_svrepdesign(boot)
 survey::svymean(~income, rep_des, na.rm = TRUE)
 #>         mean     SE
@@ -157,6 +162,7 @@ attaches the point weight (`.weight`) and the replicate weights (`rep_1`
 … `rep_B`) to the active respondents, ready for srvyr.
 
 ``` r
+
 df <- collect_replicate_weights(boot)
 d_rep <- srvyr::as_survey_rep(df, weights = .weight,
                               repweights = dplyr::starts_with("rep_"),
@@ -180,6 +186,7 @@ builds the stratified delete-a-PSU jackknife (JKn) with `strata`/`psu`;
 the unstratified JK1 follows from `strata = NULL`.
 
 ``` r
+
 jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 jk
 #> <weightflow jackknife>
@@ -231,6 +238,7 @@ folds $`(1 - f_h)`$ into the Rao-Wu rescaling, so `fpc = NULL`
 reproduces the uncorrected result exactly.
 
 ``` r
+
 boot0 <- bootstrap_weights(spec, replicates = 200, strata = "region",
                            psu = "psu", seed = 2024, progress = FALSE)
 bootf <- bootstrap_weights(spec, replicates = 200, strata = "region",
@@ -261,6 +269,7 @@ additionally offers `ci_type = "percentile"`, the empirical quantiles of
 the valid replicates.
 
 ``` r
+
 emp <- function(w, d) sum(w * d$employed, na.rm = TRUE)
 bootstrap_estimate(boot, emp)                          # normal (default)
 #>   estimate       se ci_lower ci_upper

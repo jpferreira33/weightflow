@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/Inter-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
@@ -38,7 +38,7 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../articles/weightflow.html">Get started</a></li>
-<li class="nav-item dropdown">
+<li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
@@ -90,7 +90,7 @@
       <img src="../logo.png" class="logo" alt=""><h1>Preparing the sample: eligibility and response before weighting</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/HEAD/vignettes/preparing-the-sample.Rmd" class="external-link"><code>vignettes/preparing-the-sample.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/jpferreira33/weightflow/blob/master/vignettes/preparing-the-sample.Rmd" class="external-link"><code>vignettes/preparing-the-sample.Rmd</code></a></small>
       <div class="d-none name"><code>preparing-the-sample.Rmd</code></div>
     </div>
 
@@ -192,7 +192,7 @@ case will respond. Starting from a target number of completed interviews
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>n</mi><mi>C</mi></msub><annotation encoding="application/x-tex">n_C</annotation></semantics></math>,
 the released sample is inflated by the expected eligibility and response
 rates, plus a contingency cushion for a worse-than-expected field:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>n</mi><mtext mathvariant="normal">released</mtext></msub><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><msub><mi>n</mi><mi>C</mi></msub><mrow><mover><mi>E</mi><mo accent="true">̂</mo></mover><mo>×</mo><mover><mi>R</mi><mo accent="true">̂</mo></mover></mrow></mfrac><mspace width="0.278em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>c</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>n</mi><mtext mathvariant="normal">released</mtext></msub><mspace width="0.278em"></mspace><mo>=</mo><mspace width="0.278em"></mspace><mfrac><msub><mi>n</mi><mi>C</mi></msub><mrow><mover><mi>E</mi><mo accent="true">̂</mo></mover><mo>×</mo><mover><mi>R</mi><mo accent="true">̂</mo></mover></mrow></mfrac><mspace width="0.278em"></mspace><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>,</mo></mrow><annotation encoding="application/x-tex">
 n_{\text{released}} \;=\; \frac{n_C}{\widehat{E}\times\widehat{R}}\;(1+c),
 </annotation></semantics></math></p>
 <p>where
@@ -523,7 +523,7 @@ there look like this:</p>
 <span><span class="co">#&gt; NAs if that is not intended.</span></span>
 <span></span>
 <span><span class="co"># same weights as the disposition-based version</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">final_weight</span>, <span class="va">fitted2</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">final_weight</span>, <span class="va">fitted2</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p>From here the recipe would continue with calibration and, optionally,
 trimming; those stages are covered in the calibration and
@@ -561,7 +561,7 @@ calibration adjustments.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

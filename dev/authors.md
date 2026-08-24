@@ -11,7 +11,7 @@
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/jpferreira33/weightflow/blob/HEAD/inst/CITATION)
+[`inst/CITATION`](https://github.com/jpferreira33/weightflow/blob/master/inst/CITATION)
 
 Ferreira, J. P. (2026). weightflow: reproducible, recipe-aware survey
 weighting for official statistics in R. arXiv preprint arXiv:2607.08491.

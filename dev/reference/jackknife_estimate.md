@@ -73,8 +73,7 @@ per-stratum mean of the deleted-PSU estimates (the standard JKn). The
 [`as_svrepdesign()`](https://jpferreira33.github.io/weightflow/dev/reference/as_svydesign.md)
 instead uses `mse = TRUE`, which centers on the point estimate. Both are
 legitimate, so the standard errors from `jack_total()` and from
-[`svytotal()`](https://rdrr.io/pkg/survey/man/surveysummary.html) on the
-same object can differ slightly.
+`svytotal()` on the same object can differ slightly.
 
 ## Examples
 

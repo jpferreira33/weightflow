@@ -14,6 +14,7 @@ This vignette is the programmatic path: run a recipe, gate it on the
 quality alerts, then drill down unit by unit and domain by domain.
 
 ``` r
+
 library(weightflow)
 
 fit <- weighting_spec(sample_survey, base_weights = pw) |>
@@ -32,6 +33,7 @@ The id is the handle you use everywhere below; you can also set it
 yourself with `step_*(..., id = "my_name")`.
 
 ``` r
+
 fit
 #> 
 #> == Weighting specification (weightflow) ==
@@ -65,6 +67,7 @@ returns the messages, each tagged with the step that raised it. This is
 the hook to stop a publication when something is off:
 
 ``` r
+
 has_alerts(fit)
 #> [1] FALSE
 weighting_alerts(fit)
@@ -85,6 +88,7 @@ returns, for a chosen step, the weight each unit brought in
 per-unit quantities. Select the step by its id:
 
 ``` r
+
 det <- collect_step_detail(fit, step = "nonresponse_1")
 head(det)
 #>   person_id household_id psu region sex age   pw unknown_elig responded income
@@ -109,6 +113,7 @@ recovers the fitted response propensities directly, so you can inspect
 their distribution before trusting the adjusted weights:
 
 ``` r
+
 props <- collect_propensities(fit)
 summary(props$.propensity)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
@@ -124,6 +129,7 @@ design effect), so weight movement can be reviewed per domain, not only
 overall:
 
 ``` r
+
 domain_summary(fit, by = "region")
 #>             stage domain n_active     sum_w    mean_w     deff     n_eff
 #> 1    base weights  North      119 1487.5000 12.500000 1.000000 119.00000

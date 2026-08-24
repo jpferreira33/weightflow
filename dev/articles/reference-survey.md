@@ -11,6 +11,7 @@ not census figures, and that has one consequence you must handle: their
 sampling variability.
 
 ``` r
+
 library(weightflow)
 ```
 
@@ -26,6 +27,7 @@ stand-in reference by drawing a weighted subsample of the known
 `population`:
 
 ``` r
+
 set.seed(1)
 N   <- nrow(population)
 ref <- population[sample(N, 2000), ]
@@ -49,6 +51,7 @@ A reference whose weights are all `1` reproduces the plain-frame
 behaviour exactly, because it is just an unweighted count of the frame:
 
 ``` r
+
 frame_ref <- population
 frame_ref$w <- 1
 w_ref   <- (weighting_spec(sample_survey, base_weights = pw) |>
@@ -71,6 +74,7 @@ sample is then paired with a reference replicate and re-estimates the
 totals from it (Opsomer and Erciulescu 2021):
 
 ``` r
+
 # replicate weights for the reference survey (its own design)
 rep_ref <- bootstrap_weights(weighting_spec(ref, base_weights = w),
                              replicates = 100, strata = "region", psu = "psu",
