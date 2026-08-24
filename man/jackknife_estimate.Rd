@@ -6,7 +6,13 @@
 \alias{jack_mean}
 \title{Jackknife estimate, standard error and confidence interval}
 \usage{
-jackknife_estimate(jack, statistic, level = 0.95)
+jackknife_estimate(
+  jack,
+  statistic,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 
 jack_total(jack, variable)
 
@@ -18,7 +24,14 @@ jack_mean(jack, variable)
 \item{statistic}{a function \verb{function(w, data)} returning a numeric scalar (or
 vector) given a weight vector and the data.}
 
-\item{level}{confidence level for the (normal) interval.}
+\item{level}{confidence level for the interval.}
+
+\item{ci_type}{interval type: "normal" (default) or "t" (Student t with the
+design degrees of freedom). The percentile interval is not defined for the
+jackknife.}
+
+\item{df}{degrees of freedom for the t interval; \code{NULL} (default) uses the
+design df stored on the object (total PSUs minus strata).}
 
 \item{variable}{name of the variable to estimate (for \code{jack_total}/\code{jack_mean}).}
 }

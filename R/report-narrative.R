@@ -100,6 +100,26 @@
   .html_escape(step$label)
 }
 
+# When a calibration step's targets come from reference_sample() the control
+# totals are estimates, not census figures. State that, and how their sampling
+# variance is handled: propagated through paired replicates, or treated as fixed.
+.ref_totals_phrase <- function(step, lang) {
+  pop <- step$population
+  if (is.null(pop) || !inherits(pop, "wf_reference_sample")) return("")
+  n_ref   <- length(attr(pop, "wf_ref_weights"))
+  has_rep <- !is.null(attr(pop, "wf_ref_replicates"))
+  vclause <- if (has_rep)
+    .t("Because the totals are estimates, their sampling variability is propagated through the recipe-aware bootstrap: each replicate re-estimates the totals from the paired reference replicate (Opsomer and Erciulescu 2021).",
+       "Como los totales son estimaciones, su variabilidad muestral se propaga por el bootstrap recipe-aware: cada r&eacute;plica reestima los totales desde la r&eacute;plica pareada de la referencia (Opsomer y Erciulescu 2021).", lang)
+  else
+    .t("The totals are estimates but were treated as fixed (no reference replicate weights supplied), so the reported variance omits their sampling error and may be understated; pass replicates to reference_sample() to propagate it.",
+       "Los totales son estimaciones pero se trataron como fijos (sin pesos r&eacute;plica de la referencia), as&iacute; que la varianza reportada omite su error muestral y puede quedar subestimada; pase r&eacute;plicas a reference_sample() para propagarlo.", lang)
+  .t(sprintf(" The control totals are not census figures: they were estimated from a reference survey (n = %s). %s",
+             format(n_ref, big.mark = ",", scientific = FALSE), vclause),
+     sprintf(" Los totales de control no son de censo: se estimaron a partir de una encuesta de referencia (n = %s). %s",
+             format(n_ref, big.mark = ",", scientific = FALSE), vclause), lang)
+}
+
 # The per-step methodological paragraph.
 .step_narrative <- function(step, de1, de2, ri, is_nr_last, lang) {
   vlab <- .narr_vars(step, lang)
@@ -188,12 +208,12 @@
     txt <- paste0(.t(
       sprintf("The weights were calibrated to the known population totals of %s using %s%s%s%s%s, so the weighted sample reproduces those totals while staying as close as possible to the incoming weights (Deville and Sarndal 1992).", vlab, meth, dist, bnd, integ, ridge),
       sprintf("Los pesos se calibraron a los totales poblacionales conocidos de %s mediante %s%s%s%s%s, de modo que la muestra ponderada reproduce esos totales manteni\u00e9ndose lo m\u00e1s cerca posible de los pesos de entrada (Deville y Sarndal 1992).", vlab, meth, dist, bnd, integ, ridge),
-      lang), " ", .deff_phrase(de1, de2, lang))
+      lang), " ", .deff_phrase(de1, de2, lang), .ref_totals_phrase(step, lang))
   } else if (inherits(step, "step_model_calibration")) {
     txt <- paste0(.t(
       "Model-assisted (Wu-Sitter) calibration was applied: predictions of the outcome model were used as auxiliaries and calibrated to their population totals, borrowing strength from the predictive model.",
       "Se aplic\u00f3 calibraci\u00f3n asistida por modelo (Wu-Sitter): las predicciones del modelo de resultado se usaron como auxiliares y se calibraron a sus totales poblacionales, aprovechando la fuerza del modelo predictivo.",
-      lang), " ", .deff_phrase(de1, de2, lang))
+      lang), " ", .deff_phrase(de1, de2, lang), .ref_totals_phrase(step, lang))
   } else if (inherits(step, "step_trim_calibrated")) {
     # Preserved totals are ONLY the formula's auxiliaries; `by` is the subgroup
     # for the bounds, not a preserved total, so it must not appear in `vlab`.
@@ -230,7 +250,10 @@
       sprintf("Los pesos calibrados se recortaron %s preservando los totales de calibraci\u00f3n de %s (una recalibraci\u00f3n acotada que conserva los totales%s), de modo que el recorte reduce los pesos extremos sin romper las restricciones de calibraci\u00f3n.", rlab, vlab, integ),
       lang), " ", .deff_phrase(de1, de2, lang))
   } else if (inherits(step, "step_trim_weights")) {
-    rng <- sprintf("[%s, %s]", format(step$lower),
+    # lower = NULL is legal (no floor). format(NULL) is character(0), which would
+    # collapse the whole paragraph to length 0 and crash the report -> show "-Inf".
+    rng <- sprintf("[%s, %s]",
+                   if (is.null(step$lower)) "-Inf" else format(step$lower),
                    if (is.null(step$upper)) .t("auto", "autom\u00e1tico", lang) else format(step$upper))
     # only an AUTOMATIC cutoff has a rule to name; with manual bounds there is none
     rlab <- if (is.null(step$upper)) {

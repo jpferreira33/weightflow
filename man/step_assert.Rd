@@ -9,7 +9,8 @@ step_assert(
   max_deff = NULL,
   max_weight_ratio = NULL,
   min_n_eff = NULL,
-  on_fail = c("error", "warning")
+  on_fail = c("error", "warning"),
+  id = NULL
 )
 }
 \arguments{
@@ -23,6 +24,9 @@ ratio (per active unit).}
 \item{min_n_eff}{numeric or NULL. Minimum acceptable effective sample size.}
 
 \item{on_fail}{"error" (stop the cascade) or "warning".}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out; defaults to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this checkpoint appended to its

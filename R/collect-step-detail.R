@@ -51,8 +51,9 @@
 #' units the step did not touch.
 #'
 #' @param object a prepped `weighting_spec` (the output of [prep()]).
-#' @param step optional integer, which step to inspect (1 for the first piped
-#'   step). If `NULL` (default): a single step exposing native detail is used; if
+#' @param step optional: which step to inspect, as an integer position (1 for the
+#'   first piped step) or a step id string (e.g. "calibrate_1"; see the recipe
+#'   print-out). If `NULL` (default): a single step exposing native detail is used; if
 #'   several do, or if none do and the recipe has more than one step, an error
 #'   lists the steps so you can choose.
 #' @return The sample `data.frame` with `.weight_in` (the weight reaching the
@@ -100,9 +101,17 @@ collect_step_detail <- function(object, step = NULL) {
            call. = FALSE)
     }
   }
+  if (is.character(step) && length(step) == 1L) {          # accept a step id
+    ids <- vapply(object$steps, function(s) if (is.null(s$id)) "" else s$id, character(1))
+    m   <- match(step, ids)
+    if (is.na(m))
+      stop(sprintf("No step with id '%s'. Available ids: %s.", step,
+                   paste(ids[nzchar(ids)], collapse = ", ")), call. = FALSE)
+    step <- m
+  }
   if (!is.numeric(step) || length(step) != 1L || is.na(step) ||
       step < 1L || step > ns || step %% 1 != 0)
-    stop(sprintf("`step` must be a single integer in 1..%d.", ns), call. = FALSE)
+    stop(sprintf("`step` must be a single integer in 1..%d, or a step id.", ns), call. = FALSE)
   step <- as.integer(step)
 
   # Central: weight reaching the step and the multiplier it applied.

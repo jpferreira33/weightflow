@@ -11,7 +11,8 @@ step_trim_weights(
   method = c("tukey", "potter"),
   redistribute = c("proportional", "uniform"),
   strict = TRUE,
-  maxit = 50L
+  maxit = 50L,
+  id = NULL
 )
 }
 \arguments{
@@ -38,6 +39,10 @@ weight is outside \verb{[lower, upper]} (like survey's strict = TRUE). If FALSE,
 single pass (redistribution may push some weights slightly past the cap).}
 
 \item{maxit}{integer. Maximum iterations when strict = TRUE.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

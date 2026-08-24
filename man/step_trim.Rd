@@ -11,7 +11,8 @@ step_trim(
   reference = c("base", "median", "value"),
   redistribute = TRUE,
   by = NULL,
-  maxit = 50L
+  maxit = 50L,
+  id = NULL
 )
 }
 \arguments{
@@ -19,9 +20,11 @@ step_trim(
 
 \item{max_ratio}{number. Upper cap. Its meaning depends on \code{reference}. E.g.
 with reference = "base" and max_ratio = 4, no weight may exceed 4 times its
-design weight.}
+design weight. Must be greater than 1 for reference = "base"/"median" (a
+multiplier) and greater than 0 for reference = "value" (an absolute weight).}
 
-\item{min_ratio}{number or NULL. Lower floor (same units as max_ratio).}
+\item{min_ratio}{number or NULL. Lower floor (same units as max_ratio); if
+supplied, must be greater than 0 and below \code{max_ratio}.}
 
 \item{reference}{"base" (multiple of each unit's base weight),
 "median" (multiple of the median of current weights) or
@@ -34,6 +37,10 @@ afterwards you can use FALSE: calibration restores the totals.}
 \item{by}{character. Groups within which to redistribute (optional).}
 
 \item{maxit}{integer. Maximum cap+redistribution iterations.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

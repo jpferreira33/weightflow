@@ -15,8 +15,10 @@
     sprintf("This report documents the construction of %s. %d adjustment %s applied: %s. The final weights have a Kish design effect of %.3f (effective sample size %s%s).",
             what, n, if (n == 1L) "step was" else "steps were", listed, de_f$deff,
             format(round(de_f$n_eff), big.mark = ","), ri_s),
-    sprintf("Este reporte documenta la construcci\u00f3n de %s. Se aplicaron %d paso%s de ajuste: %s. Los pesos finales tienen un efecto de dise\u00f1o de Kish de %.3f (tama\u00f1o de muestra efectivo %s%s).",
-            what, n, if (n == 1L) "" else "s", listed, de_f$deff,
+    sprintf("Este reporte documenta la construcci\u00f3n de %s. %s de ajuste: %s. Los pesos finales tienen un efecto de dise\u00f1o de Kish de %.3f (tama\u00f1o de muestra efectivo %s%s).",
+            what,
+            if (n == 1L) "Se aplic\u00f3 1 paso" else sprintf("Se aplicaron %d pasos", n),
+            listed, de_f$deff,
             format(round(de_f$n_eff), big.mark = ","), ri_s),
     lang)
   sprintf("<div class='exec'><h4>%s</h4><p>%s</p></div>",
@@ -97,8 +99,10 @@
   fin <- object$final_weight
   d3  <- function(x) formatC(x, format = "f", digits = 3)
   num <- function(x) format(round(x), big.mark = ",")
+  # Amber at deff >= 1.4, the same "substantial efficiency loss" threshold used by
+  # the closing interpretation, so the table and the text agree.
   dcell <- function(v) if (is.na(v)) "&ndash;" else
-    sprintf("<span class='%s'>%s%s</span>", if (v > 1.3) "cell-warn" else "cell-ok", if (v > 1.3) "&#9888; " else "", d3(v))
+    sprintf("<span class='%s'>%s%s</span>", if (v >= 1.4) "cell-warn" else "cell-ok", if (v >= 1.4) "&#9888; " else "", d3(v))
   hd <- paste0("<th scope='col'>", c(.t("Domain", "Dominio", lang),
                          .t("Active units (n)", "Unidades activas (n)", lang),
                          .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
@@ -133,7 +137,7 @@
 
 # Optional card: replication design for variance (from a weightflow_boot /
 # weightflow_jack object passed via `replicates`). Reads only stored metadata.
-.replication_card <- function(rep, lang) {
+.replication_card <- function(rep, lang, object = NULL) {
   if (is.null(rep) || !inherits(rep, c("weightflow_boot", "weightflow_jack")))
     return("")
   is_jack <- inherits(rep, "weightflow_jack")
@@ -164,6 +168,11 @@
                  .t(" (all usable)", " (todas utilizables)", lang) else "")),
     kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
     kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
+    if (!is.null(rep$df))
+      kv(.t("Degrees of freedom", "Grados de libertad", lang), format(rep$df, big.mark = ",")) else "",
+    kv(.t("Finite-population correction", "Correcci&oacute;n de poblaci&oacute;n finita (FPC)", lang),
+       if (is.null(rep$fpc)) .t("none (with replacement)", "ninguna (con reemplazo)", lang)
+       else .t("applied", "aplicada", lang)),
     kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
     kv(.t("Recipe-aware", "Recipe-aware", lang),
        if (nrep > 0L && nfail >= nrep)
@@ -193,10 +202,27 @@
       al(.t("Few PSUs per stratum: the replication variance can be unstable. Consider more PSUs per stratum or collapsing sparse strata.",
             "Pocas UPM por estrato: la varianza por replicaci\u00f3n puede ser inestable. Conviene m\u00e1s UPM por estrato o colapsar los estratos ralos.", lang))
     else ""
+  # Note when the recipe calibrates to totals ESTIMATED from a reference survey:
+  # say whether their sampling variance is propagated here or omitted (fixed).
+  ref_note <- ""
+  if (!is.null(object) && !is.null(object$steps)) {
+    hit <- Filter(function(s) inherits(s$population, "wf_reference_sample"), object$steps)
+    if (length(hit)) {
+      has_rep <- any(vapply(hit, function(s) !is.null(attr(s$population, "wf_ref_replicates")),
+                            logical(1)))
+      ref_note <- if (has_rep)
+        sprintf("<p class='note'>%s</p>", .t(
+          "Some control totals are estimated from a reference survey; their sampling variance is propagated through these replicates (each replicate re-estimates the totals from the paired reference replicate; Opsomer and Erciulescu 2021).",
+          "Algunos totales de control se estiman a partir de una encuesta de referencia; su variabilidad muestral se propaga en estas r\u00e9plicas (cada r\u00e9plica reestima los totales desde la r\u00e9plica pareada de la referencia; Opsomer y Erciulescu 2021).", lang))
+      else
+        al(.t("Some control totals are estimated from a reference survey but were treated as fixed (no reference replicate weights supplied), so this replication variance omits their sampling error and may be understated.",
+              "Algunos totales de control se estiman a partir de una encuesta de referencia pero se trataron como fijos (sin pesos r\u00e9plica de la referencia), as\u00ed que esta varianza por replicaci\u00f3n omite su error muestral y puede quedar subestimada.", lang))
+    }
+  }
   sprintf(
-    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s<p class='note'>%s</p></div>",
+    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s<p class='note'>%s</p></div>",
     .t("Replication design for variance", "Dise\u00f1o de replicaci\u00f3n para la varianza", lang),
-    body, fail_alert, warn,
+    body, fail_alert, warn, ref_note,
     .t("Replicate weights carry the variability of every adjustment. For standard errors, CV and confidence intervals of specific estimates, use these weights with the 'survey' or 'srvyr' package.",
        "Los pesos r\u00e9plica arrastran la variabilidad de cada ajuste. Para errores est\u00e1ndar, CV e intervalos de confianza de estimaciones concretas, us\u00e1 estos pesos con 'survey' o 'srvyr'.", lang))
 }
@@ -424,10 +450,11 @@
     rows <- vapply(levels(g), function(l) {
       sidx <- which(g == l); pd <- wm(p[sidx], dw[sidx])
       ob <- wm(as.numeric(resp[sidx]), dw[sidx]); dif <- ob - pd
-      sprintf("<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td><span class='%s'>%+.3f</span></td></tr>",
-              .html_escape(l), length(sidx), d3(pd), d3(ob),
-              if (is.finite(dif) && abs(dif) > 0.05) "cell-warn" else "cell-ok",
-              if (is.finite(dif)) dif else 0)
+      dcell <- if (!is.finite(dif)) "<span class='muted'>&mdash;</span>"
+               else sprintf("<span class='%s'>%+.3f</span>",
+                            if (abs(dif) > 0.05) "cell-warn" else "cell-ok", dif)
+      sprintf("<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td>%s</td></tr>",
+              .html_escape(l), length(sidx), d3(pd), d3(ob), dcell)
     }, character(1))
     cal_html <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
                         hd, paste(rows, collapse = ""))
@@ -663,8 +690,8 @@
              "</th>", collapse = "")
       arows <- vapply(seq_along(colnames(mm)), function(i) {
         yc <- if (length(ycor)) paste(vapply(ycor, function(v) sprintf("<td>%s</td>", d3b(v[i])), character(1)), collapse = "") else ""
-        sprintf("<tr><td>%s</td><td>%+.3f</td>%s</tr>", .html_escape(colnames(mm)[i]),
-                if (is.finite(sdif[i])) sdif[i] else 0, yc) }, character(1))
+        sprintf("<tr><td>%s</td><td>%s</td>%s</tr>", .html_escape(colnames(mm)[i]),
+                if (is.finite(sdif[i])) sprintf("%+.3f", sdif[i]) else "&mdash;", yc) }, character(1))
       aux_html <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
         .t("Auxiliary-vector quality (Sarndal-Lundstrom): a good auxiliary should explain response (large |std. diff.|) and, ideally, the outcomes y (large |corr.|). Auxiliaries near zero add little to the nonresponse correction.",
            "Calidad del vector auxiliar (Sarndal-Lundstrom): un buen auxiliar deber\u00eda explicar la respuesta (|dif. estand.| grande) y, idealmente, las y (|corr.| grande). Los auxiliares cerca de cero aportan poco a la correcci\u00f3n por no respuesta.", lang),
@@ -722,7 +749,7 @@
         sprintf("<span class='%s'>%s</span>", if (n_neg > 0) "cell-warn" else "cell-ok", nf(n_neg))),
     if (!is.null(bnd)) row(.t("at lower bound", "en cota inferior", lang), nf(sum(abs(g - bnd[1]) < 1e-6))) else "",
     if (!is.null(bnd)) row(.t("at upper bound", "en cota superior", lang), nf(sum(abs(g - bnd[2]) < 1e-6))) else "",
-    row(.t("chi-square distance &Sigma;(w&minus;d)&sup2;/d", "distancia chi-cuadrado &Sigma;(w&minus;d)&sup2;/d", lang), nf(cd$chi2)),
+    row(.t("chi-square distance &Sigma;(w&minus;d)&sup2;/d", "distancia chi-cuadrado &Sigma;(w&minus;d)&sup2;/d", lang), d3(cd$chi2)),
     row(.t("Auxiliary collinearity", "Colinealidad de auxiliares", lang),
         if (isTRUE(cd$pooled)) .t("per domain (see table below)", "por dominio (ver tabla abajo)", lang)
         else .kappa_cell(cd$cond, lang)))

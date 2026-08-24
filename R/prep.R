@@ -22,7 +22,12 @@
 #'   warnings during prep(). Default FALSE: alerts are always computed, stored
 #'   on the object (`$alerts`) and shown in the HTML report, but not raised as
 #'   warnings, so they do not flood bootstrap/jackknife replicate fits.
-#' @return a "prepped_weighting_spec" object.
+#' @return a "prepped_weighting_spec" object. Every quality incident is recorded
+#'   in `$alerts` (readable with [weighting_alerts()] / [has_alerts()]),
+#'   regardless of `warn`. This includes warnings a step raises internally, such
+#'   as a calibration that could not meet its constraints: they are captured into
+#'   `$alerts` even when the surrounding warnings are suppressed, so `$alerts` is
+#'   the single reliable channel for programmatic quality control.
 #' @examples
 #' rec <- weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region")
@@ -50,7 +55,16 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   for (i in seq_along(steps)) {
     w_before               <- w
     .check_step_labelled(steps[[i]], data)
-    res                    <- apply_step(steps[[i]], data, w)
+    # Capture any warning a step raises from inside apply_step() (e.g. calibration
+    # that could not meet its constraints, or a failed assertion set to warn) so it
+    # is recorded in `$alerts` alongside the weight/diagnostic alerts. The warning
+    # is NOT muffled: it still surfaces exactly as before. This is the single place
+    # a script can read to know a recipe had problems, even under suppressWarnings().
+    step_warnings <- character(0)
+    res <- withCallingHandlers(
+      apply_step(steps[[i]], data, w),
+      warning = function(cnd) step_warnings <<- c(step_warnings, conditionMessage(cnd))
+    )
     w                      <- res$weights
     if (any(!is.finite(w)))
       stop(sprintf(paste0("Step %d (%s) produced %d non-finite weight(s) (Inf/NaN), which ",
@@ -64,17 +78,22 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     is_calib  <- inherits(steps[[i]], c("step_calibrate", "step_model_calibration"))
     cell_step <- inherits(steps[[i]], c("step_nonresponse", "step_unknown_eligibility",
                                         "step_calibrate"))
-    alerts <- .wf_alerts(w_before, w, res$diagnostics, is_calib, cell_step,
-                         min_cell_n = min_cell_n, max_factor = max_factor,
-                         step_class = step_cls)
+    # Alerts derived from the weights/diagnostics of this step. These are emitted
+    # as R warnings only when `warn = TRUE` (so they do not flood replicate fits).
+    struct_alerts <- .wf_alerts(w_before, w, res$diagnostics, is_calib, cell_step,
+                                min_cell_n = min_cell_n, max_factor = max_factor,
+                                step_class = step_cls)
     ca <- .crossfit_alert(steps[[i]])
-    if (!is.null(ca)) alerts <- c(alerts, ca)
-    if (length(alerts)) {
-      steps[[i]]$alerts <- alerts
-      tagged <- sprintf("[%s] %s", step_cls, alerts)
-      all_alerts <- c(all_alerts, tagged)
-      if (isTRUE(warn)) for (a in tagged) warning(a, call. = FALSE)
+    if (!is.null(ca)) struct_alerts <- c(struct_alerts, ca)
+    # All incidents for this step: derived alerts plus any warning the step raised.
+    step_alerts <- c(struct_alerts, step_warnings)
+    if (length(step_alerts)) {
+      steps[[i]]$alerts <- step_alerts
+      all_alerts <- c(all_alerts, sprintf("[%s] %s", step_cls, step_alerts))
     }
+    # Re-raise only the derived alerts; the captured warnings already propagated.
+    if (isTRUE(warn) && length(struct_alerts))
+      for (a in sprintf("[%s] %s", step_cls, struct_alerts)) warning(a, call. = FALSE)
     history[[paste0("stage_", i, "_", step_cls)]] <- w
   }
 
@@ -90,6 +109,36 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     class = c("prepped_weighting_spec", "weighting_spec")
   )
 }
+
+#' Quality alerts recorded while preparing a recipe
+#'
+#' `weighting_alerts()` returns the character vector of quality incidents
+#' recorded by [prep()], each tagged with the step that produced it.
+#' `has_alerts()` is a convenience predicate. Every incident is captured here,
+#' including warnings a step raises internally (for example a calibration that
+#' could not meet its constraints), so this is the reliable channel for
+#' programmatic quality control even when warnings were suppressed.
+#'
+#' @param object a prepped_weighting_spec, as returned by [prep()].
+#' @return `weighting_alerts()`: a character vector (empty if the recipe ran
+#'   clean). `has_alerts()`: a single logical.
+#' @examples
+#' fit <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_trim(max_ratio = 3) |>
+#'   prep()
+#' weighting_alerts(fit)
+#' has_alerts(fit)
+#' @export
+weighting_alerts <- function(object) {
+  if (!inherits(object, "prepped_weighting_spec"))
+    stop("`object` must be a prepped_weighting_spec (the result of prep()).",
+         call. = FALSE)
+  object$alerts %||% character(0)
+}
+
+#' @rdname weighting_alerts
+#' @export
+has_alerts <- function(object) length(weighting_alerts(object)) > 0L
 
 # Quality alert: a flexible learner (tree / forest / boost) used WITHOUT
 # cross-fitting. Same-sample predictions keep each unit in the training set of

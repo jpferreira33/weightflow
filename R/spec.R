@@ -51,9 +51,10 @@ weighting_spec <- function(data, base_weights) {
 }
 
 # Internal helper: append a step to the recipe -----------------------------
-.add_step <- function(spec, step) {
+.add_step <- function(spec, step, id = NULL) {
   if (!inherits(spec, "weighting_spec"))
     stop("The first argument must be a weighting_spec (piped with |>).")
+  if (!is.null(id)) step$id <- id
   if (inherits(spec, "prepped_weighting_spec")) {
     # Iterative refinement workflow: prep() -> inspect the realized weights ->
     # add a step (e.g. a trim whose bounds come from that distribution) ->
@@ -69,6 +70,23 @@ weighting_spec <- function(data, base_weights) {
            steps        = lapply(spec$steps, function(s) {
              s$diagnostics <- NULL; s$alerts <- NULL; s })),
       class = "weighting_spec")
+  }
+  # Stable step id for referencing (history, collect_step_detail, alerts, report).
+  # A constructor may set `step$id` explicitly; otherwise derive "<class>_<k>" with
+  # k the ordinal of that class, bumping until unique so it never clashes.
+  existing <- vapply(spec$steps, function(s) if (is.null(s$id)) "" else s$id, character(1))
+  if (is.null(step$id)) {
+    cls <- sub("^step_", "", class(step)[1])
+    k   <- 1L + sum(vapply(spec$steps,
+                           function(s) identical(sub("^step_", "", class(s)[1]), cls), logical(1)))
+    id  <- sprintf("%s_%d", cls, k)
+    while (id %in% existing) { k <- k + 1L; id <- sprintf("%s_%d", cls, k) }
+    step$id <- id
+  } else {
+    if (!is.character(step$id) || length(step$id) != 1L || !nzchar(step$id))
+      stop("`id` must be a single non-empty string.", call. = FALSE)
+    if (step$id %in% existing)
+      stop(sprintf("A step with id '%s' already exists in the recipe.", step$id), call. = FALSE)
   }
   spec$steps <- c(spec$steps, list(step))
   spec

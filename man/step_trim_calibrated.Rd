@@ -14,7 +14,8 @@ step_trim_calibrated(
   cluster = NULL,
   equal_within_cluster = FALSE,
   maxit = 100L,
-  tol = 1e-07
+  tol = 1e-07,
+  id = NULL
 )
 }
 \arguments{
@@ -52,6 +53,10 @@ applies to that common household weight. Requires \code{cluster}. FALSE
 \item{maxit}{integer. Maximum iterations for the bounded solver.}
 
 \item{tol}{numeric. Convergence tolerance for the bounded solver.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The
@@ -77,7 +82,9 @@ is too tight to preserve every total, the totals that cannot be met are relaxed
 and a warning is raised.
 
 This step is meant to run \strong{after} a \code{step_calibrate()}: it acts on the
-positive incoming weights and leaves dropped units (weight 0) alone.
+active incoming weights (including any negative weights an unbounded linear
+calibration produced, which it can bring back into \verb{[lower, upper]}) and
+leaves dropped units (weight 0) alone.
 }
 \examples{
 # calibrate, then trim the calibrated weights into [5.5, 13.5] without breaking

@@ -157,9 +157,11 @@ test_that("step_calibrate requires `count` with tidy totals", {
 test_that("step_calibrate linear requires a formula and totals", {
   expect_error(step_calibrate(sp(), method = "linear"),
                "requires `formula` and `totals`")
+  # a single data frame is the post-stratification format, not linear's (BUG-24):
+  # linear takes a named numeric vector or a tidy NAMED list.
   expect_error(step_calibrate(sp(), method = "linear", formula = ~ region,
                               totals = ps_df),
-               "must name the counts column")
+               "does not take a single data frame")
 })
 
 test_that("step_calibrate linear validates the tidy totals list", {

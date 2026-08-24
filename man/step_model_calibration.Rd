@@ -14,7 +14,8 @@ step_model_calibration(
   cluster = NULL,
   equal_within_cluster = FALSE,
   crossfit = NULL,
-  crossfit_seed = NULL
+  crossfit_seed = NULL,
+  id = NULL
 )
 }
 \arguments{
@@ -26,7 +27,10 @@ step_model_calibration(
 the prediction constraints.}
 
 \item{population}{population data.frame with the auxiliary and predictor
-columns (the y variables are not needed; they are predicted). Always
+columns (the y variables are not needed; they are predicted). May instead be
+a weighted reference survey wrapped with \code{\link[=reference_sample]{reference_sample()}}, in which case
+the totals are the design-weighted sums over that survey (estimated totals)
+rather than unweighted sums over a full frame. Always
 required: the model-assisted block predicts each y over every population
 unit, which cannot be done from aggregated totals.}
 
@@ -64,6 +68,10 @@ replication (Dagdoug, Goga and Haziza 2023; Chernozhukov et al. 2018), so it
 is recommended whenever a model uses a non-glm engine.}
 
 \item{crossfit_seed}{integer or NULL. Seed for reproducible fold assignment.}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

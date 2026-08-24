@@ -51,12 +51,14 @@ articles:
   - calibration
   - calibration-totals
   - model-calibration
+  - reference-survey
   - trimming
   - advanced-methods
 - title: Reporting
   navbar: Reporting
   contents:
   - quality-report
+  - inspecting-auditing
 - title: Case study
   navbar: Case study
   contents:
@@ -77,8 +79,10 @@ reference:
   contents:
   - weighting_spec
   - prep
+  - weighting_alerts
   - collect_weights
   - y_model
+  - reference_sample
 - title: Adjustment steps
   desc: The staged adjustments, applied in the order you pipe them.
   contents:

@@ -10,8 +10,11 @@ print.weighting_spec <- function(x, ...) {
     cat("Steps   : (none yet)\n")
   } else {
     cat("Steps   :\n")
-    for (i in seq_along(x$steps))
-      cat(sprintf("  %d. %s\n", i, x$steps[[i]]$label))
+    for (i in seq_along(x$steps)) {
+      id <- x$steps[[i]]$id
+      cat(sprintf("  %d. %s%s\n", i, x$steps[[i]]$label,
+                  if (is.null(id)) "" else sprintf("  [%s]", id)))
+    }
   }
   prepped <- inherits(x, "prepped_weighting_spec")
   cat(sprintf("Status  : %s\n\n", if (prepped) "estimated (prep)" else "not estimated"))

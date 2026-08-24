@@ -1,3 +1,25 @@
+# weightflow 1.2.0 (development)
+
+## New features
+
+* **`reference_sample()`** lets `step_model_calibration()` calibrate to a weighted reference survey instead of a full population frame: the model is fit on the sample, projected onto the reference survey, and the calibration targets are the design-weighted totals of the projection (an estimate of the population totals). A reference with all weights equal to 1 reproduces the plain-frame behaviour exactly. Passing the reference survey's replicate weights through `replicates=` propagates its sampling variance through the recipe-aware bootstrap (each replicate re-estimates the totals from the paired reference replicate; Opsomer and Erciulescu 2021); without them the totals are treated as fixed.
+* **`step_calibrate()` accepts a `reference_sample()` too** (all three methods: raking, poststratify, linear/GREG). Pass `population = reference_sample(...)` with a `formula` naming the calibration variables; the targets are the design-weighted sums over the reference, and their sampling variance propagates through the bootstrap when replicate weights are supplied.
+* **The HTML report reflects estimated control totals.** When `step_calibrate()` or `step_model_calibration()` calibrate to a `reference_sample()`, the step narrative states the totals are estimated (not census figures) and whether their sampling variance is propagated (replicate weights supplied; Opsomer and Erciulescu 2021) or treated as fixed; the replication card carries the matching note.
+* **`weighting_alerts()` and `has_alerts()`** read the quality incidents recorded by `prep()`. Every incident now lands in `$alerts`, including warnings a step raises internally (such as a calibration that could not meet its constraints), so `$alerts` is the single reliable channel for programmatic quality control even when the surrounding warnings were suppressed.
+* **`bootstrap_weights()` gains a finite-population correction (`fpc=`).** Give the first-stage sampling fraction as a column name, a single number, or a vector named by stratum; the `(1 - f_h)` factor is folded into the Rao-Wu rescaling (Rao, Wu and Yue 1992; Beaumont and Patak 2012). `fpc = 0` / `NULL` reproduces the with-replacement bootstrap exactly. Matters for the high sampling fractions common in LatAm household surveys.
+* **`t` and percentile confidence intervals.** `bootstrap_estimate()` gains `ci_type = c("normal", "t", "percentile")` and `jackknife_estimate()` gains `ci_type = c("normal", "t")`; both carry the design degrees of freedom (`$df` = total PSUs minus strata) so the `t` interval is not anticonservative with few PSUs. Default stays `"normal"`.
+* **Stable step ids.** Every `step_*()` gains an `id` argument and, by default, a unique derived id (`"<class>_<k>"`, e.g. `calibrate_1`). The id is shown in the recipe print-out and can be used to select a step in `collect_step_detail(step = "calibrate_1")`. Two steps of the same class are no longer indistinguishable, and a custom `id = "trim_final"` must be unique within the recipe.
+
+## Bug fixes
+
+* **Behaviour change:** `boot_mean()`, `jack_mean()` and `collect_replicate_weights()` now keep active negative weights (a valid unbounded GREG output) rather than dropping them, matching the totals estimators and the `as_svydesign()` / `as_svrepdesign()` export. Estimates and standard errors may shift where a linear (GREG) calibration produced negative weights; the new results are the consistent ones.
+* Constructor argument validation is stricter: several `step_*()` functions now reject out-of-range or non-numeric values (trimming ratios, bounds, tolerances and iteration caps, assertion thresholds) at build time instead of failing later or passing silently.
+* Various robustness fixes for uncommon or malformed inputs, including missing values in calibration auxiliaries, negative calibration weights, empty or absent cells, and degenerate bounds. Each fix is covered by a regression test.
+* The HTML report and its CSV export received accuracy and formatting fixes, and the report no longer errors on legal edge cases such as an open trimming bound.
+* Documentation updates, including a correspondence table for arguments that name the same concept across functions (`?weightflow-concepts`).
+* `step_calibrate()` now warns when both `margins` and `totals` are supplied (`totals` wins and `margins` was being dropped silently).
+* `step_model_calibration()` also guards missing values in the `y_model` predictor variables on the population frame (not only the `x_formula` variables), so an `NA` there no longer reaches the model engine.
+
 # weightflow 1.1.0
 
 ## New features

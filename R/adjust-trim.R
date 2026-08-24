@@ -120,7 +120,13 @@ apply_step.step_trim <- function(step, data, w) {
       # spread the excess proportionally among those within band
       free <- gi[new_w[gi] < cap[gi] & new_w[gi] > floor_v[gi]]
       if (!length(free)) break                  # nowhere to redistribute
-      new_w[free] <- new_w[free] + excess * new_w[free] / sum(new_w[free])
+      # Proportional-to-weight redistribution assumes positive weights. If the
+      # free set's weight sum is not clearly positive (negative weights from an
+      # earlier GREG), the proportional factor explodes or flips sign -- fall back
+      # to an EQUAL split, which still preserves the total.
+      sf <- sum(new_w[free])
+      if (sf > 1e-9) new_w[free] <- new_w[free] + excess * new_w[free] / sf
+      else           new_w[free] <- new_w[free] + excess / length(free)
     }
     it_global <- max(it_global, it)
   }
@@ -147,15 +153,38 @@ apply_step.step_trim <- function(step, data, w) {
   list(weights = new_w, diagnostics = diag)
 }
 
+# Weighted total of a per-reference-unit prediction, with an alignment guard so a
+# reference survey with NA predictors (which drops rows) fails loudly, not silently.
+.wf_ref_total <- function(pred, w_ref) {
+  if (length(pred) != length(w_ref))
+    stop("The reference sample (reference_sample()) has missing values (NA) in the ",
+         "model predictors; every reference unit needs complete predictors for the ",
+         "projection. Impute or drop them first.", call. = FALSE)
+  sum(w_ref * pred)
+}
+
 # --- Model calibration (Wu & Sitter 2001) ----------------------------------
 # Calibrates simultaneously to the X totals (consistency) and to the population
-# totals of each model y prediction (model-assisted efficiency).
+# totals of each model y prediction (model-assisted efficiency). `population` may
+# be a full frame (unweighted sums) or a weighted reference survey wrapped with
+# reference_sample() (weighted sums = estimated totals).
 apply_step.step_model_calibration <- function(step, data, w) {
   active <- .wf_active(w)
   new_w  <- w
   d      <- w[active]
   sdata  <- data[active, , drop = FALSE]
   pop    <- step$population
+  w_ref  <- attr(pop, "wf_ref_weights")   # non-NULL only for reference_sample()
+  # In a bootstrap replicate, re-estimate the reference totals from the paired
+  # replicate column of the reference survey (Opsomer & Erciulescu 2021), so the
+  # reference's sampling variance propagates. Point prep, or no replicate weights
+  # supplied, falls back to the point reference weights (totals treated as fixed).
+  if (!is.null(w_ref)) {
+    rep_mat <- attr(pop, "wf_ref_replicates")
+    ridx    <- attr(data, "wf_replicate_idx")
+    if (!is.null(rep_mat) && !is.null(ridx))
+      w_ref <- rep_mat[, ((ridx - 1L) %% ncol(rep_mat)) + 1L]
+  }
 
   # Consistency block: X auxiliaries
   X  <- stats::model.matrix(step$x_formula, data = sdata)
@@ -166,9 +195,21 @@ apply_step.step_model_calibration <- function(step, data, w) {
   cn <- colnames(X)
   # X totals may come from the frame (default) or from an external source.
   if (is.null(step$x_totals)) {
-    # from the population frame, as before
+    # from the population frame, as before. Guard NA first: model.matrix() would
+    # silently drop rows with missing auxiliaries (default na.omit), so colSums()
+    # below would undercount and the calibration totals would be understated.
+    pv <- intersect(all.vars(step$x_formula), names(pop))
+    if (length(pv) && anyNA(pop[, pv, drop = FALSE]))
+      stop("`population` (the calibration frame or reference_sample) has missing ",
+           "values (NA) in the x_formula variables; those rows would be dropped ",
+           "silently and the calibration totals understated. Impute or drop them first.",
+           call. = FALSE)
     Xpop <- stats::model.matrix(step$x_formula, data = pop)
-    Tx   <- colSums(Xpop)[cn]
+    if (!is.null(w_ref) && nrow(Xpop) != length(w_ref))
+      stop("The reference sample (reference_sample()) has missing values (NA) in ",
+           "`x_formula`; every reference unit needs complete auxiliaries. Impute or ",
+           "drop them first.", call. = FALSE)
+    Tx   <- if (is.null(w_ref)) colSums(Xpop)[cn] else colSums(Xpop * w_ref)[cn]
     if (anyNA(Tx))
       stop("Inconsistent factor levels between the sample and `population` in x_formula.")
     # #7: the reverse gap -- a level present in `population` but ABSENT from the
@@ -200,6 +241,16 @@ apply_step.step_model_calibration <- function(step, data, w) {
     Tx <- as.numeric(totvec[cn]); names(Tx) <- cn
   }
 
+  # The models predict on `pop`; NA in a model predictor there would reach the
+  # engine (glm errors; rpart imputes silently via surrogates), so the projected
+  # totals would be wrong. Guard the predictors on the frame, as we do for x_formula.
+  mvars <- unique(unlist(lapply(step$models, function(m) all.vars(m$formula[[3L]]))))
+  mvars <- intersect(mvars, names(pop))
+  if (length(mvars) && anyNA(pop[, mvars, drop = FALSE]))
+    stop("`population` has missing values (NA) in a y_model predictor; those rows would ",
+         "reach the model engine (an error, or silent surrogate imputation). Impute or drop ",
+         "them first.", call. = FALSE)
+
   # Model-assisted block: one prediction column per model y
   mu_cols <- list(); Tmu <- numeric(0)
   for (k in names(step$models)) {
@@ -207,7 +258,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
     if (is.null(step$crossfit)) {
       preds        <- .model_predict(m, sdata, d, list(sdata, pop))
       mu_cols[[k]] <- preds[[1]]          # prediction on the sample
-      Tmu[k]       <- sum(preds[[2]])     # population total of the prediction
+      Tmu[k]       <- if (is.null(w_ref)) sum(preds[[2]]) else .wf_ref_total(preds[[2]], w_ref)
     } else {
       cl_cf <- if (!is.null(step$cluster)) as.character(sdata[[step$cluster]]) else NULL
       mu_cols[[k]] <- .crossfit_predict(   # out-of-fold predictions on the sample
@@ -215,7 +266,8 @@ apply_step.step_model_calibration <- function(step, data, w) {
         fit_predict = function(tr, te_list)
           .model_predict(m, sdata[tr, , drop = FALSE], d[tr],
                          lapply(te_list, function(te) sdata[te, , drop = FALSE])))
-      Tmu[k] <- sum(.model_predict(m, sdata, d, list(pop))[[1]])  # full model -> pop total
+      p_pop  <- .model_predict(m, sdata, d, list(pop))[[1]]       # full model on the reference/frame
+      Tmu[k] <- if (is.null(w_ref)) sum(p_pop) else .wf_ref_total(p_pop, w_ref)
     }
   }
 
@@ -240,6 +292,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
     cl <- as.character(data[[step$cluster]])[active]
     if (anyNA(cl))
       stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
+    .wf_assert_uniform_within_cluster(d, cl, step$cluster)
     hh   <- unique(cl)
     n_h  <- as.numeric(tapply(d, cl, length)[hh])   # persons per household
     Wsum <- as.numeric(tapply(d, cl, sum)[hh])      # total base weight in household
@@ -404,9 +457,12 @@ apply_step.step_trim_weights <- function(step, data, w) {
       wv[over]  <- upper
       wv[under] <- lower
       free <- wv < upper & wv > lower
-      if (abs(net) > 1e-12 && any(free))          # redistribute to preserve total
-        wv[free] <- wv[free] + net * wv[free] / sum(wv[free])
-      else if (abs(net) > 1e-12)
+      sf   <- sum(wv[free])
+      if (abs(net) > 1e-12 && any(free)) {        # redistribute to preserve total
+        # equal split when the free weights are not clearly positive (see step_trim)
+        if (sf > 1e-9) wv[free] <- wv[free] + net * wv[free] / sf
+        else           wv[free] <- wv[free] + net / sum(free)
+      } else if (abs(net) > 1e-12)
         unredist <- unredist + net                # nowhere to redistribute: mass lost
       if (!step$strict) break
     }
@@ -473,7 +529,7 @@ apply_step.step_trim_weights <- function(step, data, w) {
 }
 
 apply_step.step_trim_calibrated <- function(step, data, w) {
-  active <- .wf_active(w)                      # only positive calibration weights
+  active <- .wf_active(w)                      # active weights (may include negatives)
   if (!any(active)) return(list(weights = w, diagnostics = NULL))
   new_w <- w
   d     <- w[active]                   # incoming weights = base for this step
@@ -503,8 +559,11 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
   # Absolute-weight bound -> factor bound. Always bounded, so go straight to the
   # Deville-Sarndal iterative solver (honouring this step's own maxit/tol).
   if (!step$equal_within_cluster) {
-    # unit level: per-unit factor bound f_k in [lower/w_k, upper/w_k]
-    bnd  <- cbind(lower / d, upper / d)
+    # unit level: per-unit factor bound so that w_k = d_k * f_k stays in
+    # [lower, upper]. Dividing by a NEGATIVE incoming weight flips the inequality,
+    # so take the min/max per row instead of assuming lower/d <= upper/d (which
+    # would invert the interval and pin negative-weight units at `upper`).
+    bnd  <- cbind(pmin(lower / d, upper / d), pmax(lower / d, upper / d))
     gsol <- .calib_ds(X, d, Tvec, calfun = step$calfun, bounds = bnd,
                       maxit = step$maxit, tol = step$tol)
     f    <- as.numeric(gsol)
@@ -526,7 +585,7 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
     d_h   <- Wsum / n_h                                  # common household weight
     lo_h  <- as.numeric(tapply(lower, cl, function(x) x[1])[hh])  # bound per household
     up_h  <- as.numeric(tapply(upper, cl, function(x) x[1])[hh])
-    bnd_h <- cbind(lo_h / d_h, up_h / d_h)
+    bnd_h <- cbind(pmin(lo_h / d_h, up_h / d_h), pmax(lo_h / d_h, up_h / d_h))
     gsol  <- .calib_ds(Xbar, Wsum, Tvec, calfun = step$calfun, bounds = bnd_h,
                        maxit = step$maxit, tol = step$tol)
     fh    <- as.numeric(gsol); names(fh) <- hh

@@ -10,6 +10,7 @@ bootstrap_weights(
   strata = NULL,
   psu = NULL,
   m = NULL,
+  fpc = NULL,
   lonely_psu = c("certainty", "collapse"),
   seed = NULL,
   cores = 1L,
@@ -25,6 +26,14 @@ bootstrap_weights(
 each unit is its own PSU; if \code{strata} is NULL a single stratum is assumed.}
 
 \item{m}{PSUs drawn per stratum (default \code{n - 1}).}
+
+\item{fpc}{optional first-stage finite-population correction: the name of a
+column holding the first-stage sampling fraction f_h (constant within
+stratum, in \verb{[0, 1]}), a single number applied to every stratum, or a numeric
+vector named by stratum level. \code{NULL} (default) is the with-replacement
+bootstrap (no correction). The correction folds \code{(1 - f_h)} into the Rao-Wu
+rescaling (Rao, Wu and Yue 1992; Beaumont and Patak 2012); \code{f_h = 0}
+reproduces the uncorrected result. Only available for the bootstrap.}
 
 \item{lonely_psu}{how to treat strata with a single PSU (which a
 with-replacement bootstrap cannot resample): "certainty" (default) treats

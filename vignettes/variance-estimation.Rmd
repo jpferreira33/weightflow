@@ -44,10 +44,11 @@ of every stage.
 within strata and re-runs the recipe on each replicate. Pass the **inert**
 recipe (do not call `prep()` first): the bootstrap preps it once per replicate.
 
-```{r recipe}
+```{r recipe, warning = FALSE}
 dat <- sample_one
 dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
                    labels = c("18-30", "31-45", "46-60", "60+"))
+dat$f <- 0.15                    # illustrative first-stage sampling fraction (used later)
 
 spec <- weighting_spec(dat, base_weights = pw) |>
   step_unknown_eligibility(unknown = unknown_elig, by = "region",
@@ -152,7 +153,7 @@ replicate weights again carry the variability of every stage.
 `jackknife_weights()` builds the stratified delete-a-PSU jackknife (JKn) with
 `strata`/`psu`; the unstratified JK1 follows from `strata = NULL`.
 
-```{r jackknife}
+```{r jackknife, warning = FALSE}
 jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 jk
 
@@ -177,6 +178,62 @@ Both `bootstrap_weights()` and `jackknife_weights()` also take `cores`: with
 `cores > 1` the per-replicate re-preps run in parallel (forking, so serial on
 Windows). The resampling is drawn up front from `seed`, so the parallel run is
 identical to the serial one.
+
+## When the finite-population correction matters
+
+The with-replacement bootstrap above ignores the finite-population correction
+(FPC), which is conservative when the first-stage sampling fraction $f_h$ is a
+material share of the stratum. That is common in stratified LatAm designs, where
+some strata are sampled at 10 or 20 percent. Pass the fraction to
+`bootstrap_weights(fpc = )` as a column name, a single number, or a vector named
+by stratum. The correction folds $(1 - f_h)$ into the Rao-Wu rescaling, so
+`fpc = NULL` reproduces the uncorrected result exactly.
+
+```{r fpc, warning = FALSE}
+boot0 <- bootstrap_weights(spec, replicates = 200, strata = "region",
+                           psu = "psu", seed = 2024, progress = FALSE)
+bootf <- bootstrap_weights(spec, replicates = 200, strata = "region",
+                           psu = "psu", fpc = "f", seed = 2024, progress = FALSE)
+c(no_fpc = boot_total(boot0, "employed")$se,
+  fpc    = boot_total(bootf, "employed")$se)   # the correction lowers the SE
+```
+
+In a validation against the closed-form stratified SRS variance, the corrected
+bootstrap SE tracks the analytic SE with FPC (about 940 in that example) while
+the uncorrected one tracks the analytic SE without it (about 970). The gap grows
+with $f_h$. The FPC is a bootstrap feature; the delete-a-PSU jackknife does not
+take it.
+
+## Confidence intervals: normal, t and percentile
+
+The estimate functions return a normal interval by default. With few PSUs the
+normal interval is anticonservative, so `bootstrap_estimate()` and
+`jackknife_estimate()` also offer `ci_type = "t"`, which uses the design degrees
+of freedom (`df` = total PSUs minus strata, stored on the object and shown by
+`print()`). The bootstrap additionally offers `ci_type = "percentile"`, the
+empirical quantiles of the valid replicates.
+
+```{r ci}
+emp <- function(w, d) sum(w * d$employed, na.rm = TRUE)
+bootstrap_estimate(boot, emp)                          # normal (default)
+bootstrap_estimate(boot, emp, ci_type = "t")           # t: wider, uses df
+bootstrap_estimate(boot, emp, ci_type = "percentile")  # empirical quantiles
+```
+
+Rough guide:
+
+- **normal**: the default; fine with many PSUs.
+- **t**: few PSUs (the usual jackknife regime); wider and less anticonservative.
+- **percentile**: skewed statistics; bootstrap only, and it needs enough valid
+  replicates (a warning fires below about 50).
+
+## Estimated control totals
+
+When a step calibrates to a `reference_sample()` instead of a census frame, the
+control totals are themselves estimated, and that adds a variance component. The
+bootstrap propagates it if you pass the reference survey's replicate weights; see
+`vignette("reference-survey")` for the full setup and why only the bootstrap
+carries this component.
 
 ## Which one to use
 

@@ -4,7 +4,12 @@
 \alias{step_round}
 \title{Round the final weights}
 \usage{
-step_round(spec, digits = 0L, method = c("nearest", "preserve_total"))
+step_round(
+  spec,
+  digits = 0L,
+  method = c("nearest", "preserve_total"),
+  id = NULL
+)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
@@ -14,6 +19,10 @@ step_round(spec, digits = 0L, method = c("nearest", "preserve_total"))
 \item{method}{"nearest" (simple rounding) or "preserve_total" (keeps the sum
 of weights). Note: "preserve_total" can break equality of weights within a
 cluster; if you need integer and equal weights per household, use "nearest".}
+
+\item{id}{optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
+to a derived \code{"<class>_<k>"}.}
 }
 \value{
 The input \code{weighting_spec} with this step appended to its recipe. The

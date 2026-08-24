@@ -26,8 +26,15 @@
   elig <- which(.wf_active(w_in))               # eligible sample (resolved cases)
   if (length(elig) < 10L) return(NULL)
 
+  # Evaluate `respondent` in the step's captured environment (as the cascade does),
+  # not baseenv(): otherwise an expression that references a user-environment object
+  # (e.g. `id %in% ids_resp`) fails here, the tryCatch returns NULL, and the whole
+  # R-indicator silently disappears from summary() and the report.
+  # NB: use an explicit NULL check, not the package `%||%` -- that helper calls
+  # is.na() on its LHS, which errors/warns when the LHS is an environment.
+  enc  <- if (is.null(step$env)) baseenv() else step$env
   resp <- tryCatch(
-    as.integer(as.logical(eval(step$respondent, envir = data, enclos = baseenv()))),
+    as.integer(as.logical(eval(step$respondent, envir = data, enclos = enc))),
     error = function(e) NULL)
   if (is.null(resp) || length(resp) != nrow(data)) return(NULL)
 
