@@ -109,8 +109,8 @@
   n_ref   <- length(attr(pop, "wf_ref_weights"))
   has_rep <- !is.null(attr(pop, "wf_ref_replicates"))
   vclause <- if (has_rep)
-    .t("Because the totals are estimates, their sampling variability is propagated through the recipe-aware bootstrap: each replicate re-estimates the totals from the paired reference replicate (Opsomer and Erciulescu 2021).",
-       "Como los totales son estimaciones, su variabilidad muestral se propaga por el bootstrap recipe-aware: cada r&eacute;plica reestima los totales desde la r&eacute;plica pareada de la referencia (Opsomer y Erciulescu 2021).", lang)
+    .t("Because the totals are estimates, their sampling variability can be propagated through the recipe-aware bootstrap, where each replicate re-estimates the totals from the paired reference replicate (Opsomer and Erciulescu 2021); the delete-a-PSU jackknife has no such pairing and treats the totals as fixed.",
+       "Como los totales son estimaciones, su variabilidad muestral puede propagarse por el bootstrap recipe-aware, donde cada r&eacute;plica reestima los totales desde la r&eacute;plica pareada de la referencia (Opsomer y Erciulescu 2021); el jackknife borra-una-UPM no tiene ese pareo y trata los totales como fijos.", lang)
   else
     .t("The totals are estimates but were treated as fixed (no reference replicate weights supplied), so the reported variance omits their sampling error and may be understated; pass replicates to reference_sample() to propagate it.",
        "Los totales son estimaciones pero se trataron como fijos (sin pesos r&eacute;plica de la referencia), as&iacute; que la varianza reportada omite su error muestral y puede quedar subestimada; pase r&eacute;plicas a reference_sample() para propagarlo.", lang)

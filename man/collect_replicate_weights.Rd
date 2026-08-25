@@ -50,3 +50,12 @@ if (requireNamespace("srvyr", quietly = TRUE) &&
 }
 }
 }
+\seealso{
+Other variance estimation:
+\code{\link[=as_svydesign]{as_svydesign()}},
+\code{\link[=bootstrap_estimate]{bootstrap_estimate()}},
+\code{\link[=bootstrap_weights]{bootstrap_weights()}},
+\code{\link[=jackknife_estimate]{jackknife_estimate()}},
+\code{\link[=jackknife_weights]{jackknife_weights()}}
+}
+\concept{variance estimation}

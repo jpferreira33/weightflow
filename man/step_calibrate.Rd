@@ -138,10 +138,12 @@ where \eqn{c_j}{c_j} is the cost of missing constraint \eqn{j}{j}: as
 # Raking to population margins
 weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
-  step_calibrate(method = "raking",
+  step_calibrate(method = "raking", id = "calib_main",
                  margins = list(sex    = c(table(population$sex)),
                                 region = c(table(population$region)))) |>
   prep()
+# the id ("calib_main") labels the step in the print-out and selects it in
+# collect_step_detail(fit, "calib_main")
 
 # ridge (penalized) calibration: relaxes the targets to control extreme
 # weights; a smaller penalty relaxes more. Uses only base R.
@@ -199,3 +201,19 @@ weighting_spec(samp, base_weights = pw) |>
                  count = "Freq", by = "region") |>
   prep()
 }
+\seealso{
+Other weighting steps:
+\code{\link[=step_assert]{step_assert()}},
+\code{\link[=step_drop_ineligible]{step_drop_ineligible()}},
+\code{\link[=step_model_calibration]{step_model_calibration()}},
+\code{\link[=step_nonresponse]{step_nonresponse()}},
+\code{\link[=step_pseudoweight]{step_pseudoweight()}},
+\code{\link[=step_rescale]{step_rescale()}},
+\code{\link[=step_round]{step_round()}},
+\code{\link[=step_select_within]{step_select_within()}},
+\code{\link[=step_trim]{step_trim()}},
+\code{\link[=step_trim_calibrated]{step_trim_calibrated()}},
+\code{\link[=step_trim_weights]{step_trim_weights()}},
+\code{\link[=step_unknown_eligibility]{step_unknown_eligibility()}}
+}
+\concept{weighting steps}

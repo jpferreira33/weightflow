@@ -29,6 +29,7 @@
 #'   prep()
 #' domain_summary(fit, by = "region")
 #' @export
+#' @family cascade audit
 domain_summary <- function(object, by) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("`object` must be a prepped weighting_spec (the output of prep()).", call. = FALSE)

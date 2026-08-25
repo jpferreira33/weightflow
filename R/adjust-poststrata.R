@@ -56,6 +56,18 @@
       paste(missing_cols, collapse = ", "),
       paste(names(data), collapse = ", ")))
 
+  # Cell variables must be complete: format() turns NA into the string "NA", so a
+  # missing value would silently match a literal "NA" category in the totals (a
+  # typical CSV round-trip) and be calibrated as a real cell. Guard NA up front,
+  # like the classic and the model-calibration paths already do.
+  for (v in vars) {
+    if (anyNA(data[[v]][active]))
+      stop(sprintf(paste0("The post-stratification variable '%s' has missing values (NA) in the ",
+                          "sample. Missing values cannot form a post-stratum: recode the NAs into an ",
+                          "explicit category (and give it a control total) or drop those units before ",
+                          "calibrating."), v), call. = FALSE)
+  }
+
   key_of <- function(df, vars) {
     # Numeric categories: format WITHOUT scientific notation and consistently for
     # integer vs double, so 100000 in the totals matches 100000L in the data
@@ -264,17 +276,21 @@
   # weight sum stays <= 0 (e.g. after an unbounded linear calibration) is skipped
   # every sweep, contributing nothing to maxdiff, so `converged` could be TRUE
   # with that margin still off. Check the achieved totals against the targets.
+  # A Rule-2 cell (a population cell with NO unit in the sample, already reported)
+  # has n = 0 and achieved = 0, so it would fail this check spuriously. Exclude it:
+  # it is a coverage gap, not a raking failure.
+  pc <- if ("n" %in% names(diag)) diag$n > 0 else rep(TRUE, nrow(diag))
   rel_dev <- abs(diag$achieved - diag$target) / (abs(diag$target) + 1)
-  targets_ok <- max(rel_dev) <= 1e-3      # same tolerance as the classic raking post-check
+  targets_ok <- if (any(pc)) max(rel_dev[pc]) <= 1e-3 else TRUE   # same tol as the classic post-check
   attr(diag, "converged") <- (maxdiff < tol) && targets_ok
   if ((maxdiff < tol) && !targets_ok) {                 # silent-miss case
-    off <- which(rel_dev > 1e-3)
+    off <- which(rel_dev > 1e-3 & pc)
     k   <- seq_len(min(3L, length(off)))
     warning(sprintf(paste0(
       "Raking stabilised but %d margin cell(s) are not met (max relative deviation ",
       "= %.2e). This usually means a cell has a non-positive weight sum (e.g. after ",
       "an unbounded linear calibration) and was skipped every sweep. Cells: %s."),
-      length(off), max(rel_dev),
+      length(off), max(rel_dev[pc]),
       paste(sprintf("%s=%s", diag$variable[off][k], diag$category[off][k]), collapse = ", ")),
       call. = FALSE)
   }

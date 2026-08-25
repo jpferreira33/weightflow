@@ -84,6 +84,7 @@ plot.prepped_weighting_spec <- function(x, type = c("all", "factors", "summary")
 #'   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
 #'   prep()
 #' head(weight_factors(fitted))
+#' @family cascade audit
 weight_factors <- function(object) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first.")

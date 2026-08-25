@@ -46,6 +46,7 @@
 #' p <- collect_propensities(fit)
 #' summary(p$.propensity)
 #' @export
+#' @family cascade audit
 collect_propensities <- function(object, step = NULL) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("`object` must be a prepped weighting_spec (the output of prep()).", call. = FALSE)

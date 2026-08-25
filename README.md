@@ -351,7 +351,7 @@ bootstrap_estimate(boot, function(w, d) sum(w * d$income), ci_type = "t")
 
 Every step has a stable id (`nonresponse_1`, `calibrate_1`), so the cascade can be
 audited from a script: `weighting_alerts()` / `has_alerts()` as a quality gate,
-`collect_step_detail("calibrate_1")` and `collect_propensities()` unit by unit,
+`collect_step_detail(fit, "calibrate_1")` and `collect_propensities()` unit by unit,
 and `domain_summary()` for per-domain reliability.
 
 ```r

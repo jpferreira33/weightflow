@@ -578,6 +578,23 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
     cl <- as.character(data[[step$cluster]])[active]
     if (anyNA(cl))
       stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
+    # The integrative solve assigns ONE weight per cluster, so the incoming weight
+    # must already be uniform within the cluster; otherwise the per-unit bound
+    # w = d*f in [lower, upper] cannot be honoured with a single household factor
+    # and the bounds would be violated silently. Same guard as the other three
+    # integrative engines.
+    .wf_assert_uniform_within_cluster(d, cl, step$cluster)
+    # With `by` the bounds are per subgroup; a cluster that spans two subgroups has
+    # an ambiguous household bound. Require the bounds to be constant within cluster
+    # instead of silently taking the first member's (order-dependent).
+    .chk_bound_const <- function(v, nm) {
+      if (any(tapply(v, cl, function(x) length(unique(x)) > 1L)))
+        stop(sprintf(paste0("Trimming bound `%s` is not constant within cluster '%s': a cluster ",
+                            "spans `by` subgroups with different bounds, so the one-weight-per-cluster ",
+                            "bound is ambiguous. Keep each cluster within a single `by` subgroup."),
+                     nm, step$cluster), call. = FALSE)
+    }
+    .chk_bound_const(lower, "lower"); .chk_bound_const(upper, "upper")
     hh    <- unique(cl)
     n_h   <- as.numeric(tapply(d, cl, length)[hh])
     Wsum  <- as.numeric(tapply(d, cl, sum)[hh])

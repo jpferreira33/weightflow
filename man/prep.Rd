@@ -42,3 +42,8 @@ rec <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region")
 prep(rec)
 }
+\seealso{
+\link{weightflow-alerts} for the catalogue of quality alerts prep() can
+raise, \code{\link[=weighting_alerts]{weighting_alerts()}} / \code{\link[=has_alerts]{has_alerts()}} to read them, and
+\code{vignette("inspecting-auditing")} for the full quality-control workflow.
+}

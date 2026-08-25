@@ -74,6 +74,7 @@
 #' d <- collect_step_detail(fit, step = 1)
 #' head(d[!is.na(d$.factor), c(".weight_in", ".factor", ".propensity")])
 #' @export
+#' @family cascade audit
 collect_step_detail <- function(object, step = NULL) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("`object` must be a prepped weighting_spec (the output of prep()).", call. = FALSE)

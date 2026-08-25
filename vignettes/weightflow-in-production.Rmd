@@ -1,0 +1,145 @@
+---
+title: "weightflow in production (GSBPM 5.6)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{weightflow in production (GSBPM 5.6)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(weightflow)
+```
+
+In the Generic Statistical Business Process Model (GSBPM), the construction of
+analysis weights is sub-process 5.6 ("calculate weights") and the production of
+estimates and their variances is 5.7 ("calculate aggregates"). In a statistical
+office this step is not a one-off script: it is a governed, auditable and
+repeatable part of the production line, run every wave, reviewed, and archived.
+This article shows how weightflow supports that workflow. Every piece below
+already exists in the package; the point is to use them together.
+
+## The recipe is the artifact
+
+The core idea is that the whole weighting process is a single declarative
+object. You define it once, estimate it with `prep()`, and everything else
+(diagnostics, variance, the report) reads from that one object. The recipe is
+what you version, review in a pull request, and archive alongside the estimates.
+
+```{r recipe}
+rec <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_nonresponse(respondent = responded, method = "weighting_class",
+                   by = "region") |>
+  step_calibrate(method = "raking", id = "calib_main",
+                 margins = list(region = c(table(population$region)),
+                                sex    = c(table(population$sex))))
+fit <- prep(rec)
+summary(fit)
+```
+
+Because the definition is separated from the execution, the same recipe object
+is the specification, the documentation and the input to the variance machinery.
+Each step has a stable id (here `calib_main`, otherwise a derived one), so a step
+can be referenced from a script long after the run.
+
+## A programmatic quality gate
+
+Production pipelines need a machine-readable pass or fail, not a human reading a
+report. `prep()` records every quality incident in `$alerts`, readable with
+`weighting_alerts()` and `has_alerts()`. That is the hook for a continuous
+integration check: fail the build when the recipe raises an incident.
+
+```{r gate}
+if (has_alerts(fit)) {
+  # in CI: stop() here so the pipeline fails and the run is not published
+  weighting_alerts(fit)
+} else {
+  "no quality incidents"
+}
+```
+
+`?weightflow-alerts` catalogues the incidents `prep()` can raise, with the
+trigger and the remedy for each. For a hard threshold that must hold (a maximum
+design effect, a minimum effective sample size), add a `step_assert()`: it
+errors at that point of the cascade if the condition fails, so a recipe that
+violates it never produces weights at all.
+
+```{r assert, eval = FALSE}
+rec |> step_assert(max_deff = 2.5, min_n_eff = 500)
+```
+
+## Reproducibility
+
+The replication functions take a single `seed`, and draw the whole resampling
+pattern from it up front, so a parallel run is bit-identical to the serial one.
+Fix the seed, and record the exact package and R versions used (for example in a
+lockfile), because a flexible learner such as a random forest can change between
+versions of its engine. The report's reproducibility card records the versions
+at run time.
+
+```{r seed}
+boot <- bootstrap_weights(fit, replicates = 100, strata = "region",
+                          psu = "psu", seed = 20260601, progress = FALSE)
+boot_mean(boot, "income")
+```
+
+## The report is the quality document
+
+`report_weighting()` writes a self-contained HTML report: the cascade in prose,
+the target and achieved control totals, the design effect and effective sample
+size, the fieldwork outcomes and response rates when the recipe has eligibility
+and nonresponse steps, and a reference-metadata header aligned to the ESS SIMS
+concepts and GSBPM 5.6. Archive that HTML next to the released estimates; it is
+the artifact a reviewer reads.
+
+```{r report, eval = FALSE}
+report_weighting(
+  fit, replicates = boot, file = "weights_2026.html", lang = "en",
+  metadata = list(
+    survey           = "Continuous Household Survey",
+    reference_period = "2026",
+    producer         = "National Statistical Office",
+    frame            = "Population and housing census 2023",
+    totals_source    = "Population projections 2026",
+    version          = "1.0"))
+```
+
+## Variance and dissemination
+
+The recipe-aware bootstrap and jackknife re-run the whole recipe on each
+replicate, so the replicate weights carry the variability of every adjustment.
+Many offices release replicate weights alongside public-use microdata so that
+external users can compute design-consistent variances without the full design.
+`collect_replicate_weights()` returns the point weight and every replicate weight
+as ordinary columns, ready to write out and to load into `survey` or `srvyr`.
+
+```{r disseminate, eval = FALSE}
+pub <- collect_replicate_weights(boot)          # point + replicate weights
+# survey / srvyr read them directly:
+des <- as_svrepdesign(boot)
+```
+
+The point weights and replicate weights also flow into `survey` through
+`as_svydesign()` / `as_svrepdesign()`, so downstream estimands and domains use
+the design-based machinery the office already trusts.
+
+## Where it sits
+
+The cascade maps onto the total survey error framework: unknown-eligibility
+redistribution and dropping out-of-scope units address coverage error, the
+within-household selection restores the design, the nonresponse step addresses
+nonresponse error, and calibration reduces coverage bias and improves precision.
+Placing the whole process in one auditable, re-runnable object is what the
+quality frameworks ask for: the UN Fundamental Principles of Official Statistics
+and the European Statistics Code of Practice both require sound methodology,
+transparency and reproducibility. weightflow does not replace the parts of 5.6
+and 5.7 that belong to other tools (small-area estimation, editing, imputation);
+it is the reproducible spine that documents and computes the weights, and bridges
+to those tools honestly.
+
+## See also
+
+`vignette("variance-estimation")` for the replicate methods, `vignette("quality-report")`
+for the report, `vignette("inspecting-auditing")` for the programmatic
+quality-control accessors, and `?weightflow-alerts` for the alert catalogue.

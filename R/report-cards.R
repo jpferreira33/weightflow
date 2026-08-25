@@ -52,26 +52,31 @@
 .status_checklist <- function(object, de_f, fin, replicates, lang) {
   nonconv <- sum(vapply(object$steps, function(s)
     identical(attr(s$diagnostics, "converged"), FALSE), logical(1)))
+  # Only a step that tracks convergence (a calibration) can support the claim; do
+  # not print "all steps converged" for a recipe with no such step (vacuously true).
+  has_conv <- any(vapply(object$steps,
+                         function(s) !is.null(attr(s$diagnostics, "converged")), logical(1)))
   nalert  <- sum(vapply(object$steps, function(s)
     !is.null(s$alerts) && length(s$alerts) > 0L, logical(1)))
-  pos <- fin[fin > 0]; med <- stats::median(pos); n_ext <- sum(pos > 4 * med)
+  pos <- fin[fin > 0]; med <- if (length(pos)) stats::median(pos) else NA_real_
+  n_ext <- if (length(pos)) sum(pos > 4 * med) else 0L
   has_rep <- !is.null(replicates) &&
              inherits(replicates, c("weightflow_boot", "weightflow_jack"))
   item <- function(ok, txt) sprintf("<li><span class='%s'>%s</span> %s</li>",
     if (ok) "ok" else "no", if (ok) "&#10003;" else "&#10007;", txt)
   items <- c(
-    item(nonconv == 0L, if (nonconv == 0L)
+    if (has_conv) item(nonconv == 0L, if (nonconv == 0L)
       .t("All calibration steps converged.", "Todos los pasos de calibraci\u00f3n convergieron.", lang)
       else .t(sprintf("%d step(s) did not converge.", nonconv),
-              sprintf("%d paso(s) no convergieron.", nonconv), lang)),
+              sprintf("%d paso(s) no convergieron.", nonconv), lang)) else NULL,
     item(TRUE, .t(sprintf("Final Kish design effect = %.3f (effective n = %s).",
                           de_f$deff, format(round(de_f$n_eff), big.mark = ",")),
                   sprintf("Efecto de dise\u00f1o de Kish final = %.3f (n efectivo = %s).",
                           de_f$deff, format(round(de_f$n_eff), big.mark = ",")), lang)),
-    item(n_ext == 0L, if (n_ext == 0L)
+    if (length(pos)) item(n_ext == 0L, if (n_ext == 0L)
       .t("No extreme weights (above 4x the median).", "Sin pesos extremos (mayores a 4x la mediana).", lang)
       else .t(sprintf("%d extreme weight(s) above 4x the median.", n_ext),
-              sprintf("%d peso(s) extremo(s) por encima de 4x la mediana.", n_ext), lang)),
+              sprintf("%d peso(s) extremo(s) por encima de 4x la mediana.", n_ext), lang)) else NULL,
     item(has_rep, if (has_rep)
       .t("Replicate weights for variance created.", "Pesos r\u00e9plica para la varianza creados.", lang)
       else .t("Replicate weights not created (add bootstrap/jackknife for variance).",
@@ -170,9 +175,12 @@
     kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
     if (!is.null(rep$df))
       kv(.t("Degrees of freedom", "Grados de libertad", lang), format(rep$df, big.mark = ",")) else "",
+    # FPC is a bootstrap concept only, and only when a non-zero fraction was given.
+    if (is_jack) "" else
     kv(.t("Finite-population correction", "Correcci&oacute;n de poblaci&oacute;n finita (FPC)", lang),
-       if (is.null(rep$fpc)) .t("none (with replacement)", "ninguna (con reemplazo)", lang)
-       else .t("applied", "aplicada", lang)),
+       if (!is.null(rep$fpc) && !(is.numeric(rep$fpc) && all(rep$fpc == 0)))
+         .t("applied", "aplicada", lang)
+       else .t("none (with replacement)", "ninguna (con reemplazo)", lang)),
     kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
     kv(.t("Recipe-aware", "Recipe-aware", lang),
        if (nrep > 0L && nfail >= nrep)
@@ -208,8 +216,13 @@
   if (!is.null(object) && !is.null(object$steps)) {
     hit <- Filter(function(s) inherits(s$population, "wf_reference_sample"), object$steps)
     if (length(hit)) {
-      has_rep <- any(vapply(hit, function(s) !is.null(attr(s$population, "wf_ref_replicates")),
-                            logical(1)))
+      # Only the BOOTSTRAP pairs each replicate with the reference's replicate to
+      # re-estimate the totals; the delete-a-PSU jackknife has no such pairing and
+      # treats the estimated totals as fixed (see reference_sample() docs). So the
+      # propagation claim holds only for a bootstrap object.
+      has_rep <- !is_jack &&
+        any(vapply(hit, function(s) !is.null(attr(s$population, "wf_ref_replicates")),
+                   logical(1)))
       ref_note <- if (has_rep)
         sprintf("<p class='note'>%s</p>", .t(
           "Some control totals are estimated from a reference survey; their sampling variance is propagated through these replicates (each replicate re-estimates the totals from the paired reference replicate; Opsomer and Erciulescu 2021).",
@@ -351,6 +364,10 @@
 # bilingual label in a fixed order, and any extra keys are shown generically.
 .metadata_card <- function(md, lang) {
   if (is.null(md) || !length(md)) return("")
+  # Accept a named vector too, and collapse multi-value entries to one string so a
+  # length > 1 value does not break the `if (nzchar(...))` guards or the row sprintf.
+  if (!is.list(md)) md <- as.list(md)
+  mdv <- function(x) paste(as.character(x), collapse = "; ")
   known <- c(
     survey          = .t("Statistical operation", "Operaci\u00f3n estad\u00edstica", lang),
     reference_period= .t("Reference period", "Per\u00edodo de referencia", lang),
@@ -369,11 +386,11 @@
                                 k, .html_escape(as.character(v)))
   rows <- row(.t("GSBPM sub-process", "Subproceso GSBPM", lang),
               .t("5.6 Calculate weights", "5.6 Calcular ponderaciones", lang))
-  for (k in names(known)) if (!is.null(md[[k]]) && nzchar(as.character(md[[k]])))
-    rows <- paste0(rows, row(known[[k]], md[[k]]))
+  for (k in names(known)) if (!is.null(md[[k]]) && nzchar(mdv(md[[k]])))
+    rows <- paste0(rows, row(known[[k]], mdv(md[[k]])))
   for (k in setdiff(names(md), names(known)))
-    if (nzchar(k) && !is.null(md[[k]]) && nzchar(as.character(md[[k]])))
-      rows <- paste0(rows, row(.html_escape(k), md[[k]]))
+    if (nzchar(k) && !is.null(md[[k]]) && nzchar(mdv(md[[k]])))
+      rows <- paste0(rows, row(.html_escape(k), mdv(md[[k]])))
   sprintf("<div class='meta'><h4>%s</h4><table class='params'><caption class='sr-only'>%s</caption>%s</table></div>",
           .t("Reference metadata (SIMS / GSBPM 5.6)", "Metadatos de referencia (SIMS / GSBPM 5.6)", lang),
           .t("Reference metadata: key survey and calibration concepts (SIMS / GSBPM 5.6).",

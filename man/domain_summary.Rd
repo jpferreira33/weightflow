@@ -39,4 +39,13 @@ domain_summary(fit, by = "region")
 }
 \seealso{
 \code{\link[=design_effect]{design_effect()}}, \code{\link[=weight_factors]{weight_factors()}}, \code{\link[=summary.prepped_weighting_spec]{summary.prepped_weighting_spec()}}
+
+Other cascade audit:
+\code{\link[=as_sae_input]{as_sae_input()}},
+\code{\link[=collect_propensities]{collect_propensities()}},
+\code{\link[=collect_step_detail]{collect_step_detail()}},
+\code{\link[=collect_weights]{collect_weights()}},
+\code{\link[=weight_factors]{weight_factors()}},
+\code{\link[=weighting_alerts]{weighting_alerts()}}
 }
+\concept{cascade audit}

@@ -59,6 +59,7 @@ articles:
   contents:
   - quality-report
   - inspecting-auditing
+  - weightflow-in-production
 - title: Case study
   navbar: Case study
   contents:
@@ -74,6 +75,7 @@ reference:
   contents:
   - weightflow-package
   - weightflow-concepts
+  - weightflow-alerts
 - title: Build and run a recipe
   desc: Define the recipe, estimate it, and pull the weights out.
   contents:
@@ -90,6 +92,7 @@ reference:
   - step_drop_ineligible
   - step_select_within
   - step_nonresponse
+  - step_pseudoweight
   - step_calibrate
   - step_model_calibration
   - step_trim
@@ -118,6 +121,7 @@ reference:
   - jackknife_estimate
   - as_svydesign
   - collect_replicate_weights
+  - as_sae_input
   - print.weightflow_boot
   - print.weightflow_jack
 - title: Example data

@@ -56,7 +56,13 @@
 #' boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
 #'                           psu = "psu", seed = 1)
 #' boot_total(boot, "responded")
+#' # with a first-stage finite-population correction (per-stratum sampling fraction)
+#' d <- sample_survey; d$f <- 0.1
+#' spec_f <- weighting_spec(d, base_weights = pw)
+#' bootstrap_weights(spec_f, replicates = 50, strata = "region", psu = "psu",
+#'                   fpc = "f", seed = 1)
 #' @export
+#' @family variance estimation
 bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
                               psu = NULL, m = NULL, fpc = NULL,
                               lonely_psu = c("certainty", "collapse"),
@@ -187,11 +193,19 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
 
   # Degrees of freedom = (total PSUs) - (strata), the standard survey convention,
   # computed post-collapse. Used by the t / percentile confidence intervals.
-  df <- sum(vapply(hs, function(h) length(unique(cl[st == h])), integer(1))) - length(hs)
+  nh_by <- vapply(hs, function(h) length(unique(cl[st == h])), integer(1))
+  df <- sum(nh_by) - length(hs)
+  # Resolved design (post-collapse), so the effective design is auditable and
+  # reconstructible from the object, not just the arguments the user passed:
+  # f_h per final stratum, the PSU count n_h, the effective resample size m_h, and
+  # whether any lonely strata were collapsed.
+  mh_by <- if (is.null(m)) pmax(nh_by - 1L, 0L) else pmin(as.integer(m), nh_by - 1L)
+  design <- list(fh = fh_by, nh = nh_by, mh = stats::setNames(mh_by, hs),
+                 collapsed = lonely_psu == "collapse" && any(grepl("__collapsed__", hs)))
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = replicates,
                  base_weights = bw, method = "bootstrap", lonely_psu = lonely_psu,
-                 fpc = fpc, df = df,
+                 fpc = fpc, df = df, design = design,
                  seed = seed, cores = as.integer(cores),
                  elapsed = as.numeric(difftime(Sys.time(), t0, units = "secs"))),
             class = "weightflow_boot")
@@ -246,6 +260,18 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
                         "Resampling is undefined for a unit with no PSU; assign a PSU to those ",
                         "units (or filter them) before bootstrap/jackknife."),
                  psu, sum(is.na(data[[psu]]))), call. = FALSE)
+  # A blank id ("" or all-whitespace, typical of a CSV with empty cells) never
+  # matches the by-name subscript, so every replicate fails with a misleading
+  # "did not converge". Reject it here, next to the NA guard.
+  blank <- function(col) { x <- as.character(col); sum(!is.na(x) & !nzchar(trimws(x))) }
+  if (!is.null(strata) && blank(data[[strata]]) > 0L)
+    stop(sprintf(paste0("Strata column '%s' has blank (empty-string) values in %d unit(s). ",
+                        "Recode them to a real stratum label before bootstrap/jackknife."),
+                 strata, blank(data[[strata]])), call. = FALSE)
+  if (!is.null(psu) && blank(data[[psu]]) > 0L)
+    stop(sprintf(paste0("PSU column '%s' has blank (empty-string) values in %d unit(s). ",
+                        "Recode them to a real PSU id before bootstrap/jackknife."),
+                 psu, blank(data[[psu]])), call. = FALSE)
 }
 
 #' Print a bootstrap replicate-weight object
@@ -266,7 +292,7 @@ print.weightflow_boot <- function(x, ...) {
   cat(sprintf("  strata     : %s\n", if (is.null(x$strata)) "(none)" else x$strata))
   cat(sprintf("  psu        : %s\n", if (is.null(x$psu)) "(unit-level)" else x$psu))
   if (!is.null(x$df)) cat(sprintf("  df         : %d%s\n", x$df,
-      if (!is.null(x$fpc)) "  (fpc applied)" else ""))
+      if (!is.null(x$fpc) && !(is.numeric(x$fpc) && all(x$fpc == 0))) "  (fpc applied)" else ""))
   invisible(x)
 }
 
@@ -293,7 +319,16 @@ print.weightflow_boot <- function(x, ...) {
 #' @param df degrees of freedom for the t interval; `NULL` (default) uses the
 #'   design df stored on the object (total PSUs minus strata).
 #' @return A data frame with `estimate`, `se`, `ci_lower`, `ci_upper`.
+#' @examples
+#' spec <- weighting_spec(sample_survey, base_weights = pw) |>
+#'   step_calibrate(method = "raking",
+#'                  margins = list(region = c(table(population$region))))
+#' boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
+#'                           psu = "psu", seed = 1)
+#' # a t interval with the design degrees of freedom (safer with few PSUs)
+#' bootstrap_estimate(boot, function(w, d) sum(w * d$responded), ci_type = "t")
 #' @export
+#' @family variance estimation
 bootstrap_estimate <- function(boot, statistic, level = 0.95,
                                ci_type = c("normal", "t", "percentile"), df = NULL) {
   if (!inherits(boot, "weightflow_boot")) stop("`boot` must be a weightflow_boot object.")
@@ -301,7 +336,22 @@ bootstrap_estimate <- function(boot, statistic, level = 0.95,
   ci_type <- match.arg(ci_type)
   df <- if (is.null(df)) boot$df else df
   theta_hat <- statistic(boot$weights, boot$data)
-  thetas    <- apply(boot$replicates, 2L, function(w) statistic(w, boot$data))
+  # A failed replicate is an all-NA weight column. Do NOT hand it to the user's
+  # statistic (it may not be NA-safe and would abort every estimate); return NAs of
+  # the right length instead, which the finite-value filter below drops. Enforcing a
+  # constant output length also avoids a ragged result from a vector statistic.
+  klen   <- length(theta_hat)
+  thetas <- vapply(seq_len(ncol(boot$replicates)), function(j) {
+    w <- boot$replicates[, j]
+    if (anyNA(w)) return(rep(NA_real_, klen))
+    v <- statistic(w, boot$data)
+    if (length(v) != klen)
+      stop(sprintf(paste0("The statistic returned length %d on a replicate but %d on the point ",
+                          "estimate; a statistic must return a constant length."),
+                   length(v), klen), call. = FALSE)
+    as.numeric(v)
+  }, numeric(klen))
+  if (is.matrix(thetas) && !is.null(names(theta_hat))) rownames(thetas) <- names(theta_hat)
   a   <- (1 - level) / 2
   mat <- is.matrix(thetas)
   good   <- if (mat) apply(is.finite(thetas), 2L, all) else is.finite(thetas)
@@ -392,6 +442,7 @@ boot_mean <- function(boot, variable) {
 #' jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 #' jack_total(jk, "employed")
 #' @export
+#' @family variance estimation
 jackknife_weights <- function(object, strata = NULL, psu = NULL,
                               lonely_psu = c("certainty", "collapse"),
                               cores = 1L, progress = TRUE) {
@@ -530,6 +581,7 @@ print.weightflow_jack <- function(x, ...) {
 #' jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 #' jackknife_estimate(jk, function(w, d) sum(w * d$employed, na.rm = TRUE))
 #' @export
+#' @family variance estimation
 jackknife_estimate <- function(jack, statistic, level = 0.95,
                                ci_type = c("normal", "t"), df = NULL) {
   if (!inherits(jack, "weightflow_jack")) stop("`jack` must be a weightflow_jack object.")
@@ -546,7 +598,21 @@ jackknife_estimate <- function(jack, statistic, level = 0.95,
   } else stats::qnorm(1 - a)
   z <- crit
   theta_hat <- statistic(jack$weights, jack$data)
-  thetas    <- apply(jack$replicates, 2L, function(w) statistic(w, jack$data))
+  # As in bootstrap_estimate(): a failed (all-NA) replicate is never passed to the
+  # statistic; it becomes NAs of the right length that the finite filter drops. The
+  # column order (and its alignment with `strat`) is preserved.
+  klen   <- length(theta_hat)
+  thetas <- vapply(seq_len(ncol(jack$replicates)), function(j) {
+    w <- jack$replicates[, j]
+    if (anyNA(w)) return(rep(NA_real_, klen))
+    v <- statistic(w, jack$data)
+    if (length(v) != klen)
+      stop(sprintf(paste0("The statistic returned length %d on a replicate but %d on the point ",
+                          "estimate; a statistic must return a constant length."),
+                   length(v), klen), call. = FALSE)
+    as.numeric(v)
+  }, numeric(klen))
+  if (is.matrix(thetas) && !is.null(names(theta_hat))) rownames(thetas) <- names(theta_hat)
   strat <- jack$rep_stratum
 
   jkn_var <- function(th, nh_vec) {                 # th: numeric over replicates
@@ -622,6 +688,7 @@ jack_mean <- function(jack, variable) {
 #' @param ... passed to the survey constructor.
 #' @return A `survey.design` / `svyrep.design` object.
 #' @export
+#' @family variance estimation
 as_svydesign <- function(object, ids, strata = NULL, weight_name = ".weight", ...) {
   if (!requireNamespace("survey", quietly = TRUE))
     stop("Install the 'survey' package to use as_svydesign().")
@@ -732,6 +799,7 @@ as_svrepdesign <- function(object, ...) {
 #' }
 #' }
 #' @export
+#' @family variance estimation
 collect_replicate_weights <- function(object, weight_name = ".weight",
                                       prefix = "rep_", drop_zero = TRUE) {
   if (!inherits(object, c("weightflow_boot", "weightflow_jack")))
