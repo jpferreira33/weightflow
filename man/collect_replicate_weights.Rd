@@ -8,7 +8,8 @@ collect_replicate_weights(
   object,
   weight_name = ".weight",
   prefix = "rep_",
-  drop_zero = TRUE
+  drop_zero = TRUE,
+  scramble = FALSE
 )
 }
 \arguments{
@@ -19,6 +20,14 @@ collect_replicate_weights(
 \item{prefix}{prefix for the replicate-weight columns (\code{rep_1}, \code{rep_2}, ...).}
 
 \item{drop_zero}{keep only active units (point weight > 0).}
+
+\item{scramble}{disclosure control for a public-use file. When \code{TRUE}, the
+replicate columns are randomly permuted (their \code{rscales} move with them, so the
+variance is unchanged) and the design identifier columns (the \code{strata} and
+\code{psu} columns used to build the replicates) are dropped from the output, so the
+exported weights do not reveal the sampling design. The point weights and the
+variance estimate are unaffected. Set a seed beforehand for a reproducible
+permutation. The result carries attribute \code{"scrambled" = TRUE}.}
 }
 \value{
 A data frame: the original columns, \code{weight_name}, and one column per

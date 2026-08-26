@@ -159,6 +159,7 @@ Other weighting steps:
 \code{\link[=step_calibrate]{step_calibrate()}},
 \code{\link[=step_drop_ineligible]{step_drop_ineligible()}},
 \code{\link[=step_nonresponse]{step_nonresponse()}},
+\code{\link[=step_nr_sensitivity]{step_nr_sensitivity()}},
 \code{\link[=step_pseudoweight]{step_pseudoweight()}},
 \code{\link[=step_rescale]{step_rescale()}},
 \code{\link[=step_round]{step_round()}},

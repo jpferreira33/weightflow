@@ -85,6 +85,8 @@ reference:
   - collect_weights
   - y_model
   - reference_sample
+  - write_recipe
+  - read_recipe
 - title: Adjustment steps
   desc: The staged adjustments, applied in the order you pipe them.
   contents:
@@ -101,6 +103,7 @@ reference:
   - step_round
   - step_rescale
   - step_assert
+  - step_nr_sensitivity
 - title: Diagnostics and reporting
   desc: Inspect, summarise and report the cascade.
   contents:
@@ -111,6 +114,9 @@ reference:
   - collect_step_detail
   - domain_summary
   - design_effect
+  - data_defect
+  - disclosure_risk
+  - nr_sensitivity
   - report_weighting
 - title: Variance estimation
   desc: Bootstrap and jackknife that re-apply the recipe, plus survey/srvyr bridges.

@@ -15,12 +15,19 @@
 #'   the factor levels of the column (or numerically for a numeric column); units
 #'   with a missing domain value are shown as a `"(missing)"` domain rather than
 #'   dropped silently.
+#' @param min_n_eff optional publication threshold. When set to a positive number,
+#'   the result gains a logical `publishable` column (whether the domain's
+#'   final-stage effective sample size reaches the threshold) and a warning names
+#'   the domains that fall below it, turning the implicit reliability read into an
+#'   explicit gate. Domains below the threshold are candidates for small-area
+#'   estimation (see [as_sae_input()]) rather than direct estimation.
 #' @return A `data.frame` with one row per stage x domain and the columns
 #'   `stage` (an ordered factor: base weights, then `1. <step>`, `2. <step>`,
 #'   ...), `domain` (an ordered factor), `n_active` (active units in the domain at
 #'   that stage), `sum_w` (sum of the active weights), `mean_w`, `deff` (the Kish
-#'   design effect within the domain) and `n_eff`. Reading down a domain shows how
-#'   its weight total and dispersion evolve step by step.
+#'   design effect within the domain) and `n_eff`; and, when `min_n_eff` is given,
+#'   `publishable`. Reading down a domain shows how its weight total and dispersion
+#'   evolve step by step.
 #' @seealso [design_effect()], [weight_factors()], [summary.prepped_weighting_spec()]
 #' @examples
 #' fit <- weighting_spec(sample_survey, base_weights = pw) |>
@@ -30,11 +37,15 @@
 #' domain_summary(fit, by = "region")
 #' @export
 #' @family cascade audit
-domain_summary <- function(object, by) {
+domain_summary <- function(object, by, min_n_eff = NULL) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("`object` must be a prepped weighting_spec (the output of prep()).", call. = FALSE)
   if (!is.character(by) || length(by) < 1L)
     stop("`by` must name one or more domain columns in the data.", call. = FALSE)
+  if (!is.null(min_n_eff) && (!is.numeric(min_n_eff) || length(min_n_eff) != 1L ||
+                              !is.finite(min_n_eff) || min_n_eff <= 0))
+    stop("`min_n_eff` must be NULL or a single positive number (the publication threshold).",
+         call. = FALSE)
   miss <- setdiff(by, names(object$data))
   if (length(miss))
     stop(sprintf("Domain column(s) not found in the data: %s.", paste(miss, collapse = ", ")),
@@ -93,6 +104,23 @@ domain_summary <- function(object, by) {
   out <- do.call(rbind, rows)
   out$stage  <- factor(out$stage, levels = unique(lab))   # keep cascade order
   out$domain <- factor(out$domain, levels = dom_levels)    # natural / factor order
+
+  # Publication gate: turn the implicit reliability read into an explicit column
+  # plus a warning, keyed to each domain's FINAL-stage effective sample size.
+  if (!is.null(min_n_eff)) {
+    final_lab <- utils::tail(levels(out$stage), 1L)
+    fin       <- out[out$stage == final_lab, c("domain", "n_eff")]
+    neff_by   <- stats::setNames(fin$n_eff, as.character(fin$domain))
+    dom_neff  <- neff_by[as.character(out$domain)]
+    out$publishable <- is.finite(dom_neff) & dom_neff >= min_n_eff
+    below <- names(neff_by)[!(is.finite(neff_by) & neff_by >= min_n_eff)]
+    if (length(below))
+      warning(sprintf(paste0("%d domain(s) below the publication threshold (final n_eff < %s): %s. ",
+                             "Direct estimates for these domains are unreliable; consider small-area ",
+                             "estimation (see as_sae_input())."),
+                      length(below), format(min_n_eff), paste(below, collapse = ", ")),
+              call. = FALSE)
+  }
   rownames(out) <- NULL
   out
 }

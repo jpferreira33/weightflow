@@ -786,6 +786,13 @@ as_svrepdesign <- function(object, ...) {
 #' @param weight_name name of the point-weight column to add.
 #' @param prefix prefix for the replicate-weight columns (`rep_1`, `rep_2`, ...).
 #' @param drop_zero keep only active units (point weight > 0).
+#' @param scramble disclosure control for a public-use file. When `TRUE`, the
+#'   replicate columns are randomly permuted (their `rscales` move with them, so the
+#'   variance is unchanged) and the design identifier columns (the `strata` and
+#'   `psu` columns used to build the replicates) are dropped from the output, so the
+#'   exported weights do not reveal the sampling design. The point weights and the
+#'   variance estimate are unaffected. Set a seed beforehand for a reproducible
+#'   permutation. The result carries attribute `"scrambled" = TRUE`.
 #' @return A data frame: the original columns, `weight_name`, and one column per
 #'   replicate. The number of replicates is in attribute `"R"`, and the
 #'   replication design in attributes `"type"`, `"scale"` and `"rscales"`.
@@ -809,11 +816,13 @@ as_svrepdesign <- function(object, ...) {
 #' @export
 #' @family variance estimation
 collect_replicate_weights <- function(object, weight_name = ".weight",
-                                      prefix = "rep_", drop_zero = TRUE) {
+                                      prefix = "rep_", drop_zero = TRUE,
+                                      scramble = FALSE) {
   if (!inherits(object, c("weightflow_boot", "weightflow_jack")))
     stop("`object` must be a weightflow_boot or weightflow_jack object.")
   weight_name <- .wf_outname(weight_name, "weight_name")
   prefix      <- .wf_outname(prefix, "prefix")
+  scramble    <- .wf_flag(scramble, "scramble")
   # Keep active units: finite and non-zero. Negative weights (a valid unbounded
   # linear-calibration output) are ACTIVE and are kept, matching as_svrepdesign()
   # and the totals estimators; only weight 0 / non-finite are dropped.
@@ -871,6 +880,21 @@ collect_replicate_weights <- function(object, weight_name = ".weight",
     attr(out, "type")    <- "bootstrap"
     attr(out, "scale")   <- 1 / length(valid)
     attr(out, "rscales") <- rep(1, length(valid))
+  }
+  # Disclosure control for a public-use file: permute the replicate columns (moving
+  # their rscales in lockstep, so the variance is identical) and drop the design
+  # identifier columns, so the exported weights do not reveal the sampling design.
+  if (scramble) {
+    R       <- length(valid)
+    perm    <- sample.int(R)
+    repcols <- paste0(prefix, seq_len(R))
+    reord   <- out[, repcols, drop = FALSE][, perm, drop = FALSE]
+    colnames(reord) <- repcols
+    out[, repcols]       <- reord
+    attr(out, "rscales") <- attr(out, "rscales")[perm]
+    ids <- intersect(unique(c(object$strata, object$psu)), names(out))
+    if (length(ids)) out[ids] <- NULL
+    attr(out, "scrambled") <- TRUE
   }
   out
 }

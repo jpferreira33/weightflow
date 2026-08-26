@@ -264,6 +264,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   wdist <- .weight_distribution_html(fin, lang, plots)
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
   exec  <- paste0(exec, .status_checklist(object, de_f, object$final_weight, replicates, lang))
+  ddc_html <- if (isTRUE(object$nonprob)) .data_defect_card(object, lang) else ""
+  nrs_html <- .nr_sensitivity_card(object, lang)
   exec  <- paste0(exec, .attention_panel(object, lang))
   imsg  <- if (!is.finite(de_f$deff))
              .t("the design effect could not be computed \u2014 check the weights.",
@@ -374,6 +376,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     "<div class='cards'>", cards, "</div>\n",
     racct, "\n",
     exec, "\n",
+    ddc_html, "\n",
+    nrs_html, "\n",
     repro_html, "\n",
     sprintf("<h2 id='pipeline'>%s</h2>", .t("Pipeline", "Flujo de pasos", lang)), diagram, "\n",
     sprintf("<p class='muted'>%s</p>", .t("Variables used:", "Variables usadas:", lang)), vars_chips, "\n",

@@ -24,8 +24,86 @@
     .t(sprintf(" The response R-indicator is %.3f.", ri$R),
        sprintf(" El R-indicator de respuesta es %.3f.", ri$R), lang) else ""
   body <- paste0(s1, " ", s2, " ", s3, s4)
-  sprintf("<div class='exec'><h4>%s</h4><p>%s</p></div>",
+  sprintf("<div class='exec feature-soft'><h4>%s</h4><p>%s</p></div>",
           .t("Executive summary", "Resumen ejecutivo", lang), body)
+}
+
+# Nonresponse-sensitivity block (proxy pattern-mixture, Andridge-Little 2011). The
+# ignorance interval for the study mean, read next to the sampling CI. "" if no
+# completed step_nr_sensitivity() is in the recipe.
+.nr_sensitivity_card <- function(object, lang) {
+  hit <- NULL
+  for (s in object$steps) {
+    a <- attr(s$diagnostics, "nr_sensitivity")
+    if (!is.null(a) && isTRUE(a$ok)) { hit <- s; break }
+  }
+  if (is.null(hit)) return("")
+  a  <- attr(hit$diagnostics, "nr_sensitivity")
+  tb <- hit$diagnostics
+  g4 <- function(x) formatC(x, format = "g", digits = 4)
+  rows <- vapply(seq_len(nrow(tb)), function(i)
+    sprintf("<tr><td>%.2f</td><td>%s</td></tr>", tb$phi[i], g4(tb$mu[i])), character(1))
+  hd <- paste0("<th scope='col'>",
+               c("&phi;", .t("Adjusted mean", "Media ajustada", lang)), "</th>", collapse = "")
+  grid <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+                  hd, paste(rows, collapse = ""))
+  lead <- .t(
+    sprintf("Ignorance interval for the mean of <code>%s</code>: [%s, %s]. This is the range the estimate could take if response depended on the outcome itself beyond the observed auxiliaries, to read alongside the sampling confidence interval.",
+            .html_escape(a$y_var), g4(a$ignorance_lo), g4(a$ignorance_hi)),
+    sprintf("Intervalo de ignorancia para la media de <code>%s</code>: [%s, %s]. Es el rango que la estimaci&oacute;n podr&iacute;a tomar si la respuesta dependiera del propio resultado m&aacute;s all&aacute; de las auxiliares observadas, para leer junto al intervalo de confianza por muestreo.",
+            .html_escape(a$y_var), g4(a$ignorance_lo), g4(a$ignorance_hi)), lang)
+  note <- .t(
+    sprintf("Proxy pattern-mixture (Andridge and Little 2011). &phi; = 0 is ignorable given the proxy (MAR estimate %s); &phi; = 1 is response depending only on the outcome; &phi; = 0.5 is a central value (Little et al. 2020). Proxy strength &rho; = %.3f (a weaker proxy widens the interval). Respondents %s, nonrespondents %s.",
+            g4(a$mu_mar), a$rho, format(a$n_resp, big.mark = ","), format(a$n_nonresp, big.mark = ",")),
+    sprintf("Mixtura de patrones con proxy (Andridge y Little 2011). &phi; = 0 es ignorable dado el proxy (estimaci&oacute;n MAR %s); &phi; = 1 es respuesta que depende solo del resultado; &phi; = 0.5 es un valor central (Little et al. 2020). Fuerza del proxy &rho; = %.3f (un proxy m&aacute;s d&eacute;bil ampl&iacute;a el intervalo). Respondentes %s, no respondentes %s.",
+            g4(a$mu_mar), a$rho, format(a$n_resp, big.mark = ","), format(a$n_nonresp, big.mark = ",")), lang)
+  sprintf("<div class='meta'><h4>%s</h4><p>%s</p>%s<p class='note'>%s</p></div>",
+          .t("Nonresponse sensitivity (ignorance interval)",
+             "Sensibilidad a la no respuesta (intervalo de ignorancia)", lang),
+          lead, grid, note)
+}
+
+# Prominent block for a NON-probability sample: Meng's (2018) data-defect view.
+# The effective sample size is governed by the (unobservable) outcome-participation
+# correlation, so we show the ignorance range over a grid of residual rho, plus the
+# measurable selection strength on the covariates. Reads data_defect(); "" if it
+# does not apply (not nonprob, or N <= n).
+.data_defect_card <- function(object, lang) {
+  dd <- tryCatch(data_defect(object), error = function(e) NULL)
+  if (is.null(dd)) return("")
+  nf <- function(x) format(round(x), big.mark = ",", scientific = FALSE)
+  facts <- sprintf("<div class='ddc-facts'>%s%s%s</div>",
+    .metric(.t("Sample size (n)", "Tama&ntilde;o muestral (n)", lang), nf(dd$n)),
+    .metric(.t("Estimated population (N)", "Poblaci&oacute;n estimada (N)", lang), nf(dd$N)),
+    .metric(.t("Sampling fraction (f = n/N)", "Fracci&oacute;n (f = n/N)", lang),
+            formatC(dd$f, format = "f", digits = 4)))
+  aux_html <- if (!is.null(dd$aux) && nrow(dd$aux)) {
+    top <- dd$aux[1L, ]
+    sprintf("<p>%s</p>", .t(
+      sprintf("Selection strength on the observed covariates: the strongest correlation between an auxiliary and participation is |r| = %.3f (<code>%s</code>). Pseudo-weighting neutralises the selection explained by these covariates; what stays unmeasured is the defect on the target variable itself.",
+              abs(top$corr), .html_escape(top$covariate)),
+      sprintf("Fuerza de la selecci&oacute;n en las covariables observadas: la correlaci&oacute;n m&aacute;s fuerte entre una auxiliar y la participaci&oacute;n es |r| = %.3f (<code>%s</code>). El pseudo-peso neutraliza la selecci&oacute;n explicada por esas covariables; lo que queda sin medir es el defecto sobre la variable de inter&eacute;s misma.",
+              abs(top$corr), .html_escape(top$covariate)), lang))
+  } else ""
+  hd <- paste0("<th scope='col'>",
+               c(.t("Residual data-defect correlation |&rho;|", "Correlaci&oacute;n de defecto residual |&rho;|", lang),
+                 .t("Effective sample size", "Tama&ntilde;o muestral efectivo", lang)),
+               "</th>", collapse = "")
+  rows <- vapply(seq_len(nrow(dd$grid)), function(i)
+    sprintf("<tr><td>%.3f</td><td class='neff'>%s</td></tr>",
+            dd$grid$ddc[i], nf(dd$grid$n_eff[i])), character(1))
+  grid_html <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+                       hd, paste(rows, collapse = ""))
+  lead <- .t(
+    "Big Data Paradox: for a non-probability sample the error is driven by the correlation between the outcome and participation (the data-defect correlation), not by the sample size. A tiny residual correlation collapses a large sample to a small effective one.",
+    "Paradoja de los datos masivos: en una muestra no probabil&iacute;stica el error lo gobierna la correlaci&oacute;n entre la variable y la participaci&oacute;n (la correlaci&oacute;n de defecto), no el tama&ntilde;o muestral. Una correlaci&oacute;n residual min&uacute;scula reduce una muestra grande a una efectiva chica.", lang)
+  note <- .t(
+    "Effective size n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). The residual &rho; on the target variable is not observable from the sample, so read the table as an ignorance range, not a single number: it holds for any estimand with that residual correlation. See Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.",
+    "Tama&ntilde;o efectivo n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). El &rho; residual sobre la variable de inter&eacute;s no es observable desde la muestra, as&iacute; que la tabla se lee como un rango de ignorancia, no un &uacute;nico n&uacute;mero: vale para cualquier estimando con esa correlaci&oacute;n residual. Ver Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.", lang)
+  sprintf("<div class='ddc feature'><h4>%s</h4><p class='ddc-lead'>%s</p>%s%s%s<p class='note'>%s</p></div>",
+          .t("Data-defect diagnostics (non-probability sample)",
+             "Diagn&oacute;stico de defecto de datos (muestra no probabil&iacute;stica)", lang),
+          lead, facts, aux_html, grid_html, note)
 }
 
 # Aggregates non-convergence and quality alerts across steps into a top panel
@@ -242,7 +320,7 @@
       sprintf("Las %s r\u00e9plicas se completaron correctamente.", format(nrep, big.mark = ",")), lang))
     else ""
   sprintf(
-    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s%s<p class='note'>%s</p></div>",
+    "<div class='meta racct feature'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s%s<p class='note'>%s</p></div>",
     .t("Replication-based variance estimation", "Estimaci\u00f3n de la varianza por replicaci\u00f3n", lang),
     body, ok_line, fail_alert, warn, ref_note,
     .t("For each replicate, the complete survey weighting procedure is re-run. The resulting replicate weights therefore reflect the sampling variability associated with the weighting adjustments that are re-estimated within the replication procedure. Use the final and replicate weights with the 'survey' or 'srvyr' package to estimate standard errors, coefficients of variation, and confidence intervals for specific survey estimates.",
@@ -353,7 +431,7 @@
                  "Disposici&oacute;n AAPOR de la muestra emitida: conteos, porcentaje y sumas ponderadas por el peso base seg&uacute;n categor&iacute;a de resultado.", lang)
   cap_rate <- .t("AAPOR eligibility and response rates, unweighted and base-weighted.",
                  "Tasas AAPOR de elegibilidad y respuesta, sin ponderar y ponderadas por el peso base.", lang)
-  sprintf("<div class='meta racct'><h4>%s</h4>%s
+  sprintf("<div class='meta racct feature'><h4>%s</h4>%s
     <table class='params'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%%</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     <table class='params' style='margin-top:10px'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     <p class='note'>%s</p></div>",

@@ -2,7 +2,7 @@
 
 <!-- badges: start -->
 [![CRAN status](https://www.r-pkg.org/badges/version/weightflow)](https://CRAN.R-project.org/package=weightflow)
-[![Mentioned in Awesome Official Statistics](https://awesome.re/mentioned-badge.svg)](http://www.awesomeofficialstatistics.org)
+[![Mentioned in Awesome Official Statistics](https://awesome.re/mentioned-badge.svg)](https://github.com/SNStatComp/awesome-official-statistics-software)
 [![R-CMD-check](https://github.com/jpferreira33/weightflow/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jpferreira33/weightflow/actions/workflows/R-CMD-check.yaml)
 [![Codecov test coverage](https://codecov.io/github/jpferreira33/weightflow/graph/badge.svg?token=KSR54WEM88)](https://app.codecov.io/github/jpferreira33/weightflow)
 [![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)

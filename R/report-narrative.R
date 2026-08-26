@@ -103,6 +103,8 @@
   if (inherits(step, "step_round"))  return(.t("weight rounding", "redondeo de pesos", lang))
   if (inherits(step, "step_rescale")) return(.t("rescaling", "reescalado", lang))
   if (inherits(step, "step_assert")) return(.t("quality checkpoint", "punto de control", lang))
+  if (inherits(step, "step_nr_sensitivity"))
+    return(.t("nonresponse sensitivity", "sensibilidad a la no respuesta", lang))
   .html_escape(step$label)
 }
 
@@ -304,6 +306,9 @@
       sprintf("The non-probability sample was pooled with the probability reference and a participation-propensity model (<strong>%s</strong> algorithm%s) was fitted over %s. Each non-probability unit received the pseudo-weight (1 - p)/p, the participation odds, which inflates it to the population so the weights sum to the reference's estimated population size (Elliott and Valliant 2017); the reference trains the model and is then dropped.%s Common support between the sample and the reference is the central assumption; see the propensity diagnostics below.", step$engine, cf, vp, cls),
       sprintf("La muestra no probabil\u00edstica se combin\u00f3 con la referencia probabil\u00edstica y se ajust\u00f3 un modelo de propensi\u00f3n de participaci\u00f3n (algoritmo <strong>%s</strong>%s) sobre %s. Cada unidad no probabil\u00edstica recibi\u00f3 el pseudo-peso (1 - p)/p, las probabilidades relativas de participaci\u00f3n, que la expanden a la poblaci\u00f3n de modo que los pesos suman el tama\u00f1o poblacional estimado por la referencia (Elliott y Valliant 2017); la referencia entrena el modelo y luego se descarta.%s El soporte com\u00fan entre la muestra y la referencia es el supuesto central; ver los diagn\u00f3sticos de propensi\u00f3n abajo.", step$engine, cf, vp, cls),
       lang)
+  } else if (inherits(step, "step_nr_sensitivity")) {
+    txt <- .t("A proxy pattern-mixture sensitivity analysis (Andridge and Little 2011) was run. It does not change the weights: it reports how far the study mean could move under nonignorable nonresponse, as an ignorance interval indexed by a single parameter. See the sensitivity block.",
+              "Se corri\u00f3 un an\u00e1lisis de sensibilidad por mixtura de patrones con proxy (Andridge y Little 2011). No cambia los pesos: informa cu\u00e1nto podr\u00eda moverse la media bajo no respuesta no ignorable, como un intervalo de ignorancia indexado por un solo par\u00e1metro. Ver el bloque de sensibilidad.", lang)
   } else return("")
 
   if (!nzchar(txt)) return("")
