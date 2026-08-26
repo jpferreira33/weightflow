@@ -45,9 +45,15 @@
 #'   all units, e.g. `~ region + sex + age`.
 #' @param respondent optional response/participation indicator (bare column or
 #'   condition). Defaults to `!is.na(y)`.
-#' @param phi the sensitivity grid, values in `[0, 1]`. `0` is MAR; Little et al.
-#'   (2020) suggest `0.5` as a central value; above `0.5` the implied mechanism is
-#'   often unrealistically strong.
+#' @param eligible optional in-scope indicator (bare column or condition), the
+#'   mirror of the argument in [step_nonresponse()]. Out-of-scope (ineligible)
+#'   units are neither respondents nor nonrespondents and must be excluded, or they
+#'   would be counted as nonrespondents and pull the estimate toward their proxy
+#'   mean. Give it in any household survey that has ineligible units. Default `NULL`
+#'   treats every active unit as in scope.
+#' @param phi the sensitivity grid, values in `[0, 1]`; `0` (MAR) is always added.
+#'   Little et al. (2020) suggest `0.5` as a central value; above `0.5` the implied
+#'   mechanism is often unrealistically strong.
 #' @param id optional stable step id.
 #' @return the input `weighting_spec` with this diagnostic step appended.
 #' @references
@@ -56,7 +62,7 @@
 #' @seealso [nr_sensitivity()], [step_assert()]
 #' @export
 #' @family weighting steps
-step_nr_sensitivity <- function(spec, y, formula, respondent = NULL,
+step_nr_sensitivity <- function(spec, y, formula, respondent = NULL, eligible = NULL,
                                 phi = c(0, 0.25, 0.5, 0.75, 1), id = NULL) {
   if (!inherits(spec, "weighting_spec"))
     stop("The first argument must be a weighting_spec.", call. = FALSE)
@@ -69,7 +75,8 @@ step_nr_sensitivity <- function(spec, y, formula, respondent = NULL,
   step <- structure(
     list(label = "nonresponse sensitivity (proxy pattern-mixture)",
          y = substitute(y), respondent = substitute(respondent),
-         env = parent.frame(), formula = formula, phi = sort(unique(phi))),
+         eligible = substitute(eligible), env = parent.frame(), formula = formula,
+         phi = sort(unique(c(0, phi)))),          # phi = 0 (MAR) always anchored
     class = c("step_nr_sensitivity", "weighting_step"))
   .add_step(spec, step, id = .wf_id(id))
 }
@@ -83,9 +90,24 @@ apply_step.step_nr_sensitivity <- function(step, data, w) {
     stop("`y` must be a numeric column of the data (NA for nonrespondents).", call. = FALSE)
   resp <- if (is.null(step$respondent)) !is.na(y)
           else as.logical(.eval_cond(step$respondent, data, step$env, active = active))
+  # In-scope filter: ineligible (out-of-scope) units are neither respondents nor
+  # nonrespondents. Without this they would be counted as nonrespondents (their y is
+  # NA) and bias the analysis toward their proxy mean. Default: everyone in scope.
+  elig <- if (is.null(step$eligible)) rep(TRUE, nrow(data))
+          else as.logical(.eval_cond(step$eligible, data, step$env, active = active))
+  elig[is.na(elig)] <- FALSE
 
-  R  <- which(active & resp & !is.na(y))
-  NR <- which(active & !resp)
+  # Auxiliaries must be genuine data columns (an object living in the environment
+  # would slip past the NA check and later misalign the design matrix).
+  av <- all.vars(step$formula)
+  ext <- setdiff(av, names(data))
+  if (length(ext))
+    stop(sprintf(paste0("Proxy auxiliary(ies) %s are not columns of the data. The formula ",
+                        "must name columns observed for the respondents and nonrespondents."),
+                 paste(ext, collapse = ", ")), call. = FALSE)
+
+  R  <- which(active & elig & resp & !is.na(y))
+  NR <- which(active & elig & !resp)
   if (length(NR) < 1L || length(R) < 5L) {
     diag <- data.frame(phi = numeric(0), mu = numeric(0))
     attr(diag, "nr_sensitivity") <- list(ok = FALSE)
@@ -97,8 +119,7 @@ apply_step.step_nr_sensitivity <- function(step, data, w) {
   # ones dropped earlier, may carry NA auxiliaries and are irrelevant here).
   used <- c(R, NR)
   isR  <- rep(c(TRUE, FALSE), c(length(R), length(NR)))
-  av   <- all.vars(step$formula)
-  amiss <- av[vapply(av, function(v) v %in% names(data) && anyNA(data[[v]][used]), logical(1))]
+  amiss <- av[vapply(av, function(v) anyNA(data[[v]][used]), logical(1))]
   if (length(amiss))
     stop(sprintf(paste0("Proxy auxiliary(ies) %s have missing values among the respondents ",
                         "and nonrespondents; the proxy must be observed for both. Impute or ",
@@ -144,7 +165,8 @@ apply_step.step_nr_sensitivity <- function(step, data, w) {
   diag <- data.frame(phi = step$phi, mu = mu, stringsAsFactors = FALSE)
   attr(diag, "nr_sensitivity") <- list(
     ok = TRUE, rho = rho, pi = pi_r, y_var = deparse(step$y),
-    mu_mar = mu[which.min(step$phi)],           # phi = 0 (MAR / regression adjustment)
+    ybar_r = ybar1,                             # respondent (weighted) mean of y
+    mu_mar = mu[step$phi == 0],                 # phi = 0 (MAR / regression adjustment)
     ignorance_lo = min(mu), ignorance_hi = max(mu),
     n_resp = length(R), n_nonresp = length(NR))
   list(weights = w, diagnostics = diag)          # NO-OP on the weights
@@ -157,26 +179,35 @@ apply_step.step_nr_sensitivity <- function(step, data, w) {
 #' with the ignorance interval and the proxy strength.
 #'
 #' @param object a prepped `weighting_spec` containing a [step_nr_sensitivity()].
+#' @param step optional step id to select among several sensitivity steps (for
+#'   example one per study variable). With one step it can be left `NULL`.
 #' @return a list (class `weightflow_nr_sensitivity`) with `table` (`phi`, `mu`),
-#'   `rho`, `ignorance` (the min-max interval over `phi`), `mu_mar` (the `phi = 0`
-#'   estimate) and the respondent/nonrespondent counts.
+#'   `rho`, `ybar_r`, `ignorance` (the min-max interval over `phi`), `mu_mar` (the
+#'   `phi = 0` estimate) and the respondent/nonrespondent counts.
 #' @seealso [step_nr_sensitivity()]
 #' @export
 #' @family diagnostics
-nr_sensitivity <- function(object) {
+nr_sensitivity <- function(object, step = NULL) {
   if (!inherits(object, "prepped_weighting_spec"))
     stop("`object` must be a prepped weighting_spec (the output of prep()).", call. = FALSE)
-  hit <- NULL
-  for (s in object$steps) {
-    a <- attr(s$diagnostics, "nr_sensitivity")
-    if (!is.null(a) && isTRUE(a$ok)) { hit <- s; break }
-  }
-  if (is.null(hit))
+  done <- Filter(function(s) isTRUE(attr(s$diagnostics, "nr_sensitivity")$ok), object$steps)
+  if (!length(done))
     stop("No completed step_nr_sensitivity() found in the recipe.", call. = FALSE)
+  ids <- vapply(done, function(s) s$id %||% "", character(1))
+  if (!is.null(step)) {
+    done <- done[ids == step]
+    if (!length(done))
+      stop(sprintf("No sensitivity step with id '%s'. Available: %s.",
+                   step, paste(ids, collapse = ", ")), call. = FALSE)
+  } else if (length(done) > 1L) {
+    message(sprintf("The recipe has several sensitivity steps (%s); returning the first. Pass `step =` to choose.",
+                    paste(ids, collapse = ", ")))
+  }
+  hit <- done[[1L]]
   a <- attr(hit$diagnostics, "nr_sensitivity")
   structure(list(
     table = hit$diagnostics[, c("phi", "mu")],
-    rho = a$rho, y_var = a$y_var, mu_mar = a$mu_mar,
+    rho = a$rho, y_var = a$y_var, ybar_r = a$ybar_r, mu_mar = a$mu_mar,
     ignorance = c(a$ignorance_lo, a$ignorance_hi),
     n_resp = a$n_resp, n_nonresp = a$n_nonresp),
     class = "weightflow_nr_sensitivity")

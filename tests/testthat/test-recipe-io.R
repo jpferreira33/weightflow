@@ -82,6 +82,20 @@ test_that("a census-sized frame is still rejected, and timestamp = FALSE is stab
   expect_identical(readLines(f1), readLines(f2))     # byte-identical, clean git diffs
 })
 
+test_that("a recipe with step_nr_sensitivity round-trips (newest step)", {
+  skip_if_not_installed("yaml")
+  spec <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+    step_nr_sensitivity(y = income, formula = ~ region + sex + age, phi = c(0, 0.5, 1))
+  f <- tempfile(fileext = ".yml")
+  write_recipe(spec, f)
+  spec2 <- read_recipe(f, data = sample_survey)
+  expect_equal(prep(spec2)$final_weight, prep(spec)$final_weight, tolerance = 1e-9)
+  s <- nr_sensitivity(prep(spec2))                 # y / respondent decoded from expr
+  expect_s3_class(s, "weightflow_nr_sensitivity")
+  expect_true(all(c(0, 0.5, 1) %in% s$table$phi))
+})
+
 test_that("read_recipe rejects a non-recipe file", {
   skip_if_not_installed("yaml")
   f <- tempfile(fileext = ".yml")

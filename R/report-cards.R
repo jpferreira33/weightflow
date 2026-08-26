@@ -32,12 +32,13 @@
 # ignorance interval for the study mean, read next to the sampling CI. "" if no
 # completed step_nr_sensitivity() is in the recipe.
 .nr_sensitivity_card <- function(object, lang) {
-  hit <- NULL
-  for (s in object$steps) {
-    a <- attr(s$diagnostics, "nr_sensitivity")
-    if (!is.null(a) && isTRUE(a$ok)) { hit <- s; break }
-  }
-  if (is.null(hit)) return("")
+  done <- Filter(function(s) isTRUE(attr(s$diagnostics, "nr_sensitivity")$ok), object$steps)
+  if (!length(done)) return("")
+  paste0(vapply(done, .nr_sensitivity_one, character(1), lang = lang), collapse = "")
+}
+
+# Render one sensitivity block for a single completed step.
+.nr_sensitivity_one <- function(hit, lang) {
   a  <- attr(hit$diagnostics, "nr_sensitivity")
   tb <- hit$diagnostics
   g4 <- function(x) formatC(x, format = "g", digits = 4)

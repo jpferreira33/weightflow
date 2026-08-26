@@ -9,6 +9,7 @@ step_nr_sensitivity(
   y,
   formula,
   respondent = NULL,
+  eligible = NULL,
   phi = c(0, 0.25, 0.5, 0.75, 1),
   id = NULL
 )
@@ -25,9 +26,16 @@ all units, e.g. \code{~ region + sex + age}.}
 \item{respondent}{optional response/participation indicator (bare column or
 condition). Defaults to \code{!is.na(y)}.}
 
-\item{phi}{the sensitivity grid, values in \verb{[0, 1]}. \code{0} is MAR; Little et al.
-(2020) suggest \code{0.5} as a central value; above \code{0.5} the implied mechanism is
-often unrealistically strong.}
+\item{eligible}{optional in-scope indicator (bare column or condition), the
+mirror of the argument in \code{\link[=step_nonresponse]{step_nonresponse()}}. Out-of-scope (ineligible)
+units are neither respondents nor nonrespondents and must be excluded, or they
+would be counted as nonrespondents and pull the estimate toward their proxy
+mean. Give it in any household survey that has ineligible units. Default \code{NULL}
+treats every active unit as in scope.}
+
+\item{phi}{the sensitivity grid, values in \verb{[0, 1]}; \code{0} (MAR) is always added.
+Little et al. (2020) suggest \code{0.5} as a central value; above \code{0.5} the implied
+mechanism is often unrealistically strong.}
 
 \item{id}{optional stable step id.}
 }

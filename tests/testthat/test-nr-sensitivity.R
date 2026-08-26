@@ -44,21 +44,37 @@ test_that("step_nr_sensitivity is a no-op that returns an ignorance analysis", {
 })
 
 test_that("m(phi) hits the theoretical endpoints rho and 1/rho", {
-  # phi = 0 -> slope rho (MAR), phi = 1 -> slope 1/rho: the two anchors of the method.
+  # With a pure proxy shift, mu(phi) - ybar_r = (1-pi)(s_y/s_x) m(phi) dx, so the
+  # ratio of the phi=1 to phi=0 shifts is m(1)/m(0) = (1/rho)/rho = 1/rho^2. This is
+  # a genuine check of the endpoint multipliers, not a tautology.
   set.seed(3)
-  rho <- 0.5
-  x <- stats::rnorm(4000); yv <- rho * x + sqrt(1 - rho^2) * stats::rnorm(4000)
-  # give nonrespondents a pure proxy shift so mu(phi) - ybar_r = (1-pi) (s_y/s_x) m(phi) dx
-  resp <- rep(c(TRUE, FALSE), c(3000, 1000))
-  x[!resp] <- x[!resp] + 2
+  rho <- 0.5; n <- 6000L
+  x  <- stats::rnorm(n); yv <- rho * x + sqrt(1 - rho^2) * stats::rnorm(n)
+  resp <- rep(c(TRUE, FALSE), c(4000, 2000))
+  x[!resp] <- x[!resp] + 1.5                       # nonrespondents shifted in the proxy only
   dat <- data.frame(xaux = x, y = ifelse(resp, yv, NA_real_), pw = 1)
   fit <- weighting_spec(dat, base_weights = pw) |>
     step_nr_sensitivity(y = y, formula = ~ xaux, phi = c(0, 1)) |>
     prep()
   s   <- nr_sensitivity(fit)
-  # ratio of (mu - ybar_r) at phi=1 vs phi=0 should be m(1)/m(0) = (1/rho)/rho = 1/rho^2
-  d   <- s$table$mu - s$mu_mar
-  # mu_mar == mu at phi=0, so d[phi==0]=0; use the two mu shifts from the respondent mean
-  shift0 <- s$table$mu[s$table$phi == 0] - s$mu_mar        # = 0 by definition
-  expect_equal(shift0, 0, tolerance = 1e-9)
+  mu0 <- s$table$mu[s$table$phi == 0]; mu1 <- s$table$mu[s$table$phi == 1]
+  ratio <- (mu1 - s$ybar_r) / (mu0 - s$ybar_r)
+  expect_equal(ratio, 1 / s$rho^2, tolerance = 0.03)
+})
+
+test_that("eligible excludes out-of-scope units from the nonrespondent set (S-01)", {
+  set.seed(7); n <- 3000L
+  x <- stats::rnorm(n); yv <- 0.6 * x + sqrt(1 - 0.36) * stats::rnorm(n)
+  grp <- rep(c("resp", "enr", "inelig"), c(2000, 500, 500))
+  x[grp == "enr"]    <- x[grp == "enr"]    + 1     # eligible nonrespondents: modest shift
+  x[grp == "inelig"] <- x[grp == "inelig"] + 8     # out-of-scope: far-off proxy
+  dat <- data.frame(xaux = x, y = ifelse(grp == "resp", yv, NA_real_),
+                    elig = grp != "inelig", pw = 1)
+  s_all  <- nr_sensitivity(suppressWarnings(weighting_spec(dat, base_weights = pw) |>
+    step_nr_sensitivity(y = y, formula = ~ xaux) |> prep()))
+  s_elig <- nr_sensitivity(suppressWarnings(weighting_spec(dat, base_weights = pw) |>
+    step_nr_sensitivity(y = y, formula = ~ xaux, eligible = elig) |> prep()))
+  expect_equal(s_elig$n_nonresp, 500L)             # only the eligible nonrespondents
+  expect_equal(s_all$n_nonresp, 1000L)             # default wrongly counts the ineligibles
+  expect_false(isTRUE(all.equal(s_elig$ignorance, s_all$ignorance)))
 })

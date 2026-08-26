@@ -4,15 +4,18 @@
 \alias{nr_sensitivity}
 \title{Read the nonresponse-sensitivity analysis from a prepped recipe}
 \usage{
-nr_sensitivity(object)
+nr_sensitivity(object, step = NULL)
 }
 \arguments{
 \item{object}{a prepped \code{weighting_spec} containing a \code{\link[=step_nr_sensitivity]{step_nr_sensitivity()}}.}
+
+\item{step}{optional step id to select among several sensitivity steps (for
+example one per study variable). With one step it can be left \code{NULL}.}
 }
 \value{
 a list (class \code{weightflow_nr_sensitivity}) with \code{table} (\code{phi}, \code{mu}),
-\code{rho}, \code{ignorance} (the min-max interval over \code{phi}), \code{mu_mar} (the \code{phi = 0}
-estimate) and the respondent/nonrespondent counts.
+\code{rho}, \code{ybar_r}, \code{ignorance} (the min-max interval over \code{phi}), \code{mu_mar} (the
+\code{phi = 0} estimate) and the respondent/nonrespondent counts.
 }
 \description{
 Returns the proxy pattern-mixture ignorance analysis stored by
