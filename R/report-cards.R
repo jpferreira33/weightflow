@@ -4,23 +4,26 @@
   shorts <- vapply(object$steps, function(s) .step_short(s, lang), character(1))
   n <- length(shorts)
   listed <- paste(sprintf("(%d) %s", seq_len(n), shorts), collapse = ", ")
-  what <- if (!is.null(survey))
-    .t(sprintf("the weights for <strong>%s</strong>", .html_escape(survey)),
-       sprintf("los pesos de <strong>%s</strong>", .html_escape(survey)), lang)
-    else .t("the survey weights", "los pesos de la encuesta", lang)
-  ri_s <- if (!is.null(ri))
-    .t(sprintf("; the response R-indicator is %.3f", ri$R),
-       sprintf("; el R-indicator de respuesta es %.3f", ri$R), lang) else ""
-  body <- .t(
-    sprintf("This report documents the construction of %s. %d adjustment %s applied: %s. The final weights have a Kish design effect of %.3f (effective sample size %s%s).",
-            what, n, if (n == 1L) "step was" else "steps were", listed, de_f$deff,
-            format(round(de_f$n_eff), big.mark = ","), ri_s),
-    sprintf("Este reporte documenta la construcci\u00f3n de %s. %s de ajuste: %s. Los pesos finales tienen un efecto de dise\u00f1o de Kish de %.3f (tama\u00f1o de muestra efectivo %s%s).",
-            what,
-            if (n == 1L) "Se aplic\u00f3 1 paso" else sprintf("Se aplicaron %d pasos", n),
-            listed, de_f$deff,
-            format(round(de_f$n_eff), big.mark = ","), ri_s),
+  neff <- format(round(de_f$n_eff), big.mark = ",")
+  # First sentence names the process (and the survey, when supplied).
+  s1 <- if (!is.null(survey))
+    .t(sprintf("This report documents the survey weighting process for <strong>%s</strong>.", .html_escape(survey)),
+       sprintf("Este reporte documenta el proceso de ponderaci&oacute;n de <strong>%s</strong>.", .html_escape(survey)), lang)
+    else .t("This report documents the survey weighting process.",
+            "Este reporte documenta el proceso de ponderaci&oacute;n de la muestra.", lang)
+  s2 <- .t(
+    sprintf("%s weighting %s applied: %s.", n, if (n == 1L) "step was" else "steps were", listed),
+    sprintf("%s de ponderaci&oacute;n: %s.",
+            if (n == 1L) "Se aplic&oacute; 1 paso" else sprintf("Se aplicaron %d pasos", n), listed),
     lang)
+  s3 <- .t(
+    sprintf("The final survey weights have a Kish design effect of %.3f, corresponding to an effective sample size of %s.", de_f$deff, neff),
+    sprintf("Los pesos finales tienen un efecto de dise&ntilde;o de Kish de %.3f, que corresponde a un tama&ntilde;o de muestra efectivo de %s.", de_f$deff, neff),
+    lang)
+  s4 <- if (!is.null(ri))
+    .t(sprintf(" The response R-indicator is %.3f.", ri$R),
+       sprintf(" El R-indicator de respuesta es %.3f.", ri$R), lang) else ""
+  body <- paste0(s1, " ", s2, " ", s3, s4)
   sprintf("<div class='exec'><h4>%s</h4><p>%s</p></div>",
           .t("Executive summary", "Resumen ejecutivo", lang), body)
 }
@@ -69,14 +72,15 @@
       .t("All calibration steps converged.", "Todos los pasos de calibraci\u00f3n convergieron.", lang)
       else .t(sprintf("%d step(s) did not converge.", nonconv),
               sprintf("%d paso(s) no convergieron.", nonconv), lang)) else NULL,
-    item(TRUE, .t(sprintf("Final Kish design effect = %.3f (effective n = %s).",
+    item(TRUE, .t(sprintf("Final Kish design effect: %.3f (effective sample size: %s).",
                           de_f$deff, format(round(de_f$n_eff), big.mark = ",")),
-                  sprintf("Efecto de dise\u00f1o de Kish final = %.3f (n efectivo = %s).",
+                  sprintf("Efecto de dise\u00f1o de Kish final: %.3f (tama\u00f1o de muestra efectivo: %s).",
                           de_f$deff, format(round(de_f$n_eff), big.mark = ",")), lang)),
     if (length(pos)) item(n_ext == 0L, if (n_ext == 0L)
-      .t("No extreme weights (above 4x the median).", "Sin pesos extremos (mayores a 4x la mediana).", lang)
-      else .t(sprintf("%d extreme weight(s) above 4x the median.", n_ext),
-              sprintf("%d peso(s) extremo(s) por encima de 4x la mediana.", n_ext), lang)) else NULL,
+      .t("No weights exceed the extreme-weight threshold (four times the median weight).",
+         "Ning\u00fan peso supera el umbral de peso extremo (cuatro veces el peso mediano).", lang)
+      else .t(sprintf("%d weight(s) exceed the extreme-weight threshold of four times the median weight.", n_ext),
+              sprintf("%d peso(s) superan el umbral de peso extremo de cuatro veces el peso mediano.", n_ext), lang)) else NULL,
     item(has_rep, if (has_rep)
       .t("Replicate weights for variance created.", "Pesos r\u00e9plica para la varianza creados.", lang)
       else .t("Replicate weights not created (add bootstrap/jackknife for variance).",
@@ -168,11 +172,9 @@
     kv(.t("Method", "M\u00e9todo", lang), method),
     kv(.t("Replicates (B)", "R\u00e9plicas (B)", lang), format(rep$R, big.mark = ",")),
     kv(.t("Failed replicates", "R\u00e9plicas fallidas", lang),
-       sprintf("%s of %s%s", format(nfail, big.mark = ","), format(nrep, big.mark = ","),
-               if (nrep == 0L) "" else if (nfail == 0L)
-                 .t(" (all usable)", " (todas utilizables)", lang) else "")),
+       sprintf("%s of %s", format(nfail, big.mark = ","), format(nrep, big.mark = ","))),
     kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
-    kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
+    kv(.t("Mean PSUs per stratum", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
     if (!is.null(rep$df))
       kv(.t("Degrees of freedom", "Grados de libertad", lang), format(rep$df, big.mark = ",")) else "",
     # FPC is a bootstrap concept only, and only when a non-zero fraction was given.
@@ -180,12 +182,13 @@
     kv(.t("Finite-population correction", "Correcci&oacute;n de poblaci&oacute;n finita (FPC)", lang),
        if (!is.null(rep$fpc) && !(is.numeric(rep$fpc) && all(rep$fpc == 0)))
          .t("applied", "aplicada", lang)
-       else .t("none (with replacement)", "ninguna (con reemplazo)", lang)),
+       else .t("None (with-replacement bootstrap)", "ninguna (bootstrap con reemplazo)", lang)),
     kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
-    kv(.t("Recipe-aware", "Recipe-aware", lang),
+    kv(.t("Recipe-aware replication", "Replicaci\u00f3n recipe-aware", lang),
        if (nrep > 0L && nfail >= nrep)
          .t("not applicable (all replicates failed)", "no aplica (todas las r\u00e9plicas fallaron)", lang)
-       else .t("yes (whole cascade re-run per replicate)", "s\u00ed (toda la cascada por r\u00e9plica)", lang)),
+       else .t("Full weighting procedure re-run for each replicate",
+               "todo el procedimiento de ponderaci\u00f3n se recalcula en cada r\u00e9plica", lang)),
     if (!is_jack) kv(.t("Seed", "Semilla", lang), na(rep$seed)) else "",
     kv(.t("Cores", "Cores", lang), na(rep$cores)),
     kv(.t("Run time", "Tiempo de ejecuci\u00f3n", lang), tfmt))
@@ -232,12 +235,18 @@
               "Algunos totales de control se estiman a partir de una encuesta de referencia pero se trataron como fijos (sin pesos r\u00e9plica de la referencia), as\u00ed que esta varianza por replicaci\u00f3n omite su error muestral y puede quedar subestimada.", lang))
     }
   }
+  # A plain status line when every replicate produced valid weights.
+  ok_line <- if (nrep > 0L && nfail == 0L)
+    sprintf("<p class='note'>%s</p>", .t(
+      sprintf("All %s replicates completed successfully.", format(nrep, big.mark = ",")),
+      sprintf("Las %s r\u00e9plicas se completaron correctamente.", format(nrep, big.mark = ",")), lang))
+    else ""
   sprintf(
-    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s<p class='note'>%s</p></div>",
-    .t("Replication design for variance", "Dise\u00f1o de replicaci\u00f3n para la varianza", lang),
-    body, fail_alert, warn, ref_note,
-    .t("Replicate weights carry the variability of every adjustment. For standard errors, CV and confidence intervals of specific estimates, use these weights with the 'survey' or 'srvyr' package.",
-       "Los pesos r\u00e9plica arrastran la variabilidad de cada ajuste. Para errores est\u00e1ndar, CV e intervalos de confianza de estimaciones concretas, us\u00e1 estos pesos con 'survey' o 'srvyr'.", lang))
+    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s%s<p class='note'>%s</p></div>",
+    .t("Replication-based variance estimation", "Estimaci\u00f3n de la varianza por replicaci\u00f3n", lang),
+    body, ok_line, fail_alert, warn, ref_note,
+    .t("For each replicate, the complete survey weighting procedure is re-run. The resulting replicate weights therefore reflect the sampling variability associated with the weighting adjustments that are re-estimated within the replication procedure. Use the final and replicate weights with the 'survey' or 'srvyr' package to estimate standard errors, coefficients of variation, and confidence intervals for specific survey estimates.",
+       "En cada r\u00e9plica se recalcula todo el procedimiento de ponderaci\u00f3n. Los pesos r\u00e9plica resultantes reflejan la variabilidad muestral asociada a los ajustes de ponderaci\u00f3n que se reestiman dentro del procedimiento de replicaci\u00f3n. Us\u00e1 los pesos finales y los pesos r\u00e9plica con 'survey' o 'srvyr' para estimar errores est\u00e1ndar, coeficientes de variaci\u00f3n e intervalos de confianza de estimaciones concretas.", lang))
 }
 
 

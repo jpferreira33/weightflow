@@ -89,7 +89,7 @@ test_that(".step_short describes each nonresponse method", {
   expect_match(.step_short(wc, "en"), "weighting classes")
 
   pr <- mkstep("step_nonresponse", method = "propensity", engine = "forest")
-  expect_match(.step_short(pr, "en"), "propensity, forest")
+  expect_match(.step_short(pr, "en"), "response-propensity adjustment \\(random forest\\)")
 
   cal <- mkstep("step_nonresponse", method = "calibration", formula = ~ region + sex)
   expect_match(.step_short(cal, "en"), "nonresponse calibration to region and sex")

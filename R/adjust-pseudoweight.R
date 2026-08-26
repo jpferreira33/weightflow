@@ -126,6 +126,23 @@ apply_step.step_pseudoweight <- function(step, data, w) {
       stop(sprintf(paste0("Covariate '%s' has type %s in the sample but %s in the reference; ",
                           "harmonise the two samples (same type and factor levels) before ",
                           "pseudo-weighting."), v, tn, tr), call. = FALSE)
+    # NP-04: types match but the factor levels may not. A level present in only one
+    # sample biases the pooled fit: a level only in the sample can push its fitted p
+    # toward 1 (pseudo-weight toward 0; see the p_max alert), and with cross-fitting
+    # it can fall wholly into a test fold and error. Warn (prep records it in $alerts).
+    if (is.factor(data[[v]]) || is.factor(ref[[v]])) {
+      only_np <- setdiff(levels(as.factor(data[[v]])), levels(as.factor(ref[[v]])))
+      only_rf <- setdiff(levels(as.factor(ref[[v]])),  levels(as.factor(data[[v]])))
+      if (length(only_np) || length(only_rf))
+        warning(sprintf(paste0("Covariate '%s' has factor levels that differ between the sample ",
+          "and the reference (%s%s); unmatched levels bias the propensity fit and can push ",
+          "pseudo-weights to extremes. Harmonise the levels before pseudo-weighting."),
+          v,
+          if (length(only_np)) sprintf("only in the sample: %s", paste(only_np, collapse = ", ")) else "",
+          if (length(only_rf)) sprintf("%sonly in the reference: %s",
+            if (length(only_np)) "; " else "", paste(only_rf, collapse = ", ")) else ""),
+          call. = FALSE)
+    }
   }
 
   # --- pool the two samples internally (the user never writes bind_rows) ------
@@ -140,6 +157,12 @@ apply_step.step_pseudoweight <- function(step, data, w) {
 
   pi_all <- .estimate_propensity(step$engine, step$formula, pooled, pooled$.w,
                                  crossfit = step$crossfit, seed = step$crossfit_seed)
+  # NP-01: symmetric clamp. .estimate_propensity only FLOORS p (it guards 1/p in the
+  # nonresponse path). Here the pseudo-weight is the participation ODDS (1 - p)/p, so
+  # the dangerous end is the mirror one: p -> 1 sends the pseudo-weight to 0 and the
+  # unit silently adopts the "dropped" sentinel (a pure leaf in tree/forest gives
+  # p == 1 exactly; glm can give 1 - eps). Cap p away from 1 as well.
+  pi_all <- pmin(pmax(pi_all, 1e-6), 1 - 1e-6)
   pi_np  <- pi_all[seq_len(n_np)]
 
   # Pseudo-weight = participation ODDS (1 - p)/p. In the Elliott-Valliant pooled
@@ -148,8 +171,10 @@ apply_step.step_pseudoweight <- function(step, data, w) {
   # unit to the population and the weights sum to N. Using 1/p would add a spurious
   # +1 per unit (weights sum to N + n), mixing in the unweighted naive mean.
   factor <- (1 - pi_np) / pi_np
+  collapsed <- FALSE
   if (!is.null(step$num_classes)) {
     cls <- .propensity_classes(pi_np, step$num_classes)
+    collapsed <- isTRUE(attr(cls, "collapsed"))   # NP-05: quantile cut-points collapsed
     # within each class, the average applied factor (weighted by incoming weight)
     for (g in unique(cls)) {
       in_g <- cls == g
@@ -167,5 +192,21 @@ apply_step.step_pseudoweight <- function(step, data, w) {
     value = c(n_np, nrow(rf), round(min(pi_np), 4), round(sum(psw)), round(mean(psw), 2)),
     stringsAsFactors = FALSE)
   attr(diag, "p_min") <- min(pi_np)      # reuse the tiny-propensity alert
+  attr(diag, "p_max") <- max(pi_np)      # NP-01 mirror: participation ~ 1 -> pseudo-weight ~ 0
+  if (collapsed) attr(diag, "classes_collapsed") <- TRUE   # NP-05
+  # NP-02: expose the pooled propensity so the report renders the common-support /
+  # overlap, calibration, Brier and AUC diagnostics -- the central assumption of
+  # non-probability inference. resp = the participation indicator (non-prob vs
+  # reference). idx = NULL so collect_propensities() cleanly skips this pooled fit
+  # (its p is not aligned to the sample rows) rather than mis-indexing.
+  attr(diag, "propensity") <- list(
+    p = as.numeric(pi_all), resp = as.logical(pooled$.y == 1),
+    dw = as.numeric(pooled$.w), idx = NULL, level = "unit", class = NULL,
+    covars = pooled[, vars, drop = FALSE], engine = step$engine,
+    formula = step$formula, crossfit = step$crossfit,
+    num_classes = step$num_classes,
+    cal_slope = tryCatch(unname(stats::coef(suppressWarnings(stats::glm(
+      as.integer(pooled$.y == 1) ~ stats::qlogis(pmin(pmax(pi_all, 1e-6), 1 - 1e-6)),
+      family = stats::binomial(), weights = pooled$.w)))[2]), error = function(e) NA_real_))
   list(weights = new_w, diagnostics = diag)
 }

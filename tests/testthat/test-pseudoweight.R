@@ -56,3 +56,51 @@ test_that("step_pseudoweight runs inside the recipe-aware bootstrap", {
   est <- boot_mean(boot, "income")
   expect_true(is.finite(est$se) && est$se > 0)
 })
+
+test_that("NP-01: near-certain participation is clamped, not silently dropped", {
+  skip_if_not_installed("rpart")
+  set.seed(3)
+  # The covariate perfectly separates participation (every sample unit in cell 'B',
+  # every reference unit in cell 'A'), so a pure tree leaf gives p == 1 exactly.
+  # Without a symmetric clamp the pseudo-weight (1 - p)/p would be 0 and every unit
+  # would silently vanish (final weights all 0).
+  vol <- data.frame(g = factor(rep("B", 30), levels = c("A", "B")),
+                    income = stats::rnorm(30, 20))
+  ref <- data.frame(g = factor(rep("A", 120), levels = c("A", "B")), d = 30)
+  fit <- suppressWarnings(
+    weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+      step_pseudoweight(reference = reference_sample(ref, "d"),
+                        formula = ~ g, engine = "tree") |>
+      prep())
+  w <- fit$final_weight
+  expect_true(all(is.finite(w)))
+  expect_gt(min(w), 0)                    # clamp: no unit silently dropped to weight 0
+  expect_true(any(grepl("participation", weighting_alerts(fit), ignore.case = TRUE)))
+})
+
+test_that("NP-04: factor levels that differ between sample and reference warn", {
+  set.seed(4)
+  vol <- data.frame(g = factor(c(rep("A", 40), rep("B", 10))), income = stats::rnorm(50))
+  ref <- data.frame(g = factor(rep("A", 100), levels = "A"), d = 50)
+  expect_warning(
+    weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+      step_pseudoweight(reference = reference_sample(ref, "d"),
+                        formula = ~ g, engine = "logit") |>
+      prep(),
+    "factor levels that differ")
+})
+
+test_that("NP-05: constant propensities collapse num_classes and are flagged", {
+  set.seed(5)
+  N   <- nrow(population)
+  # participation independent of the covariates: an intercept-only fit gives a
+  # constant propensity, so the requested quantile classes cannot be formed.
+  vol <- population[rbinom(N, 1, 0.3) == 1, c("region", "sex", "income")]
+  ref <- population[sample(N, 800), c("region", "sex")]; ref$d <- N / 800
+  fit <- suppressWarnings(
+    weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+      step_pseudoweight(reference = reference_sample(ref, "d"),
+                        formula = ~ 1, engine = "logit", num_classes = 5) |>
+      prep())
+  expect_true(any(grepl("num_classes", weighting_alerts(fit))))
+})

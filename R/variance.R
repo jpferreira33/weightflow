@@ -69,6 +69,14 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
                               seed = NULL, cores = 1L, progress = TRUE) {
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
+  # NP-07: a finite-population correction is a probability-sampling concept (it needs
+  # a sampling fraction from a known design). A non-probability sample has no such
+  # design, so an fpc here is meaningless; warn and ignore it.
+  if (!is.null(fpc) && isTRUE(object$nonprob)) {
+    warning("`fpc` does not apply to a non-probability sample (there is no sampling ",
+            "fraction from a known design); it is ignored.", call. = FALSE)
+    fpc <- NULL
+  }
   lonely_psu <- match.arg(lonely_psu)
   replicates <- .wf_count(replicates, "replicates", min = 2L)
   if (!is.null(m)) m <- .wf_count(m, "m", min = 1L)

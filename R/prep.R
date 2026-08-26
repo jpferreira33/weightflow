@@ -103,6 +103,11 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   }
 
   attr(data, "weightflow_base_w") <- NULL   # internal helper; do not leak into $data / collectors
+  # NP-06: a non-probability spec with base_weights = NULL got a synthetic all-ones
+  # base column (".wf_base1"). Drop it so it does not leak into $data or the
+  # collect_weights() output. A user-supplied base column is never dropped.
+  if (isTRUE(spec$nonprob) && grepl("^\\.wf_base1", spec$base_weights))
+    data[[spec$base_weights]] <- NULL
   structure(
     list(
       data         = data,
@@ -261,6 +266,18 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
              "produce extreme 1/p weights (up to %.0fx). Check the propensity model, ",
              "or trim with step_trim_weights()."),
       pm, 1 / pm))
+
+  # NP-01 mirror: for a pseudo-weight (participation odds (1 - p)/p) a participation
+  # propensity near 1 sends the pseudo-weight toward 0, so the unit all but drops out
+  # of the sample without any tiny-propensity warning. Flag the near-1 extreme.
+  px <- attr(diag, "p_max")
+  if (!is.null(px) && is.finite(px) && px > 0.99)
+    msgs <- c(msgs, sprintf(
+      paste0("Near-certain participation (max p = %.4f) drives the pseudo-weight (1 - p)/p ",
+             "toward 0, so those units all but leave the sample. This usually means poor ",
+             "overlap between the sample and the reference (a covariate cell the reference ",
+             "barely reaches); review the common support or simplify the propensity model."),
+      px))
 
   # Propensity classes collapsed: the fitted propensities were ~constant, so the
   # requested num_classes quantile cut-points could not be formed and every unit

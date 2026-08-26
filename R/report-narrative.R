@@ -48,9 +48,9 @@
   if (inherits(step, "step_unknown_eligibility"))
     return(.t("unknown-eligibility adjustment", "ajuste por elegibilidad desconocida", lang))
   if (inherits(step, "step_drop_ineligible"))
-    return(.t("removal of ineligible units", "eliminaci\u00f3n de unidades no elegibles", lang))
+    return(.t("exclusion of ineligible units", "eliminaci\u00f3n de unidades no elegibles", lang))
   if (inherits(step, "step_select_within"))
-    return(.t("within-cluster selection", "selecci\u00f3n dentro del conglomerado", lang))
+    return(.t("within-cluster selection adjustment", "ajuste por selecci\u00f3n dentro del conglomerado", lang))
   if (inherits(step, "step_nonresponse")) {
     m <- step$method %||% "weighting_class"
     if (identical(m, "calibration")) {
@@ -69,32 +69,38 @@
     # they enter the HTML: .step_short() feeds the exec summary, pipeline diagram,
     # per-stage table, anchors and titles, so an unescaped column name is an XSS
     # vector in a report built from third-party data. Everything else is escaped.
-    cl  <- .html_escape(step$cluster)
     eng <- .html_escape(step$engine)
-    lvl <- if (!is.null(step$cluster))
-             .t(sprintf(", at the %s level", cl),
-                sprintf(", a nivel %s", cl), lang) else ""
-    base <- switch(m,
-      weighting_class = .t("nonresponse adjustment (weighting classes",
-                           "ajuste por no respuesta (clases de ponderaci\u00f3n", lang),
-      propensity = .t(sprintf("nonresponse adjustment (propensity, %s", eng),
-                      sprintf("ajuste por no respuesta (propensi\u00f3n, %s", eng), lang))
-    return(paste0(base, lvl, ")"))
+    # Humanise the cluster into a level name for the prose; the raw column name
+    # (e.g. household_id) stays in the step details, not in the summary label.
+    # household_id -> household, so two nonresponse steps (household vs person)
+    # still read as distinct.
+    pretty <- if (!is.null(step$cluster))
+      .html_escape(gsub("_", " ", sub("_id$", "", step$cluster))) else ""
+    lvl_en <- if (!is.null(step$cluster)) sprintf("%s-level ", pretty) else ""
+    lvl_es <- if (!is.null(step$cluster)) sprintf(" a nivel %s", pretty) else ""
+    eng_en <- switch(step$engine %||% "logit",
+      logit = "logistic model", tree = "regression tree",
+      forest = "random forest", boost = "gradient boosting", eng)
+    if (identical(m, "propensity"))
+      return(.t(sprintf("%sresponse-propensity adjustment (%s)", lvl_en, eng_en),
+                sprintf("ajuste por propensi&oacute;n de respuesta (%s)%s", eng, lvl_es), lang))
+    return(.t(sprintf("%snonresponse adjustment using weighting classes", lvl_en),
+              sprintf("ajuste por no respuesta con clases de ponderaci&oacute;n%s", lvl_es), lang))
   }
   if (inherits(step, "step_calibrate")) {
     vp <- .vars_phrase(.aux_vars(step), lang); greg <- identical(step$method, "linear")
     return(if (nzchar(vp))
-      .t(sprintf("%scalibration to %s", if (greg) "GREG " else "", vp),
-         sprintf("calibraci\u00f3n %sa %s", if (greg) "GREG " else "", vp), lang)
+      .t(sprintf("%scalibration to %s totals", if (greg) "GREG " else "", vp),
+         sprintf("calibraci\u00f3n %sa los totales de %s", if (greg) "GREG " else "", vp), lang)
       else .t("calibration to population totals", "calibraci\u00f3n a totales poblacionales", lang))
   }
   if (inherits(step, "step_model_calibration"))
     return(.t("model-assisted calibration", "calibraci\u00f3n asistida por modelo", lang))
   if (inherits(step, "step_trim_calibrated"))
-    return(.t("calibration-preserving trimming", "recorte que preserva la calibraci\u00f3n", lang))
+    return(.t("calibration-preserving weight trimming", "recorte de pesos que preserva la calibraci\u00f3n", lang))
   if (inherits(step, "step_trim_weights"))
     return(.t("weight trimming", "recorte de pesos", lang))
-  if (inherits(step, "step_round"))  return(.t("rounding", "redondeo", lang))
+  if (inherits(step, "step_round"))  return(.t("weight rounding", "redondeo de pesos", lang))
   if (inherits(step, "step_rescale")) return(.t("rescaling", "reescalado", lang))
   if (inherits(step, "step_assert")) return(.t("quality checkpoint", "punto de control", lang))
   .html_escape(step$label)
@@ -285,6 +291,19 @@
   } else if (inherits(step, "step_assert")) {
     txt <- .t("A quality checkpoint verified the weight diagnostics (design effect, weight ratio, effective sample size) against the configured thresholds.",
               "Un punto de control de calidad verific\u00f3 los diagn\u00f3sticos de los pesos (efecto de dise\u00f1o, raz\u00f3n de pesos, tama\u00f1o efectivo) contra los umbrales configurados.", lang)
+  } else if (inherits(step, "step_pseudoweight")) {
+    vp  <- .vars_phrase(all.vars(step$formula), lang)
+    cf  <- if (!is.null(step$crossfit))
+      .t(sprintf(" with %d-fold cross-fitting", step$crossfit),
+         sprintf(" con validaci\u00f3n cruzada de %d particiones", step$crossfit), lang) else ""
+    cls <- if (!is.null(step$num_classes))
+      .t(sprintf(" The propensities were grouped into %d classes to stabilise the pseudo-weight.", step$num_classes),
+         sprintf(" Las propensiones se agruparon en %d clases para estabilizar el pseudo-peso.", step$num_classes), lang)
+      else ""
+    txt <- .t(
+      sprintf("The non-probability sample was pooled with the probability reference and a participation-propensity model (<strong>%s</strong> algorithm%s) was fitted over %s. Each non-probability unit received the pseudo-weight (1 - p)/p, the participation odds, which inflates it to the population so the weights sum to the reference's estimated population size (Elliott and Valliant 2017); the reference trains the model and is then dropped.%s Common support between the sample and the reference is the central assumption; see the propensity diagnostics below.", step$engine, cf, vp, cls),
+      sprintf("La muestra no probabil\u00edstica se combin\u00f3 con la referencia probabil\u00edstica y se ajust\u00f3 un modelo de propensi\u00f3n de participaci\u00f3n (algoritmo <strong>%s</strong>%s) sobre %s. Cada unidad no probabil\u00edstica recibi\u00f3 el pseudo-peso (1 - p)/p, las probabilidades relativas de participaci\u00f3n, que la expanden a la poblaci\u00f3n de modo que los pesos suman el tama\u00f1o poblacional estimado por la referencia (Elliott y Valliant 2017); la referencia entrena el modelo y luego se descarta.%s El soporte com\u00fan entre la muestra y la referencia es el supuesto central; ver los diagn\u00f3sticos de propensi\u00f3n abajo.", step$engine, cf, vp, cls),
+      lang)
   } else return("")
 
   if (!nzchar(txt)) return("")

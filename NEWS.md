@@ -26,6 +26,7 @@
 * Documentation updates, including a correspondence table for arguments that name the same concept across functions (`?weightflow-concepts`), a new `?weightflow-alerts` catalogue of the quality alerts `prep()` can raise, and `@family` cross-links across the step, variance and cascade-audit functions for easier navigation.
 * `step_calibrate()` now warns when both `margins` and `totals` are supplied (`totals` wins and `margins` was being dropped silently).
 * `step_model_calibration()` also guards missing values in the `y_model` predictor variables on the population frame (not only the `x_formula` variables), so an `NA` there no longer reaches the model engine.
+* `step_pseudoweight()` hardening: participation propensities are clamped away from both 0 and 1 (a propensity of exactly 1, which a pure tree or forest leaf can return, no longer sends the pseudo-weight to 0 and silently drops the unit), and a near-1 propensity is now flagged. The step also exposes its pooled propensity so the report renders the common-support, calibration, Brier and AUC diagnostics and a methodological paragraph; warns when the factor levels of a covariate differ between the sample and the reference, and when `num_classes` collapses under near-constant propensities; drops the internal all-ones base column from `collect_weights()`; and `bootstrap_weights(fpc = )` is ignored (with a warning) for a non-probability sample.
 
 # weightflow 1.1.0
 

@@ -349,8 +349,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   # sections cannot be misaligned when one is added or removed.
   html <- paste0(
     sprintf("<!DOCTYPE html><html lang='%s'><head><meta charset='utf-8'>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n", lang),
-    sprintf("<title>%s</title>", .t("weightflow report", "reporte weightflow", lang)), .report_css(), "</head><body>\n",
-    sprintf("<h1>weightflow &mdash; %s</h1>\n", .t("weighting recipe", "receta de ponderaci\u00f3n", lang)),
+    sprintf("<title>%s</title>", .t("weightflow &mdash; survey weighting report", "weightflow &mdash; reporte de ponderaci&oacute;n", lang)), .report_css(), "</head><body>\n",
+    sprintf("<h1>weightflow &mdash; %s</h1>\n", .t("survey weighting report", "reporte de ponderaci&oacute;n", lang)),
     sprintf("<p class='muted'>%s: <code>%s</code> &nbsp;|&nbsp; %d %s</p>\n",
             .t("Base weights", "Pesos base", lang),
             if (isTRUE(object$nonprob)) .t("1 (non-probability sample)",
