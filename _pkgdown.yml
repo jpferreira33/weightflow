@@ -93,6 +93,7 @@ reference:
   - step_unknown_eligibility
   - step_drop_ineligible
   - step_select_within
+  - step_subsample
   - step_nonresponse
   - step_pseudoweight
   - step_calibrate

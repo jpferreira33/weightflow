@@ -121,6 +121,37 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     if (any(!is.finite(fvec)) || any(fvec < 0 | fvec > 1))
       stop("`fpc` (first-stage sampling fraction) must be in [0, 1].", call. = FALSE)
   }
+  # Two-phase design: if the recipe subsamples a second phase (step_subsample),
+  # the single-phase Rao-Wu factor below is replaced by the two-phase coupling
+  # (phase-1 + phase-2 conditional variance). f1 comes from `fpc` (0 by default).
+  nsub      <- sum(vapply(object$steps, function(s) inherits(s, "step_subsample"), logical(1)))
+  sub       <- .find_subsample_step(object$steps)
+  two_phase <- !is.null(sub)
+  if (two_phase) {
+    if (nsub > 1L)
+      stop("bootstrap_weights(): the recipe has ", nsub, " step_subsample() steps. ",
+           "Only a single second phase is supported.", call. = FALSE)
+    if (!identical(sub$design, "poisson"))
+      stop("bootstrap_weights(): step_subsample design = \"", sub$design,
+           "\" is not yet supported; only \"poisson\" is implemented.", call. = FALSE)
+    # v1 assumes the phase-2 sampling unit is the phase-1 sampling unit (household
+    # case). A coarser phase-1 clustering (areas -> households) is not yet folded
+    # into the coupling, so accepting strata/psu here would silently drop the
+    # phase-1 intra-cluster variance. Refuse rather than undercover in silence.
+    if (!is.null(strata) || !is.null(psu))
+      stop("bootstrap_weights(): `strata` / `psu` (a first-phase clustered design) ",
+           "are not yet supported together with step_subsample(); this version assumes ",
+           "the phase-2 sampling unit (its `psu`) is the phase-1 sampling unit. ",
+           "Leave them NULL, or estimate the two-phase variance without the extra ",
+           "first-phase clustering for now.", call. = FALSE)
+    if (is.numeric(fpc) && !is.null(names(fpc)))
+      stop("bootstrap_weights(): with step_subsample(), `fpc` is the first-phase ",
+           "sampling fraction f1; give it as a single number or a column, not a ",
+           "vector named by stratum (first-phase strata are not supported here).",
+           call. = FALSE)
+  }
+  tp_setup  <- if (two_phase) .twophase_setup(sub, data, fvec) else NULL
+
   if (lonely_psu == "collapse") {
     cl <- paste(st, cl, sep = "||")     # nest PSU ids so distinct PSUs stay distinct after merging strata
     st <- .collapse_lonely(st, cl)
@@ -153,6 +184,9 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (!is.null(.rng_restore))
     on.exit(assign(".Random.seed", .rng_restore, envir = .GlobalEnv), add = TRUE)
   for (b in seq_len(replicates)) {
+    # Two-phase coupling replaces the single-phase Rao-Wu factor entirely: an
+    # additive lambda1 + lambda2 - 1 per phase-2 sampling unit (see METODO).
+    if (two_phase) { facs[[b]] <- .twophase_fac(tp_setup); next }
     fac <- numeric(n)
     for (h in hs) {
       idx  <- which(st == h)
@@ -210,10 +244,18 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   mh_by <- if (is.null(m)) pmax(nh_by - 1L, 0L) else pmin(as.integer(m), nh_by - 1L)
   design <- list(fh = fh_by, nh = nh_by, mh = stats::setNames(mh_by, hs),
                  collapsed = lonely_psu == "collapse" && any(grepl("__collapsed__", hs)))
+  if (two_phase) {
+    # Degrees of freedom and design summary come from the phase-2 sampling units,
+    # not the (single-phase) strata/PSU columns, which do not describe this design.
+    npsu2  <- length(tp_setup$selpsu)
+    df     <- max(npsu2 - 1L, 1L)
+    design <- list(two_phase = TRUE, phase2_design = sub$design,
+                   phase2_psu = sub$psu, n_psu2 = npsu2)
+  }
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = replicates,
                  base_weights = bw, method = "bootstrap", lonely_psu = lonely_psu,
-                 fpc = fpc, df = df, design = design,
+                 fpc = fpc, df = df, design = design, two_phase = two_phase,
                  seed = seed, cores = as.integer(cores),
                  elapsed = as.numeric(difftime(Sys.time(), t0, units = "secs"))),
             class = "weightflow_boot")
@@ -456,6 +498,14 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
                               cores = 1L, progress = TRUE) {
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
+  # Two-phase designs are not supported by the jackknife: a delete-a-PSU jackknife
+  # captures only the first-phase variance and would undercover the two-phase
+  # variance silently. Use bootstrap_weights(), which has the two-phase coupling.
+  if (!is.null(.find_subsample_step(object$steps)))
+    stop("jackknife_weights() does not support a two-phase design (the recipe has ",
+         "a step_subsample()); it would capture only the first-phase variance and ",
+         "undercover. Use bootstrap_weights() for the two-phase variance.",
+         call. = FALSE)
   lonely_psu <- match.arg(lonely_psu)
   t0 <- Sys.time()
   data <- object$data

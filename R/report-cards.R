@@ -229,17 +229,21 @@
   if (is.null(rep) || !inherits(rep, c("weightflow_boot", "weightflow_jack")))
     return("")
   is_jack <- inherits(rep, "weightflow_jack")
+  tp      <- isTRUE(rep$two_phase)
   method <- if (is_jack)
     (if (!is.null(rep$strata))
        .t("Jackknife (delete-a-PSU, JKn)", "Jackknife (borra-una-UPM, JKn)", lang)
      else .t("Jackknife (JK1)", "Jackknife (JK1)", lang))
+    else if (tp)
+       .t("Two-phase bootstrap (phase-1 + phase-2 coupling)",
+          "Bootstrap de dos fases (acople fase-1 + fase-2)", lang)
     else .t("Bootstrap (Rao-Wu rescaling)", "Bootstrap (reescalado Rao-Wu)", lang)
   d  <- rep$data
   st <- if (is.null(rep$strata)) rep("1", nrow(d)) else as.character(d[[rep$strata]])
   cl <- if (is.null(rep$psu)) as.character(seq_len(nrow(d))) else as.character(d[[rep$psu]])
   nstr     <- length(unique(st))
   pps      <- tapply(cl, st, function(z) length(unique(z)))
-  lonely_n <- sum(pps < 2L)
+  lonely_n <- if (tp) 0L else sum(pps < 2L)
   secs <- rep$elapsed
   nrep  <- if (!is.null(rep$replicates)) ncol(rep$replicates) else rep$R
   nfail <- if (!is.null(rep$replicates)) sum(apply(rep$replicates, 2, anyNA)) else 0L
@@ -252,8 +256,12 @@
     kv(.t("Replicates (B)", "R\u00e9plicas (B)", lang), format(rep$R, big.mark = ",")),
     kv(.t("Failed replicates", "R\u00e9plicas fallidas", lang),
        sprintf("%s of %s", format(nfail, big.mark = ","), format(nrep, big.mark = ","))),
-    kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
-    kv(.t("Mean PSUs per stratum", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
+    if (tp)
+      kv(.t("Phase-2 sampling units", "Unidades de muestreo de fase 2", lang),
+         format(if (!is.null(rep$design$n_psu2)) rep$design$n_psu2 else nstr, big.mark = ","))
+    else kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
+    if (tp) "" else
+      kv(.t("Mean PSUs per stratum", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
     if (!is.null(rep$df))
       kv(.t("Degrees of freedom", "Grados de libertad", lang), format(rep$df, big.mark = ",")) else "",
     # FPC is a bootstrap concept only, and only when a non-zero fraction was given.
