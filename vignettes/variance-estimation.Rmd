@@ -46,8 +46,8 @@ recipe (do not call `prep()` first): the bootstrap preps it once per replicate.
 
 ```{r recipe, warning = FALSE}
 dat <- sample_one
-dat$age_grp <- cut(dat$age, c(0, 30, 45, 60, Inf),
-                   labels = c("18-30", "31-45", "46-60", "60+"))
+dat$age_grp <- cut(dat$age, c(-Inf, 30, 45, 60, Inf),
+                   labels = c("<=30", "31-45", "46-60", "60+"))
 dat$f <- 0.15                    # illustrative first-stage sampling fraction (used later)
 
 spec <- weighting_spec(dat, base_weights = pw) |>

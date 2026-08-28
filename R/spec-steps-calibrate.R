@@ -144,9 +144,9 @@
 #' # totals, not a term in the formula/margins. Here we rake two margins (sex and
 #' # age group) within each region, which a single global cross could not express.
 #' pop  <- transform(population,
-#'   age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+#'   age_grp = cut(age, c(-Inf, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
 #' samp <- transform(sample_survey,
-#'   age_grp = cut(age, c(0, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
+#'   age_grp = cut(age, c(-Inf, 30, 45, 60, Inf), labels = c("18-30","31-45","46-60","60+")))
 #' sex_by_region <- as.data.frame(table(region = pop$region, sex     = pop$sex))
 #' age_by_region <- as.data.frame(table(region = pop$region, age_grp = pop$age_grp))
 #' weighting_spec(samp, base_weights = pw) |>
