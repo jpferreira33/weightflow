@@ -168,7 +168,7 @@ apply_step.step_subsample <- function(step, data, w) {
   f1_psu[is.na(f1_psu)] <- 0
   d      <- (1 - f1_psu) * p2_psu + (1 - p2_psu)     # = 1 - f1 * pi2, in (0, 1]
   list(n = n, use = use, unit_psu_idx = idx, selpsu = selpsu,
-       d = d, design = sub$design)
+       d = d, v2 = (1 - p2_psu), design = sub$design)
 }
 
 # One replicate's two-phase factor vector (Poisson second phase): a single
@@ -179,12 +179,16 @@ apply_step.step_subsample <- function(step, data, w) {
 # re-runs cleanly on every replicate -- and gives slightly better coverage than a
 # two-point factor. Non-selected units get factor 1 (they leave the cascade at
 # step_subsample anyway). Units with d ~ 0 (no sampling variance) keep factor 1.
-.twophase_fac <- function(setup) {
+.twophase_fac <- function(setup, cond_only = FALSE) {
+  # cond_only = FALSE: variance d = (1-f1)pi2 + (1-pi2) (simple phase 1, one factor).
+  # cond_only = TRUE : variance 1 - pi2 (phase-2 CONDITIONAL only; the phase-1
+  #   component is supplied separately by the stratified-cluster Rao-Wu).
+  v    <- if (cond_only) setup$v2 else setup$d
   npsu <- length(setup$selpsu)
   lam  <- rep(1, npsu)
-  pos  <- setup$d > 1e-12
+  pos  <- v > 1e-12
   if (any(pos))
-    lam[pos] <- stats::rgamma(sum(pos), shape = 1 / setup$d[pos], scale = setup$d[pos])
+    lam[pos] <- stats::rgamma(sum(pos), shape = 1 / v[pos], scale = v[pos])
   fac  <- rep(1, setup$n)
   su   <- which(setup$use)
   fac[su] <- lam[setup$unit_psu_idx[su]]

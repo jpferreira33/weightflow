@@ -127,6 +127,13 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   nsub      <- sum(vapply(object$steps, function(s) inherits(s, "step_subsample"), logical(1)))
   sub       <- .find_subsample_step(object$steps)
   two_phase <- !is.null(sub)
+  # Two-phase modes:
+  #  - clustered phase 1 (strata/psu given): the phase-1 Rao-Wu over strata/PSU --
+  #    the ordinary stratified-cluster resampler -- carries V1, and we add the
+  #    phase-2 CONDITIONAL factor (variance 1 - pi2) on top (lambda1 + lambda2 - 1).
+  #  - simple phase 1 (no strata/psu): a single per-PSU factor of variance
+  #    d = (1 - f1) pi2 + (1 - pi2), with f1 from `fpc` (0 by default).
+  tp_clustered <- two_phase && (!is.null(strata) || !is.null(psu))
   if (two_phase) {
     if (nsub > 1L)
       stop("bootstrap_weights(): the recipe has ", nsub, " step_subsample() steps. ",
@@ -134,21 +141,6 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     if (!identical(sub$design, "poisson"))
       stop("bootstrap_weights(): step_subsample design = \"", sub$design,
            "\" is not yet supported; only \"poisson\" is implemented.", call. = FALSE)
-    # v1 assumes the phase-2 sampling unit is the phase-1 sampling unit (household
-    # case). A coarser phase-1 clustering (areas -> households) is not yet folded
-    # into the coupling, so accepting strata/psu here would silently drop the
-    # phase-1 intra-cluster variance. Refuse rather than undercover in silence.
-    if (!is.null(strata) || !is.null(psu))
-      stop("bootstrap_weights(): `strata` / `psu` (a first-phase clustered design) ",
-           "are not yet supported together with step_subsample(); this version assumes ",
-           "the phase-2 sampling unit (its `psu`) is the phase-1 sampling unit. ",
-           "Leave them NULL, or estimate the two-phase variance without the extra ",
-           "first-phase clustering for now.", call. = FALSE)
-    if (is.numeric(fpc) && !is.null(names(fpc)))
-      stop("bootstrap_weights(): with step_subsample(), `fpc` is the first-phase ",
-           "sampling fraction f1; give it as a single number or a column, not a ",
-           "vector named by stratum (first-phase strata are not supported here).",
-           call. = FALSE)
   }
   tp_setup  <- if (two_phase) .twophase_setup(sub, data, fvec) else NULL
 
@@ -172,7 +164,27 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   # --- Phase 1 (serial, uses the RNG): draw every resampling factor vector and a
   # per-replicate seed. This is the ONLY random part; capturing it up front makes
   # the parallel run bit-identical to the serial one and reproducible via `seed`.
-  singleton <- character(0)
+  # Strata with a single PSU cannot be resampled (recorded once, warned below).
+  singleton <- hs[vapply(hs, function(h) length(unique(cl[st == h])) < 2L, logical(1))]
+  # One draw of the (stratified, clustered) Rao-Wu factor vector: the ordinary
+  # single-phase resampler. Reused for the phase-1 component of a clustered
+  # two-phase design (lambda1), so the first-phase intra-cluster variance is
+  # carried by the same machinery that already handles it for one-phase designs.
+  raowu_fac <- function() {
+    fac <- numeric(n)
+    for (h in hs) {
+      idx  <- which(st == h); psus <- unique(cl[idx]); nh <- length(psus)
+      if (nh < 2L) { fac[idx] <- 1; next }
+      mh   <- if (is.null(m)) nh - 1L else min(as.integer(m), nh - 1L)
+      cnt  <- tabulate(sample.int(nh, mh, replace = TRUE), nbins = nh)
+      # Rao-Wu rescaling with the (1 - f_h) fpc folded into the scale term (Rao, Wu
+      # and Yue 1992; Beaumont and Patak 2012). f_h = 0 -> with-replacement. E[lam]=1.
+      ah   <- sqrt(mh * (1 - fh_by[[h]]) / (nh - 1))
+      lam  <- 1 - ah + ah * (nh / mh) * cnt; names(lam) <- psus
+      fac[idx] <- lam[cl[idx]]
+    }
+    fac
+  }
   facs   <- vector("list", replicates)
   rseeds <- sample.int(.Machine$integer.max, replicates)
   # Restore the RNG on exit so one_rep()'s per-replicate set.seed() does not leak.
@@ -184,26 +196,25 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (!is.null(.rng_restore))
     on.exit(assign(".Random.seed", .rng_restore, envir = .GlobalEnv), add = TRUE)
   for (b in seq_len(replicates)) {
-    # Two-phase coupling replaces the single-phase Rao-Wu factor entirely: an
-    # additive lambda1 + lambda2 - 1 per phase-2 sampling unit (see METODO).
-    if (two_phase) { facs[[b]] <- .twophase_fac(tp_setup); next }
-    fac <- numeric(n)
-    for (h in hs) {
-      idx  <- which(st == h)
-      psus <- unique(cl[idx])
-      nh   <- length(psus)
-      if (nh < 2L) { fac[idx] <- 1; if (b == 1L) singleton <- c(singleton, h); next }
-      mh   <- if (is.null(m)) nh - 1L else min(as.integer(m), nh - 1L)
-      cnt  <- tabulate(sample.int(nh, mh, replace = TRUE), nbins = nh)
-      # Rao-Wu rescaling, with the (1 - f_h) finite-population correction folded
-      # into the scale term (Rao, Wu and Yue 1992; Beaumont and Patak 2012). With
-      # f_h = 0 this is the plain with-replacement bootstrap. E[lambda] = 1 always.
-      ah   <- sqrt(mh * (1 - fh_by[[h]]) / (nh - 1))
-      lam  <- 1 - ah + ah * (nh / mh) * cnt
-      names(lam) <- psus
-      fac[idx] <- lam[cl[idx]]
+    if (two_phase && !tp_clustered) {
+      # Simple phase 1 (no strata/psu): a single per-PSU factor of variance
+      # d = (1-f1)pi2 + (1-pi2) captures both phases.
+      facs[[b]] <- .twophase_fac(tp_setup); next
     }
-    facs[[b]] <- fac
+    if (two_phase && tp_clustered) {
+      # Clustered/stratified phase 1 with strata/psu supplied AND a step_subsample
+      # (a two-phase design calibrated to KNOWN totals, not to the first-phase
+      # sample). The exact coupling for a clustered first phase needs a reverse-
+      # framework correction; here we use the CONSERVATIVE additive combination
+      # lambda1 + lambda2 - 1 (the stratified-cluster Rao-Wu plus the phase-2
+      # conditional factor), which over-estimates rather than under-estimates the
+      # variance -- the safe side. For the common case (calibrating the subsample
+      # to first-phase estimates), compose step_subsample() with a reference_sample
+      # built from the first-phase sample instead: the first-phase clustered design
+      # is then carried by the reference's replicate weights, with no strata/psu here.
+      facs[[b]] <- raowu_fac() + .twophase_fac(tp_setup, cond_only = TRUE) - 1; next
+    }
+    facs[[b]] <- raowu_fac()
   }
 
   # --- Phase 2 (serial or parallel): re-prep each replicate. Pure deterministic
@@ -245,12 +256,20 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   design <- list(fh = fh_by, nh = nh_by, mh = stats::setNames(mh_by, hs),
                  collapsed = lonely_psu == "collapse" && any(grepl("__collapsed__", hs)))
   if (two_phase) {
-    # Degrees of freedom and design summary come from the phase-2 sampling units,
-    # not the (single-phase) strata/PSU columns, which do not describe this design.
-    npsu2  <- length(tp_setup$selpsu)
-    df     <- max(npsu2 - 1L, 1L)
-    design <- list(two_phase = TRUE, phase2_design = sub$design,
-                   phase2_psu = sub$psu, n_psu2 = npsu2)
+    npsu2 <- length(tp_setup$selpsu)
+    if (tp_clustered) {
+      # Clustered phase 1: df and design come from the FIRST-phase strata/PSU
+      # (the resampling design), as in a single-phase run; add the phase-2 summary.
+      design <- c(list(fh = fh_by, nh = nh_by, mh = stats::setNames(mh_by, hs),
+                       collapsed = lonely_psu == "collapse" && any(grepl("__collapsed__", hs))),
+                  list(two_phase = TRUE, phase2_design = sub$design,
+                       phase2_psu = sub$psu, n_psu2 = npsu2))
+    } else {
+      # Simple phase 1: df and design come from the phase-2 sampling units.
+      df     <- max(npsu2 - 1L, 1L)
+      design <- list(two_phase = TRUE, phase2_design = sub$design,
+                     phase2_psu = sub$psu, n_psu2 = npsu2)
+    }
   }
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = replicates,
