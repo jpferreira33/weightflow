@@ -68,6 +68,7 @@ articles:
   navbar: Variance and validation
   contents:
   - variance-estimation
+  - two-phase-sampling
   - validation-against-survey
 
 reference:

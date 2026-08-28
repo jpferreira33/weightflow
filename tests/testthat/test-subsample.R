@@ -84,6 +84,26 @@ test_that("jackknife_weights refuses a two-phase recipe (TP-03)", {
   expect_error(jackknife_weights(spec, progress = FALSE), "two-phase")
 })
 
+test_that("step_subsample composes with reference_sample (calibrate to phase 1)", {
+  # Two-phase regression estimator: calibrate the subsample to first-phase totals
+  # estimated from the first-phase sample (as a reference with replicate weights).
+  # Should run end to end and return a finite, positive SE (variance validated by
+  # Monte Carlo in the two-phase methodology notes, not here).
+  df <- .two_phase_df(seed = 9)
+  df$x <- df$y + rnorm(nrow(df))                     # a phase-1 auxiliary
+  # first-phase sample = all phase-1 rows, with its own bootstrap replicate weights
+  ph1  <- data.frame(hh = df$hh, x = df$x, w1 = df$w1)
+  reps <- matrix(df$w1 * stats::runif(nrow(df) * 20, 0.5, 1.5), ncol = 20)
+  ref  <- reference_sample(ph1, "w1", replicates = reps)
+  spec <- weighting_spec(df, base_weights = w1) |>
+    step_subsample(selected = sel2, prob = p2, psu = "hh") |>
+    step_calibrate(method = "linear", formula = ~ x, population = ref)
+  boot <- bootstrap_weights(spec, replicates = 60L, seed = 1, progress = FALSE)
+  se <- boot_total(boot, "y")$se
+  expect_true(is.finite(se) && se > 0)
+  expect_true(isTRUE(boot$two_phase))
+})
+
 test_that("phase-1 strata/psu are refused with a two-phase recipe (TP-02)", {
   df   <- .two_phase_df()
   df$stratum <- df$region
