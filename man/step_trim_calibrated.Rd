@@ -118,6 +118,7 @@ Other weighting steps:
 \code{\link[=step_rescale]{step_rescale()}},
 \code{\link[=step_round]{step_round()}},
 \code{\link[=step_select_within]{step_select_within()}},
+\code{\link[=step_subsample]{step_subsample()}},
 \code{\link[=step_trim]{step_trim()}},
 \code{\link[=step_trim_weights]{step_trim_weights()}},
 \code{\link[=step_unknown_eligibility]{step_unknown_eligibility()}}
