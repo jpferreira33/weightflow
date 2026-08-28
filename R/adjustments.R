@@ -96,8 +96,8 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
 apply_step.step_unknown_eligibility <- function(step, data, w) {
   n       <- length(w)
   unknown <- .eval_cond(step$unknown, data, step$env, active = .wf_active(w))
-  cells   <- .make_cells(data, step$by, n)
   active  <- .wf_active(w)                # only still-active cases (negatives count)
+  cells   <- .make_cells(data, step$by, n, active = active)
   new_w   <- w
   diag    <- list()
 
@@ -221,7 +221,7 @@ apply_step.step_select_within <- function(step, data, w) {
   factor_h <- rep(NA_real_, length(hhn)); names(factor_h) <- hhn
 
   if (step$method == "weighting_class") {
-    cells_all <- .make_cells(data, step$by, n)
+    cells_all <- .make_cells(data, step$by, n, active = eligible)
     cell_el   <- as.character(cells_all[idx_el])
     nuniq     <- tapply(cell_el, cl, function(z) length(unique(z)))
     if (any(nuniq > 1L))
@@ -455,7 +455,7 @@ apply_step.step_nonresponse <- function(step, data, w) {
   new_w      <- w
 
   if (step$method == "weighting_class") {
-    cells <- .make_cells(data, step$by, n)
+    cells <- .make_cells(data, step$by, n, active = eligible)
     diag  <- list()
     for (g in levels(cells)) {
       idx      <- which(cells == g & eligible)
