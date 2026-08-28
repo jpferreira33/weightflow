@@ -95,20 +95,26 @@
 }
 
 # Build a grouping factor from the `by` columns -----------------------------
-.make_cells <- function(data, by, n) {
+.make_cells <- function(data, by, n, active = NULL) {
   if (is.null(by)) return(factor(rep("(all)", n)))
   if (!length(by))
     stop(paste0("`by` has length 0. Use `by = NULL` for no grouping; a zero-length `by` ",
                 "(e.g. from names(x)[grepl(...)] matching nothing) would silently skip the ",
                 "whole step."), call. = FALSE)
-  na_any <- FALSE
+  na_unit <- logical(n)                       # which units have an NA in any cell variable
   parts <- lapply(by, function(v) {
     if (!v %in% names(data)) stop(sprintf("Cell variable '%s' not found.", v))
-    x <- as.character(data[[v]])
-    if (anyNA(x)) { na_any <<- TRUE; x[is.na(x)] <- "(missing)" }  # explicit, not the ambiguous "NA"
+    x  <- as.character(data[[v]])
+    na <- is.na(x)
+    if (any(na)) { na_unit <<- na_unit | na; x[na] <- "(missing)" }  # explicit, not the ambiguous "NA"
     x
   })
-  if (na_any)
+  # Only warn about NA cells among the units this step actually acts on. Units
+  # already dropped earlier in the cascade (weight 0: ineligible, unknown, whole-
+  # household nonresponse) commonly lack later-collected variables (sex, age), and
+  # flagging their NAs is a false alarm -- they take no part in this adjustment.
+  flag <- if (is.null(active)) na_unit else (na_unit & as.logical(active))
+  if (any(flag))
     warning(paste0("Missing values in the cell variable(s) `by` were grouped into a ",
                    "'(missing)' cell. Those units are adjusted within their own cell; ",
                    "recode the NAs if that is not intended."), call. = FALSE)
