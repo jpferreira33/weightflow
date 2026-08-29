@@ -233,9 +233,6 @@ design from a prepped recipe. It is fast, but treats the calibration as
 fixed.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="va">spec</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Missing values in the cell variable(s) `by` were grouped into a</span></span>
-<span><span class="co">#&gt; '(missing)' cell. Those units are adjusted within their own cell; recode the</span></span>
-<span><span class="co">#&gt; NAs if that is not intended.</span></span>
 <span><span class="va">des</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_svydesign.html">as_svydesign</a></span><span class="op">(</span><span class="va">fitted</span>, ids <span class="op">=</span> <span class="st">"psu"</span>, strata <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span>
 <span><span class="fu">survey</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/survey/man/surveysummary.html" class="external-link">svymean</a></span><span class="op">(</span><span class="op">~</span><span class="va">income</span>, <span class="va">des</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         mean     SE</span></span>

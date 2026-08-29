@@ -154,9 +154,6 @@ fitted <- weighting_spec(dat, base_weights = pw) |>
                  margins = list(region = c(table(population$region)),
                                 sex    = c(table(population$sex)))) |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 ```
 
 ### Trimming, rounding, rescaling
@@ -200,9 +197,6 @@ trimmed <- weighting_spec(dat, base_weights = pw) |>
                                 sex    = c(table(population$sex)))) |>
   step_trim_weights() |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 ```
 
 ## Reading the cascade: the design effect

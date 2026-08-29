@@ -131,9 +131,6 @@ It is fast, but treats the calibration as fixed.
 ``` r
 
 fitted <- prep(spec)
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 des <- as_svydesign(fitted, ids = "psu", strata = "region")
 survey::svymean(~income, des, na.rm = TRUE)
 #>         mean     SE

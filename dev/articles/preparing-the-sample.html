@@ -375,9 +375,6 @@ variable the sample carries.</p>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"eligible respondent"</span>,</span>
 <span>                   method <span class="op">=</span> <span class="st">"weighting_class"</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span>, <span class="st">"age_grp"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Missing values in the cell variable(s) `by` were grouped into a</span></span>
-<span><span class="co">#&gt; '(missing)' cell. Those units are adjusted within their own cell; recode the</span></span>
-<span><span class="co">#&gt; NAs if that is not intended.</span></span>
 <span></span>
 <span><span class="va">fitted</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -518,9 +515,6 @@ there look like this:</p>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span>, <span class="st">"age_grp"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Missing values in the cell variable(s) `by` were grouped into a</span></span>
-<span><span class="co">#&gt; '(missing)' cell. Those units are adjusted within their own cell; recode the</span></span>
-<span><span class="co">#&gt; NAs if that is not intended.</span></span>
 <span></span>
 <span><span class="co"># same weights as the disposition-based version</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">final_weight</span>, <span class="va">fitted2</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span></span>

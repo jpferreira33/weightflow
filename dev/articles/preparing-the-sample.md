@@ -246,9 +246,6 @@ fitted <- weighting_spec(dat, base_weights = pw) |>
   step_nonresponse(respondent = disposition == "eligible respondent",
                    method = "weighting_class", by = c("region", "sex", "age_grp")) |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 
 fitted
 #> 
@@ -395,9 +392,6 @@ fitted2 <- weighting_spec(dat, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 
 # same weights as the disposition-based version
 all.equal(fitted$final_weight, fitted2$final_weight)

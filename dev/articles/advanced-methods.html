@@ -313,18 +313,12 @@ with the smallest estimated MSE.</p>
 <span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_trim_weights.html">step_trim_weights</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"tukey"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Missing values in the cell variable(s) `by` were grouped into a</span></span>
-<span><span class="co">#&gt; '(missing)' cell. Those units are adjusted within their own cell; recode the</span></span>
-<span><span class="co">#&gt; NAs if that is not intended.</span></span>
 <span></span>
 <span><span class="va">trimmed_potter</span> <span class="op">&lt;-</span> <span class="va">base</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded</span>, method <span class="op">=</span> <span class="st">"weighting_class"</span>,</span>
 <span>                   by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_trim_weights.html">step_trim_weights</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"potter"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Missing values in the cell variable(s) `by` were grouped into a</span></span>
-<span><span class="co">#&gt; '(missing)' cell. Those units are adjusted within their own cell; recode the</span></span>
-<span><span class="co">#&gt; NAs if that is not intended.</span></span>
 <span></span>
 <span><span class="va">trimmed_tukey</span><span class="op">$</span><span class="va">steps</span><span class="op">[[</span><span class="fl">6</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"method"</span>, <span class="st">"upper"</span>, <span class="st">"n_capped"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;   method  upper n_capped</span></span>
@@ -366,19 +360,13 @@ is still met.</p>
 <span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">pre</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="va">recipe</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Missing values in the cell variable(s) `by` were grouped into a</span></span>
-<span><span class="co">#&gt; '(missing)' cell. Those units are adjusted within their own cell; recode the</span></span>
-<span><span class="co">#&gt; NAs if that is not intended.</span></span>
 <span><span class="va">w</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/collect_weights.html">collect_weights</a></span><span class="op">(</span><span class="va">pre</span>, drop_zero <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">.weight</span></span>
 <span><span class="va">w</span>   <span class="op">&lt;-</span> <span class="va">w</span><span class="op">[</span><span class="va">w</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">]</span></span>
 <span><span class="va">lo</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">w</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span>; <span class="va">up</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span><span class="op">(</span><span class="va">w</span>, <span class="fl">0.95</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">trimmed</span> <span class="op">&lt;-</span> <span class="va">recipe</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_trim_calibrated.html">step_trim_calibrated</a></span><span class="op">(</span><span class="op">~</span> <span class="va">region</span>, lower <span class="op">=</span> <span class="va">lo</span>, upper <span class="op">=</span> <span class="va">up</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Missing values in the cell variable(s) `by` were grouped into a</span></span>
-<span><span class="co">#&gt; '(missing)' cell. Those units are adjusted within their own cell; recode the</span></span>
-<span><span class="co">#&gt; NAs if that is not intended.</span></span></code></pre></div>
+<span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>The region totals are still met after the trim (the differences are
 zero), whereas the weights now sit inside the interval:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
