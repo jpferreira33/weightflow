@@ -156,7 +156,12 @@ apply_step.step_subsample <- function(step, data, w) {
 # positive. See METODO_dos_fases.
 .twophase_setup <- function(sub, data, fvec) {
   n   <- nrow(data)
-  sel <- .eval_cond(sub$selected, data, sub$env)
+  # M-1: this is a design-summary evaluation, not the adjustment (apply_step
+  # already validated scope during prep()). A `selected` that is NA on units
+  # dropped earlier in the cascade must fall through as not-selected, not abort
+  # the bootstrap -- pass an empty `active` so .eval_cond() skips the strict
+  # in-scope NA check and coerces NA to FALSE.
+  sel <- .eval_cond(sub$selected, data, sub$env, active = logical(n))
   p2  <- .eval_num(sub$prob, "prob", data, sub$env)
   sel[is.na(sel)] <- FALSE
   psu <- as.character(data[[sub$psu]])

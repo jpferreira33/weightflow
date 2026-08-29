@@ -45,6 +45,7 @@
                 columns = lapply(names(x), function(nm) {
                   col <- x[[nm]]
                   list(name = nm, class = class(col)[1],
+                       ordered = is.ordered(col),
                        levels = if (is.factor(col)) as.list(levels(col)) else list(),
                        values = as.list(as.character(col)))
                 })))
@@ -71,11 +72,14 @@
         cols <- lapply(x$columns, function(cd) {
           v <- as.character(unlist(cd$values, use.names = FALSE))
           switch(cd$class,
-            factor    = factor(v, levels = unlist(cd$levels)),
+            ordered   = factor(v, levels = unlist(cd$levels), ordered = TRUE),
+            factor    = factor(v, levels = unlist(cd$levels), ordered = isTRUE(cd$ordered)),
             numeric   = as.numeric(v),
             double    = as.numeric(v),
             integer   = as.integer(v),
             logical   = as.logical(v),
+            Date      = as.Date(v),
+            POSIXct   = as.POSIXct(v),
             v)
         })
         names(cols) <- vapply(x$columns, function(cd) cd$name, character(1))

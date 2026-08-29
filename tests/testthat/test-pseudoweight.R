@@ -57,6 +57,25 @@ test_that("step_pseudoweight runs inside the recipe-aware bootstrap", {
   expect_true(is.finite(est$se) && est$se > 0)
 })
 
+test_that("NP-06: a PREPPED non-prob spec keeps its base weights on re-prep / bootstrap", {
+  set.seed(2)
+  N   <- nrow(population)
+  vol <- population[rbinom(N, 1, plogis(-2 + 0.9 * (population$sex == "M"))) == 1,
+                    c("region", "sex", "income")]
+  ref <- population[sample(N, 600), c("region", "sex")]; ref$d <- N / 600
+  fit <- weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+    step_pseudoweight(reference = reference_sample(ref, "d"),
+                      formula = ~ region + sex, engine = "logit") |>
+    prep()
+  # re-prepping the prepped spec must not collapse every weight to 0 (the synthetic
+  # .wf_base1 column, dropped by the first prep(), is re-materialised).
+  re <- suppressWarnings(prep(fit))
+  expect_true(all(re$final_weight > 0))
+  # bootstrapping the PREPPED spec must run and return a positive SE.
+  boot <- suppressWarnings(bootstrap_weights(fit, replicates = 20, seed = 1, progress = FALSE))
+  expect_true(is.finite(boot_mean(boot, "income")$se) && boot_mean(boot, "income")$se > 0)
+})
+
 test_that("NP-01: near-certain participation is clamped, not silently dropped", {
   skip_if_not_installed("rpart")
   set.seed(3)

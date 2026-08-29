@@ -91,6 +91,10 @@ as_sae_input <- function(object, variable, by, type = c("mean", "total"),
   out$rating <- cut(out$cv, breaks = c(-Inf, cv_breaks, Inf),
                     labels = c("publishable", "review", "not publishable"),
                     right = TRUE)
+  # A domain with fewer than 2 active units cannot support a design-based variance,
+  # so its replicate CV -- and any "publishable" rating derived from it -- is not
+  # trustworthy; force such domains to "not publishable" regardless of the CV.
+  out$rating[out$n < 2L] <- "not publishable"
   out <- out[c("domain", "n", "n_eff", "estimate", "se", "cv",
                "ci_lower", "ci_upper", "rating")]
   rownames(out) <- NULL

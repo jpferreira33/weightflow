@@ -361,7 +361,13 @@
   dat <- object$data
   n   <- length(bw)
   ev  <- function(expr, active) {
-    v <- tryCatch(as.logical(.eval_cond(expr, dat)), error = function(e) NULL)
+    # Pass `active` so a disposition flag that is NA for out-of-scope units
+    # (ineligible / not contacted -- the normal multistage case) does not make
+    # .eval_cond() throw; NA among inactive units is genuinely undefined and
+    # falls through as FALSE. Without this the card printed ER = 0 / 100%
+    # nonresponse from the error fallback (AAPOR-NA).
+    v <- tryCatch(as.logical(.eval_cond(expr, dat, active = active)),
+                  error = function(e) NULL)
     if (is.null(v) || length(v) != n) return(rep(FALSE, n))
     v[is.na(v)] <- FALSE
     v & active
@@ -373,8 +379,13 @@
   if (length(id)) { k <- id[1L]; NE <- ev(steps[[k]]$ineligible, h[[k]] > 0) }
   kr   <- max(which(is_nr))
   actr <- h[[kr]] > 0
+  # Reconstruct disposition only among IN-SCOPE active cases. `ev` passes `active`
+  # so an NA respondent flag on out-of-scope units does not abort; and ineligible
+  # / unknown-eligibility cases are not nonrespondents either. The earlier
+  # `actr & !R` swept both into NR, so a recipe with NA dispositions could report
+  # 0 respondents / 100% nonresponse (AAPOR-NA).
   R    <- ev(steps[[kr]]$respondent, actr)
-  NR   <- actr & !R
+  NR   <- actr & !R & !NE & !U
 
   cnt  <- c(T = n, NE = sum(NE), U = sum(U), R = sum(R), NR = sum(NR))
   wsum <- c(T = sum(bw), NE = sum(bw[NE]), U = sum(bw[U]),

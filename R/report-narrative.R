@@ -81,9 +81,12 @@
     eng_en <- switch(step$engine %||% "logit",
       logit = "logistic model", tree = "regression tree",
       forest = "random forest", boost = "gradient boosting", eng)
+    eng_es <- switch(step$engine %||% "logit",
+      logit = "modelo log&iacute;stico", tree = "&aacute;rbol de regresi&oacute;n",
+      forest = "random forest", boost = "gradient boosting", eng)
     if (identical(m, "propensity"))
       return(.t(sprintf("%sresponse-propensity adjustment (%s)", lvl_en, eng_en),
-                sprintf("ajuste por propensi&oacute;n de respuesta (%s)%s", eng, lvl_es), lang))
+                sprintf("ajuste por propensi&oacute;n de respuesta (%s)%s", eng_es, lvl_es), lang))
     return(.t(sprintf("%snonresponse adjustment using weighting classes", lvl_en),
               sprintf("ajuste por no respuesta con clases de ponderaci&oacute;n%s", lvl_es), lang))
   }

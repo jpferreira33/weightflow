@@ -49,7 +49,7 @@ apply_step.step_trim <- function(step, data, w) {
   # Cells first: with reference = "median" the threshold is computed WITHIN each
   # `by` group, so a differentiated trim uses each subgroup's own median (not a
   # single global median). With by = NULL there is one group (the whole sample).
-  cells  <- .make_cells(data, step$by, n)
+  cells  <- .make_cells(data, step$by, n, active = active)
 
   # Define the cap and floor per unit according to the reference
   base_w <- attr(data, "weightflow_base_w")
@@ -394,8 +394,8 @@ apply_step.step_assert <- function(step, data, w) {
 }
 
 apply_step.step_trim_weights <- function(step, data, w) {
-  active <- w != 0          # trim every non-zero weight (incl. negatives from
-  new_w  <- w               # unbounded calibration); leave dropped units (w == 0)
+  active <- .wf_active(w)   # trim every active weight (non-zero and finite, incl.
+  new_w  <- w               # negatives from unbounded calibration); leave dropped units
   wv     <- new_w[active]
   step$maxit <- .wf_count(step$maxit, "maxit")   # 0/NA/"a" would silently skip trimming
 
@@ -675,7 +675,7 @@ apply_step.step_rescale <- function(step, data, w) {
   }
 
   # to == "n": each (by-)group sums to its active count (mean weight 1)
-  cells <- .make_cells(data, step$by, n)
+  cells <- .make_cells(data, step$by, n, active = active)
   diag  <- list()
   for (g in levels(cells)) {
     idx <- which(cells == g & active)

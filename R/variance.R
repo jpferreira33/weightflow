@@ -87,7 +87,13 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   t0 <- Sys.time()
   data <- object$data
   bw   <- object$base_weights
-  spec <- structure(list(data = data, base_weights = bw, steps = object$steps),
+  # NP-06: a prepped non-probability spec dropped its synthetic all-ones base
+  # column (.wf_base1); re-materialise it so replication does not read NULL base
+  # weights and collapse every replicate weight to 0.
+  if (isTRUE(object$nonprob) && grepl("^\\.wf_base1", bw) && !(bw %in% names(data)))
+    data[[bw]] <- 1
+  spec <- structure(list(data = data, base_weights = bw, steps = object$steps,
+                         nonprob = isTRUE(object$nonprob)),
                     class = "weighting_spec")
   point <- if (!is.null(object$final_weight)) object$final_weight else prep(spec)$final_weight
   n   <- nrow(data)
@@ -163,8 +169,12 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   }
   hs <- unique(st)
   # f_h per final stratum; a collapsed pseudo-stratum must have a single fraction.
+  # Two-phase mode does not use fh_by / the Rao-Wu factor (it uses tp_setup, whose
+  # per-PSU f1 is validated in .twophase_setup), so a first-phase fraction f1 that
+  # legitimately varies across phase-2 units (e.g. an `fpc` column by region) must
+  # not be forced constant here -- skip the single-phase stratum check (TP-09).
   fh_by <- stats::setNames(numeric(length(hs)), hs)
-  for (h in hs) {
+  if (!two_phase) for (h in hs) {
     fu <- unique(fvec[st == h])
     if (length(fu) != 1L)
       stop(sprintf(paste0("`fpc` is not constant within stratum '%s'. Collapsing strata with ",
@@ -253,7 +263,12 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (two_phase) {
     # Degrees of freedom and design summary come from the phase-2 sampling units,
     # not the (single-phase) strata/PSU columns, which do not describe this design.
-    npsu2  <- length(tp_setup$selpsu)
+    # Count only phase-2 PSUs that survive to a positive final weight: a household
+    # dropped BEFORE the subsample (ineligible, whole-household nonresponse) is
+    # still selected in `selpsu` but carries no weight, so counting it would
+    # overstate the degrees of freedom (e.g. 17 vs the ~10 effective PSUs).
+    active_psu <- unique(as.character(data[[sub$psu]])[point > 0])
+    npsu2  <- length(active_psu)
     df     <- max(npsu2 - 1L, 1L)
     design <- list(two_phase = TRUE, phase2_design = sub$design,
                    phase2_psu = sub$psu, n_psu2 = npsu2)
@@ -516,7 +531,13 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
   t0 <- Sys.time()
   data <- object$data
   bw   <- object$base_weights
-  spec <- structure(list(data = data, base_weights = bw, steps = object$steps),
+  # NP-06: a prepped non-probability spec dropped its synthetic all-ones base
+  # column (.wf_base1); re-materialise it so replication does not read NULL base
+  # weights and collapse every replicate weight to 0.
+  if (isTRUE(object$nonprob) && grepl("^\\.wf_base1", bw) && !(bw %in% names(data)))
+    data[[bw]] <- 1
+  spec <- structure(list(data = data, base_weights = bw, steps = object$steps,
+                         nonprob = isTRUE(object$nonprob)),
                     class = "weighting_spec")
   point <- if (!is.null(object$final_weight)) object$final_weight else prep(spec)$final_weight
   n   <- nrow(data)

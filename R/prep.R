@@ -48,6 +48,13 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
     stop("`max_factor` must be NULL (no large-factor check) or a single positive number.",
          call. = FALSE)
   data <- spec$data
+  # NP-06: a non-probability spec carries a synthetic all-ones base column
+  # (".wf_base1") that a previous prep() drops from $data so it does not leak.
+  # Re-prepping the prepped spec would then find the column gone and read NULL
+  # base weights, silently collapsing every weight to 0. Re-materialise it.
+  if (isTRUE(spec$nonprob) && grepl("^\\.wf_base1", spec$base_weights %||% "") &&
+      !(spec$base_weights %in% names(data)))
+    data[[spec$base_weights]] <- 1
   w    <- data[[spec$base_weights]]
   attr(data, "weightflow_base_w") <- w     # available to step_trim(reference = "base")
 

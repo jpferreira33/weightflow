@@ -98,6 +98,14 @@
               (is.numeric(yv) && length(unique(yv[!is.na(yv)])) == 2L)
   train <- as.data.frame(train)
   train$.wts <- w                       # weights as a column -> avoids glm/rpart scoping
+  if (any(train$.wts < 0, na.rm = TRUE))
+    stop(sprintf(paste0("The model-based step received %d negative case weight(s), which ",
+                        "the model engine ('%s') cannot fit (a bare glm() would only say ",
+                        "\"negative weights not allowed\"). This usually means an earlier ",
+                        "unbounded linear (GREG) calibration produced negative weights ",
+                        "before this step. Add `bounds` to that calibration, or reorder the ",
+                        "steps so the model runs on non-negative weights."),
+                 sum(train$.wts < 0, na.rm = TRUE), m$engine), call. = FALSE)
 
   if (m$engine == "glm") {
     fam <- if (!is.null(m$family))

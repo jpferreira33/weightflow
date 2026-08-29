@@ -289,6 +289,10 @@ apply_step.step_select_within <- function(step, data, w) {
       diag <- do.call(rbind, diag)
       if (isTRUE(attr(classh, "collapsed"))) attr(diag, "classes_collapsed") <- TRUE
     }
+    # Smallest propensity among responding households (drives 1/p) -- feeds the
+    # tiny-propensity alert. The person-level path set this attribute but the
+    # household path did not, so extreme household NR adjustments went unflagged.
+    attr(diag, "p_min") <- if (any(resp_h)) min(p[resp_h], na.rm = TRUE) else NA_real_
     # Retain the full propensity vector, broadcast from households to their
     # members, so it can be recovered from the prepped object exactly like the
     # unit-level path (ECLAC request: inspect the NR-model propensities per unit,
@@ -301,7 +305,13 @@ apply_step.step_select_within <- function(step, data, w) {
       covars = data[idx_el, intersect(all.vars(step$formula), names(data)), drop = FALSE],
       engine = step$engine, formula = step$formula,
       crossfit = step$crossfit, weight_model = step$weight_model,
-      num_classes = step$num_classes)
+      num_classes = step$num_classes,
+      # calibration slope of the household propensities (mirrors the person path,
+      # which stored it; without it the report's slope diagnostic was blank for a
+      # household-level NR model)
+      cal_slope = tryCatch(unname(stats::coef(suppressWarnings(stats::glm(
+        as.integer(resp_h) ~ stats::qlogis(pmin(pmax(p, 1e-6), 1 - 1e-6)),
+        family = stats::binomial(), weights = Wh)))[2]), error = function(e) NA_real_))
     # Native per-unit detail (broadcast household -> members) for
     # collect_step_detail(); .weight_in/.factor come centrally from `history`.
     ud_det <- data.frame(.propensity = as.numeric(p)[mh],
@@ -366,6 +376,11 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
     totvec <- if (is.list(step$totals) && !is.data.frame(step$totals))
                 .prep_linear_totals(step$formula, step$totals, step$count, data, eligible)
               else step$totals
+    if (!is.null(names(totvec)) && anyDuplicated(names(totvec)))
+      stop("`totals` has duplicated names (",
+           paste(unique(names(totvec)[duplicated(names(totvec))]), collapse = ", "),
+           "); each calibration target must appear once, otherwise one is silently ",
+           "dropped. (Matches the check in step_calibrate().)", call. = FALSE)
     if (!setequal(names(totvec), cn))
       stop("`totals` names must match the model.matrix columns: ",
            paste(cn, collapse = ", "))

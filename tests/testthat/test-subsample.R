@@ -104,6 +104,20 @@ test_that("step_subsample composes with reference_sample (calibrate to phase 1)"
   expect_true(isTRUE(boot$two_phase))
 })
 
+test_that("a per-region fpc column (varying f1) is accepted in two-phase mode (TP-09)", {
+  # The first-phase fraction f1 may legitimately vary across phase-2 units (the
+  # `fpc` column the docs advertise), as long as it is constant within a phase-2
+  # PSU. The single-phase stratum-constancy check must not run in two-phase mode.
+  df <- .two_phase_df(seed = 3)
+  df$f1 <- c(A = 0.05, B = 0.20)[df$region]   # f1 constant within hh, varies by region
+  spec <- weighting_spec(df, base_weights = w1) |>
+    step_subsample(selected = sel2, prob = p2, psu = "hh")
+  boot <- bootstrap_weights(spec, replicates = 50L, fpc = "f1", seed = 1, progress = FALSE)
+  se <- boot_mean(boot, "y")$se
+  expect_true(is.finite(se) && se > 0)
+  expect_true(isTRUE(boot$two_phase))
+})
+
 test_that("phase-1 strata/psu are refused with a two-phase recipe (TP-02)", {
   # A clustered first phase is not folded into the coupling; refuse rather than
   # silently drop its intra-cluster variance. (For that case, calibrate the

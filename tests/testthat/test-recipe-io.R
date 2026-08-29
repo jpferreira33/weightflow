@@ -70,6 +70,20 @@ test_that("a recipe with a tidy totals table round-trips (the flagged gap)", {
   expect_equal(prep(spec2)$final_weight, prep(spec)$final_weight, tolerance = 1e-9)
 })
 
+test_that("ordered factor and Date survive the totals_table round-trip (M-6)", {
+  skip_if_not_installed("yaml")
+  tot <- data.frame(
+    grade = factor(c("low", "high"), levels = c("low", "high"), ordered = TRUE),
+    day   = as.Date(c("2020-01-01", "2020-06-15")),
+    Freq  = c(10, 20),
+    stringsAsFactors = FALSE)
+  rt <- weightflow:::.wf_decode(weightflow:::.wf_encode(tot), NULL, NULL)
+  expect_true(is.ordered(rt$grade))
+  expect_identical(levels(rt$grade), c("low", "high"))
+  expect_s3_class(rt$day, "Date")
+  expect_equal(rt$day, tot$day)
+})
+
 test_that("a census-sized frame is still rejected, and timestamp = FALSE is stable", {
   skip_if_not_installed("yaml")
   expect_error(weightflow:::.wf_encode(data.frame(x = 1:10001)), "microdata")
