@@ -62,13 +62,15 @@ expected conditional variance of the phase-2 subsample. A single-phase
 bootstrap would only capture \eqn{V_1}{V1} and undercover.
 
 The coupling is additive, not multiplicative: the per-unit resampling factor
-is \eqn{\lambda_1 + \lambda_2 - 1}{lambda1 + lambda2 - 1} with
-\eqn{\mathrm{Var}(\lambda_1) = (1-f_1)\pi_2}{Var(lambda1) = (1 - f1) * prob} the
-phase-1 component (seen through the subsample) and
-\eqn{\mathrm{Var}(\lambda_2) = 1-\pi_2}{Var(lambda2) = 1 - prob} the phase-2
-conditional component. A naive product \eqn{\lambda_1\lambda_2}{lambda1 *
-lambda2} adds a spurious interaction term and is too wide; see the package's
-two-phase methodology notes.
+has variance \eqn{(1-f_1)\pi_2 + (1-\pi_2)}{(1 - f1) * prob + (1 - prob)}, the
+sum of the phase-1 component \eqn{(1-f_1)\pi_2}{(1 - f1) * prob} (seen through
+the subsample) and the phase-2 conditional component
+\eqn{1-\pi_2}{1 - prob}. A naive product of two factors adds a spurious
+interaction term and is too wide. In practice the factor is drawn once per
+phase-2 sampling unit from a strictly positive Gamma of that mean and
+variance, so every replicate weight stays positive (a downstream
+propensity/GLM step re-runs cleanly). See the package's two-phase methodology
+notes.
 
 This first version covers a Poisson (independent) second phase whose sampling
 unit is nested in the first phase (e.g. households subsampled from a
