@@ -41,7 +41,7 @@ summary(fitted)
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class)
+#>   1. nonresponse (weighting class)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:

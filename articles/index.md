@@ -22,6 +22,10 @@
   totals](https://jpferreira33.github.io/weightflow/articles/calibration-totals.md):
 - [Model calibration (model-assisted
   weighting)](https://jpferreira33.github.io/weightflow/articles/model-calibration.md):
+- [Calibrating to a reference
+  survey](https://jpferreira33.github.io/weightflow/articles/reference-survey.md):
+- [Non-probability
+  samples](https://jpferreira33.github.io/weightflow/articles/nonprobability-samples.md):
 - [Trimming survey
   weights](https://jpferreira33.github.io/weightflow/articles/trimming.md):
 - [Machine learning, cross-fitting and robust
@@ -31,6 +35,10 @@
 
 - [Documenting and auditing the weights: the quality
   report](https://jpferreira33.github.io/weightflow/articles/quality-report.md):
+- [Inspecting and auditing the
+  cascade](https://jpferreira33.github.io/weightflow/articles/inspecting-auditing.md):
+- [weightflow in production (GSBPM
+  5.6)](https://jpferreira33.github.io/weightflow/articles/weightflow-in-production.md):
 
 ### Case study
 
@@ -41,5 +49,7 @@
 
 - [Variance
   estimation](https://jpferreira33.github.io/weightflow/articles/variance-estimation.md):
+- [Two-phase (double)
+  sampling](https://jpferreira33.github.io/weightflow/articles/two-phase-sampling.md):
 - [Validation against the survey
   package](https://jpferreira33.github.io/weightflow/articles/validation-against-survey.md):

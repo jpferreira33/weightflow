@@ -17,7 +17,7 @@ stores."><meta property="og:image" content="https://jpferreira33.github.io/weigh
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,17 +38,22 @@ stores."><meta property="og:image" content="https://jpferreira33.github.io/weigh
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/reference-survey.html">Calibrating to a reference survey</a></li>
+    <li><a class="dropdown-item" href="../articles/nonprobability-samples.html">Non-probability samples</a></li>
     <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
+    <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -115,12 +120,25 @@ caps a weight at three times its reference.</p></li>
 <code>prob</code>, <code>n_eligible</code>, <code>n_selected</code> in the steps. Arguments that name <em>grouping
 or design structure</em> take character strings: <code>by</code>, <code>cluster</code>, and <code>strata</code> /
 <code>psu</code> in the variance functions. So it is <code>step_nonresponse(respondent = responded, by = "region")</code> – <code>responded</code> bare, <code>"region"</code> quoted.</p>
-<p><strong>Reading the diagnostics.</strong> <code><a href="prep.html">prep()</a></code> returns an object that carries the weight
+<p><strong>The same concept, different argument names.</strong> A few concepts are named
+differently across functions for historical reasons. The correspondence, so
+you do not have to guess:</p><ul><li><p><em>Weight bounds</em>: <code><a href="step_trim.html">step_trim()</a></code> uses <code>max_ratio</code> / <code>min_ratio</code> (a ratio),
+while <code><a href="step_trim_weights.html">step_trim_weights()</a></code> and <code><a href="step_trim_calibrated.html">step_trim_calibrated()</a></code> use <code>upper</code> /
+<code>lower</code> (absolute weights). See "Three scales for weight bounds" above.</p></li>
+<li><p><em>Primary sampling unit</em>: <code><a href="as_svydesign.html">as_svydesign()</a></code> names it <code>ids</code>, while
+<code><a href="bootstrap_weights.html">bootstrap_weights()</a></code> and <code><a href="jackknife_weights.html">jackknife_weights()</a></code> name it <code>psu</code>. Both mean the
+cluster identifier.</p></li>
+<li><p><em>Calibration form vs distance</em>: in <code><a href="step_calibrate.html">step_calibrate()</a></code>, <code>method</code> selects the
+family ("raking", "poststratify", "linear"); <code>calfun</code> selects the distance
+function ("linear", "logit", "raking") and applies only when <code>method = "linear"</code>. So <code>method = "linear"</code> and <code>calfun = "linear"</code> are not the same
+knob.</p></li>
+</ul><p><strong>Reading the diagnostics.</strong> <code><a href="prep.html">prep()</a></code> returns an object that carries the weight
 at every stage (<code>$history</code>, a named list of vectors), one entry per step
 (<code>$steps</code>, each with its own <code>$diagnostics</code> table and <code>$alerts</code>), and the
 recipe-level <code>$alerts</code>. Rather than read those directly, use <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> for the
-stage-by-stage audit, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> for the visual cascade, <code><a href="weight_factors.html">weight_factors()</a></code> for
-the per-unit factor table, <code><a href="design_effect.html">design_effect()</a></code> for the Kish design effect, and
+stage-by-stage audit, <code><a href="weighting_alerts.html">weighting_alerts()</a></code> / <code><a href="weighting_alerts.html">has_alerts()</a></code> for the quality
+incidents, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> for the visual cascade, <code><a href="weight_factors.html">weight_factors()</a></code> for the per-unit
+factor table, <code><a href="design_effect.html">design_effect()</a></code> for the Kish design effect, and
 <code><a href="report_weighting.html">report_weighting()</a></code> for the full self-contained HTML report.</p>
     </div>
 

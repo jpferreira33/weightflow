@@ -108,7 +108,9 @@ w_sv   <- weights(des_ps)
 compare(w_sv, w_wf, "Post-stratification (region x sex)")
 ```
 
-![](validation-against-survey_files/figure-html/poststratify-1.png)
+![Scatter of weightflow versus survey weights for post-stratification,
+points on the identity
+line.](validation-against-survey_files/figure-html/poststratify-1.png)
 
 ## Raking
 
@@ -131,7 +133,9 @@ w_sv   <- weights(des_rk)
 compare(w_sv, w_wf, "Raking (region + sex + age group)")
 ```
 
-![](validation-against-survey_files/figure-html/raking-1.png)
+![Scatter of weightflow versus survey weights for raking, points on the
+identity
+line.](validation-against-survey_files/figure-html/raking-1.png)
 
 ## Calibration distances
 
@@ -155,7 +159,9 @@ g_linear <- w_wf / d$pw
 compare(w_sv, w_wf, "Distance: linear (GREG)")
 ```
 
-![](validation-against-survey_files/figure-html/greg-linear-1.png)
+![Scatter of weightflow versus survey weights for linear GREG
+calibration, points on the identity
+line.](validation-against-survey_files/figure-html/greg-linear-1.png)
 
 ### Raking (exponential) distance – always-positive weights
 
@@ -172,7 +178,9 @@ g_raking <- w_wf / d$pw
 compare(w_sv, w_wf, "Distance: raking (exponential)")
 ```
 
-![](validation-against-survey_files/figure-html/greg-raking-1.png)
+![Scatter of weightflow versus survey weights for raking-distance
+calibration, points on the identity
+line.](validation-against-survey_files/figure-html/greg-raking-1.png)
 
 ### Logit distance – bounded g-weights
 
@@ -191,7 +199,9 @@ g_logit <- w_wf / d$pw
 compare(w_sv, w_wf, "Distance: logit (bounded)")
 ```
 
-![](validation-against-survey_files/figure-html/greg-logit-1.png)
+![Scatter of weightflow versus survey weights for logit-distance
+calibration, points on the identity
+line.](validation-against-survey_files/figure-html/greg-logit-1.png)
 
 ### Distribution of the adjustment factors
 
@@ -219,7 +229,9 @@ ggplot2::ggplot(gdist, ggplot2::aes(g, fill = distance)) +
   theme_wf()
 ```
 
-![](validation-against-survey_files/figure-html/gdist-1.png)
+![Density curves of the adjustment factors for the linear, raking and
+logit distances, centred near
+one.](validation-against-survey_files/figure-html/gdist-1.png)
 
 ## Integrative calibration (one weight per household)
 
@@ -251,7 +263,9 @@ cat("max within-household weight range (weightflow):", within_hh, "\n")
 compare(w_sv, w_wf, "Integrative (one weight per household)")
 ```
 
-![](validation-against-survey_files/figure-html/integrative-1.png)
+![Scatter of weightflow versus survey weights for integrative
+one-weight-per-household calibration, points on the identity
+line.](validation-against-survey_files/figure-html/integrative-1.png)
 
 ## Domain (partitioned) calibration
 
@@ -284,7 +298,9 @@ for (r in levels(d$region)) {
 compare(w_sv, w_wf, "Domain calibration (by region)")
 ```
 
-![](validation-against-survey_files/figure-html/domain-1.png)
+![Scatter of weightflow versus survey weights for domain-partitioned
+calibration, points on the identity
+line.](validation-against-survey_files/figure-html/domain-1.png)
 
 ## Estimates agree too
 

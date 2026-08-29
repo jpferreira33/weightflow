@@ -17,7 +17,7 @@ once."><meta property="og:image" content="https://jpferreira33.github.io/weightf
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,17 +38,22 @@ once."><meta property="og:image" content="https://jpferreira33.github.io/weightf
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/reference-survey.html">Calibrating to a reference survey</a></li>
+    <li><a class="dropdown-item" href="../articles/nonprobability-samples.html">Non-probability samples</a></li>
     <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
+    <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -86,7 +91,8 @@ once.</p>
 <span>  reference <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"base"</span>, <span class="st">"median"</span>, <span class="st">"value"</span><span class="op">)</span>,</span>
 <span>  redistribute <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  by <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  maxit <span class="op">=</span> <span class="fl">50L</span></span>
+<span>  maxit <span class="op">=</span> <span class="fl">50L</span>,</span>
+<span>  id <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -101,11 +107,13 @@ once.</p>
 <dt id="arg-max-ratio">max_ratio<a class="anchor" aria-label="anchor" href="#arg-max-ratio"></a></dt>
 <dd><p>number. Upper cap. Its meaning depends on <code>reference</code>. E.g.
 with reference = "base" and max_ratio = 4, no weight may exceed 4 times its
-design weight.</p></dd>
+design weight. Must be greater than 1 for reference = "base"/"median" (a
+multiplier) and greater than 0 for reference = "value" (an absolute weight).</p></dd>
 
 
 <dt id="arg-min-ratio">min_ratio<a class="anchor" aria-label="anchor" href="#arg-min-ratio"></a></dt>
-<dd><p>number or NULL. Lower floor (same units as max_ratio).</p></dd>
+<dd><p>number or NULL. Lower floor (same units as max_ratio); if
+supplied, must be greater than 0 and below <code>max_ratio</code>.</p></dd>
 
 
 <dt id="arg-reference">reference<a class="anchor" aria-label="anchor" href="#arg-reference"></a></dt>
@@ -127,6 +135,12 @@ afterwards you can use FALSE: calibration restores the totals.</p></dd>
 <dt id="arg-maxit">maxit<a class="anchor" aria-label="anchor" href="#arg-maxit"></a></dt>
 <dd><p>integer. Maximum cap+redistribution iterations.</p></dd>
 
+
+<dt id="arg-id">id<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
+<dd><p>optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in <code><a href="collect_step_detail.html">collect_step_detail()</a></code>; defaults
+to a derived <code>"&lt;class&gt;_&lt;k&gt;"</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -139,6 +153,24 @@ step is recorded only; it is evaluated when <code><a href="prep.html">prep()</a>
 bias-variance trade-off. Use Kish's design effect (see summary) to judge
 whether trimming is worth it.</p>
     </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p>Other weighting steps:
+<code><a href="step_assert.html">step_assert()</a></code>,
+<code><a href="step_calibrate.html">step_calibrate()</a></code>,
+<code><a href="step_drop_ineligible.html">step_drop_ineligible()</a></code>,
+<code><a href="step_model_calibration.html">step_model_calibration()</a></code>,
+<code><a href="step_nonresponse.html">step_nonresponse()</a></code>,
+<code><a href="step_nr_sensitivity.html">step_nr_sensitivity()</a></code>,
+<code><a href="step_pseudoweight.html">step_pseudoweight()</a></code>,
+<code><a href="step_rescale.html">step_rescale()</a></code>,
+<code><a href="step_round.html">step_round()</a></code>,
+<code><a href="step_select_within.html">step_select_within()</a></code>,
+<code><a href="step_subsample.html">step_subsample()</a></code>,
+<code><a href="step_trim_calibrated.html">step_trim_calibrated()</a></code>,
+<code><a href="step_trim_weights.html">step_trim_weights()</a></code>,
+<code><a href="step_unknown_eligibility.html">step_unknown_eligibility()</a></code></p></div>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -149,7 +181,7 @@ whether trimming is worth it.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 467 cases</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   1. trimming (base, cap 3)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. trimming (base, cap 3)  [trim_1]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Status  : not estimated</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>

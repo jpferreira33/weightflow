@@ -41,7 +41,27 @@ prep(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE)
 
 ## Value
 
-a "prepped_weighting_spec" object.
+a "prepped_weighting_spec" object. Every quality incident is recorded in
+`$alerts` (readable with
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)),
+regardless of `warn`. This includes warnings a step raises internally,
+such as a calibration that could not meet its constraints: they are
+captured into `$alerts` even when the surrounding warnings are
+suppressed, so `$alerts` is the single reliable channel for programmatic
+quality control.
+
+## See also
+
+[weightflow-alerts](https://jpferreira33.github.io/weightflow/reference/weightflow-alerts.md)
+for the catalogue of quality alerts prep() can raise,
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+to read them, and
+[`vignette("inspecting-auditing")`](https://jpferreira33.github.io/weightflow/articles/inspecting-auditing.md)
+for the full quality-control workflow.
 
 ## Examples
 
@@ -54,7 +74,7 @@ prep(rec)
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class)
+#>   1. nonresponse (weighting class)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:

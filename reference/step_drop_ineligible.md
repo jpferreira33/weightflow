@@ -12,7 +12,7 @@ been resolved, immediately after
 ## Usage
 
 ``` r
-step_drop_ineligible(spec, ineligible)
+step_drop_ineligible(spec, ineligible, id = NULL)
 ```
 
 ## Arguments
@@ -25,6 +25,13 @@ step_drop_ineligible(spec, ineligible)
 
   a 0/1 dummy column (1 = ineligible) or any logical condition
   (unquoted) that is TRUE for out-of-scope units.
+
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
 
 ## Value
 
@@ -42,6 +49,24 @@ unknown weight. Their weight is then correctly discarded here (it
 represents the ineligible share of the unknown units, which are out of
 scope).
 
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
+
 ## Examples
 
 ``` r
@@ -55,7 +80,7 @@ weighting_spec(df, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. drop ineligible
+#>   1. drop ineligible  [drop_ineligible_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:

@@ -225,18 +225,12 @@ trimmed_tukey <- base |>
                    by = c("region", "sex")) |>
   step_trim_weights(method = "tukey") |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 
 trimmed_potter <- base |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex")) |>
   step_trim_weights(method = "potter") |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 
 trimmed_tukey$steps[[6]]$diagnostics[, c("method", "upper", "n_capped")]
 #>   method  upper n_capped
@@ -282,9 +276,6 @@ recipe <- base |>
                  margins = list(region = c(table(population$region))))
 
 pre <- prep(recipe)
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 w   <- collect_weights(pre, drop_zero = FALSE)$.weight
 w   <- w[w > 0]
 lo  <- as.numeric(quantile(w, 0.05)); up <- as.numeric(quantile(w, 0.95))
@@ -292,9 +283,6 @@ lo  <- as.numeric(quantile(w, 0.05)); up <- as.numeric(quantile(w, 0.95))
 trimmed <- recipe |>
   step_trim_calibrated(~ region, lower = lo, upper = up) |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 ```
 
 The region totals are still met after the trim (the differences are

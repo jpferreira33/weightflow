@@ -14,7 +14,8 @@ step_assert(
   max_deff = NULL,
   max_weight_ratio = NULL,
   min_n_eff = NULL,
-  on_fail = c("error", "warning")
+  on_fail = c("error", "warning"),
+  id = NULL
 )
 ```
 
@@ -41,12 +42,35 @@ step_assert(
 
   "error" (stop the cascade) or "warning".
 
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out; defaults to a derived `"<class>_<k>"`.
+
 ## Value
 
 The input `weighting_spec` with this checkpoint appended to its recipe.
 The check is recorded only; it is evaluated when
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 is called and does not modify the weights.
+
+## See also
+
+Other weighting steps:
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
 
 ## Examples
 
@@ -58,7 +82,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. assert (checkpoint)
+#>   1. assert (checkpoint)  [assert_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:

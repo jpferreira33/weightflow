@@ -9,7 +9,13 @@ of one column.
 ## Usage
 
 ``` r
-jackknife_estimate(jack, statistic, level = 0.95)
+jackknife_estimate(
+  jack,
+  statistic,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 
 jack_total(jack, variable)
 
@@ -29,7 +35,18 @@ jack_mean(jack, variable)
 
 - level:
 
-  confidence level for the (normal) interval.
+  confidence level for the interval.
+
+- ci_type:
+
+  interval type: "normal" (default) or "t" (Student t with the design
+  degrees of freedom). The percentile interval is not defined for the
+  jackknife.
+
+- df:
+
+  degrees of freedom for the t interval; `NULL` (default) uses the
+  design df stored on the object (total PSUs minus strata).
 
 - variable:
 
@@ -57,6 +74,15 @@ per-stratum mean of the deleted-PSU estimates (the standard JKn). The
 instead uses `mse = TRUE`, which centers on the point estimate. Both are
 legitimate, so the standard errors from `jack_total()` and from
 `svytotal()` on the same object can differ slightly.
+
+## See also
+
+Other variance estimation:
+[`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md),
+[`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md),
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md),
+[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md),
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
 
 ## Examples
 

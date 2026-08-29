@@ -20,7 +20,8 @@ step_trim_calibrated(
   cluster = NULL,
   equal_within_cluster = FALSE,
   maxit = 100L,
-  tol = 1e-07
+  tol = 1e-07,
+  id = NULL
 )
 ```
 
@@ -80,6 +81,13 @@ step_trim_calibrated(
 
   numeric. Convergence tolerance for the bounded solver.
 
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
 ## Value
 
 The input `weighting_spec` with this step appended to its recipe. The
@@ -102,8 +110,9 @@ warning is raised.
 
 This step is meant to run **after** a
 [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md):
-it acts on the positive incoming weights and leaves dropped units
-(weight 0) alone.
+it acts on the active incoming weights (including any negative weights
+an unbounded linear calibration produced, which it can bring back into
+`[lower, upper]`) and leaves dropped units (weight 0) alone.
 
 ## References
 
@@ -111,7 +120,30 @@ Deville, J.-C. and Sarndal, C.-E. (1992). Calibration estimators in
 survey sampling. Journal of the American Statistical Association, 87,
 376-382. [doi:10.2307/2290268](https://doi.org/10.2307/2290268) . The
 totals-preserving trimming solves a bounded (range-restricted)
-calibration with the truncated distances introduced there.
+calibration with the truncated distances introduced there. Folsom, R. E.
+and Singh, A. C. (2000). The generalized exponential model for sampling
+weight calibration for extreme values, nonresponse and
+poststratification. Proceedings of the ASA Survey Research Methods
+Section, 598-603, formalises the same range-restricted (generalized
+exponential) family.
+
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
 
 ## Examples
 
@@ -129,8 +161,8 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. calibration (raking)
-#>   2. trimmed calibration [5.5, 13.5]
+#>   1. calibration (raking)  [calibrate_1]
+#>   2. trimmed calibration [5.5, 13.5]  [trim_calibrated_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:

@@ -146,9 +146,9 @@ summary(fit)
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. unknown eligibility
-#>   2. nonresponse (weighting class)
-#>   3. calibration (raking)
+#>   1. unknown eligibility  [unknown_eligibility_1]
+#>   2. nonresponse (weighting class)  [nonresponse_1]
+#>   3. calibration (raking)  [calibrate_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -179,13 +179,13 @@ summary(fit)
 #> Kish deff: 1.063 -> 1.021   |   n_eff: 423 -> 265
 #> 
 #> --- Step 3: calibration (raking) ---
-#>  variable category target achieved
-#>    region    North   1570     1570
-#>    region    South   1250     1250
-#>    region     East    927      927
-#>    region     West    748      748
-#>       sex        F   2311     2311
-#>       sex        M   2184     2184
+#>  variable category target achieved   n
+#>    region    North   1570     1570  78
+#>    region    South   1250     1250  72
+#>    region     East    927      927  52
+#>    region     West    748      748  68
+#>       sex        F   2311     2311 130
+#>       sex        M   2184     2184 140
 #> (converged/iterated in 5 iterations)
 #> Kish deff: 1.021 -> 1.045   |   n_eff: 265 -> 258
 #> 

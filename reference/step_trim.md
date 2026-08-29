@@ -17,7 +17,8 @@ step_trim(
   reference = c("base", "median", "value"),
   redistribute = TRUE,
   by = NULL,
-  maxit = 50L
+  maxit = 50L,
+  id = NULL
 )
 ```
 
@@ -31,11 +32,14 @@ step_trim(
 
   number. Upper cap. Its meaning depends on `reference`. E.g. with
   reference = "base" and max_ratio = 4, no weight may exceed 4 times its
-  design weight.
+  design weight. Must be greater than 1 for reference = "base"/"median"
+  (a multiplier) and greater than 0 for reference = "value" (an absolute
+  weight).
 
 - min_ratio:
 
-  number or NULL. Lower floor (same units as max_ratio).
+  number or NULL. Lower floor (same units as max_ratio); if supplied,
+  must be greater than 0 and below `max_ratio`.
 
 - reference:
 
@@ -56,6 +60,13 @@ step_trim(
 
   integer. Maximum cap+redistribution iterations.
 
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
 ## Value
 
 The input `weighting_spec` with this step appended to its recipe. The
@@ -69,6 +80,24 @@ There is no standard threshold: `max_ratio` is an analyst decision, a
 bias-variance trade-off. Use Kish's design effect (see summary) to judge
 whether trimming is worth it.
 
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
+
 ## Examples
 
 ``` r
@@ -79,7 +108,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. trimming (base, cap 3)
+#>   1. trimming (base, cap 3)  [trim_1]
 #> Status  : not estimated
 #> 
 ```

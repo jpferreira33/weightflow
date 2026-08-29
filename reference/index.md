@@ -7,6 +7,8 @@
   : weightflow: declarative survey weighting
 - [`weightflow-concepts`](https://jpferreira33.github.io/weightflow/reference/weightflow-concepts.md)
   : Conventions shared by every weightflow step
+- [`weightflow-alerts`](https://jpferreira33.github.io/weightflow/reference/weightflow-alerts.md)
+  : Quality alerts raised while preparing a recipe
 
 ## Build and run a recipe
 
@@ -16,10 +18,20 @@ Define the recipe, estimate it, and pull the weights out.
   : Start a weighting specification
 - [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
   : Estimate the weighting cascade
+- [`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+  [`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+  : Quality alerts recorded while preparing a recipe
 - [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
   : Extract the data with the computed weights
 - [`y_model()`](https://jpferreira33.github.io/weightflow/reference/y_model.md)
   : Specify a working model for a study variable y
+- [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
+  : Use a weighted survey as the calibration reference instead of a
+  frame
+- [`write_recipe()`](https://jpferreira33.github.io/weightflow/reference/write_recipe.md)
+  : Write a weighting recipe to a YAML file
+- [`read_recipe()`](https://jpferreira33.github.io/weightflow/reference/read_recipe.md)
+  : Read a weighting recipe from a YAML file
 
 ## Adjustment steps
 
@@ -31,8 +43,12 @@ The staged adjustments, applied in the order you pipe them.
   : Drop ineligible (out-of-scope) units
 - [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md)
   : Within-cluster selection adjustment
+- [`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md)
+  : Second-phase subsampling (two-phase sampling)
 - [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
   : Nonresponse adjustment
+- [`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md)
+  : Pseudo-weights for a non-probability sample against a reference
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
   : Calibration to population totals
 - [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
@@ -49,6 +65,8 @@ The staged adjustments, applied in the order you pipe them.
   : Rescale the weights to a fixed sum
 - [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
   : Assert quality conditions on the weights
+- [`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md)
+  : Sensitivity of a mean to nonignorable nonresponse or selection
 
 ## Diagnostics and reporting
 
@@ -68,6 +86,13 @@ Inspect, summarise and report the cascade.
   : Per-domain weight summary at every stage of the cascade
 - [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
   : Kish design effect from unequal weighting
+- [`data_defect()`](https://jpferreira33.github.io/weightflow/reference/data_defect.md)
+  : Data-defect diagnostics for a non-probability sample
+- [`disclosure_risk()`](https://jpferreira33.github.io/weightflow/reference/disclosure_risk.md)
+  : Flag re-identification risk from outlier weights within a
+  publication cell
+- [`nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/nr_sensitivity.md)
+  : Read the nonresponse-sensitivity analysis from a prepped recipe
 - [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
   : Self-contained HTML quality report for a weighting recipe
 
@@ -93,6 +118,9 @@ bridges.
   : Export weightflow weights to a survey design
 - [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
   : Collect replicate weights into a data frame ready for srvyr
+- [`as_sae_input()`](https://jpferreira33.github.io/weightflow/reference/as_sae_input.md)
+  : Direct estimates and design SEs per domain, ready for small-area
+  estimation
 - [`print(`*`<weightflow_boot>`*`)`](https://jpferreira33.github.io/weightflow/reference/print.weightflow_boot.md)
   : Print a bootstrap replicate-weight object
 - [`print(`*`<weightflow_jack>`*`)`](https://jpferreira33.github.io/weightflow/reference/print.weightflow_jack.md)

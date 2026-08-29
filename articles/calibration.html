@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,17 +50,22 @@
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/reference-survey.html">Calibrating to a reference survey</a></li>
+    <li><a class="dropdown-item" href="../articles/nonprobability-samples.html">Non-probability samples</a></li>
     <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
+    <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul>
 </li>
@@ -193,11 +198,11 @@ categories, and <code>poststratify</code> takes that one variable:</p>
 <span>                 margins <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">region</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">wf</span><span class="op">$</span><span class="va">steps</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">diagnostics</span></span>
-<span><span class="co">#&gt;   variable category target prev_total    factor</span></span>
-<span><span class="co">#&gt; 1   region    North   1570  1487.5000 1.0554622</span></span>
-<span><span class="co">#&gt; 2   region    South   1250  1210.0000 1.0330579</span></span>
-<span><span class="co">#&gt; 3   region     East    927   800.0000 1.1587500</span></span>
-<span><span class="co">#&gt; 4   region     West    748   873.3333 0.8564885</span></span></code></pre></div>
+<span><span class="co">#&gt;   variable category target prev_total    factor  n</span></span>
+<span><span class="co">#&gt; 1   region    North   1570  1487.5000 1.0554622 78</span></span>
+<span><span class="co">#&gt; 2   region    South   1250  1210.0000 1.0330579 72</span></span>
+<span><span class="co">#&gt; 3   region     East    927   800.0000 1.1587500 52</span></span>
+<span><span class="co">#&gt; 4   region     West    748   873.3333 0.8564885 68</span></span></code></pre></div>
 <p>The <code>poststratify</code> method works on exactly one categorical
 variable. To post-stratify on <strong>several</strong> variables the
 post-strata are their <strong>interaction</strong> (every combination of
@@ -263,13 +268,13 @@ are met simultaneously.</p>
 <span>                                sex    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">population</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">wf</span><span class="op">$</span><span class="va">steps</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">diagnostics</span></span>
-<span><span class="co">#&gt;   variable category target achieved</span></span>
-<span><span class="co">#&gt; 1   region    North   1570     1570</span></span>
-<span><span class="co">#&gt; 2   region    South   1250     1250</span></span>
-<span><span class="co">#&gt; 3   region     East    927      927</span></span>
-<span><span class="co">#&gt; 4   region     West    748      748</span></span>
-<span><span class="co">#&gt; 5      sex        F   2311     2311</span></span>
-<span><span class="co">#&gt; 6      sex        M   2184     2184</span></span></code></pre></div>
+<span><span class="co">#&gt;   variable category target achieved   n</span></span>
+<span><span class="co">#&gt; 1   region    North   1570     1570  78</span></span>
+<span><span class="co">#&gt; 2   region    South   1250     1250  72</span></span>
+<span><span class="co">#&gt; 3   region     East    927      927  52</span></span>
+<span><span class="co">#&gt; 4   region     West    748      748  68</span></span>
+<span><span class="co">#&gt; 5      sex        F   2311     2311 130</span></span>
+<span><span class="co">#&gt; 6      sex        M   2184     2184 140</span></span></code></pre></div>
 <p>Raking fits an implicit log-linear model with main effects only: it
 matches each margin but says nothing about the interactions. As a result
 it does not reproduce the counts of the cross-classification (e.g. the
@@ -406,6 +411,15 @@ a weight. When a working model for the outcome is available and the
 auxiliaries are known at the unit level for the whole population, the
 model-calibration approach (see the <em>Model calibration</em> article)
 can be more efficient still.</p>
+</div>
+<div class="section level2">
+<h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
+</h2>
+<p>To calibrate to a <strong>survey</strong> instead of a census frame
+(estimated totals, with their variance propagated), see
+<code><a href="../articles/reference-survey.html">vignette("reference-survey")</a></code>. To inspect what each step did
+unit by unit and gate a run on the quality alerts, see
+<code><a href="../articles/inspecting-auditing.html">vignette("inspecting-auditing")</a></code>.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

@@ -154,9 +154,6 @@ fitted <- weighting_spec(dat, base_weights = pw) |>
                  margins = list(region = c(table(population$region)),
                                 sex    = c(table(population$sex)))) |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 ```
 
 ### Trimming, rounding, rescaling
@@ -200,9 +197,6 @@ trimmed <- weighting_spec(dat, base_weights = pw) |>
                                 sex    = c(table(population$sex)))) |>
   step_trim_weights() |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 ```
 
 ## Reading the cascade: the design effect
@@ -242,12 +236,12 @@ summary(fitted)
 #> Data    : 417 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. unknown eligibility (by household_id)
-#>   2. drop ineligible
-#>   3. nonresponse (weighting class, by household_id)
-#>   4. within-cluster selection
-#>   5. nonresponse (weighting class)
-#>   6. calibration (raking)
+#>   1. unknown eligibility (by household_id)  [unknown_eligibility_1]
+#>   2. drop ineligible  [drop_ineligible_1]
+#>   3. nonresponse (weighting class, by household_id)  [nonresponse_1]
+#>   4. within-cluster selection  [select_within_1]
+#>   5. nonresponse (weighting class)  [nonresponse_2]
+#>   6. calibration (raking)  [calibrate_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -327,13 +321,13 @@ summary(fitted)
 #> Kish deff: 1.460 -> 1.510   |   n_eff: 216 -> 138
 #> 
 #> --- Step 6: calibration (raking) ---
-#>  variable category target achieved
-#>    region    North   1570     1570
-#>    region    South   1250     1250
-#>    region     East    927      927
-#>    region     West    748      748
-#>       sex        F   2311     2311
-#>       sex        M   2184     2184
+#>  variable category target achieved   n
+#>    region    North   1570     1570  75
+#>    region    South   1250     1250  46
+#>    region     East    927      927  32
+#>    region     West    748      748  56
+#>       sex        F   2311     2311 105
+#>       sex        M   2184     2184 104
 #> (converged/iterated in 4 iterations)
 #> Kish deff: 1.510 -> 1.548   |   n_eff: 138 -> 135
 #> 

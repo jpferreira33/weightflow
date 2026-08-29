@@ -23,7 +23,8 @@ step_model_calibration(
   cluster = NULL,
   equal_within_cluster = FALSE,
   crossfit = NULL,
-  crossfit_seed = NULL
+  crossfit_seed = NULL,
+  id = NULL
 )
 ```
 
@@ -45,9 +46,13 @@ step_model_calibration(
 - population:
 
   population data.frame with the auxiliary and predictor columns (the y
-  variables are not needed; they are predicted). Always required: the
-  model-assisted block predicts each y over every population unit, which
-  cannot be done from aggregated totals.
+  variables are not needed; they are predicted). May instead be a
+  weighted reference survey wrapped with
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md),
+  in which case the totals are the design-weighted sums over that survey
+  (estimated totals) rather than unweighted sums over a full frame.
+  Always required: the model-assisted block predicts each y over every
+  population unit, which cannot be done from aggregated totals.
 
 - x_totals:
 
@@ -98,6 +103,13 @@ step_model_calibration(
 
   integer or NULL. Seed for reproducible fold assignment.
 
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
 ## Value
 
 The input `weighting_spec` with this step appended to its recipe. The
@@ -126,6 +138,24 @@ American Statistical Association*, 96(453), 185-193.
 [doi:10.1198/016214501750333054](https://doi.org/10.1198/016214501750333054)
 .
 
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
+
 ## Examples
 
 ``` r
@@ -141,8 +171,8 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class)
-#>   2. model calibration (1 y variables)
+#>   1. nonresponse (weighting class)  [nonresponse_1]
+#>   2. model calibration (1 y variables)  [model_calibration_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -169,8 +199,8 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class)
-#>   2. model calibration (1 y variables)
+#>   1. nonresponse (weighting class)  [nonresponse_1]
+#>   2. model calibration (1 y variables)  [model_calibration_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -203,8 +233,8 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class)
-#>   2. model calibration (1 y variables)
+#>   1. nonresponse (weighting class)  [nonresponse_1]
+#>   2. model calibration (1 y variables)  [model_calibration_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:

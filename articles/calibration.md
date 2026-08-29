@@ -92,11 +92,11 @@ wf <- weighting_spec(sample_survey, base_weights = pw) |>
                  margins = list(region = c(table(population$region)))) |>
   prep()
 wf$steps[[2]]$diagnostics
-#>   variable category target prev_total    factor
-#> 1   region    North   1570  1487.5000 1.0554622
-#> 2   region    South   1250  1210.0000 1.0330579
-#> 3   region     East    927   800.0000 1.1587500
-#> 4   region     West    748   873.3333 0.8564885
+#>   variable category target prev_total    factor  n
+#> 1   region    North   1570  1487.5000 1.0554622 78
+#> 2   region    South   1250  1210.0000 1.0330579 72
+#> 3   region     East    927   800.0000 1.1587500 52
+#> 4   region     West    748   873.3333 0.8564885 68
 ```
 
 The `poststratify` method works on exactly one categorical variable. To
@@ -163,13 +163,13 @@ wf <- weighting_spec(sample_survey, base_weights = pw) |>
                                 sex    = c(table(population$sex)))) |>
   prep()
 wf$steps[[2]]$diagnostics
-#>   variable category target achieved
-#> 1   region    North   1570     1570
-#> 2   region    South   1250     1250
-#> 3   region     East    927      927
-#> 4   region     West    748      748
-#> 5      sex        F   2311     2311
-#> 6      sex        M   2184     2184
+#>   variable category target achieved   n
+#> 1   region    North   1570     1570  78
+#> 2   region    South   1250     1250  72
+#> 3   region     East    927      927  52
+#> 4   region     West    748      748  68
+#> 5      sex        F   2311     2311 130
+#> 6      sex        M   2184     2184 140
 ```
 
 Raking fits an implicit log-linear model with main effects only: it
@@ -311,6 +311,15 @@ a working model for the outcome is available and the auxiliaries are
 known at the unit level for the whole population, the model-calibration
 approach (see the *Model calibration* article) can be more efficient
 still.
+
+## See also
+
+To calibrate to a **survey** instead of a census frame (estimated
+totals, with their variance propagated), see
+[`vignette("reference-survey")`](https://jpferreira33.github.io/weightflow/articles/reference-survey.md).
+To inspect what each step did unit by unit and gate a run on the quality
+alerts, see
+[`vignette("inspecting-auditing")`](https://jpferreira33.github.io/weightflow/articles/inspecting-auditing.md).
 
 ## References
 

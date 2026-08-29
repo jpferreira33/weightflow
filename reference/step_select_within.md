@@ -10,7 +10,13 @@ nonresponse steps and before the person-level nonresponse step.
 ## Usage
 
 ``` r
-step_select_within(spec, prob = NULL, n_eligible = NULL, n_selected = NULL)
+step_select_within(
+  spec,
+  prob = NULL,
+  n_eligible = NULL,
+  n_selected = NULL,
+  id = NULL
+)
 ```
 
 ## Arguments
@@ -41,6 +47,13 @@ step_select_within(spec, prob = NULL, n_eligible = NULL, n_selected = NULL)
   n_eligible / n_selected (equivalent to prob = n_selected/n_eligible).
   Defaults to 1. Only used together with `n_eligible`.
 
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
 ## Value
 
 The input `weighting_spec` with this step appended to its recipe. The
@@ -56,6 +69,24 @@ adjustment. In a multi-stage design it can appear more than once – e.g.
 dwellings selected within sampled area segments, then persons selected
 within dwellings – each occurrence undoing one stage of subsampling.
 
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
+
 ## Examples
 
 ``` r
@@ -69,7 +100,7 @@ weighting_spec(df, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. within-cluster selection
+#>   1. within-cluster selection  [select_within_1]
 #> Status  : not estimated
 #> 
 
@@ -81,7 +112,7 @@ weighting_spec(df, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. within-cluster selection
+#>   1. within-cluster selection  [select_within_1]
 #> Status  : not estimated
 #> 
 ```

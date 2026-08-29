@@ -246,9 +246,6 @@ fitted <- weighting_spec(dat, base_weights = pw) |>
   step_nonresponse(respondent = disposition == "eligible respondent",
                    method = "weighting_class", by = c("region", "sex", "age_grp")) |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 
 fitted
 #> 
@@ -256,11 +253,11 @@ fitted
 #> Data    : 417 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. unknown eligibility (by household_id)
-#>   2. drop ineligible
-#>   3. nonresponse (weighting class, by household_id)
-#>   4. within-cluster selection
-#>   5. nonresponse (weighting class)
+#>   1. unknown eligibility (by household_id)  [unknown_eligibility_1]
+#>   2. drop ineligible  [drop_ineligible_1]
+#>   3. nonresponse (weighting class, by household_id)  [nonresponse_1]
+#>   4. within-cluster selection  [select_within_1]
+#>   5. nonresponse (weighting class)  [nonresponse_2]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -290,11 +287,11 @@ summary(fitted)
 #> Data    : 417 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. unknown eligibility (by household_id)
-#>   2. drop ineligible
-#>   3. nonresponse (weighting class, by household_id)
-#>   4. within-cluster selection
-#>   5. nonresponse (weighting class)
+#>   1. unknown eligibility (by household_id)  [unknown_eligibility_1]
+#>   2. drop ineligible  [drop_ineligible_1]
+#>   3. nonresponse (weighting class, by household_id)  [nonresponse_1]
+#>   4. within-cluster selection  [select_within_1]
+#>   5. nonresponse (weighting class)  [nonresponse_2]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -395,9 +392,6 @@ fitted2 <- weighting_spec(dat, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class",
                    by = c("region", "sex", "age_grp")) |>
   prep()
-#> Warning: Missing values in the cell variable(s) `by` were grouped into a
-#> '(missing)' cell. Those units are adjusted within their own cell; recode the
-#> NAs if that is not intended.
 
 # same weights as the disposition-based version
 all.equal(fitted$final_weight, fitted2$final_weight)

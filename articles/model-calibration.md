@@ -237,3 +237,10 @@ established idea, not a new method.
 - Sarndal (2007), *Survey Methodology* 33(2), 99–119.
 
 - Deville & Sarndal (1992), *JASA* 87(418), 376–382.
+
+## See also
+
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
+can project the model onto a **reference survey** instead of a full
+frame: pass `population = reference_sample(ref, "w")`. See
+[`vignette("reference-survey")`](https://jpferreira33.github.io/weightflow/articles/reference-survey.md).

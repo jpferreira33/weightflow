@@ -17,7 +17,7 @@ calibration totals intact."><meta property="og:image" content="https://jpferreir
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,17 +38,22 @@ calibration totals intact."><meta property="og:image" content="https://jpferreir
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/reference-survey.html">Calibrating to a reference survey</a></li>
+    <li><a class="dropdown-item" href="../articles/nonprobability-samples.html">Non-probability samples</a></li>
     <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
+    <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -89,7 +94,8 @@ calibration totals intact.</p>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  maxit <span class="op">=</span> <span class="fl">100L</span>,</span>
-<span>  tol <span class="op">=</span> <span class="fl">1e-07</span></span>
+<span>  tol <span class="op">=</span> <span class="fl">1e-07</span>,</span>
+<span>  id <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -149,6 +155,12 @@ applies to that common household weight. Requires <code>cluster</code>. FALSE
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
 <dd><p>numeric. Convergence tolerance for the bounded solver.</p></dd>
 
+
+<dt id="arg-id">id<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
+<dd><p>optional string: a stable identifier for this step, shown in the
+recipe print-out and usable to select it in <code><a href="collect_step_detail.html">collect_step_detail()</a></code>; defaults
+to a derived <code>"&lt;class&gt;_&lt;k&gt;"</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -167,7 +179,9 @@ saturate at their bound and the rest move as little as possible. If the range
 is too tight to preserve every total, the totals that cannot be met are relaxed
 and a warning is raised.</p>
 <p>This step is meant to run <strong>after</strong> a <code><a href="step_calibrate.html">step_calibrate()</a></code>: it acts on the
-positive incoming weights and leaves dropped units (weight 0) alone.</p>
+active incoming weights (including any negative weights an unbounded linear
+calibration produced, which it can bring back into <code>[lower, upper]</code>) and
+leaves dropped units (weight 0) alone.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -175,7 +189,29 @@ positive incoming weights and leaves dropped units (weight 0) alone.</p>
 survey sampling. Journal of the American Statistical Association, 87, 376-382.
 <a href="https://doi.org/10.2307/2290268" class="external-link">doi:10.2307/2290268</a>
 . The totals-preserving trimming solves a bounded
-(range-restricted) calibration with the truncated distances introduced there.</p>
+(range-restricted) calibration with the truncated distances introduced there.
+Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model for
+sampling weight calibration for extreme values, nonresponse and
+poststratification. Proceedings of the ASA Survey Research Methods Section,
+598-603, formalises the same range-restricted (generalized exponential) family.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p>Other weighting steps:
+<code><a href="step_assert.html">step_assert()</a></code>,
+<code><a href="step_calibrate.html">step_calibrate()</a></code>,
+<code><a href="step_drop_ineligible.html">step_drop_ineligible()</a></code>,
+<code><a href="step_model_calibration.html">step_model_calibration()</a></code>,
+<code><a href="step_nonresponse.html">step_nonresponse()</a></code>,
+<code><a href="step_nr_sensitivity.html">step_nr_sensitivity()</a></code>,
+<code><a href="step_pseudoweight.html">step_pseudoweight()</a></code>,
+<code><a href="step_rescale.html">step_rescale()</a></code>,
+<code><a href="step_round.html">step_round()</a></code>,
+<code><a href="step_select_within.html">step_select_within()</a></code>,
+<code><a href="step_subsample.html">step_subsample()</a></code>,
+<code><a href="step_trim.html">step_trim()</a></code>,
+<code><a href="step_trim_weights.html">step_trim_weights()</a></code>,
+<code><a href="step_unknown_eligibility.html">step_unknown_eligibility()</a></code></p></div>
     </div>
 
     <div class="section level2">
@@ -193,8 +229,8 @@ survey sampling. Journal of the American Statistical Association, 87, 376-382.
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 467 cases</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   1. calibration (raking)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   2. trimmed calibration [5.5, 13.5]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1. calibration (raking)  [calibrate_1]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2. trimmed calibration [5.5, 13.5]  [trim_calibrated_1]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Status  : estimated (prep)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Stage summary:</span>

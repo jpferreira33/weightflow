@@ -52,6 +52,22 @@ for inference.
   self-contained, bilingual (EN/ES) HTML report: the cascade in prose,
   AAPOR fieldwork rates, per-domain reliability, the replication design,
   a per-step impact table and a points-of-attention panel.
+- **Calibrate to a reference survey, not only a frame.**
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
+  targets the design-weighted totals of a larger survey you trust (the
+  official ECH, a labour force survey), and the bootstrap propagates the
+  variance of those estimated totals when you pass its replicate
+  weights.
+- **Programmatic quality control.** Every step carries a stable `id`,
+  every quality incident lands in
+  [`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md),
+  and
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md),
+  [`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+  and
+  [`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
+  audit the cascade unit by unit and domain by domain, from a script or
+  in the HTML report.
 
 ## How it works
 
@@ -309,6 +325,25 @@ step_model_calibration(
   x_totals   = list(region = m_region, age = 5.1e5), count = "Freq")
 ```
 
+### Calibrating to a reference survey
+
+When you do not have census totals but you do have a larger survey you
+trust,
+[`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
+calibrates to its design-weighted totals instead of a frame. Those
+targets are estimates, so pass the reference survey’s replicate weights
+to propagate their sampling variance through the bootstrap (only the
+bootstrap carries this component). A reference whose weights are all 1
+reproduces the plain frame exactly.
+
+``` r
+
+step_calibrate(method = "raking", formula = ~ region + sex,
+               population = reference_sample(ech, "w"))
+```
+
+See the *Calibrating to a reference survey* article.
+
 ### Recipe-aware bootstrap
 
 The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and
@@ -339,6 +374,43 @@ jk <- jackknife_weights(spec, strata = "region", psu = "psu",
                         lonely_psu = "collapse", cores = 4)
 jack_total(jk, "employed")
 ```
+
+### Finite-population correction and t / percentile intervals
+
+`bootstrap_weights(fpc = )` folds the first-stage sampling fraction into
+the Rao-Wu rescaling, which matters when strata are sampled at a high
+rate (common in LatAm designs). The estimate functions also carry the
+design degrees of freedom (`df`) and offer `ci_type = "t"` and, for the
+bootstrap, `ci_type = "percentile"`.
+
+``` r
+
+boot <- bootstrap_weights(spec, replicates = 500, strata = "region", psu = "psu",
+                          fpc = "samp_frac")
+bootstrap_estimate(boot, function(w, d) sum(w * d$income), ci_type = "t")
+```
+
+### Inspecting and auditing the cascade
+
+Every step has a stable id (`nonresponse_1`, `calibrate_1`), so the
+cascade can be audited from a script:
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+as a quality gate, `collect_step_detail(fit, "calibrate_1")` and
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+unit by unit, and
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
+for per-domain reliability.
+
+``` r
+
+fit <- prep(recipe)
+if (has_alerts(fit)) weighting_alerts(fit)
+domain_summary(fit, by = "region")
+```
+
+See the *Inspecting and auditing the cascade* article.
 
 ### R-indicators of response representativity
 
@@ -417,7 +489,17 @@ condition.
 per-stage cascade with the **Kish design effect** (deff = 1 + CV^2) and
 effective sample size;
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
-returns the per-unit, per-step factors. And
+returns the per-unit, per-step factors. For programmatic quality
+control,
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md),
+[`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md),
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+and
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
+read the recipe back step by step and domain by domain (see the
+*Inspecting and auditing the cascade* article). And
 [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
 writes a self-contained, **bilingual (EN/ES)** HTML quality report,
 aligned to GSBPM 5.6 and the ESS quality concepts, with no graphics

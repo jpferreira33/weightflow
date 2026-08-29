@@ -82,7 +82,7 @@ summary(wf)
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class)
+#>   1. nonresponse (weighting class)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -158,7 +158,7 @@ summary(wf)
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (propensity: logit, 5 classes)
+#>   1. nonresponse (propensity: logit, 5 classes)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -327,7 +327,7 @@ summary(wf)
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (calibration: linear, sample-level)
+#>   1. nonresponse (calibration: linear, sample-level)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -395,3 +395,13 @@ engines relax functional-form assumptions. Using propensity classes
 adjustment stable when the model is imperfect, at the cost of some
 efficiency. In all cases, model the response on auxiliaries that are
 both predictive of responding and related to the survey outcomes.
+
+## See also
+
+To recover the fitted propensities and see, unit by unit, what the
+adjustment did, use
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+and
+[`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md);
+the full quality-control flow is in
+[`vignette("inspecting-auditing")`](https://jpferreira33.github.io/weightflow/articles/inspecting-auditing.md).

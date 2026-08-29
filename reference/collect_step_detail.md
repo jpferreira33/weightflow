@@ -27,10 +27,11 @@ collect_step_detail(object, step = NULL)
 
 - step:
 
-  optional integer, which step to inspect (1 for the first piped step).
-  If `NULL` (default): a single step exposing native detail is used; if
-  several do, or if none do and the recipe has more than one step, an
-  error lists the steps so you can choose.
+  optional: which step to inspect, as an integer position (1 for the
+  first piped step) or a step id string (e.g. "calibrate_1"; see the
+  recipe print-out). If `NULL` (default): a single step exposing native
+  detail is used; if several do, or if none do and the recipe has more
+  than one step, an error lists the steps so you can choose.
 
 ## Value
 
@@ -52,6 +53,14 @@ where `.factor` is `NA` outside the propensity model (see its
 [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md),
 [`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md),
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
+
+Other cascade audit:
+[`as_sae_input()`](https://jpferreira33.github.io/weightflow/reference/as_sae_input.md),
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md),
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md),
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md),
+[`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md),
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
 
 ## Examples
 

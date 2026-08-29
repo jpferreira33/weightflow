@@ -55,3 +55,12 @@ usually smaller. Use `as_svrepdesign()` (with
 /
 [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md))
 when the adjustment variability should be included.
+
+## See also
+
+Other variance estimation:
+[`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md),
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md),
+[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md),
+[`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md),
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)

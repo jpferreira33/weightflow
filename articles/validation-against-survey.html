@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,17 +50,22 @@
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/reference-survey.html">Calibrating to a reference survey</a></li>
+    <li><a class="dropdown-item" href="../articles/nonprobability-samples.html">Non-probability samples</a></li>
     <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
+    <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul>
 </li>
@@ -197,7 +202,7 @@ or nonresponse), so no rows are removed.</p>
 <span><span class="va">w_sv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_ps</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Post-stratification (region x sex)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/poststratify-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/poststratify-1.png" class="r-plt" alt="Scatter of weightflow versus survey weights for post-stratification, points on the identity line." width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="raking">Raking<a class="anchor" aria-label="anchor" href="#raking"></a>
@@ -218,7 +223,7 @@ precision.</p>
 <span><span class="va">w_sv</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">des_rk</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Raking (region + sex + age group)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/raking-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/raking-1.png" class="r-plt" alt="Scatter of weightflow versus survey weights for raking, points on the identity line." width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="calibration-distances">Calibration distances<a class="anchor" aria-label="anchor" href="#calibration-distances"></a>
@@ -241,7 +246,7 @@ g-weights from each to compare their distributions afterwards.</p>
 <span>                          calfun <span class="op">=</span> <span class="st">"linear"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">g_linear</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: linear (GREG)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/greg-linear-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/greg-linear-1.png" class="r-plt" alt="Scatter of weightflow versus survey weights for linear GREG calibration, points on the identity line." width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="raking-exponential-distance-always-positive-weights">Raking (exponential) distance – always-positive weights<a class="anchor" aria-label="anchor" href="#raking-exponential-distance-always-positive-weights"></a>
@@ -256,7 +261,7 @@ g-weights from each to compare their distributions afterwards.</p>
 <span>                          calfun <span class="op">=</span> <span class="st">"raking"</span>, maxit <span class="op">=</span> <span class="fl">500</span>, epsilon <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">g_raking</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: raking (exponential)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/greg-raking-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/greg-raking-1.png" class="r-plt" alt="Scatter of weightflow versus survey weights for raking-distance calibration, points on the identity line." width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="logit-distance-bounded-g-weights">Logit distance – bounded g-weights<a class="anchor" aria-label="anchor" href="#logit-distance-bounded-g-weights"></a>
@@ -273,7 +278,7 @@ g-weights from each to compare their distributions afterwards.</p>
 <span>                          calfun <span class="op">=</span> <span class="st">"logit"</span>, bounds <span class="op">=</span> <span class="va">bnds</span>, maxit <span class="op">=</span> <span class="fl">500</span>, epsilon <span class="op">=</span> <span class="fl">1e-10</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">g_logit</span> <span class="op">&lt;-</span> <span class="va">w_wf</span> <span class="op">/</span> <span class="va">d</span><span class="op">$</span><span class="va">pw</span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Distance: logit (bounded)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/greg-logit-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/greg-logit-1.png" class="r-plt" alt="Scatter of weightflow versus survey weights for logit-distance calibration, points on the identity line." width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level3">
 <h3 id="distribution-of-the-adjustment-factors">Distribution of the adjustment factors<a class="anchor" aria-label="anchor" href="#distribution-of-the-adjustment-factors"></a>
@@ -298,7 +303,7 @@ bounded by construction.</p>
 <span>                subtitle <span class="op">=</span> <span class="st">"g = final / base, by calibration distance"</span>,</span>
 <span>                x <span class="op">=</span> <span class="st">"g (adjustment factor)"</span>, y <span class="op">=</span> <span class="st">"density"</span>, fill <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">theme_wf</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/gdist-1.png" class="r-plt" alt="" width="720" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/gdist-1.png" class="r-plt" alt="Density curves of the adjustment factors for the linear, raking and logit distances, centred near one." width="720" style="display: block; margin: auto;"></p>
 </div>
 </div>
 <div class="section level2">
@@ -329,7 +334,7 @@ well defined.</p>
 <span><span class="co">#&gt; max within-household weight range (weightflow): 0</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Integrative (one weight per household)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/integrative-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/integrative-1.png" class="r-plt" alt="Scatter of weightflow versus survey weights for integrative one-weight-per-household calibration, points on the identity line." width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="domain-partitioned-calibration">Domain (partitioned) calibration<a class="anchor" aria-label="anchor" href="#domain-partitioned-calibration"></a>
@@ -360,7 +365,7 @@ at a time.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu">compare</span><span class="op">(</span><span class="va">w_sv</span>, <span class="va">w_wf</span>, <span class="st">"Domain calibration (by region)"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="validation-against-survey_files/figure-html/domain-1.png" class="r-plt" alt="" width="600" style="display: block; margin: auto;"></p>
+<p><img src="validation-against-survey_files/figure-html/domain-1.png" class="r-plt" alt="Scatter of weightflow versus survey weights for domain-partitioned calibration, points on the identity line." width="600" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="estimates-agree-too">Estimates agree too<a class="anchor" aria-label="anchor" href="#estimates-agree-too"></a>

@@ -30,7 +30,8 @@ step_nonresponse(
   penalty = NULL,
   equal_within_cluster = FALSE,
   maxit = 50L,
-  tol = 1e-06
+  tol = 1e-06,
+  id = NULL
 )
 ```
 
@@ -185,6 +186,13 @@ step_nonresponse(
   (method = "calibration") convergence control for the bounded or
   exponential-distance calibration solver.
 
+- id:
+
+  optional string: a stable identifier for this step, shown in the
+  recipe print-out and usable to select it in
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md);
+  defaults to a derived `"<class>_<k>"`.
+
 ## Value
 
 The input `weighting_spec` with this step appended to its recipe. The
@@ -204,6 +212,24 @@ propensity. Calibration of the respondents solves for a factor \\v_i\\
 that makes the respondents reproduce a reference total (the two-phase /
 Sarndal-Lundstrom approach).
 
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
+
 ## Examples
 
 ``` r
@@ -215,7 +241,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class)
+#>   1. nonresponse (weighting class)  [nonresponse_1]
 #> Status  : not estimated
 #> 
 
@@ -229,7 +255,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (weighting class, by household_id)
+#>   1. nonresponse (weighting class, by household_id)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -252,7 +278,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (propensity: logit, 5 classes)
+#>   1. nonresponse (propensity: logit, 5 classes)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -279,7 +305,7 @@ if (requireNamespace("xgboost", quietly = TRUE)) {
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (propensity: boost, 5 classes)
+#>   1. nonresponse (propensity: boost, 5 classes)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -305,7 +331,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Data    : 467 cases
 #> Base wts: pw
 #> Steps   :
-#>   1. nonresponse (calibration: linear, sample-level)
+#>   1. nonresponse (calibration: linear, sample-level)  [nonresponse_1]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:

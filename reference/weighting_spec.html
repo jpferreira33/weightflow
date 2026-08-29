@@ -15,7 +15,7 @@ the result."><meta property="og:image" content="https://jpferreira33.github.io/w
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,17 +36,22 @@ the result."><meta property="og:image" content="https://jpferreira33.github.io/w
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/reference-survey.html">Calibrating to a reference survey</a></li>
+    <li><a class="dropdown-item" href="../articles/nonprobability-samples.html">Non-probability samples</a></li>
     <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
+    <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -76,7 +81,7 @@ the result.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">weighting_spec</span><span class="op">(</span><span class="va">data</span>, <span class="va">base_weights</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">weighting_spec</span><span class="op">(</span><span class="va">data</span>, base_weights <span class="op">=</span> <span class="cn">NULL</span>, nonprob <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -88,7 +93,20 @@ the result.</p>
 
 
 <dt id="arg-base-weights">base_weights<a class="anchor" aria-label="anchor" href="#arg-base-weights"></a></dt>
-<dd><p>unquoted name of the design base-weight column.</p></dd>
+<dd><p>unquoted name of the design base-weight column. For a
+non-probability sample with no design weights, leave it <code>NULL</code> and set
+<code>nonprob = TRUE</code>: every unit then starts with a base weight of 1.</p></dd>
+
+
+<dt id="arg-nonprob">nonprob<a class="anchor" aria-label="anchor" href="#arg-nonprob"></a></dt>
+<dd><p>logical. Declare the sample as non-probability (an opt-in panel,
+a volunteer or river sample). Required when <code>base_weights = NULL</code>. The flag
+is recorded so the report states the sample is non-probability and adds the
+methodological caveat; a non-probability sample is usually adjusted with
+<code><a href="step_pseudoweight.html">step_pseudoweight()</a></code> (inverse participation propensity against a reference)
+and/or <code><a href="step_calibrate.html">step_calibrate()</a></code> / <code><a href="step_model_calibration.html">step_model_calibration()</a></code> to a <code><a href="reference_sample.html">reference_sample()</a></code>.
+A non-probability panel that already carries recruitment/base weights can pass
+them as <code>base_weights</code> together with <code>nonprob = TRUE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -107,6 +125,8 @@ the result.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Steps   : (none yet)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Status  : not estimated</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span><span class="co"># a non-probability sample: no design weights, base weight 1</span></span></span>
+<span class="r-in"><span><span class="va">np</span> <span class="op">&lt;-</span> <span class="fu">weighting_spec</span><span class="op">(</span><span class="va">sample_survey</span>, base_weights <span class="op">=</span> <span class="cn">NULL</span>, nonprob <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

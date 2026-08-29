@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -50,17 +50,22 @@
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: raking, post-stratification and GREG</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-totals.html">Ways to specify calibration totals</a></li>
     <li><a class="dropdown-item" href="../articles/model-calibration.html">Model calibration (model-assisted weighting)</a></li>
+    <li><a class="dropdown-item" href="../articles/reference-survey.html">Calibrating to a reference survey</a></li>
+    <li><a class="dropdown-item" href="../articles/nonprobability-samples.html">Non-probability samples</a></li>
     <li><a class="dropdown-item" href="../articles/trimming.html">Trimming survey weights</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-methods.html">Machine learning, cross-fitting and robust calibration</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
+    <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul>
 </li>
@@ -175,7 +180,7 @@ define them (here, <code>region</code>):</p>
 <span><span class="co">#&gt; Data    : 467 cases</span></span>
 <span><span class="co">#&gt; Base wts: pw</span></span>
 <span><span class="co">#&gt; Steps   :</span></span>
-<span><span class="co">#&gt;   1. nonresponse (weighting class)</span></span>
+<span><span class="co">#&gt;   1. nonresponse (weighting class)  [nonresponse_1]</span></span>
 <span><span class="co">#&gt; Status  : estimated (prep)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Stage summary:</span></span>
@@ -245,7 +250,7 @@ robust to a misspecified model.</p>
 <span><span class="co">#&gt; Data    : 467 cases</span></span>
 <span><span class="co">#&gt; Base wts: pw</span></span>
 <span><span class="co">#&gt; Steps   :</span></span>
-<span><span class="co">#&gt;   1. nonresponse (propensity: logit, 5 classes)</span></span>
+<span><span class="co">#&gt;   1. nonresponse (propensity: logit, 5 classes)  [nonresponse_1]</span></span>
 <span><span class="co">#&gt; Status  : estimated (prep)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Stage summary:</span></span>
@@ -406,7 +411,7 @@ calibrate to external population totals instead.</p>
 <span><span class="co">#&gt; Data    : 467 cases</span></span>
 <span><span class="co">#&gt; Base wts: pw</span></span>
 <span><span class="co">#&gt; Steps   :</span></span>
-<span><span class="co">#&gt;   1. nonresponse (calibration: linear, sample-level)</span></span>
+<span><span class="co">#&gt;   1. nonresponse (calibration: linear, sample-level)  [nonresponse_1]</span></span>
 <span><span class="co">#&gt; Status  : estimated (prep)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Stage summary:</span></span>
@@ -469,6 +474,14 @@ keeps the adjustment stable when the model is imperfect, at the cost of
 some efficiency. In all cases, model the response on auxiliaries that
 are both predictive of responding and related to the survey
 outcomes.</p>
+</div>
+<div class="section level2">
+<h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
+</h2>
+<p>To recover the fitted propensities and see, unit by unit, what the
+adjustment did, use <code><a href="../reference/collect_propensities.html">collect_propensities()</a></code> and
+<code><a href="../reference/collect_step_detail.html">collect_step_detail()</a></code>; the full quality-control flow is in
+<code><a href="../articles/inspecting-auditing.html">vignette("inspecting-auditing")</a></code>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

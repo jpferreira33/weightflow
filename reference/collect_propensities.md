@@ -63,6 +63,14 @@ and
 [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
 [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
 
+Other cascade audit:
+[`as_sae_input()`](https://jpferreira33.github.io/weightflow/reference/as_sae_input.md),
+[`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md),
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md),
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md),
+[`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md),
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+
 ## Examples
 
 ``` r

@@ -2,7 +2,7 @@
 
 ## Authors
 
-- **Juan Pablo Ferreira**. Author, maintainer.
+- **Juan Pablo Ferreira**. Author, maintainer, copyright holder.
   [](https://orcid.org/0000-0002-1884-8187)
 
 - **Andrés Gutiérrez**. Author.

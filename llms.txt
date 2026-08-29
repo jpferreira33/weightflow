@@ -52,6 +52,22 @@ for inference.
   self-contained, bilingual (EN/ES) HTML report: the cascade in prose,
   AAPOR fieldwork rates, per-domain reliability, the replication design,
   a per-step impact table and a points-of-attention panel.
+- **Calibrate to a reference survey, not only a frame.**
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
+  targets the design-weighted totals of a larger survey you trust (the
+  official ECH, a labour force survey), and the bootstrap propagates the
+  variance of those estimated totals when you pass its replicate
+  weights.
+- **Programmatic quality control.** Every step carries a stable `id`,
+  every quality incident lands in
+  [`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md),
+  and
+  [`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md),
+  [`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+  and
+  [`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
+  audit the cascade unit by unit and domain by domain, from a script or
+  in the HTML report.
 
 ## How it works
 
@@ -309,6 +325,25 @@ step_model_calibration(
   x_totals   = list(region = m_region, age = 5.1e5), count = "Freq")
 ```
 
+### Calibrating to a reference survey
+
+When you do not have census totals but you do have a larger survey you
+trust,
+[`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
+calibrates to its design-weighted totals instead of a frame. Those
+targets are estimates, so pass the reference survey’s replicate weights
+to propagate their sampling variance through the bootstrap (only the
+bootstrap carries this component). A reference whose weights are all 1
+reproduces the plain frame exactly.
+
+``` r
+
+step_calibrate(method = "raking", formula = ~ region + sex,
+               population = reference_sample(ech, "w"))
+```
+
+See the *Calibrating to a reference survey* article.
+
 ### Recipe-aware bootstrap
 
 The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and
@@ -339,6 +374,43 @@ jk <- jackknife_weights(spec, strata = "region", psu = "psu",
                         lonely_psu = "collapse", cores = 4)
 jack_total(jk, "employed")
 ```
+
+### Finite-population correction and t / percentile intervals
+
+`bootstrap_weights(fpc = )` folds the first-stage sampling fraction into
+the Rao-Wu rescaling, which matters when strata are sampled at a high
+rate (common in LatAm designs). The estimate functions also carry the
+design degrees of freedom (`df`) and offer `ci_type = "t"` and, for the
+bootstrap, `ci_type = "percentile"`.
+
+``` r
+
+boot <- bootstrap_weights(spec, replicates = 500, strata = "region", psu = "psu",
+                          fpc = "samp_frac")
+bootstrap_estimate(boot, function(w, d) sum(w * d$income), ci_type = "t")
+```
+
+### Inspecting and auditing the cascade
+
+Every step has a stable id (`nonresponse_1`, `calibrate_1`), so the
+cascade can be audited from a script:
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+as a quality gate, `collect_step_detail(fit, "calibrate_1")` and
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+unit by unit, and
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
+for per-domain reliability.
+
+``` r
+
+fit <- prep(recipe)
+if (has_alerts(fit)) weighting_alerts(fit)
+domain_summary(fit, by = "region")
+```
+
+See the *Inspecting and auditing the cascade* article.
 
 ### R-indicators of response representativity
 
@@ -417,7 +489,17 @@ condition.
 per-stage cascade with the **Kish design effect** (deff = 1 + CV^2) and
 effective sample size;
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)
-returns the per-unit, per-step factors. And
+returns the per-unit, per-step factors. For programmatic quality
+control,
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md),
+[`collect_step_detail()`](https://jpferreira33.github.io/weightflow/reference/collect_step_detail.md),
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/reference/collect_propensities.md)
+and
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/reference/domain_summary.md)
+read the recipe back step by step and domain by domain (see the
+*Inspecting and auditing the cascade* article). And
 [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
 writes a self-contained, **bilingual (EN/ES)** HTML quality report,
 aligned to GSBPM 5.6 and the ESS quality concepts, with no graphics
@@ -550,6 +632,8 @@ MIT © Juan Pablo Ferreira
   : weightflow: declarative survey weighting
 - [`weightflow-concepts`](https://jpferreira33.github.io/weightflow/reference/weightflow-concepts.md)
   : Conventions shared by every weightflow step
+- [`weightflow-alerts`](https://jpferreira33.github.io/weightflow/reference/weightflow-alerts.md)
+  : Quality alerts raised while preparing a recipe
 
 ## Build and run a recipe
 
@@ -559,10 +643,20 @@ Define the recipe, estimate it, and pull the weights out.
   : Start a weighting specification
 - [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
   : Estimate the weighting cascade
+- [`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+  [`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+  : Quality alerts recorded while preparing a recipe
 - [`collect_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_weights.md)
   : Extract the data with the computed weights
 - [`y_model()`](https://jpferreira33.github.io/weightflow/reference/y_model.md)
   : Specify a working model for a study variable y
+- [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
+  : Use a weighted survey as the calibration reference instead of a
+  frame
+- [`write_recipe()`](https://jpferreira33.github.io/weightflow/reference/write_recipe.md)
+  : Write a weighting recipe to a YAML file
+- [`read_recipe()`](https://jpferreira33.github.io/weightflow/reference/read_recipe.md)
+  : Read a weighting recipe from a YAML file
 
 ## Adjustment steps
 
@@ -574,8 +668,12 @@ The staged adjustments, applied in the order you pipe them.
   : Drop ineligible (out-of-scope) units
 - [`step_select_within()`](https://jpferreira33.github.io/weightflow/reference/step_select_within.md)
   : Within-cluster selection adjustment
+- [`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md)
+  : Second-phase subsampling (two-phase sampling)
 - [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md)
   : Nonresponse adjustment
+- [`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md)
+  : Pseudo-weights for a non-probability sample against a reference
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
   : Calibration to population totals
 - [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
@@ -592,6 +690,8 @@ The staged adjustments, applied in the order you pipe them.
   : Rescale the weights to a fixed sum
 - [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md)
   : Assert quality conditions on the weights
+- [`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md)
+  : Sensitivity of a mean to nonignorable nonresponse or selection
 
 ## Diagnostics and reporting
 
@@ -611,6 +711,13 @@ Inspect, summarise and report the cascade.
   : Per-domain weight summary at every stage of the cascade
 - [`design_effect()`](https://jpferreira33.github.io/weightflow/reference/design_effect.md)
   : Kish design effect from unequal weighting
+- [`data_defect()`](https://jpferreira33.github.io/weightflow/reference/data_defect.md)
+  : Data-defect diagnostics for a non-probability sample
+- [`disclosure_risk()`](https://jpferreira33.github.io/weightflow/reference/disclosure_risk.md)
+  : Flag re-identification risk from outlier weights within a
+  publication cell
+- [`nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/nr_sensitivity.md)
+  : Read the nonresponse-sensitivity analysis from a prepped recipe
 - [`report_weighting()`](https://jpferreira33.github.io/weightflow/reference/report_weighting.md)
   : Self-contained HTML quality report for a weighting recipe
 
@@ -636,6 +743,9 @@ bridges.
   : Export weightflow weights to a survey design
 - [`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md)
   : Collect replicate weights into a data frame ready for srvyr
+- [`as_sae_input()`](https://jpferreira33.github.io/weightflow/reference/as_sae_input.md)
+  : Direct estimates and design SEs per domain, ready for small-area
+  estimation
 - [`print(`*`<weightflow_boot>`*`)`](https://jpferreira33.github.io/weightflow/reference/print.weightflow_boot.md)
   : Print a bootstrap replicate-weight object
 - [`print(`*`<weightflow_jack>`*`)`](https://jpferreira33.github.io/weightflow/reference/print.weightflow_jack.md)
@@ -674,6 +784,10 @@ bridges.
   totals](https://jpferreira33.github.io/weightflow/articles/calibration-totals.md):
 - [Model calibration (model-assisted
   weighting)](https://jpferreira33.github.io/weightflow/articles/model-calibration.md):
+- [Calibrating to a reference
+  survey](https://jpferreira33.github.io/weightflow/articles/reference-survey.md):
+- [Non-probability
+  samples](https://jpferreira33.github.io/weightflow/articles/nonprobability-samples.md):
 - [Trimming survey
   weights](https://jpferreira33.github.io/weightflow/articles/trimming.md):
 - [Machine learning, cross-fitting and robust
@@ -683,6 +797,10 @@ bridges.
 
 - [Documenting and auditing the weights: the quality
   report](https://jpferreira33.github.io/weightflow/articles/quality-report.md):
+- [Inspecting and auditing the
+  cascade](https://jpferreira33.github.io/weightflow/articles/inspecting-auditing.md):
+- [weightflow in production (GSBPM
+  5.6)](https://jpferreira33.github.io/weightflow/articles/weightflow-in-production.md):
 
 ### Case study
 
@@ -693,5 +811,7 @@ bridges.
 
 - [Variance
   estimation](https://jpferreira33.github.io/weightflow/articles/variance-estimation.md):
+- [Two-phase (double)
+  sampling](https://jpferreira33.github.io/weightflow/articles/two-phase-sampling.md):
 - [Validation against the survey
   package](https://jpferreira33.github.io/weightflow/articles/validation-against-survey.md):

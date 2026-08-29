@@ -73,6 +73,15 @@ and are skipped. This is the stratified jackknife (JKn); with
 `strata = NULL` it is the unstratified jackknife (JK1), and with
 `psu = NULL` each unit is its own PSU (delete-one-unit jackknife).
 
+## See also
+
+Other variance estimation:
+[`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md),
+[`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md),
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md),
+[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/reference/collect_replicate_weights.md),
+[`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/reference/jackknife_estimate.md)
+
 ## Examples
 
 ``` r

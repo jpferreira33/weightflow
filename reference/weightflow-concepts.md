@@ -76,6 +76,34 @@ in the variance functions. So it is
 `step_nonresponse(respondent = responded, by = "region")` – `responded`
 bare, `"region"` quoted.
 
+**The same concept, different argument names.** A few concepts are named
+differently across functions for historical reasons. The correspondence,
+so you do not have to guess:
+
+- *Weight bounds*:
+  [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md)
+  uses `max_ratio` / `min_ratio` (a ratio), while
+  [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)
+  and
+  [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+  use `upper` / `lower` (absolute weights). See "Three scales for weight
+  bounds" above.
+
+- *Primary sampling unit*:
+  [`as_svydesign()`](https://jpferreira33.github.io/weightflow/reference/as_svydesign.md)
+  names it `ids`, while
+  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+  and
+  [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+  name it `psu`. Both mean the cluster identifier.
+
+- *Calibration form vs distance*: in
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+  `method` selects the family ("raking", "poststratify", "linear");
+  `calfun` selects the distance function ("linear", "logit", "raking")
+  and applies only when `method = "linear"`. So `method = "linear"` and
+  `calfun = "linear"` are not the same knob.
+
 **Reading the diagnostics.**
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 returns an object that carries the weight at every stage (`$history`, a
@@ -84,6 +112,10 @@ named list of vectors), one entry per step (`$steps`, each with its own
 Rather than read those directly, use
 [`summary()`](https://rdrr.io/r/base/summary.html) for the
 stage-by-stage audit,
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
+for the quality incidents,
 [`plot()`](https://rdrr.io/r/graphics/plot.default.html) for the visual
 cascade,
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/reference/weight_factors.md)

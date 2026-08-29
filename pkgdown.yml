@@ -6,16 +6,21 @@ articles:
   calibration-totals: calibration-totals.html
   calibration: calibration.html
   articles/ech-case-study: ech-case-study.html
+  inspecting-auditing: inspecting-auditing.html
   model-calibration: model-calibration.html
+  nonprobability-samples: nonprobability-samples.html
   nonresponse-propensities: nonresponse-propensities.html
   preparing-the-sample: preparing-the-sample.html
   quality-report: quality-report.html
   quickstart: quickstart.html
+  reference-survey: reference-survey.html
   trimming: trimming.html
+  two-phase-sampling: two-phase-sampling.html
   validation-against-survey: validation-against-survey.html
   variance-estimation: variance-estimation.html
+  weightflow-in-production: weightflow-in-production.html
   weightflow: weightflow.html
-last_built: 2026-08-22T12:50Z
+last_built: 2026-08-29T02:56Z
 urls:
   reference: https://jpferreira33.github.io/weightflow/reference
   article: https://jpferreira33.github.io/weightflow/articles

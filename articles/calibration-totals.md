@@ -400,3 +400,11 @@ against the sample and explains problems in survey terms.
 
 In all cases the calibration itself is identical: the two shapes are
 just different ways to hand weightflow the same population totals.
+
+## See also
+
+When the totals come from a **reference survey** rather than a frame,
+wrap it with
+[`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md);
+see
+[`vignette("reference-survey")`](https://jpferreira33.github.io/weightflow/articles/reference-survey.md).
