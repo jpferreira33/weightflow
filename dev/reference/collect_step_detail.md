@@ -54,6 +54,14 @@ where `.factor` is `NA` outside the propensity model (see its
 [`collect_propensities()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_propensities.md),
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/dev/reference/weight_factors.md)
 
+Other cascade audit:
+[`as_sae_input()`](https://jpferreira33.github.io/weightflow/dev/reference/as_sae_input.md),
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_propensities.md),
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_weights.md),
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/dev/reference/domain_summary.md),
+[`weight_factors()`](https://jpferreira33.github.io/weightflow/dev/reference/weight_factors.md),
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/dev/reference/weighting_alerts.md)
+
 ## Examples
 
 ``` r

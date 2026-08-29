@@ -52,6 +52,17 @@ captured into `$alerts` even when the surrounding warnings are
 suppressed, so `$alerts` is the single reliable channel for programmatic
 quality control.
 
+## See also
+
+[weightflow-alerts](https://jpferreira33.github.io/weightflow/dev/reference/weightflow-alerts.md)
+for the catalogue of quality alerts prep() can raise,
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/dev/reference/weighting_alerts.md)
+/
+[`has_alerts()`](https://jpferreira33.github.io/weightflow/dev/reference/weighting_alerts.md)
+to read them, and
+[`vignette("inspecting-auditing")`](https://jpferreira33.github.io/weightflow/dev/articles/inspecting-auditing.md)
+for the full quality-control workflow.
+
 ## Examples
 
 ``` r

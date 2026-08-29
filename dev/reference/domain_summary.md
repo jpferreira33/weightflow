@@ -11,7 +11,7 @@ changes a weight.
 ## Usage
 
 ``` r
-domain_summary(object, by)
+domain_summary(object, by, min_n_eff = NULL)
 ```
 
 ## Arguments
@@ -29,20 +29,40 @@ domain_summary(object, by)
   numeric column); units with a missing domain value are shown as a
   `"(missing)"` domain rather than dropped silently.
 
+- min_n_eff:
+
+  optional publication threshold. When set to a positive number, the
+  result gains a logical `publishable` column (whether the domain's
+  final-stage effective sample size reaches the threshold) and a warning
+  names the domains that fall below it, turning the implicit reliability
+  read into an explicit gate. Domains below the threshold are candidates
+  for small-area estimation (see
+  [`as_sae_input()`](https://jpferreira33.github.io/weightflow/dev/reference/as_sae_input.md))
+  rather than direct estimation.
+
 ## Value
 
 A `data.frame` with one row per stage x domain and the columns `stage`
 (an ordered factor: base weights, then `1. <step>`, `2. <step>`, ...),
 `domain` (an ordered factor), `n_active` (active units in the domain at
 that stage), `sum_w` (sum of the active weights), `mean_w`, `deff` (the
-Kish design effect within the domain) and `n_eff`. Reading down a domain
-shows how its weight total and dispersion evolve step by step.
+Kish design effect within the domain) and `n_eff`; and, when `min_n_eff`
+is given, `publishable`. Reading down a domain shows how its weight
+total and dispersion evolve step by step.
 
 ## See also
 
 [`design_effect()`](https://jpferreira33.github.io/weightflow/dev/reference/design_effect.md),
 [`weight_factors()`](https://jpferreira33.github.io/weightflow/dev/reference/weight_factors.md),
 [`summary.prepped_weighting_spec()`](https://jpferreira33.github.io/weightflow/dev/reference/summary.prepped_weighting_spec.md)
+
+Other cascade audit:
+[`as_sae_input()`](https://jpferreira33.github.io/weightflow/dev/reference/as_sae_input.md),
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_propensities.md),
+[`collect_step_detail()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_step_detail.md),
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_weights.md),
+[`weight_factors()`](https://jpferreira33.github.io/weightflow/dev/reference/weight_factors.md),
+[`weighting_alerts()`](https://jpferreira33.github.io/weightflow/dev/reference/weighting_alerts.md)
 
 ## Examples
 

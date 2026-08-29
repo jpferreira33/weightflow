@@ -43,7 +43,7 @@ a model specification list.
 y_model(income ~ age + sex, engine = "glm")
 #> $formula
 #> income ~ age + sex
-#> <environment: 0x560bbb7db650>
+#> <environment: 0x55e1e8904400>
 #> 
 #> $engine
 #> [1] "glm"
@@ -51,4 +51,6 @@ y_model(income ~ age + sex, engine = "glm")
 #> $family
 #> NULL
 #> 
+#> attr(,"class")
+#> [1] "wf_y_model"
 ```

@@ -35,6 +35,8 @@
   report](https://jpferreira33.github.io/weightflow/dev/articles/quality-report.md):
 - [Inspecting and auditing the
   cascade](https://jpferreira33.github.io/weightflow/dev/articles/inspecting-auditing.md):
+- [weightflow in production (GSBPM
+  5.6)](https://jpferreira33.github.io/weightflow/dev/articles/weightflow-in-production.md):
 
 ### Case study
 
@@ -45,5 +47,7 @@
 
 - [Variance
   estimation](https://jpferreira33.github.io/weightflow/dev/articles/variance-estimation.md):
+- [Two-phase (double)
+  sampling](https://jpferreira33.github.io/weightflow/dev/articles/two-phase-sampling.md):
 - [Validation against the survey
   package](https://jpferreira33.github.io/weightflow/dev/articles/validation-against-survey.md):

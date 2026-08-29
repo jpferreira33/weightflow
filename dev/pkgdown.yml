@@ -14,10 +14,12 @@ articles:
   quickstart: quickstart.html
   reference-survey: reference-survey.html
   trimming: trimming.html
+  two-phase-sampling: two-phase-sampling.html
   validation-against-survey: validation-against-survey.html
   variance-estimation: variance-estimation.html
+  weightflow-in-production: weightflow-in-production.html
   weightflow: weightflow.html
-last_built: 2026-08-29T00:12Z
+last_built: 2026-08-29T00:15Z
 urls:
   reference: https://jpferreira33.github.io/weightflow/reference
   article: https://jpferreira33.github.io/weightflow/articles

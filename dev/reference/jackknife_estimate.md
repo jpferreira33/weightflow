@@ -75,6 +75,15 @@ instead uses `mse = TRUE`, which centers on the point estimate. Both are
 legitimate, so the standard errors from `jack_total()` and from
 `svytotal()` on the same object can differ slightly.
 
+## See also
+
+Other variance estimation:
+[`as_svydesign()`](https://jpferreira33.github.io/weightflow/dev/reference/as_svydesign.md),
+[`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_estimate.md),
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_weights.md),
+[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_replicate_weights.md),
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_weights.md)
+
 ## Examples
 
 ``` r

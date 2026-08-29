@@ -397,7 +397,7 @@ cascade can be audited from a script:
 [`weighting_alerts()`](https://jpferreira33.github.io/weightflow/dev/reference/weighting_alerts.md)
 /
 [`has_alerts()`](https://jpferreira33.github.io/weightflow/dev/reference/weighting_alerts.md)
-as a quality gate, `collect_step_detail("calibrate_1")` and
+as a quality gate, `collect_step_detail(fit, "calibrate_1")` and
 [`collect_propensities()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_propensities.md)
 unit by unit, and
 [`domain_summary()`](https://jpferreira33.github.io/weightflow/dev/reference/domain_summary.md)

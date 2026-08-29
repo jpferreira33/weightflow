@@ -45,12 +45,14 @@ standard error, instead of conditioning on them as if they were known."><meta pr
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -165,6 +167,15 @@ seed and only the deterministic re-prep is parallelised.</p></dd>
 \(\lambda = 1 - \sqrt{m/(n-1)} + \sqrt{m/(n-1)}\,(n/m)\,t_k\), with
 \(t_k\) the number of times its PSU was drawn.</p>
     </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p>Other variance estimation:
+<code><a href="as_svydesign.html">as_svydesign()</a></code>,
+<code><a href="bootstrap_estimate.html">bootstrap_estimate()</a></code>,
+<code><a href="collect_replicate_weights.html">collect_replicate_weights()</a></code>,
+<code><a href="jackknife_estimate.html">jackknife_estimate()</a></code>,
+<code><a href="jackknife_weights.html">jackknife_weights()</a></code></p></div>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -178,6 +189,19 @@ seed and only the deterministic re-prep is parallelised.</p></dd>
 <span class="r-in"><span><span class="fu"><a href="bootstrap_estimate.html">boot_total</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"responded"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   estimate      se ci_lower ci_upper</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 2663.277 90.4319 2486.034  2840.52</span>
+<span class="r-in"><span><span class="co"># with a first-stage finite-population correction (per-stratum sampling fraction)</span></span></span>
+<span class="r-in"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="va">sample_survey</span>; <span class="va">d</span><span class="op">$</span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fl">0.1</span></span></span>
+<span class="r-in"><span><span class="va">spec_f</span> <span class="op">&lt;-</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">bootstrap_weights</span><span class="op">(</span><span class="va">spec_f</span>, replicates <span class="op">=</span> <span class="fl">50</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span></span>
+<span class="r-in"><span>                  fpc <span class="op">=</span> <span class="st">"f"</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   bootstrap replicate 25/50</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span>   bootstrap replicate 50/50</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;weightflow bootstrap&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   replicates : 50</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   units      : 467 (active: 467)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   strata     : region</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   psu        : psu</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   df         : 96  (fpc applied)</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

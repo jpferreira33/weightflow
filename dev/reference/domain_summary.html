@@ -43,12 +43,14 @@ to the cascade and never changes a weight."><meta property="og:image" content="h
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -78,7 +80,7 @@ to the cascade and never changes a weight.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">domain_summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">by</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">domain_summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">by</span>, min_n_eff <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,6 +98,15 @@ the factor levels of the column (or numerically for a numeric column); units
 with a missing domain value are shown as a <code>"(missing)"</code> domain rather than
 dropped silently.</p></dd>
 
+
+<dt id="arg-min-n-eff">min_n_eff<a class="anchor" aria-label="anchor" href="#arg-min-n-eff"></a></dt>
+<dd><p>optional publication threshold. When set to a positive number,
+the result gains a logical <code>publishable</code> column (whether the domain's
+final-stage effective sample size reaches the threshold) and a warning names
+the domains that fall below it, turning the implicit reliability read into an
+explicit gate. Domains below the threshold are candidates for small-area
+estimation (see <code><a href="as_sae_input.html">as_sae_input()</a></code>) rather than direct estimation.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -103,12 +114,20 @@ dropped silently.</p></dd>
 <code>stage</code> (an ordered factor: base weights, then <code>1. &lt;step&gt;</code>, <code>2. &lt;step&gt;</code>,
 ...), <code>domain</code> (an ordered factor), <code>n_active</code> (active units in the domain at
 that stage), <code>sum_w</code> (sum of the active weights), <code>mean_w</code>, <code>deff</code> (the Kish
-design effect within the domain) and <code>n_eff</code>. Reading down a domain shows how
-its weight total and dispersion evolve step by step.</p>
+design effect within the domain) and <code>n_eff</code>; and, when <code>min_n_eff</code> is given,
+<code>publishable</code>. Reading down a domain shows how its weight total and dispersion
+evolve step by step.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="design_effect.html">design_effect()</a></code>, <code><a href="weight_factors.html">weight_factors()</a></code>, <code><a href="summary.prepped_weighting_spec.html">summary.prepped_weighting_spec()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="design_effect.html">design_effect()</a></code>, <code><a href="weight_factors.html">weight_factors()</a></code>, <code><a href="summary.prepped_weighting_spec.html">summary.prepped_weighting_spec()</a></code></p>
+<p>Other cascade audit:
+<code><a href="as_sae_input.html">as_sae_input()</a></code>,
+<code><a href="collect_propensities.html">collect_propensities()</a></code>,
+<code><a href="collect_step_detail.html">collect_step_detail()</a></code>,
+<code><a href="collect_weights.html">collect_weights()</a></code>,
+<code><a href="weight_factors.html">weight_factors()</a></code>,
+<code><a href="weighting_alerts.html">weighting_alerts()</a></code></p></div>
     </div>
 
     <div class="section level2">

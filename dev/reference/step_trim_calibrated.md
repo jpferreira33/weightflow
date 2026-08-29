@@ -120,7 +120,30 @@ Deville, J.-C. and Sarndal, C.-E. (1992). Calibration estimators in
 survey sampling. Journal of the American Statistical Association, 87,
 376-382. [doi:10.2307/2290268](https://doi.org/10.2307/2290268) . The
 totals-preserving trimming solves a bounded (range-restricted)
-calibration with the truncated distances introduced there.
+calibration with the truncated distances introduced there. Folsom, R. E.
+and Singh, A. C. (2000). The generalized exponential model for sampling
+weight calibration for extreme values, nonresponse and
+poststratification. Proceedings of the ASA Survey Research Methods
+Section, 598-603, formalises the same range-restricted (generalized
+exponential) family.
+
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/dev/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/dev/reference/step_calibrate.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/dev/reference/step_drop_ineligible.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/dev/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/dev/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/dev/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/dev/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/dev/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/dev/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/dev/reference/step_unknown_eligibility.md)
 
 ## Examples
 

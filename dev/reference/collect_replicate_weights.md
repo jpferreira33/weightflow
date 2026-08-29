@@ -16,7 +16,8 @@ collect_replicate_weights(
   object,
   weight_name = ".weight",
   prefix = "rep_",
-  drop_zero = TRUE
+  drop_zero = TRUE,
+  scramble = FALSE
 )
 ```
 
@@ -38,11 +39,31 @@ collect_replicate_weights(
 
   keep only active units (point weight \> 0).
 
+- scramble:
+
+  disclosure control for a public-use file. When `TRUE`, the replicate
+  columns are randomly permuted (their `rscales` move with them, so the
+  variance is unchanged) and the design identifier columns (the `strata`
+  and `psu` columns used to build the replicates) are dropped from the
+  output, so the exported weights do not reveal the sampling design. The
+  point weights and the variance estimate are unaffected. Set a seed
+  beforehand for a reproducible permutation. The result carries
+  attribute `"scrambled" = TRUE`.
+
 ## Value
 
 A data frame: the original columns, `weight_name`, and one column per
 replicate. The number of replicates is in attribute `"R"`, and the
 replication design in attributes `"type"`, `"scale"` and `"rscales"`.
+
+## See also
+
+Other variance estimation:
+[`as_svydesign()`](https://jpferreira33.github.io/weightflow/dev/reference/as_svydesign.md),
+[`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_estimate.md),
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_weights.md),
+[`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_estimate.md),
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_weights.md)
 
 ## Examples
 

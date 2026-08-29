@@ -65,3 +65,28 @@ failed replicate is dropped, not counted), \$\$\widehat
 V\_{\mathrm{boot}}(\hat\theta) =
 \frac{1}{R}\sum\_{b=1}^{R}\big(\hat\theta^{\*}\_b -
 \hat\theta\big)^2.\$\$
+
+## See also
+
+Other variance estimation:
+[`as_svydesign()`](https://jpferreira33.github.io/weightflow/dev/reference/as_svydesign.md),
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_weights.md),
+[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_replicate_weights.md),
+[`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_estimate.md),
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_weights.md)
+
+## Examples
+
+``` r
+spec <- weighting_spec(sample_survey, base_weights = pw) |>
+  step_calibrate(method = "raking",
+                 margins = list(region = c(table(population$region))))
+boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
+                          psu = "psu", seed = 1)
+#>   bootstrap replicate 25/50
+#>   bootstrap replicate 50/50
+# a t interval with the design degrees of freedom (safer with few PSUs)
+bootstrap_estimate(boot, function(w, d) sum(w * d$responded), ci_type = "t")
+#>   estimate      se ci_lower ci_upper
+#> 1 2663.277 90.4319 2483.771 2842.783
+```

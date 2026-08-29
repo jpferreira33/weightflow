@@ -29,6 +29,16 @@ has_alerts(object)
 `weighting_alerts()`: a character vector (empty if the recipe ran
 clean). `has_alerts()`: a single logical.
 
+## See also
+
+Other cascade audit:
+[`as_sae_input()`](https://jpferreira33.github.io/weightflow/dev/reference/as_sae_input.md),
+[`collect_propensities()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_propensities.md),
+[`collect_step_detail()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_step_detail.md),
+[`collect_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_weights.md),
+[`domain_summary()`](https://jpferreira33.github.io/weightflow/dev/reference/domain_summary.md),
+[`weight_factors()`](https://jpferreira33.github.io/weightflow/dev/reference/weight_factors.md)
+
 ## Examples
 
 ``` r

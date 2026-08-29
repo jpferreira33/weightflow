@@ -11,7 +11,7 @@ estimates the result.
 ## Usage
 
 ``` r
-weighting_spec(data, base_weights)
+weighting_spec(data, base_weights = NULL, nonprob = FALSE)
 ```
 
 ## Arguments
@@ -22,7 +22,26 @@ weighting_spec(data, base_weights)
 
 - base_weights:
 
-  unquoted name of the design base-weight column.
+  unquoted name of the design base-weight column. For a non-probability
+  sample with no design weights, leave it `NULL` and set
+  `nonprob = TRUE`: every unit then starts with a base weight of 1.
+
+- nonprob:
+
+  logical. Declare the sample as non-probability (an opt-in panel, a
+  volunteer or river sample). Required when `base_weights = NULL`. The
+  flag is recorded so the report states the sample is non-probability
+  and adds the methodological caveat; a non-probability sample is
+  usually adjusted with
+  [`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/dev/reference/step_pseudoweight.md)
+  (inverse participation propensity against a reference) and/or
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/dev/reference/step_calibrate.md)
+  /
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/dev/reference/step_model_calibration.md)
+  to a
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/dev/reference/reference_sample.md).
+  A non-probability panel that already carries recruitment/base weights
+  can pass them as `base_weights` together with `nonprob = TRUE`.
 
 ## Value
 
@@ -40,4 +59,6 @@ rec
 #> Steps   : (none yet)
 #> Status  : not estimated
 #> 
+# a non-probability sample: no design weights, base weight 1
+np <- weighting_spec(sample_survey, base_weights = NULL, nonprob = TRUE)
 ```

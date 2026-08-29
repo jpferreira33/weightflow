@@ -61,12 +61,14 @@
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><a class="dropdown-item" href="articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul>
 </li>
@@ -320,7 +322,7 @@
 <div class="section level3">
 <h3 id="inspecting-and-auditing-the-cascade">Inspecting and auditing the cascade<a class="anchor" aria-label="anchor" href="#inspecting-and-auditing-the-cascade"></a>
 </h3>
-<p>Every step has a stable id (<code>nonresponse_1</code>, <code>calibrate_1</code>), so the cascade can be audited from a script: <code><a href="reference/weighting_alerts.html">weighting_alerts()</a></code> / <code><a href="reference/weighting_alerts.html">has_alerts()</a></code> as a quality gate, <code>collect_step_detail("calibrate_1")</code> and <code><a href="reference/collect_propensities.html">collect_propensities()</a></code> unit by unit, and <code><a href="reference/domain_summary.html">domain_summary()</a></code> for per-domain reliability.</p>
+<p>Every step has a stable id (<code>nonresponse_1</code>, <code>calibrate_1</code>), so the cascade can be audited from a script: <code><a href="reference/weighting_alerts.html">weighting_alerts()</a></code> / <code><a href="reference/weighting_alerts.html">has_alerts()</a></code> as a quality gate, <code>collect_step_detail(fit, "calibrate_1")</code> and <code><a href="reference/collect_propensities.html">collect_propensities()</a></code> unit by unit, and <code><a href="reference/domain_summary.html">domain_summary()</a></code> for per-domain reliability.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="va">recipe</span><span class="op">)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="reference/weighting_alerts.html">has_alerts</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="reference/weighting_alerts.html">weighting_alerts</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
@@ -524,7 +526,7 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Juan Pablo Ferreira <br><small class="roles"> Author, maintainer </small> <a href="https://orcid.org/0000-0002-1884-8187" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<li>Juan Pablo Ferreira <br><small class="roles"> Author, maintainer, copyright holder </small> <a href="https://orcid.org/0000-0002-1884-8187" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
 <li>Andrés Gutiérrez <br><small class="roles"> Author </small> <a href="https://orcid.org/0009-0007-2918-1932" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
 </ul>
 </div>
@@ -533,7 +535,7 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://CRAN.R-project.org/package=weightflow" class="external-link"><img src="https://www.r-pkg.org/badges/version/weightflow" alt="CRAN status"></a></li>
-<li><a href="http://www.awesomeofficialstatistics.org" class="external-link"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Official Statistics"></a></li>
+<li><a href="https://github.com/SNStatComp/awesome-official-statistics-software" class="external-link"><img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Official Statistics"></a></li>
 <li><a href="https://github.com/jpferreira33/weightflow/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/jpferreira33/weightflow/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
 <li><a href="https://app.codecov.io/github/jpferreira33/weightflow" class="external-link"><img src="https://codecov.io/github/jpferreira33/weightflow/graph/badge.svg?token=KSR54WEM88" alt="Codecov test coverage"></a></li>
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#stable" class="external-link"><img src="https://img.shields.io/badge/lifecycle-stable-brightgreen.svg" alt="Lifecycle: stable"></a></li>

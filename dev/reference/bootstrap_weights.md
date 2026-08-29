@@ -96,6 +96,15 @@ The multiplier is the Rao-Wu rescaling bootstrap: within a stratum with
 \sqrt{m/(n-1)}\\(n/m)\\t_k\\, with \\t_k\\ the number of times its PSU
 was drawn.
 
+## See also
+
+Other variance estimation:
+[`as_svydesign()`](https://jpferreira33.github.io/weightflow/dev/reference/as_svydesign.md),
+[`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_estimate.md),
+[`collect_replicate_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_replicate_weights.md),
+[`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_estimate.md),
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_weights.md)
+
 ## Examples
 
 ``` r
@@ -109,4 +118,17 @@ boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
 boot_total(boot, "responded")
 #>   estimate      se ci_lower ci_upper
 #> 1 2663.277 90.4319 2486.034  2840.52
+# with a first-stage finite-population correction (per-stratum sampling fraction)
+d <- sample_survey; d$f <- 0.1
+spec_f <- weighting_spec(d, base_weights = pw)
+bootstrap_weights(spec_f, replicates = 50, strata = "region", psu = "psu",
+                  fpc = "f", seed = 1)
+#>   bootstrap replicate 25/50
+#>   bootstrap replicate 50/50
+#> <weightflow bootstrap>
+#>   replicates : 50
+#>   units      : 467 (active: 467)
+#>   strata     : region
+#>   psu        : psu
+#>   df         : 96  (fpc applied)
 ```

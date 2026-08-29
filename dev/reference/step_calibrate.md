@@ -175,13 +175,31 @@ many or collinear, minimizing \$\$\sum_i \frac{(w_i - d_i)^2}{d_i q_i} +
 of missing constraint \\j\\: as \\c_j \to \infty\\ the constraint is met
 exactly, as \\c_j \to 0\\ the weights return to \\d_i\\.
 
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/dev/reference/step_assert.md),
+[`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/dev/reference/step_drop_ineligible.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/dev/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/dev/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/dev/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/dev/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/dev/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/dev/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/dev/reference/step_unknown_eligibility.md)
+
 ## Examples
 
 ``` r
 # Raking to population margins
 weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
-  step_calibrate(method = "raking",
+  step_calibrate(method = "raking", id = "calib_main",
                  margins = list(sex    = c(table(population$sex)),
                                 region = c(table(population$region)))) |>
   prep()
@@ -191,7 +209,7 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> Base wts: pw
 #> Steps   :
 #>   1. nonresponse (weighting class)  [nonresponse_1]
-#>   2. calibration (raking)  [calibrate_1]
+#>   2. calibration (raking)  [calib_main]
 #> Status  : estimated (prep)
 #> 
 #> Stage summary:
@@ -204,6 +222,8 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
 #> improve with trimming.
 #> 
+# the id ("calib_main") labels the step in the print-out and selects it in
+# collect_step_detail(fit, "calib_main")
 
 # ridge (penalized) calibration: relaxes the targets to control extreme
 # weights; a smaller penalty relaxes more. Uses only base R.

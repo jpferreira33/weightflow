@@ -41,12 +41,14 @@ shortcuts for a weighted total and a weighted mean of one column."><meta propert
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -141,6 +143,15 @@ per-stratum mean of the deleted-PSU estimates (the standard JKn). The
 centers on the point estimate. Both are legitimate, so the standard errors
 from <code>jack_total()</code> and from <code>svytotal()</code> on the same object can differ
 slightly.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p>Other variance estimation:
+<code><a href="as_svydesign.html">as_svydesign()</a></code>,
+<code><a href="bootstrap_estimate.html">bootstrap_estimate()</a></code>,
+<code><a href="bootstrap_weights.html">bootstrap_weights()</a></code>,
+<code><a href="collect_replicate_weights.html">collect_replicate_weights()</a></code>,
+<code><a href="jackknife_weights.html">jackknife_weights()</a></code></p></div>
     </div>
 
     <div class="section level2">

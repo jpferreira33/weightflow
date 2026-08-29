@@ -1,9 +1,136 @@
 # Changelog
 
-## weightflow 1.2.0 (development)
+## weightflow 1.2.0 (development version)
 
 ### New features
 
+- **Two-phase (double) sampling.**
+  **[`step_subsample()`](https://jpferreira33.github.io/weightflow/dev/reference/step_subsample.md)**
+  records a second phase of sampling – a subsample of the first-phase
+  units drawn for a costlier follow-up – expanding the subsampled units
+  by the inverse phase-2 probability and dropping the rest. When the
+  recipe contains it,
+  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_weights.md)
+  switches to the two-phase variance `V = V1 + V2`: the phase-1 sampling
+  variance plus the expected conditional variance of the phase-2
+  subsample, which a single-phase bootstrap would miss. The per-unit
+  resampling factor has variance `(1 - f1) * pi2 + (1 - pi2)`, the sum
+  of the phase-1 component (seen through the subsample) and the phase-2
+  conditional component (the additive coupling `lambda1 + lambda2 - 1`);
+  a naive product `lambda1 * lambda2` over-counts the interaction term
+  and is too wide. The factor is drawn from a strictly positive Gamma of
+  that mean and variance, so every replicate weight stays positive and a
+  downstream propensity/GLM step re-runs cleanly. The whole recipe (both
+  cascades) is re-run per replicate, so nonresponse and calibration
+  downstream of the subsample are captured automatically. This first
+  version covers a Poisson (independent) second phase nested in the
+  first (the household-subsampling case), with the phase-1 fraction `f1`
+  taken from `fpc` (0 by default). Calibrating the subsample to the
+  first-phase sample – the two-phase regression estimator (Fuller 1998),
+  where the control totals are estimated by the larger first phase –
+  needs no extra machinery: compose
+  [`step_subsample()`](https://jpferreira33.github.io/weightflow/dev/reference/step_subsample.md)
+  with a
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/dev/reference/reference_sample.md)
+  built from the first-phase sample and its replicate weights, and the
+  two variance components separate on their own (Opsomer and Erciulescu
+  2021). Validated against Monte Carlo (ratio ~ 1.0) including
+  calibration re-run per replicate, second-phase nonresponse,
+  clustering, and calibration to first-phase estimates; see the
+  two-phase methodology notes.
+- **Non-probability samples.**
+  `weighting_spec(base_weights = NULL, nonprob = TRUE)` starts an opt-in
+  panel / volunteer / river sample with a base weight of 1 and records
+  that it is non-probability (the report declares it and adds the
+  methodological caveat).
+  **[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/dev/reference/step_pseudoweight.md)**
+  then estimates each unit’s participation propensity against a
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/dev/reference/reference_sample.md)
+  and assigns the inverse-propensity pseudo-weight (Elliott and Valliant
+  2017), stacking the two samples internally (no manual pooling).
+  Passing the reference’s replicate weights through
+  `reference_sample(replicates = )` propagates its sampling variance
+  through the recipe-aware bootstrap. A non-probability sample can also
+  be adjusted by calibrating to a
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/dev/reference/reference_sample.md)
+  with
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/dev/reference/step_calibrate.md)
+  /
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/dev/reference/step_model_calibration.md)
+  (model-based), or by combining both (doubly robust).
+- **[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nr_sensitivity.md)**
+  and
+  **[`nr_sensitivity()`](https://jpferreira33.github.io/weightflow/dev/reference/nr_sensitivity.md)**
+  add a sensitivity analysis for nonignorable nonresponse or selection,
+  following the proxy pattern-mixture model of Andridge and Little
+  (2011). The step changes no weights: it reduces the auxiliaries to a
+  single proxy (the respondent regression prediction of the study
+  variable) and, over a grid of a single sensitivity parameter phi in
+  \[0, 1\] (from ignorable-given-the-proxy at 0 to depending only on the
+  outcome at 1), reports the adjusted mean, producing an *ignorance
+  interval* to read next to the sampling confidence interval. The report
+  gains a matching block (one per study variable when several are
+  analysed). An `eligible` argument (the mirror of the one in
+  [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nonresponse.md))
+  keeps out-of-scope units out of the nonrespondent set, `phi = 0` (MAR)
+  is always anchored in the grid, and the same machinery covers a
+  non-probability sample (participants as respondents, reference units
+  as nonrespondents). The estimator, mu(phi) = ybar_r + (1 -
+  pi)(s_yr/s_xr) m(phi) (xbar_nr - xbar_r) with m(phi) = ((1 - phi)
+  rho + phi)/((1 - phi) + phi rho), is validated by a Monte Carlo test
+  that recovers the true mean at the generating phi.
+- **[`data_defect()`](https://jpferreira33.github.io/weightflow/dev/reference/data_defect.md)**
+  and a prominent report block bring the data-defect view of Meng (2018)
+  to non-probability samples: the effective sample size is governed by
+  the correlation between the outcome and participation, not by the raw
+  size, so a large opt-in sample can carry a small effective one.
+  Because that correlation on the target variable is not observable from
+  the sample, the report shows the effective size across a grid of
+  plausible residual values (an ignorance range, not a single number),
+  alongside the measurable selection strength on the covariates that
+  pseudo-weighting corrects.
+- **[`write_recipe()`](https://jpferreira33.github.io/weightflow/dev/reference/write_recipe.md)
+  /
+  [`read_recipe()`](https://jpferreira33.github.io/weightflow/dev/reference/read_recipe.md)**
+  serialize the recipe (the weighting method, not the data) to a
+  human-readable YAML file and read it back. The file is a versionable
+  metadata artifact you can review in a pull request or archive next to
+  the report;
+  [`read_recipe()`](https://jpferreira33.github.io/weightflow/dev/reference/read_recipe.md)
+  returns an inspectable manifest, or, given `data`, rebuilds an
+  executable `weighting_spec` ready for
+  [`prep()`](https://jpferreira33.github.io/weightflow/dev/reference/prep.md).
+  A
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/dev/reference/reference_sample.md)
+  is stored as a descriptor only (its microdata is not metadata) and is
+  passed back in at read time; small control-totals tables (tidy
+  `totals`) are serialized in full, while a data frame larger than
+  10,000 rows is treated as microdata and rejected.
+  `write_recipe(timestamp = FALSE)` gives byte-identical output for
+  clean version-control diffs. Needs the `yaml` package.
+- **`domain_summary(min_n_eff = )`** turns the implicit per-domain
+  reliability read into an explicit publication gate: it adds a
+  `publishable` column (whether the domain reaches the threshold at the
+  final stage) and warns which domains fall below it, pointing to
+  small-area estimation
+  ([`as_sae_input()`](https://jpferreira33.github.io/weightflow/dev/reference/as_sae_input.md))
+  for those.
+- **Confidentiality tools for public-use files.**
+  `collect_replicate_weights(scramble = TRUE)` permutes the replicate
+  columns (moving their scale factors in lockstep, so the variance is
+  identical) and drops the design identifier columns, so the exported
+  replicate weights do not reveal the sampling design.
+  [`disclosure_risk()`](https://jpferreira33.github.io/weightflow/dev/reference/disclosure_risk.md)
+  flags units whose final weight is an outlier within a publication cell
+  (a re-identification risk), reporting each unit’s share of the cell
+  weight; trimming is the usual remedy.
+- **[`as_sae_input()`](https://jpferreira33.github.io/weightflow/dev/reference/as_sae_input.md)**
+  exports, for each study domain, the direct estimate, its recipe-aware
+  design-based standard error (from the replicate weights), the
+  effective sample size and a CV-based publishability rating, in the
+  shape a Fay-Herriot area-level model consumes. It bridges weightflow
+  to the small-area-estimation packages (`emdi`, `sae`, `hbsae`) without
+  fitting any SAE model itself.
 - **[`reference_sample()`](https://jpferreira33.github.io/weightflow/dev/reference/reference_sample.md)**
   lets
   [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/dev/reference/step_model_calibration.md)
@@ -86,14 +213,49 @@
   ratios, bounds, tolerances and iteration caps, assertion thresholds)
   at build time instead of failing later or passing silently.
 - Various robustness fixes for uncommon or malformed inputs, including
-  missing values in calibration auxiliaries, negative calibration
-  weights, empty or absent cells, and degenerate bounds. Each fix is
-  covered by a regression test.
+  missing values in calibration auxiliaries and post-stratification
+  cells, negative calibration weights, empty or absent cells, degenerate
+  bounds, integrative trimming with non-uniform incoming weights, and
+  domain calibration with a scalar continuous total. Each fix is covered
+  by a regression test.
+- Further report honesty fixes: the status checklist no longer makes
+  vacuous claims (a “no extreme weights” or “all calibration steps
+  converged” line only when there are weights, or calibration steps, to
+  speak of); a post-stratification-only recipe now gets the “constraints
+  preserved” credit; and a step that does not track convergence reports
+  its iteration count without claiming it converged.
+- Report honesty fixes for domain calibration and estimated control
+  totals: the calibration-drift table is now computed within each
+  domain, and the reference-survey variance is only described as
+  propagated for a bootstrap (the jackknife treats the totals as fixed).
+- [`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_estimate.md)
+  and
+  [`jackknife_estimate()`](https://jpferreira33.github.io/weightflow/dev/reference/jackknife_estimate.md)
+  no longer pass a failed (all-NA) replicate to a user statistic, and
+  enforce a constant statistic length, so a non-NA-safe or vector-valued
+  statistic no longer aborts the whole estimate.
+- [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/bootstrap_weights.md)
+  records the resolved design (`$design`: the per-stratum sampling
+  fraction, PSU count, effective resample size, and whether lonely
+  strata were collapsed), so the effective design is auditable from the
+  object rather than only from the arguments passed.
+- Broader, more consistent argument validation across the step
+  constructors (flags given as strings, non-integer or infinite counts,
+  non-numeric trimming bounds, malformed
+  [`y_model()`](https://jpferreira33.github.io/weightflow/dev/reference/y_model.md)
+  and `id` values, and `penalty` with a non-Euclidean distance) now
+  fails at build time with a clear message instead of a later cryptic
+  error. Blank primary sampling unit or stratum ids are also rejected
+  before resampling.
 - The HTML report and its CSV export received accuracy and formatting
   fixes, and the report no longer errors on legal edge cases such as an
   open trimming bound.
 - Documentation updates, including a correspondence table for arguments
-  that name the same concept across functions (`?weightflow-concepts`).
+  that name the same concept across functions (`?weightflow-concepts`),
+  a new `?weightflow-alerts` catalogue of the quality alerts
+  [`prep()`](https://jpferreira33.github.io/weightflow/dev/reference/prep.md)
+  can raise, and `@family` cross-links across the step, variance and
+  cascade-audit functions for easier navigation.
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/dev/reference/step_calibrate.md)
   now warns when both `margins` and `totals` are supplied (`totals` wins
   and `margins` was being dropped silently).
@@ -101,6 +263,20 @@
   also guards missing values in the `y_model` predictor variables on the
   population frame (not only the `x_formula` variables), so an `NA`
   there no longer reaches the model engine.
+- [`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/dev/reference/step_pseudoweight.md)
+  hardening: participation propensities are clamped away from both 0 and
+  1 (a propensity of exactly 1, which a pure tree or forest leaf can
+  return, no longer sends the pseudo-weight to 0 and silently drops the
+  unit), and a near-1 propensity is now flagged. The step also exposes
+  its pooled propensity so the report renders the common-support,
+  calibration, Brier and AUC diagnostics and a methodological paragraph;
+  warns when the factor levels of a covariate differ between the sample
+  and the reference, and when `num_classes` collapses under
+  near-constant propensities; drops the internal all-ones base column
+  from
+  [`collect_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/collect_weights.md);
+  and `bootstrap_weights(fpc = )` is ignored (with a warning) for a
+  non-probability sample.
 
 ## weightflow 1.1.0
 

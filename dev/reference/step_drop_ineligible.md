@@ -49,6 +49,24 @@ unknown weight. Their weight is then correctly discarded here (it
 represents the ineligible share of the unknown units, which are out of
 scope).
 
+## See also
+
+Other weighting steps:
+[`step_assert()`](https://jpferreira33.github.io/weightflow/dev/reference/step_assert.md),
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/dev/reference/step_calibrate.md),
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/dev/reference/step_model_calibration.md),
+[`step_nonresponse()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nonresponse.md),
+[`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/dev/reference/step_nr_sensitivity.md),
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/dev/reference/step_pseudoweight.md),
+[`step_rescale()`](https://jpferreira33.github.io/weightflow/dev/reference/step_rescale.md),
+[`step_round()`](https://jpferreira33.github.io/weightflow/dev/reference/step_round.md),
+[`step_select_within()`](https://jpferreira33.github.io/weightflow/dev/reference/step_select_within.md),
+[`step_subsample()`](https://jpferreira33.github.io/weightflow/dev/reference/step_subsample.md),
+[`step_trim()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim.md),
+[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim_calibrated.md),
+[`step_trim_weights()`](https://jpferreira33.github.io/weightflow/dev/reference/step_trim_weights.md),
+[`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/dev/reference/step_unknown_eligibility.md)
+
 ## Examples
 
 ``` r

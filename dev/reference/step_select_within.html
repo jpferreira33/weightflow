@@ -45,12 +45,14 @@ nonresponse step."><meta property="og:image" content="https://jpferreira33.githu
     <li><h6 class="dropdown-header" data-toc-skip>Reporting</h6></li>
     <li><a class="dropdown-item" href="../articles/quality-report.html">Documenting and auditing the weights: the quality report</a></li>
     <li><a class="dropdown-item" href="../articles/inspecting-auditing.html">Inspecting and auditing the cascade</a></li>
+    <li><a class="dropdown-item" href="../articles/weightflow-in-production.html">weightflow in production (GSBPM 5.6)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
+    <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
     <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -138,6 +140,24 @@ a person: the step is the generic within-cluster subsampling adjustment. In a
 multi-stage design it can appear more than once – e.g. dwellings selected
 within sampled area segments, then persons selected within dwellings – each
 occurrence undoing one stage of subsampling.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p>Other weighting steps:
+<code><a href="step_assert.html">step_assert()</a></code>,
+<code><a href="step_calibrate.html">step_calibrate()</a></code>,
+<code><a href="step_drop_ineligible.html">step_drop_ineligible()</a></code>,
+<code><a href="step_model_calibration.html">step_model_calibration()</a></code>,
+<code><a href="step_nonresponse.html">step_nonresponse()</a></code>,
+<code><a href="step_nr_sensitivity.html">step_nr_sensitivity()</a></code>,
+<code><a href="step_pseudoweight.html">step_pseudoweight()</a></code>,
+<code><a href="step_rescale.html">step_rescale()</a></code>,
+<code><a href="step_round.html">step_round()</a></code>,
+<code><a href="step_subsample.html">step_subsample()</a></code>,
+<code><a href="step_trim.html">step_trim()</a></code>,
+<code><a href="step_trim_calibrated.html">step_trim_calibrated()</a></code>,
+<code><a href="step_trim_weights.html">step_trim_weights()</a></code>,
+<code><a href="step_unknown_eligibility.html">step_unknown_eligibility()</a></code></p></div>
     </div>
 
     <div class="section level2">

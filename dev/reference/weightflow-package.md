@@ -34,11 +34,11 @@ Useful links:
 ## Author
 
 **Maintainer**: Juan Pablo Ferreira <juanpablo.ferreira@fcea.edu.uy>
-([ORCID](https://orcid.org/0000-0002-1884-8187))
+([ORCID](https://orcid.org/0000-0002-1884-8187)) \[copyright holder\]
 
 Authors:
 
 - Juan Pablo Ferreira <juanpablo.ferreira@fcea.edu.uy>
-  ([ORCID](https://orcid.org/0000-0002-1884-8187))
+  ([ORCID](https://orcid.org/0000-0002-1884-8187)) \[copyright holder\]
 
 - Andrés Gutiérrez ([ORCID](https://orcid.org/0009-0007-2918-1932))
