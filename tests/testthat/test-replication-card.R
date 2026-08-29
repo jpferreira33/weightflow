@@ -23,6 +23,23 @@ test_that(".replication_card renders a bootstrap design with seed", {
   expect_match(h, "Semilla")
 })
 
+test_that(".replication_card renders a two-phase bootstrap design (H-3)", {
+  fake <- structure(list(
+    data = data.frame(hh = 1:6), strata = NULL, psu = NULL, R = 200L,
+    method = "bootstrap", lonely_psu = "certainty", fpc = NULL, df = 149L,
+    two_phase = TRUE, cores = 1L, elapsed = 8,
+    design = list(two_phase = TRUE, phase2_design = "poisson",
+                  phase2_psu = "hh", n_psu2 = 150L)),
+    class = "weightflow_boot")
+  h_en <- weightflow:::.replication_card(fake, "en")
+  h_es <- weightflow:::.replication_card(fake, "es")
+  expect_match(h_en, "Two-phase bootstrap")
+  expect_match(h_es, "dos fases")
+  expect_match(h_en, "Phase-2 sampling units")
+  expect_match(h_en, "First-phase fraction")           # FPC row relabelled as f1
+  expect_false(grepl("Lonely-PSU", h_en))              # lonely-PSU row omitted
+})
+
 test_that(".replication_card is empty for NULL / non-replicate input", {
   expect_identical(weightflow:::.replication_card(NULL, "en"), "")
   expect_identical(weightflow:::.replication_card(list(a = 1), "en"), "")

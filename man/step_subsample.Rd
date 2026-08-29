@@ -77,7 +77,10 @@ unit is nested in the first phase (e.g. households subsampled from a
 first-phase household sample). The phase-1 sampling fraction \eqn{f_1}{f1} is
 taken from the \code{fpc} argument of \code{\link[=bootstrap_weights]{bootstrap_weights()}} and defaults to 0
 (negligible, the usual case in household surveys), which reduces the coupling
-to a single independent per-unit factor of variance 1.
+to a single independent per-unit factor of variance 1 -- a Gamma of variance 1,
+i.e. an Exponential(1) (the Bayesian-bootstrap multiplier): valid and strictly
+positive, but right-skewed, which is part of why replicate-to-replicate
+variance estimates have heavier tails.
 }
 \examples{
 # households subsampled for a follow-up module, selected with prob p2

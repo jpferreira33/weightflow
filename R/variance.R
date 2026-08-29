@@ -102,6 +102,40 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     as.character(data[[psu]])
   }
   .assert_design_complete(data, strata, psu)
+  # Two-phase design: if the recipe subsamples a second phase (step_subsample), a
+  # single per-PSU factor of variance d = (1-f1)pi2 + (1-pi2) replaces the Rao-Wu
+  # factor below and captures both phases. f1 comes from `fpc` (0 by default).
+  # These guards run BEFORE `fpc` is resolved so their (didactic) messages are the
+  # ones the user sees, not the generic named-vector error.
+  nsub      <- sum(vapply(object$steps, function(s) inherits(s, "step_subsample"), logical(1)))
+  sub       <- .find_subsample_step(object$steps)
+  two_phase <- !is.null(sub)
+  if (two_phase) {
+    if (nsub > 1L)
+      stop("bootstrap_weights(): the recipe has ", nsub, " step_subsample() steps. ",
+           "Only a single second phase is supported.", call. = FALSE)
+    if (!identical(sub$design, "poisson"))
+      stop("bootstrap_weights(): step_subsample design = \"", sub$design,
+           "\" is not yet supported; only \"poisson\" is implemented.", call. = FALSE)
+    # A clustered/stratified first phase is not yet folded into the coupling: the
+    # phase-2 factor is generated at the phase-2 sampling unit, assumed to be the
+    # phase-1 unit. Accepting strata/psu would silently drop the first-phase
+    # intra-cluster variance, so refuse rather than undercover. For a clustered
+    # first phase, calibrate the subsample to the first-phase sample instead
+    # (compose with reference_sample()); its replicate weights carry that design.
+    if (!is.null(strata) || !is.null(psu))
+      stop("bootstrap_weights(): `strata` / `psu` (a clustered first-phase design) ",
+           "are not supported together with step_subsample(); this version generates ",
+           "the phase-2 factor at the phase-2 sampling unit. For a clustered first ",
+           "phase, calibrate the subsample to the first-phase sample via ",
+           "reference_sample() (its replicate weights carry the first-phase design), ",
+           "and leave `strata`/`psu` NULL here.", call. = FALSE)
+    if (is.numeric(fpc) && !is.null(names(fpc)))
+      stop("bootstrap_weights(): with step_subsample(), `fpc` is the first-phase ",
+           "sampling fraction f1; give it as a single number or a column, not a ",
+           "vector named by stratum (first-phase strata are not supported here).",
+           call. = FALSE)
+  }
   # First-stage sampling fraction f_h for the finite-population correction, resolved
   # to one value per row NOW (before any lonely-PSU collapse), keyed by stratum.
   # f = 0 (the default) reproduces the with-replacement bootstrap exactly.
@@ -120,27 +154,6 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
                 call. = FALSE)
     if (any(!is.finite(fvec)) || any(fvec < 0 | fvec > 1))
       stop("`fpc` (first-stage sampling fraction) must be in [0, 1].", call. = FALSE)
-  }
-  # Two-phase design: if the recipe subsamples a second phase (step_subsample),
-  # the single-phase Rao-Wu factor below is replaced by the two-phase coupling
-  # (phase-1 + phase-2 conditional variance). f1 comes from `fpc` (0 by default).
-  nsub      <- sum(vapply(object$steps, function(s) inherits(s, "step_subsample"), logical(1)))
-  sub       <- .find_subsample_step(object$steps)
-  two_phase <- !is.null(sub)
-  # Two-phase modes:
-  #  - clustered phase 1 (strata/psu given): the phase-1 Rao-Wu over strata/PSU --
-  #    the ordinary stratified-cluster resampler -- carries V1, and we add the
-  #    phase-2 CONDITIONAL factor (variance 1 - pi2) on top (lambda1 + lambda2 - 1).
-  #  - simple phase 1 (no strata/psu): a single per-PSU factor of variance
-  #    d = (1 - f1) pi2 + (1 - pi2), with f1 from `fpc` (0 by default).
-  tp_clustered <- two_phase && (!is.null(strata) || !is.null(psu))
-  if (two_phase) {
-    if (nsub > 1L)
-      stop("bootstrap_weights(): the recipe has ", nsub, " step_subsample() steps. ",
-           "Only a single second phase is supported.", call. = FALSE)
-    if (!identical(sub$design, "poisson"))
-      stop("bootstrap_weights(): step_subsample design = \"", sub$design,
-           "\" is not yet supported; only \"poisson\" is implemented.", call. = FALSE)
   }
   tp_setup  <- if (two_phase) .twophase_setup(sub, data, fvec) else NULL
 
@@ -166,10 +179,7 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   # the parallel run bit-identical to the serial one and reproducible via `seed`.
   # Strata with a single PSU cannot be resampled (recorded once, warned below).
   singleton <- hs[vapply(hs, function(h) length(unique(cl[st == h])) < 2L, logical(1))]
-  # One draw of the (stratified, clustered) Rao-Wu factor vector: the ordinary
-  # single-phase resampler. Reused for the phase-1 component of a clustered
-  # two-phase design (lambda1), so the first-phase intra-cluster variance is
-  # carried by the same machinery that already handles it for one-phase designs.
+  # One draw of the (stratified, clustered) single-phase Rao-Wu factor vector.
   raowu_fac <- function() {
     fac <- numeric(n)
     for (h in hs) {
@@ -196,24 +206,9 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (!is.null(.rng_restore))
     on.exit(assign(".Random.seed", .rng_restore, envir = .GlobalEnv), add = TRUE)
   for (b in seq_len(replicates)) {
-    if (two_phase && !tp_clustered) {
-      # Simple phase 1 (no strata/psu): a single per-PSU factor of variance
-      # d = (1-f1)pi2 + (1-pi2) captures both phases.
-      facs[[b]] <- .twophase_fac(tp_setup); next
-    }
-    if (two_phase && tp_clustered) {
-      # Clustered/stratified phase 1 with strata/psu supplied AND a step_subsample
-      # (a two-phase design calibrated to KNOWN totals, not to the first-phase
-      # sample). The exact coupling for a clustered first phase needs a reverse-
-      # framework correction; here we use the CONSERVATIVE additive combination
-      # lambda1 + lambda2 - 1 (the stratified-cluster Rao-Wu plus the phase-2
-      # conditional factor), which over-estimates rather than under-estimates the
-      # variance -- the safe side. For the common case (calibrating the subsample
-      # to first-phase estimates), compose step_subsample() with a reference_sample
-      # built from the first-phase sample instead: the first-phase clustered design
-      # is then carried by the reference's replicate weights, with no strata/psu here.
-      facs[[b]] <- raowu_fac() + .twophase_fac(tp_setup, cond_only = TRUE) - 1; next
-    }
+    # Two-phase coupling replaces the single-phase Rao-Wu factor entirely: a single
+    # per-PSU factor of variance d = (1-f1)pi2 + (1-pi2) (see METODO).
+    if (two_phase) { facs[[b]] <- .twophase_fac(tp_setup); next }
     facs[[b]] <- raowu_fac()
   }
 
@@ -256,20 +251,12 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   design <- list(fh = fh_by, nh = nh_by, mh = stats::setNames(mh_by, hs),
                  collapsed = lonely_psu == "collapse" && any(grepl("__collapsed__", hs)))
   if (two_phase) {
-    npsu2 <- length(tp_setup$selpsu)
-    if (tp_clustered) {
-      # Clustered phase 1: df and design come from the FIRST-phase strata/PSU
-      # (the resampling design), as in a single-phase run; add the phase-2 summary.
-      design <- c(list(fh = fh_by, nh = nh_by, mh = stats::setNames(mh_by, hs),
-                       collapsed = lonely_psu == "collapse" && any(grepl("__collapsed__", hs))),
-                  list(two_phase = TRUE, phase2_design = sub$design,
-                       phase2_psu = sub$psu, n_psu2 = npsu2))
-    } else {
-      # Simple phase 1: df and design come from the phase-2 sampling units.
-      df     <- max(npsu2 - 1L, 1L)
-      design <- list(two_phase = TRUE, phase2_design = sub$design,
-                     phase2_psu = sub$psu, n_psu2 = npsu2)
-    }
+    # Degrees of freedom and design summary come from the phase-2 sampling units,
+    # not the (single-phase) strata/PSU columns, which do not describe this design.
+    npsu2  <- length(tp_setup$selpsu)
+    df     <- max(npsu2 - 1L, 1L)
+    design <- list(two_phase = TRUE, phase2_design = sub$design,
+                   phase2_psu = sub$psu, n_psu2 = npsu2)
   }
   structure(list(replicates = reps, weights = point, data = data,
                  strata = strata, psu = psu, R = replicates,

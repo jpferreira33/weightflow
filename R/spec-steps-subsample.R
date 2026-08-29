@@ -33,7 +33,10 @@
 #' first-phase household sample). The phase-1 sampling fraction \eqn{f_1}{f1} is
 #' taken from the `fpc` argument of [bootstrap_weights()] and defaults to 0
 #' (negligible, the usual case in household surveys), which reduces the coupling
-#' to a single independent per-unit factor of variance 1.
+#' to a single independent per-unit factor of variance 1 -- a Gamma of variance 1,
+#' i.e. an Exponential(1) (the Bayesian-bootstrap multiplier): valid and strictly
+#' positive, but right-skewed, which is part of why replicate-to-replicate
+#' variance estimates have heavier tails.
 #'
 #' @param spec a weighting_spec.
 #' @param selected a 0/1 dummy column (1 = selected in phase 2) or any logical
@@ -164,11 +167,19 @@ apply_step.step_subsample <- function(step, data, w) {
   selpsu <- unique(psu[use])
   idx    <- match(psu, selpsu)                       # unit -> selected-PSU index (NA otherwise)
   p2_psu <- as.numeric(tapply(p2[use],   psu[use], function(z) z[1])[selpsu])
+  # f1 (first-phase fraction) must be constant within a phase-2 sampling unit, the
+  # same way `prob` is (checked in apply_step). A column `fpc` that varied inside a
+  # PSU would otherwise be read from its first row silently.
+  f1_nu  <- tapply(fvec[use], psu[use], function(z) length(unique(round(z, 12))))
+  if (any(f1_nu > 1L))
+    stop("bootstrap_weights(): `fpc` (first-phase fraction f1) is not constant within ",
+         sum(f1_nu > 1L), " phase-2 sampling unit(s) of '", sub$psu,
+         "'; it must be a single value per unit.", call. = FALSE)
   f1_psu <- as.numeric(tapply(fvec[use], psu[use], function(z) z[1])[selpsu])
   f1_psu[is.na(f1_psu)] <- 0
   d      <- (1 - f1_psu) * p2_psu + (1 - p2_psu)     # = 1 - f1 * pi2, in (0, 1]
   list(n = n, use = use, unit_psu_idx = idx, selpsu = selpsu,
-       d = d, v2 = (1 - p2_psu), design = sub$design)
+       d = d, design = sub$design)
 }
 
 # One replicate's two-phase factor vector (Poisson second phase): a single
@@ -179,11 +190,8 @@ apply_step.step_subsample <- function(step, data, w) {
 # re-runs cleanly on every replicate -- and gives slightly better coverage than a
 # two-point factor. Non-selected units get factor 1 (they leave the cascade at
 # step_subsample anyway). Units with d ~ 0 (no sampling variance) keep factor 1.
-.twophase_fac <- function(setup, cond_only = FALSE) {
-  # cond_only = FALSE: variance d = (1-f1)pi2 + (1-pi2) (simple phase 1, one factor).
-  # cond_only = TRUE : variance 1 - pi2 (phase-2 CONDITIONAL only; the phase-1
-  #   component is supplied separately by the stratified-cluster Rao-Wu).
-  v    <- if (cond_only) setup$v2 else setup$d
+.twophase_fac <- function(setup) {
+  v    <- setup$d
   npsu <- length(setup$selpsu)
   lam  <- rep(1, npsu)
   pos  <- v > 1e-12

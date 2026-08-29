@@ -1,4 +1,4 @@
-# weightflow 1.2.0 (development version)
+# weightflow 1.2.0
 
 ## New features
 
@@ -20,6 +20,7 @@
 
 ## Bug fixes
 
+* Nonresponse and unknown-eligibility steps with a `by` grouping now warn about missing values in the cell variables only for the units the step actually adjusts (still active), not for units already dropped earlier in the cascade (ineligible, unknown-eligibility, whole-household nonresponse) that commonly lack later-collected variables like sex or age. This removes a spurious "grouped into a '(missing)' cell" warning -- repeated once per bootstrap replicate -- on otherwise correct recipes.
 * **Behaviour change:** `boot_mean()`, `jack_mean()` and `collect_replicate_weights()` now keep active negative weights (a valid unbounded GREG output) rather than dropping them, matching the totals estimators and the `as_svydesign()` / `as_svrepdesign()` export. Estimates and standard errors may shift where a linear (GREG) calibration produced negative weights; the new results are the consistent ones.
 * Constructor argument validation is stricter: several `step_*()` functions now reject out-of-range or non-numeric values (trimming ratios, bounds, tolerances and iteration caps, assertion thresholds) at build time instead of failing later or passing silently.
 * Various robustness fixes for uncommon or malformed inputs, including missing values in calibration auxiliaries and post-stratification cells, negative calibration weights, empty or absent cells, degenerate bounds, integrative trimming with non-uniform incoming weights, and domain calibration with a scalar continuous total. Each fix is covered by a regression test.

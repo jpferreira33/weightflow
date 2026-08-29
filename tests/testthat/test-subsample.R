@@ -104,18 +104,16 @@ test_that("step_subsample composes with reference_sample (calibrate to phase 1)"
   expect_true(isTRUE(boot$two_phase))
 })
 
-test_that("phase-1 strata/psu compose with a two-phase recipe (clustered phase 1)", {
-  # A clustered/stratified first phase is the norm at NSOs. Passing strata/psu now
-  # makes the ordinary stratified-cluster Rao-Wu carry the first-phase variance,
-  # with the phase-2 conditional factor added on top. It should run and give a
-  # finite, positive SE (magnitude validated by Monte Carlo, not here).
+test_that("phase-1 strata/psu are refused with a two-phase recipe (TP-02)", {
+  # A clustered first phase is not folded into the coupling; refuse rather than
+  # silently drop its intra-cluster variance. (For that case, calibrate the
+  # subsample to the first-phase sample via reference_sample() instead.)
   df   <- .two_phase_df()
   df$stratum <- df$region
   spec <- weighting_spec(df, base_weights = w1) |>
     step_subsample(selected = sel2, prob = p2, psu = "hh")
-  boot <- bootstrap_weights(spec, replicates = 80L, strata = "stratum", psu = "hh",
-                            seed = 1, progress = FALSE)
-  expect_true(isTRUE(boot$two_phase))
-  se <- boot_mean(boot, "y")$se
-  expect_true(is.finite(se) && se > 0)
+  expect_error(
+    bootstrap_weights(spec, replicates = 50L, strata = "stratum", psu = "hh",
+                      seed = 1, progress = FALSE),
+    "not supported")
 })

@@ -264,13 +264,21 @@
       kv(.t("Mean PSUs per stratum", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
     if (!is.null(rep$df))
       kv(.t("Degrees of freedom", "Grados de libertad", lang), format(rep$df, big.mark = ",")) else "",
-    # FPC is a bootstrap concept only, and only when a non-zero fraction was given.
-    if (is_jack) "" else
+    # FPC is a bootstrap concept only. In two-phase mode it is the first-phase
+    # fraction f1; otherwise the ordinary finite-population correction.
+    if (is_jack) "" else if (tp)
+      kv(.t("First-phase fraction (f1)", "Fracci&oacute;n de fase 1 (f1)", lang),
+         if (!is.null(rep$fpc) && !(is.numeric(rep$fpc) && all(rep$fpc == 0)))
+           .t("applied", "aplicada", lang)
+         else .t("0 (assumed negligible)", "0 (asumida despreciable)", lang))
+    else
     kv(.t("Finite-population correction", "Correcci&oacute;n de poblaci&oacute;n finita (FPC)", lang),
        if (!is.null(rep$fpc) && !(is.numeric(rep$fpc) && all(rep$fpc == 0)))
          .t("applied", "aplicada", lang)
        else .t("None (with-replacement bootstrap)", "ninguna (bootstrap con reemplazo)", lang)),
-    kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
+    # Lonely-PSU handling is a single-phase resampling concept; omit it in two-phase.
+    if (tp) "" else
+      kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
     kv(.t("Recipe-aware replication", "Replicaci\u00f3n recipe-aware", lang),
        if (nrep > 0L && nfail >= nrep)
          .t("not applicable (all replicates failed)", "no aplica (todas las r\u00e9plicas fallaron)", lang)
