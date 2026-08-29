@@ -195,6 +195,71 @@
 
 ### Bug fixes
 
+- Two-phase variance now accepts a first-phase fraction `fpc` that
+  varies across phase-2 units (the per-region `fpc` column the
+  documentation advertises). The single-phase stratum-constancy check
+  was running even in two-phase mode – where it is unused – and rejected
+  a legitimately varying `fpc`; it is now skipped when a
+  [`step_subsample()`](https://jpferreira33.github.io/weightflow/reference/step_subsample.md)
+  is present (the per-PSU `f1` is validated inside the two-phase setup
+  instead).
+- Re-preparing or bootstrapping an already-prepped **non-probability**
+  spec no longer collapses every weight to 0.
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+  drops the synthetic all-ones base column (`.wf_base1`) from its output
+  so it does not leak; re-using the prepped spec then found the column
+  gone and read `NULL` base weights. The column is now re-materialised
+  wherever a prepped spec is re-run.
+- The AAPOR response-rate card no longer counts out-of-scope cases with
+  a missing (`NA`) disposition as nonrespondents. The disposition
+  reconstruction now passes `active` when evaluating the disposition
+  flags, so an `NA` on already-dropped units (ineligible / not contacted
+  – the normal multistage case) no longer aborts the evaluation and
+  falls back to all-`FALSE`; ineligible and unknown-eligibility cases
+  are also excluded from the nonrespondent bucket. Previously such a
+  recipe could report 0 respondents / RR = 0% / 100% nonresponse.
+- The two-phase bootstrap degrees of freedom now count only phase-2
+  sampling units that carry a positive final weight, so units dropped
+  before the subsample step (ineligible, whole-household nonresponse) no
+  longer inflate the df and the resulting t / percentile confidence
+  intervals.
+- Household-level nonresponse modelling now records its smallest
+  responding-household propensity and its calibration slope, so the
+  tiny-propensity alert and the propensity-calibration diagnostic fire
+  for extreme household adjustments exactly as they already did for
+  person-level ones (both were previously stored only on the
+  person-level path).
+- The bootstrap’s internal two-phase setup, the sample-level nonresponse
+  calibration, and the two weight-trimming steps now pass `active` when
+  they evaluate a selection/`by`/disposition expression, so an `NA` on
+  units already dropped earlier in the cascade no longer aborts the run
+  or raises a spurious `(missing)`-cell warning (the same `active=`
+  family as the fixes above).
+- Sample-level nonresponse calibration
+  (`step_nonresponse(method = "calibration")`) now rejects a `totals`
+  vector with duplicated names, matching
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md);
+  previously `c(a = 120, a = 80)` silently calibrated to the first value
+  and discarded the rest.
+- A model-based step (propensity, model calibration) that receives
+  negative case weights (from an earlier unbounded GREG calibration) now
+  fails with a message naming the cause and the fix, instead of the bare
+  [`glm()`](https://rdrr.io/r/stats/glm.html) error “negative weights
+  not allowed”.
+- The Spanish report now humanises the model engine in a step’s short
+  description (e.g. “random forest”) instead of printing the raw engine
+  id (“forest”), matching the English text.
+- [`as_sae_input()`](https://jpferreira33.github.io/weightflow/reference/as_sae_input.md)
+  now rates a domain with fewer than two active units as “not
+  publishable” instead of deriving a “publishable” rating from an
+  untrustworthy single-unit replicate CV.
+- [`write_recipe()`](https://jpferreira33.github.io/weightflow/reference/write_recipe.md)
+  /
+  [`read_recipe()`](https://jpferreira33.github.io/weightflow/reference/read_recipe.md)
+  now preserve an ordered factor – and `Date` / `POSIXct` columns – in a
+  control-totals table through the YAML round-trip; they were being read
+  back as plain character columns (the decoder had no case for those
+  classes).
 - Nonresponse and unknown-eligibility steps with a `by` grouping now
   warn about missing values in the cell variables only for the units the
   step actually adjusts (still active), not for units already dropped
