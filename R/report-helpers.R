@@ -361,11 +361,19 @@
   if (is.null(dcal) || !all(c("variable", "category", "target") %in% names(dcal)))
     return("")                                               # e.g. linear/GREG: skip
   data <- object$data; fin <- object$final_weight
+  # With domain calibration (step_calibrate(by=)) the diagnostics carry a `domain`
+  # column and one target PER domain; achieved must be recomputed within that
+  # domain, not over the whole sample (which would compare a domain target against
+  # the global total and report spurious drift).
+  byvar <- object$steps[[kc]]$by
+  has_dom <- !is.null(byvar) && "domain" %in% names(dcal) && byvar %in% names(data)
   rows <- lapply(seq_len(nrow(dcal)), function(r) {
     v <- as.character(dcal$variable[r]); ct <- as.character(dcal$category[r])
     tg <- suppressWarnings(as.numeric(dcal$target[r]))
     if (!v %in% names(data) || is.na(tg)) return(NULL)
-    ach <- sum(fin[as.character(data[[v]]) == ct], na.rm = TRUE)
+    sel <- as.character(data[[v]]) == ct
+    if (has_dom) sel <- sel & as.character(data[[byvar]]) == as.character(dcal$domain[r])
+    ach <- sum(fin[sel], na.rm = TRUE)
     data.frame(variable = v, category = ct, target = round(tg), achieved = round(ach),
                `dev %` = round(if (tg != 0) 100 * (ach - tg) / tg else NA_real_, 2),
                check.names = FALSE, stringsAsFactors = FALSE)

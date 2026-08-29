@@ -40,3 +40,12 @@ adjustments as known without error, so they are usually smaller. Use
 \code{as_svrepdesign()} (with \code{bootstrap_weights()} / \code{jackknife_weights()}) when
 the adjustment variability should be included.
 }
+\seealso{
+Other variance estimation:
+\code{\link[=bootstrap_estimate]{bootstrap_estimate()}},
+\code{\link[=bootstrap_weights]{bootstrap_weights()}},
+\code{\link[=collect_replicate_weights]{collect_replicate_weights()}},
+\code{\link[=jackknife_estimate]{jackknife_estimate()}},
+\code{\link[=jackknife_weights]{jackknife_weights()}}
+}
+\concept{variance estimation}

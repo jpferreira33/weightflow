@@ -3,7 +3,7 @@ Title: Declarative Recipes for Staged Survey Weighting with Recipe-Aware Replica
 Version: 1.1.0.9000
 Authors@R: c(
     person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy",
-           role = c("aut", "cre"),
+           role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0002-1884-8187")),
     person("Andrés", "Gutiérrez", role = "aut",
            comment = c(ORCID = "0009-0007-2918-1932")))
@@ -48,7 +48,8 @@ Suggests:
     knitr,
     rmarkdown,
     spelling,
-    xgboost
+    xgboost,
+    yaml
 Roxygen: list(markdown = TRUE, roclets = c("rd"))
 Config/roxygen2/version: 8.0.0
 URL: https://github.com/jpferreira33/weightflow, https://jpferreira33.github.io/weightflow/

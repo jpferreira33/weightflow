@@ -4,12 +4,23 @@
 \alias{weighting_spec}
 \title{Start a weighting specification}
 \usage{
-weighting_spec(data, base_weights)
+weighting_spec(data, base_weights = NULL, nonprob = FALSE)
 }
 \arguments{
 \item{data}{data.frame with the sample units (one row per case).}
 
-\item{base_weights}{unquoted name of the design base-weight column.}
+\item{base_weights}{unquoted name of the design base-weight column. For a
+non-probability sample with no design weights, leave it \code{NULL} and set
+\code{nonprob = TRUE}: every unit then starts with a base weight of 1.}
+
+\item{nonprob}{logical. Declare the sample as non-probability (an opt-in panel,
+a volunteer or river sample). Required when \code{base_weights = NULL}. The flag
+is recorded so the report states the sample is non-probability and adds the
+methodological caveat; a non-probability sample is usually adjusted with
+\code{\link[=step_pseudoweight]{step_pseudoweight()}} (inverse participation propensity against a reference)
+and/or \code{step_calibrate()} / \code{step_model_calibration()} to a \code{reference_sample()}.
+A non-probability panel that already carries recruitment/base weights can pass
+them as \code{base_weights} together with \code{nonprob = TRUE}.}
 }
 \value{
 an object of class "weighting_spec".
@@ -24,4 +35,6 @@ the result.
 \examples{
 rec <- weighting_spec(sample_survey, base_weights = pw)
 rec
+# a non-probability sample: no design weights, base weight 1
+np <- weighting_spec(sample_survey, base_weights = NULL, nonprob = TRUE)
 }

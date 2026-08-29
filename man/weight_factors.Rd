@@ -24,3 +24,13 @@ fitted <- weighting_spec(sample_survey, base_weights = pw) |>
   prep()
 head(weight_factors(fitted))
 }
+\seealso{
+Other cascade audit:
+\code{\link[=as_sae_input]{as_sae_input()}},
+\code{\link[=collect_propensities]{collect_propensities()}},
+\code{\link[=collect_step_detail]{collect_step_detail()}},
+\code{\link[=collect_weights]{collect_weights()}},
+\code{\link[=domain_summary]{domain_summary()}},
+\code{\link[=weighting_alerts]{weighting_alerts()}}
+}
+\concept{cascade audit}

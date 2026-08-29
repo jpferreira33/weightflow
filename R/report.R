@@ -60,6 +60,9 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   if (!inherits(object, "prepped_weighting_spec"))
     stop("Call prep() first; report_weighting() needs a prepped recipe.")
   lang <- match.arg(lang)
+  # Accept a named vector for `metadata` too: coerce to a list up front so the
+  # downstream `metadata$survey` access and the metadata card both work.
+  if (!is.null(metadata) && !is.list(metadata)) metadata <- as.list(metadata)
   if (is.null(file)) file <- tempfile("weightflow_report_", fileext = ".html")
 
   h    <- object$history
@@ -213,8 +216,12 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
       if (identical(cv, FALSE))
         sprintf(.t("<p class='muted'>stopped after %d iterations (did not converge)</p>",
                    "<p class='muted'>detenido tras %d iteraciones (no convergi\u00f3)</p>", lang), it)
-      else sprintf(.t("<p class='muted'>converged in %d iterations</p>",
-                      "<p class='muted'>convergi\u00f3 en %d iteraciones</p>", lang), it)
+      else if (identical(cv, TRUE))
+        sprintf(.t("<p class='muted'>converged in %d iterations</p>",
+                   "<p class='muted'>convergi\u00f3 en %d iteraciones</p>", lang), it)
+      else                          # convergence not tracked: state the count only, no claim
+        sprintf(.t("<p class='muted'>%d iterations</p>",
+                   "<p class='muted'>%d iteraciones</p>", lang), it)
     } else ""
     extra <- paste0(
       iter_html,
@@ -257,6 +264,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   wdist <- .weight_distribution_html(fin, lang, plots)
   exec  <- if (isTRUE(narrative)) .exec_summary(object, ri, de_f, lang, metadata$survey) else ""
   exec  <- paste0(exec, .status_checklist(object, de_f, object$final_weight, replicates, lang))
+  ddc_html <- if (isTRUE(object$nonprob)) .data_defect_card(object, lang) else ""
+  nrs_html <- .nr_sensitivity_card(object, lang)
   exec  <- paste0(exec, .attention_panel(object, lang))
   imsg  <- if (!is.finite(de_f$deff))
              .t("the design effect could not be computed \u2014 check the weights.",
@@ -305,10 +314,12 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
             sprintf("Receta completada con %d punto%s de atenci\u00f3n.", nis, if (nis == 1L) "" else "s"), lang)
     it <- c(sprintf("%d %s", ns, if (ns == 1L) .t("weighting step", "paso de ponderaci\u00f3n", lang)
                                  else .t("weighting steps", "pasos de ponderaci\u00f3n", lang)))
-    # Only claim "calibration constraints preserved" when the recipe actually has
-    # a constraint-imposing step (one that records a `converged` attribute); a
-    # recipe with no calibration has no constraints to preserve.
+    # Claim "calibration constraints preserved" when the recipe has a
+    # constraint-imposing step. Post-stratification meets its targets exactly by
+    # construction and emits no `converged` attribute, so it was being excluded;
+    # include it (and the other calibration steps) by class as well.
     has_constraints <- any(vapply(object$steps, function(st)
+      inherits(st, c("step_calibrate", "step_model_calibration", "step_trim_calibrated")) ||
       !is.null(attr(st$diagnostics, "converged")), logical(1)))
     if (has_constraints && ncv == 0L)
       it <- c(it, if (is.null(md) || !is.finite(md) || md < 0.05)
@@ -340,14 +351,23 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   # sections cannot be misaligned when one is added or removed.
   html <- paste0(
     sprintf("<!DOCTYPE html><html lang='%s'><head><meta charset='utf-8'>\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n", lang),
-    sprintf("<title>%s</title>", .t("weightflow report", "reporte weightflow", lang)), .report_css(), "</head><body>\n",
-    sprintf("<h1>weightflow &mdash; %s</h1>\n", .t("weighting recipe", "receta de ponderaci\u00f3n", lang)),
+    sprintf("<title>%s</title>", .t("weightflow &mdash; survey weighting report", "weightflow &mdash; reporte de ponderaci&oacute;n", lang)), .report_css(), "</head><body>\n",
+    sprintf("<h1>weightflow &mdash; %s</h1>\n", .t("survey weighting report", "reporte de ponderaci&oacute;n", lang)),
     sprintf("<p class='muted'>%s: <code>%s</code> &nbsp;|&nbsp; %d %s</p>\n",
-            .t("Base weights", "Pesos base", lang), .html_escape(object$base_weights),
+            .t("Base weights", "Pesos base", lang),
+            if (isTRUE(object$nonprob)) .t("1 (non-probability sample)",
+                                           "1 (muestra no probabil&iacute;stica)", lang)
+            else .html_escape(object$base_weights),
             length(object$steps),
             if (length(object$steps) == 1L) .t("step", "paso", lang)
             else .t("steps", "pasos", lang)),
     "<p class='prov'>", prov, "</p>\n",
+    if (isTRUE(object$nonprob))
+      sprintf("<div class='alert'><strong>%s</strong> %s</div>\n",
+        .t("Non-probability sample.", "Muestra no probabil&iacute;stica.", lang),
+        .t("This sample has no design weights; inference relies on adjustment against a probability reference (pseudo-weights and/or model calibration) and on the assumption that participation is ignorable given the covariates used. Estimates and their variances are model-dependent and should be read with that caveat.",
+           "Esta muestra no tiene pesos de dise&ntilde;o; la inferencia se apoya en el ajuste contra una referencia probabil&iacute;stica (pseudo-pesos y/o calibraci&oacute;n por modelo) y en el supuesto de que la participaci&oacute;n es ignorable dadas las covariables usadas. Las estimaciones y sus varianzas dependen del modelo y deben leerse con esa advertencia.", lang))
+    else "",
     "<div class='toolbar noprint'><button type='button' id='wf-pdf' class='wfbtn'>",
       .t("Download PDF", "Descargar PDF", lang), "</button></div>\n",
     "<nav aria-label=\"Contents\">", toc_html, "</nav>\n",
@@ -356,6 +376,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     "<div class='cards'>", cards, "</div>\n",
     racct, "\n",
     exec, "\n",
+    ddc_html, "\n",
+    nrs_html, "\n",
     repro_html, "\n",
     sprintf("<h2 id='pipeline'>%s</h2>", .t("Pipeline", "Flujo de pasos", lang)), diagram, "\n",
     sprintf("<p class='muted'>%s</p>", .t("Variables used:", "Variables usadas:", lang)), vars_chips, "\n",

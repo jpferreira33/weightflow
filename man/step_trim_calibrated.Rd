@@ -101,4 +101,26 @@ Deville, J.-C. and Sarndal, C.-E. (1992). Calibration estimators in
 survey sampling. Journal of the American Statistical Association, 87, 376-382.
 \doi{10.2307/2290268}. The totals-preserving trimming solves a bounded
 (range-restricted) calibration with the truncated distances introduced there.
+Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model for
+sampling weight calibration for extreme values, nonresponse and
+poststratification. Proceedings of the ASA Survey Research Methods Section,
+598-603, formalises the same range-restricted (generalized exponential) family.
 }
+\seealso{
+Other weighting steps:
+\code{\link[=step_assert]{step_assert()}},
+\code{\link[=step_calibrate]{step_calibrate()}},
+\code{\link[=step_drop_ineligible]{step_drop_ineligible()}},
+\code{\link[=step_model_calibration]{step_model_calibration()}},
+\code{\link[=step_nonresponse]{step_nonresponse()}},
+\code{\link[=step_nr_sensitivity]{step_nr_sensitivity()}},
+\code{\link[=step_pseudoweight]{step_pseudoweight()}},
+\code{\link[=step_rescale]{step_rescale()}},
+\code{\link[=step_round]{step_round()}},
+\code{\link[=step_select_within]{step_select_within()}},
+\code{\link[=step_subsample]{step_subsample()}},
+\code{\link[=step_trim]{step_trim()}},
+\code{\link[=step_trim_weights]{step_trim_weights()}},
+\code{\link[=step_unknown_eligibility]{step_unknown_eligibility()}}
+}
+\concept{weighting steps}

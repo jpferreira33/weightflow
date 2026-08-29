@@ -7,7 +7,14 @@
 # total given as `domain, value`) collapses to the single number for `d`.
 .split_totals_by_domain <- function(totals, byvar, count, d) {
   split_one <- function(t) {
-    if (!is.data.frame(t)) return(t)
+    # A bare number here is a national continuous total under `by`: returning it
+    # as-is would apply the SAME total to every domain (each domain calibrates to
+    # it, so the global total is over-counted). Require the per-domain form.
+    if (!is.data.frame(t))
+      stop(sprintf(paste0("A continuous calibration total given as a single number cannot be used ",
+                          "with `by = \"%s\"`: the same national total would be applied to every ",
+                          "domain. Give it as a data frame with columns `%s` and `value` (one total ",
+                          "per domain)."), byvar, byvar), call. = FALSE)
     if (!byvar %in% names(t))
       stop(sprintf("The calibration totals are missing the domain column '%s'.", byvar))
     sub <- t[as.character(t[[byvar]]) == d, , drop = FALSE]
@@ -167,9 +174,21 @@
   if (anyNA(pop[vars]))
     stop("The reference sample has missing values (NA) in the calibration variables; ",
          "every reference unit needs them complete. Impute or drop them first.", call. = FALSE)
+  # Drop unused factor levels: a level present in the factor definition but with no
+  # reference unit (common with a reference subset by region) would otherwise give
+  # an NA target that crashes the raking IPF. droplevels() keeps every row, so the
+  # reference weights stay aligned.
+  pop <- droplevels(pop)
   if (step$method == "raking") {
     step$margins <- stats::setNames(lapply(vars, function(v) {
-      t <- tapply(w_ref, pop[[v]], sum); stats::setNames(as.numeric(t), names(t))
+      t <- tapply(w_ref, pop[[v]], sum); m <- stats::setNames(as.numeric(t), names(t))
+      m <- m[!is.na(m)]
+      if (length(m) == 0L || any(m <= 0))
+        stop(sprintf(paste0("The reference sample gives a non-positive calibration total for a ",
+                            "level of '%s'; a category with zero total reference weight cannot be a ",
+                            "raking target. Check the reference coverage for that variable."), v),
+             call. = FALSE)
+      m
     }), vars)
   } else if (step$method == "poststratify") {
     agg <- stats::aggregate(list(Freq = w_ref), by = as.list(pop[vars]), FUN = sum)

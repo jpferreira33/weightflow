@@ -4,25 +4,107 @@
   shorts <- vapply(object$steps, function(s) .step_short(s, lang), character(1))
   n <- length(shorts)
   listed <- paste(sprintf("(%d) %s", seq_len(n), shorts), collapse = ", ")
-  what <- if (!is.null(survey))
-    .t(sprintf("the weights for <strong>%s</strong>", .html_escape(survey)),
-       sprintf("los pesos de <strong>%s</strong>", .html_escape(survey)), lang)
-    else .t("the survey weights", "los pesos de la encuesta", lang)
-  ri_s <- if (!is.null(ri))
-    .t(sprintf("; the response R-indicator is %.3f", ri$R),
-       sprintf("; el R-indicator de respuesta es %.3f", ri$R), lang) else ""
-  body <- .t(
-    sprintf("This report documents the construction of %s. %d adjustment %s applied: %s. The final weights have a Kish design effect of %.3f (effective sample size %s%s).",
-            what, n, if (n == 1L) "step was" else "steps were", listed, de_f$deff,
-            format(round(de_f$n_eff), big.mark = ","), ri_s),
-    sprintf("Este reporte documenta la construcci\u00f3n de %s. %s de ajuste: %s. Los pesos finales tienen un efecto de dise\u00f1o de Kish de %.3f (tama\u00f1o de muestra efectivo %s%s).",
-            what,
-            if (n == 1L) "Se aplic\u00f3 1 paso" else sprintf("Se aplicaron %d pasos", n),
-            listed, de_f$deff,
-            format(round(de_f$n_eff), big.mark = ","), ri_s),
+  neff <- format(round(de_f$n_eff), big.mark = ",")
+  # First sentence names the process (and the survey, when supplied).
+  s1 <- if (!is.null(survey))
+    .t(sprintf("This report documents the survey weighting process for <strong>%s</strong>.", .html_escape(survey)),
+       sprintf("Este reporte documenta el proceso de ponderaci&oacute;n de <strong>%s</strong>.", .html_escape(survey)), lang)
+    else .t("This report documents the survey weighting process.",
+            "Este reporte documenta el proceso de ponderaci&oacute;n de la muestra.", lang)
+  s2 <- .t(
+    sprintf("%s weighting %s applied: %s.", n, if (n == 1L) "step was" else "steps were", listed),
+    sprintf("%s de ponderaci&oacute;n: %s.",
+            if (n == 1L) "Se aplic&oacute; 1 paso" else sprintf("Se aplicaron %d pasos", n), listed),
     lang)
-  sprintf("<div class='exec'><h4>%s</h4><p>%s</p></div>",
+  s3 <- .t(
+    sprintf("The final survey weights have a Kish design effect of %.3f, corresponding to an effective sample size of %s.", de_f$deff, neff),
+    sprintf("Los pesos finales tienen un efecto de dise&ntilde;o de Kish de %.3f, que corresponde a un tama&ntilde;o de muestra efectivo de %s.", de_f$deff, neff),
+    lang)
+  s4 <- if (!is.null(ri))
+    .t(sprintf(" The response R-indicator is %.3f.", ri$R),
+       sprintf(" El R-indicator de respuesta es %.3f.", ri$R), lang) else ""
+  body <- paste0(s1, " ", s2, " ", s3, s4)
+  sprintf("<div class='exec feature-soft'><h4>%s</h4><p>%s</p></div>",
           .t("Executive summary", "Resumen ejecutivo", lang), body)
+}
+
+# Nonresponse-sensitivity block (proxy pattern-mixture, Andridge-Little 2011). The
+# ignorance interval for the study mean, read next to the sampling CI. "" if no
+# completed step_nr_sensitivity() is in the recipe.
+.nr_sensitivity_card <- function(object, lang) {
+  done <- Filter(function(s) isTRUE(attr(s$diagnostics, "nr_sensitivity")$ok), object$steps)
+  if (!length(done)) return("")
+  paste0(vapply(done, .nr_sensitivity_one, character(1), lang = lang), collapse = "")
+}
+
+# Render one sensitivity block for a single completed step.
+.nr_sensitivity_one <- function(hit, lang) {
+  a  <- attr(hit$diagnostics, "nr_sensitivity")
+  tb <- hit$diagnostics
+  g4 <- function(x) formatC(x, format = "g", digits = 4)
+  rows <- vapply(seq_len(nrow(tb)), function(i)
+    sprintf("<tr><td>%.2f</td><td>%s</td></tr>", tb$phi[i], g4(tb$mu[i])), character(1))
+  hd <- paste0("<th scope='col'>",
+               c("&phi;", .t("Adjusted mean", "Media ajustada", lang)), "</th>", collapse = "")
+  grid <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+                  hd, paste(rows, collapse = ""))
+  lead <- .t(
+    sprintf("Ignorance interval for the mean of <code>%s</code>: [%s, %s]. This is the range the estimate could take if response depended on the outcome itself beyond the observed auxiliaries, to read alongside the sampling confidence interval.",
+            .html_escape(a$y_var), g4(a$ignorance_lo), g4(a$ignorance_hi)),
+    sprintf("Intervalo de ignorancia para la media de <code>%s</code>: [%s, %s]. Es el rango que la estimaci&oacute;n podr&iacute;a tomar si la respuesta dependiera del propio resultado m&aacute;s all&aacute; de las auxiliares observadas, para leer junto al intervalo de confianza por muestreo.",
+            .html_escape(a$y_var), g4(a$ignorance_lo), g4(a$ignorance_hi)), lang)
+  note <- .t(
+    sprintf("Proxy pattern-mixture (Andridge and Little 2011). &phi; = 0 is ignorable given the proxy (MAR estimate %s); &phi; = 1 is response depending only on the outcome; &phi; = 0.5 is a central value (Little et al. 2020). Proxy strength &rho; = %.3f (a weaker proxy widens the interval). Respondents %s, nonrespondents %s.",
+            g4(a$mu_mar), a$rho, format(a$n_resp, big.mark = ","), format(a$n_nonresp, big.mark = ",")),
+    sprintf("Mixtura de patrones con proxy (Andridge y Little 2011). &phi; = 0 es ignorable dado el proxy (estimaci&oacute;n MAR %s); &phi; = 1 es respuesta que depende solo del resultado; &phi; = 0.5 es un valor central (Little et al. 2020). Fuerza del proxy &rho; = %.3f (un proxy m&aacute;s d&eacute;bil ampl&iacute;a el intervalo). Respondentes %s, no respondentes %s.",
+            g4(a$mu_mar), a$rho, format(a$n_resp, big.mark = ","), format(a$n_nonresp, big.mark = ",")), lang)
+  sprintf("<div class='meta'><h4>%s</h4><p>%s</p>%s<p class='note'>%s</p></div>",
+          .t("Nonresponse sensitivity (ignorance interval)",
+             "Sensibilidad a la no respuesta (intervalo de ignorancia)", lang),
+          lead, grid, note)
+}
+
+# Prominent block for a NON-probability sample: Meng's (2018) data-defect view.
+# The effective sample size is governed by the (unobservable) outcome-participation
+# correlation, so we show the ignorance range over a grid of residual rho, plus the
+# measurable selection strength on the covariates. Reads data_defect(); "" if it
+# does not apply (not nonprob, or N <= n).
+.data_defect_card <- function(object, lang) {
+  dd <- tryCatch(data_defect(object), error = function(e) NULL)
+  if (is.null(dd)) return("")
+  nf <- function(x) format(round(x), big.mark = ",", scientific = FALSE)
+  facts <- sprintf("<div class='ddc-facts'>%s%s%s</div>",
+    .metric(.t("Sample size (n)", "Tama&ntilde;o muestral (n)", lang), nf(dd$n)),
+    .metric(.t("Estimated population (N)", "Poblaci&oacute;n estimada (N)", lang), nf(dd$N)),
+    .metric(.t("Sampling fraction (f = n/N)", "Fracci&oacute;n (f = n/N)", lang),
+            formatC(dd$f, format = "f", digits = 4)))
+  aux_html <- if (!is.null(dd$aux) && nrow(dd$aux)) {
+    top <- dd$aux[1L, ]
+    sprintf("<p>%s</p>", .t(
+      sprintf("Selection strength on the observed covariates: the strongest correlation between an auxiliary and participation is |r| = %.3f (<code>%s</code>). Pseudo-weighting neutralises the selection explained by these covariates; what stays unmeasured is the defect on the target variable itself.",
+              abs(top$corr), .html_escape(top$covariate)),
+      sprintf("Fuerza de la selecci&oacute;n en las covariables observadas: la correlaci&oacute;n m&aacute;s fuerte entre una auxiliar y la participaci&oacute;n es |r| = %.3f (<code>%s</code>). El pseudo-peso neutraliza la selecci&oacute;n explicada por esas covariables; lo que queda sin medir es el defecto sobre la variable de inter&eacute;s misma.",
+              abs(top$corr), .html_escape(top$covariate)), lang))
+  } else ""
+  hd <- paste0("<th scope='col'>",
+               c(.t("Residual data-defect correlation |&rho;|", "Correlaci&oacute;n de defecto residual |&rho;|", lang),
+                 .t("Effective sample size", "Tama&ntilde;o muestral efectivo", lang)),
+               "</th>", collapse = "")
+  rows <- vapply(seq_len(nrow(dd$grid)), function(i)
+    sprintf("<tr><td>%.3f</td><td class='neff'>%s</td></tr>",
+            dd$grid$ddc[i], nf(dd$grid$n_eff[i])), character(1))
+  grid_html <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+                       hd, paste(rows, collapse = ""))
+  lead <- .t(
+    "Big Data Paradox: for a non-probability sample the error is driven by the correlation between the outcome and participation (the data-defect correlation), not by the sample size. A tiny residual correlation collapses a large sample to a small effective one.",
+    "Paradoja de los datos masivos: en una muestra no probabil&iacute;stica el error lo gobierna la correlaci&oacute;n entre la variable y la participaci&oacute;n (la correlaci&oacute;n de defecto), no el tama&ntilde;o muestral. Una correlaci&oacute;n residual min&uacute;scula reduce una muestra grande a una efectiva chica.", lang)
+  note <- .t(
+    "Effective size n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). The residual &rho; on the target variable is not observable from the sample, so read the table as an ignorance range, not a single number: it holds for any estimand with that residual correlation. See Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.",
+    "Tama&ntilde;o efectivo n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). El &rho; residual sobre la variable de inter&eacute;s no es observable desde la muestra, as&iacute; que la tabla se lee como un rango de ignorancia, no un &uacute;nico n&uacute;mero: vale para cualquier estimando con esa correlaci&oacute;n residual. Ver Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.", lang)
+  sprintf("<div class='ddc feature'><h4>%s</h4><p class='ddc-lead'>%s</p>%s%s%s<p class='note'>%s</p></div>",
+          .t("Data-defect diagnostics (non-probability sample)",
+             "Diagn&oacute;stico de defecto de datos (muestra no probabil&iacute;stica)", lang),
+          lead, facts, aux_html, grid_html, note)
 }
 
 # Aggregates non-convergence and quality alerts across steps into a top panel
@@ -52,26 +134,32 @@
 .status_checklist <- function(object, de_f, fin, replicates, lang) {
   nonconv <- sum(vapply(object$steps, function(s)
     identical(attr(s$diagnostics, "converged"), FALSE), logical(1)))
+  # Only a step that tracks convergence (a calibration) can support the claim; do
+  # not print "all steps converged" for a recipe with no such step (vacuously true).
+  has_conv <- any(vapply(object$steps,
+                         function(s) !is.null(attr(s$diagnostics, "converged")), logical(1)))
   nalert  <- sum(vapply(object$steps, function(s)
     !is.null(s$alerts) && length(s$alerts) > 0L, logical(1)))
-  pos <- fin[fin > 0]; med <- stats::median(pos); n_ext <- sum(pos > 4 * med)
+  pos <- fin[fin > 0]; med <- if (length(pos)) stats::median(pos) else NA_real_
+  n_ext <- if (length(pos)) sum(pos > 4 * med) else 0L
   has_rep <- !is.null(replicates) &&
              inherits(replicates, c("weightflow_boot", "weightflow_jack"))
   item <- function(ok, txt) sprintf("<li><span class='%s'>%s</span> %s</li>",
     if (ok) "ok" else "no", if (ok) "&#10003;" else "&#10007;", txt)
   items <- c(
-    item(nonconv == 0L, if (nonconv == 0L)
+    if (has_conv) item(nonconv == 0L, if (nonconv == 0L)
       .t("All calibration steps converged.", "Todos los pasos de calibraci\u00f3n convergieron.", lang)
       else .t(sprintf("%d step(s) did not converge.", nonconv),
-              sprintf("%d paso(s) no convergieron.", nonconv), lang)),
-    item(TRUE, .t(sprintf("Final Kish design effect = %.3f (effective n = %s).",
+              sprintf("%d paso(s) no convergieron.", nonconv), lang)) else NULL,
+    item(TRUE, .t(sprintf("Final Kish design effect: %.3f (effective sample size: %s).",
                           de_f$deff, format(round(de_f$n_eff), big.mark = ",")),
-                  sprintf("Efecto de dise\u00f1o de Kish final = %.3f (n efectivo = %s).",
+                  sprintf("Efecto de dise\u00f1o de Kish final: %.3f (tama\u00f1o de muestra efectivo: %s).",
                           de_f$deff, format(round(de_f$n_eff), big.mark = ",")), lang)),
-    item(n_ext == 0L, if (n_ext == 0L)
-      .t("No extreme weights (above 4x the median).", "Sin pesos extremos (mayores a 4x la mediana).", lang)
-      else .t(sprintf("%d extreme weight(s) above 4x the median.", n_ext),
-              sprintf("%d peso(s) extremo(s) por encima de 4x la mediana.", n_ext), lang)),
+    if (length(pos)) item(n_ext == 0L, if (n_ext == 0L)
+      .t("No weights exceed the extreme-weight threshold (four times the median weight).",
+         "Ning\u00fan peso supera el umbral de peso extremo (cuatro veces el peso mediano).", lang)
+      else .t(sprintf("%d weight(s) exceed the extreme-weight threshold of four times the median weight.", n_ext),
+              sprintf("%d peso(s) superan el umbral de peso extremo de cuatro veces el peso mediano.", n_ext), lang)) else NULL,
     item(has_rep, if (has_rep)
       .t("Replicate weights for variance created.", "Pesos r\u00e9plica para la varianza creados.", lang)
       else .t("Replicate weights not created (add bootstrap/jackknife for variance).",
@@ -141,17 +229,21 @@
   if (is.null(rep) || !inherits(rep, c("weightflow_boot", "weightflow_jack")))
     return("")
   is_jack <- inherits(rep, "weightflow_jack")
+  tp      <- isTRUE(rep$two_phase)
   method <- if (is_jack)
     (if (!is.null(rep$strata))
        .t("Jackknife (delete-a-PSU, JKn)", "Jackknife (borra-una-UPM, JKn)", lang)
      else .t("Jackknife (JK1)", "Jackknife (JK1)", lang))
+    else if (tp)
+       .t("Two-phase bootstrap (phase-1 + phase-2 coupling)",
+          "Bootstrap de dos fases (acople fase-1 + fase-2)", lang)
     else .t("Bootstrap (Rao-Wu rescaling)", "Bootstrap (reescalado Rao-Wu)", lang)
   d  <- rep$data
   st <- if (is.null(rep$strata)) rep("1", nrow(d)) else as.character(d[[rep$strata]])
   cl <- if (is.null(rep$psu)) as.character(seq_len(nrow(d))) else as.character(d[[rep$psu]])
   nstr     <- length(unique(st))
   pps      <- tapply(cl, st, function(z) length(unique(z)))
-  lonely_n <- sum(pps < 2L)
+  lonely_n <- if (tp) 0L else sum(pps < 2L)
   secs <- rep$elapsed
   nrep  <- if (!is.null(rep$replicates)) ncol(rep$replicates) else rep$R
   nfail <- if (!is.null(rep$replicates)) sum(apply(rep$replicates, 2, anyNA)) else 0L
@@ -163,21 +255,27 @@
     kv(.t("Method", "M\u00e9todo", lang), method),
     kv(.t("Replicates (B)", "R\u00e9plicas (B)", lang), format(rep$R, big.mark = ",")),
     kv(.t("Failed replicates", "R\u00e9plicas fallidas", lang),
-       sprintf("%s of %s%s", format(nfail, big.mark = ","), format(nrep, big.mark = ","),
-               if (nrep == 0L) "" else if (nfail == 0L)
-                 .t(" (all usable)", " (todas utilizables)", lang) else "")),
-    kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
-    kv(.t("PSUs per stratum (mean)", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
+       sprintf("%s of %s", format(nfail, big.mark = ","), format(nrep, big.mark = ","))),
+    if (tp)
+      kv(.t("Phase-2 sampling units", "Unidades de muestreo de fase 2", lang),
+         format(if (!is.null(rep$design$n_psu2)) rep$design$n_psu2 else nstr, big.mark = ","))
+    else kv(.t("Strata", "Estratos", lang), format(nstr, big.mark = ",")),
+    if (tp) "" else
+      kv(.t("Mean PSUs per stratum", "UPM por estrato (media)", lang), sprintf("%.1f", mean(pps))),
     if (!is.null(rep$df))
       kv(.t("Degrees of freedom", "Grados de libertad", lang), format(rep$df, big.mark = ",")) else "",
+    # FPC is a bootstrap concept only, and only when a non-zero fraction was given.
+    if (is_jack) "" else
     kv(.t("Finite-population correction", "Correcci&oacute;n de poblaci&oacute;n finita (FPC)", lang),
-       if (is.null(rep$fpc)) .t("none (with replacement)", "ninguna (con reemplazo)", lang)
-       else .t("applied", "aplicada", lang)),
+       if (!is.null(rep$fpc) && !(is.numeric(rep$fpc) && all(rep$fpc == 0)))
+         .t("applied", "aplicada", lang)
+       else .t("None (with-replacement bootstrap)", "ninguna (bootstrap con reemplazo)", lang)),
     kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
-    kv(.t("Recipe-aware", "Recipe-aware", lang),
+    kv(.t("Recipe-aware replication", "Replicaci\u00f3n recipe-aware", lang),
        if (nrep > 0L && nfail >= nrep)
          .t("not applicable (all replicates failed)", "no aplica (todas las r\u00e9plicas fallaron)", lang)
-       else .t("yes (whole cascade re-run per replicate)", "s\u00ed (toda la cascada por r\u00e9plica)", lang)),
+       else .t("Full weighting procedure re-run for each replicate",
+               "todo el procedimiento de ponderaci\u00f3n se recalcula en cada r\u00e9plica", lang)),
     if (!is_jack) kv(.t("Seed", "Semilla", lang), na(rep$seed)) else "",
     kv(.t("Cores", "Cores", lang), na(rep$cores)),
     kv(.t("Run time", "Tiempo de ejecuci\u00f3n", lang), tfmt))
@@ -208,8 +306,13 @@
   if (!is.null(object) && !is.null(object$steps)) {
     hit <- Filter(function(s) inherits(s$population, "wf_reference_sample"), object$steps)
     if (length(hit)) {
-      has_rep <- any(vapply(hit, function(s) !is.null(attr(s$population, "wf_ref_replicates")),
-                            logical(1)))
+      # Only the BOOTSTRAP pairs each replicate with the reference's replicate to
+      # re-estimate the totals; the delete-a-PSU jackknife has no such pairing and
+      # treats the estimated totals as fixed (see reference_sample() docs). So the
+      # propagation claim holds only for a bootstrap object.
+      has_rep <- !is_jack &&
+        any(vapply(hit, function(s) !is.null(attr(s$population, "wf_ref_replicates")),
+                   logical(1)))
       ref_note <- if (has_rep)
         sprintf("<p class='note'>%s</p>", .t(
           "Some control totals are estimated from a reference survey; their sampling variance is propagated through these replicates (each replicate re-estimates the totals from the paired reference replicate; Opsomer and Erciulescu 2021).",
@@ -219,12 +322,18 @@
               "Algunos totales de control se estiman a partir de una encuesta de referencia pero se trataron como fijos (sin pesos r\u00e9plica de la referencia), as\u00ed que esta varianza por replicaci\u00f3n omite su error muestral y puede quedar subestimada.", lang))
     }
   }
+  # A plain status line when every replicate produced valid weights.
+  ok_line <- if (nrep > 0L && nfail == 0L)
+    sprintf("<p class='note'>%s</p>", .t(
+      sprintf("All %s replicates completed successfully.", format(nrep, big.mark = ",")),
+      sprintf("Las %s r\u00e9plicas se completaron correctamente.", format(nrep, big.mark = ",")), lang))
+    else ""
   sprintf(
-    "<div class='meta racct'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s<p class='note'>%s</p></div>",
-    .t("Replication design for variance", "Dise\u00f1o de replicaci\u00f3n para la varianza", lang),
-    body, fail_alert, warn, ref_note,
-    .t("Replicate weights carry the variability of every adjustment. For standard errors, CV and confidence intervals of specific estimates, use these weights with the 'survey' or 'srvyr' package.",
-       "Los pesos r\u00e9plica arrastran la variabilidad de cada ajuste. Para errores est\u00e1ndar, CV e intervalos de confianza de estimaciones concretas, us\u00e1 estos pesos con 'survey' o 'srvyr'.", lang))
+    "<div class='meta racct feature'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s%s<p class='note'>%s</p></div>",
+    .t("Replication-based variance estimation", "Estimaci\u00f3n de la varianza por replicaci\u00f3n", lang),
+    body, ok_line, fail_alert, warn, ref_note,
+    .t("For each replicate, the complete survey weighting procedure is re-run. The resulting replicate weights therefore reflect the sampling variability associated with the weighting adjustments that are re-estimated within the replication procedure. Use the final and replicate weights with the 'survey' or 'srvyr' package to estimate standard errors, coefficients of variation, and confidence intervals for specific survey estimates.",
+       "En cada r\u00e9plica se recalcula todo el procedimiento de ponderaci\u00f3n. Los pesos r\u00e9plica resultantes reflejan la variabilidad muestral asociada a los ajustes de ponderaci\u00f3n que se reestiman dentro del procedimiento de replicaci\u00f3n. Us\u00e1 los pesos finales y los pesos r\u00e9plica con 'survey' o 'srvyr' para estimar errores est\u00e1ndar, coeficientes de variaci\u00f3n e intervalos de confianza de estimaciones concretas.", lang))
 }
 
 
@@ -331,7 +440,7 @@
                  "Disposici&oacute;n AAPOR de la muestra emitida: conteos, porcentaje y sumas ponderadas por el peso base seg&uacute;n categor&iacute;a de resultado.", lang)
   cap_rate <- .t("AAPOR eligibility and response rates, unweighted and base-weighted.",
                  "Tasas AAPOR de elegibilidad y respuesta, sin ponderar y ponderadas por el peso base.", lang)
-  sprintf("<div class='meta racct'><h4>%s</h4>%s
+  sprintf("<div class='meta racct feature'><h4>%s</h4>%s
     <table class='params'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%%</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     <table class='params' style='margin-top:10px'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     <p class='note'>%s</p></div>",
@@ -351,6 +460,10 @@
 # bilingual label in a fixed order, and any extra keys are shown generically.
 .metadata_card <- function(md, lang) {
   if (is.null(md) || !length(md)) return("")
+  # Accept a named vector too, and collapse multi-value entries to one string so a
+  # length > 1 value does not break the `if (nzchar(...))` guards or the row sprintf.
+  if (!is.list(md)) md <- as.list(md)
+  mdv <- function(x) paste(as.character(x), collapse = "; ")
   known <- c(
     survey          = .t("Statistical operation", "Operaci\u00f3n estad\u00edstica", lang),
     reference_period= .t("Reference period", "Per\u00edodo de referencia", lang),
@@ -369,11 +482,11 @@
                                 k, .html_escape(as.character(v)))
   rows <- row(.t("GSBPM sub-process", "Subproceso GSBPM", lang),
               .t("5.6 Calculate weights", "5.6 Calcular ponderaciones", lang))
-  for (k in names(known)) if (!is.null(md[[k]]) && nzchar(as.character(md[[k]])))
-    rows <- paste0(rows, row(known[[k]], md[[k]]))
+  for (k in names(known)) if (!is.null(md[[k]]) && nzchar(mdv(md[[k]])))
+    rows <- paste0(rows, row(known[[k]], mdv(md[[k]])))
   for (k in setdiff(names(md), names(known)))
-    if (nzchar(k) && !is.null(md[[k]]) && nzchar(as.character(md[[k]])))
-      rows <- paste0(rows, row(.html_escape(k), md[[k]]))
+    if (nzchar(k) && !is.null(md[[k]]) && nzchar(mdv(md[[k]])))
+      rows <- paste0(rows, row(.html_escape(k), mdv(md[[k]])))
   sprintf("<div class='meta'><h4>%s</h4><table class='params'><caption class='sr-only'>%s</caption>%s</table></div>",
           .t("Reference metadata (SIMS / GSBPM 5.6)", "Metadatos de referencia (SIMS / GSBPM 5.6)", lang),
           .t("Reference metadata: key survey and calibration concepts (SIMS / GSBPM 5.6).",

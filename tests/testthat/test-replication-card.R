@@ -5,7 +5,7 @@ test_that(".replication_card renders a jackknife design and flags lonely PSU", {
     lonely_psu = "collapse", cores = 1L, elapsed = 12.3),
     class = "weightflow_jack")
   h <- weightflow:::.replication_card(fake, "en")
-  expect_match(h, "Replication design")
+  expect_match(h, "Replication-based variance estimation")
   expect_match(h, "JKn")           # strata present -> JKn
   expect_match(h, "12.3 s")        # run time
   expect_match(h, "single PSU")    # lonely-PSU attention note (S has 1 PSU)

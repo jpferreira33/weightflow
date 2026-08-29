@@ -60,3 +60,12 @@ spec <- weighting_spec(sample_one, base_weights = pw) |>
 jk <- jackknife_weights(spec, strata = "region", psu = "psu", progress = FALSE)
 jack_total(jk, "employed")
 }
+\seealso{
+Other variance estimation:
+\code{\link[=as_svydesign]{as_svydesign()}},
+\code{\link[=bootstrap_estimate]{bootstrap_estimate()}},
+\code{\link[=bootstrap_weights]{bootstrap_weights()}},
+\code{\link[=collect_replicate_weights]{collect_replicate_weights()}},
+\code{\link[=jackknife_estimate]{jackknife_estimate()}}
+}
+\concept{variance estimation}

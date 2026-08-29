@@ -185,6 +185,7 @@ reference_sample <- function(data, weights, replicates = NULL) {
 #'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
+#' @family weighting steps
 step_model_calibration <- function(spec, x_formula, models, population,
                                    x_totals = NULL, count = "Freq",
                                    cluster = NULL, equal_within_cluster = FALSE,
@@ -196,8 +197,24 @@ step_model_calibration <- function(spec, x_formula, models, population,
   if (!inherits(x_formula, "formula")) stop("`x_formula` must be a formula ~ x.")
   if (!is.list(models) || is.null(names(models)))
     stop("`models` must be a named list of y_model().")
+  # Each element must be a y_model() result, not a bare formula (a common slip:
+  # models = list(y = y ~ x)), which would crash later reaching for $engine.
+  if (!all(vapply(models, function(m) inherits(m, "wf_y_model"), logical(1))))
+    stop("Each element of `models` must be a y_model() result, e.g. list(income = y_model(income ~ age + sex)).",
+         call. = FALSE)
   if (!is.data.frame(population))
     stop("`population` must be a data.frame with the auxiliaries/predictors for the whole population.")
+  equal_within_cluster <- .wf_flag(equal_within_cluster, "equal_within_cluster")
+  id <- .wf_id(id)
+  if (!is.null(crossfit)) {
+    if (!is.numeric(crossfit) || length(crossfit) != 1L || !is.finite(crossfit) ||
+        crossfit < 2 || crossfit != round(crossfit))
+      stop("`crossfit` must be NULL or a single integer >= 2 (number of folds).", call. = FALSE)
+    crossfit <- as.integer(crossfit)
+  }
+  if (!is.null(crossfit_seed) &&
+      (!is.numeric(crossfit_seed) || length(crossfit_seed) != 1L || !is.finite(crossfit_seed)))
+    stop("`crossfit_seed` must be NULL or a single finite number.", call. = FALSE)
   if (equal_within_cluster && is.null(cluster))
     stop("equal_within_cluster = TRUE requires `cluster`.")
   if (!is.null(crossfit) && (!is.numeric(crossfit) || crossfit < 2))
@@ -250,6 +267,7 @@ step_model_calibration <- function(spec, x_formula, models, population,
 #' @return The input `weighting_spec` with this checkpoint appended to its
 #'   recipe. The check is recorded only; it is evaluated when `prep()` is called
 #'   and does not modify the weights.
+#' @family weighting steps
 step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
                         min_n_eff = NULL, on_fail = c("error", "warning"), id = NULL) {
   on_fail <- match.arg(on_fail)
@@ -318,6 +336,7 @@ step_assert <- function(spec, max_deff = NULL, max_weight_ratio = NULL,
 #'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
+#' @family weighting steps
 step_trim_weights <- function(spec, lower = 1, upper = NULL,
                               method = c("tukey", "potter"),
                               redistribute = c("proportional", "uniform"),
@@ -329,12 +348,18 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
   # recycled to a scalar and silently applied to everyone. Reject it and point to
   # step_trim_calibrated(), which does take per-subgroup bounds through `by`.
   chk_scalar <- function(x, nm) {
-    if (!is.null(x) && (length(x) != 1L || !is.null(names(x))))
+    if (is.null(x)) return(invisible())
+    if (length(x) != 1L || !is.null(names(x)))
       stop(sprintf(paste0("`%s` in step_trim_weights() must be a single unnamed number; ",
                           "got %s. For per-group bounds use step_trim_calibrated(by = ...)."),
                    nm, deparse(x)[1]), call. = FALSE)
+    if (!is.numeric(x) || is.na(x))
+      stop(sprintf("`%s` in step_trim_weights() must be a single number (Inf/-Inf allowed for no bound); got %s.",
+                   nm, deparse(x)[1]), call. = FALSE)
   }
   chk_scalar(lower, "lower"); chk_scalar(upper, "upper")
+  if (!is.null(lower) && !is.null(upper) && lower >= upper)
+    stop("`lower` must be strictly below `upper`.", call. = FALSE)
   step <- structure(
     list(
       label  = if (method == "potter") "auto weight trimming (Potter MSE)"
@@ -407,6 +432,10 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #'   survey sampling. Journal of the American Statistical Association, 87, 376-382.
 #'   \doi{10.2307/2290268}. The totals-preserving trimming solves a bounded
 #'   (range-restricted) calibration with the truncated distances introduced there.
+#'   Folsom, R. E. and Singh, A. C. (2000). The generalized exponential model for
+#'   sampling weight calibration for extreme values, nonresponse and
+#'   poststratification. Proceedings of the ASA Survey Research Methods Section,
+#'   598-603, formalises the same range-restricted (generalized exponential) family.
 #' @examples
 #' # calibrate, then trim the calibrated weights into [5.5, 13.5] without breaking
 #' # the region/sex totals (the calibrated weights of sample_survey live in ~[5.4, 14])
@@ -421,17 +450,29 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
+#' @family weighting steps
 step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
                                  calfun = c("linear", "raking"), by = NULL,
                                  cluster = NULL, equal_within_cluster = FALSE,
                                  maxit = 100L, tol = 1e-7, id = NULL) {
   calfun <- match.arg(calfun)
+  equal_within_cluster <- .wf_flag(equal_within_cluster, "equal_within_cluster")
+  id <- .wf_id(id)
   if (missing(formula) || !inherits(formula, "formula"))
     stop("`formula` must be a formula naming the auxiliaries to preserve, ",
          "e.g. ~ region + age_group.")
   maxit <- .wf_count(maxit, "maxit", min = 1L)
   if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol <= 0)
     stop("`tol` must be a single positive finite number.", call. = FALSE)
+  # Validate the bounds are numeric BEFORE the lower >= upper comparison, which
+  # would otherwise compare strings lexicographically (e.g. lower = "5").
+  chk_bnd <- function(b, nm) {
+    if (is.null(b)) return(invisible())
+    if (!is.numeric(b) || anyNA(b))
+      stop(sprintf(paste0("`%s` must be a numeric vector of bounds (a single number, or ",
+                          "one per `by` group); got %s."), nm, deparse(b)[1]), call. = FALSE)
+  }
+  chk_bnd(lower, "lower"); chk_bnd(upper, "upper")
   if (is.null(lower) && is.null(upper))
     stop("Supply at least one of `lower` / `upper` (the absolute weight bounds).")
   # `lower`/`upper` may be a single number (same bound for every unit) or, with
@@ -490,6 +531,7 @@ step_trim_calibrated <- function(spec, formula, lower = NULL, upper = NULL,
 #'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
+#' @family weighting steps
 step_rescale <- function(spec, to = c("n", "total"), total = NULL, by = NULL, id = NULL) {
   to <- match.arg(to)
   if (to == "total" && is.null(total)) stop("to = 'total' requires `total`.")

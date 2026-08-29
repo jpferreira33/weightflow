@@ -112,7 +112,7 @@ test_that("degenerate-but-valid extremes render sanely: equal weights (deff=1), 
   deb <- design_effect(collect_weights(pb, drop_zero = FALSE)$.weight)
   expect_true(grepl(format(round(deb$deff, 2)), hb, fixed = TRUE) ||
               grepl(format(round(deb$deff, 3)), hb, fixed = TRUE))
-  expect_true(grepl("extreme weight", hb, ignore.case = TRUE))
+  expect_true(grepl("extreme[ -]weight", hb, ignore.case = TRUE))
 })
 
 test_that("wild linear calibration surfaces its own alarms: under-weighting, Deville-Sarndal g bounds, collinearity", {

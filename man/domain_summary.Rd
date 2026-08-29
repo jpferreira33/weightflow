@@ -4,7 +4,7 @@
 \alias{domain_summary}
 \title{Per-domain weight summary at every stage of the cascade}
 \usage{
-domain_summary(object, by)
+domain_summary(object, by, min_n_eff = NULL)
 }
 \arguments{
 \item{object}{a prepped \code{weighting_spec} (the output of \code{\link[=prep]{prep()}}).}
@@ -14,14 +14,22 @@ domain_summary(object, by)
 the factor levels of the column (or numerically for a numeric column); units
 with a missing domain value are shown as a \code{"(missing)"} domain rather than
 dropped silently.}
+
+\item{min_n_eff}{optional publication threshold. When set to a positive number,
+the result gains a logical \code{publishable} column (whether the domain's
+final-stage effective sample size reaches the threshold) and a warning names
+the domains that fall below it, turning the implicit reliability read into an
+explicit gate. Domains below the threshold are candidates for small-area
+estimation (see \code{\link[=as_sae_input]{as_sae_input()}}) rather than direct estimation.}
 }
 \value{
 A \code{data.frame} with one row per stage x domain and the columns
 \code{stage} (an ordered factor: base weights, then \verb{1. <step>}, \verb{2. <step>},
 ...), \code{domain} (an ordered factor), \code{n_active} (active units in the domain at
 that stage), \code{sum_w} (sum of the active weights), \code{mean_w}, \code{deff} (the Kish
-design effect within the domain) and \code{n_eff}. Reading down a domain shows how
-its weight total and dispersion evolve step by step.
+design effect within the domain) and \code{n_eff}; and, when \code{min_n_eff} is given,
+\code{publishable}. Reading down a domain shows how its weight total and dispersion
+evolve step by step.
 }
 \description{
 For quality control by study domain (for example a department / DAM), this
@@ -39,4 +47,13 @@ domain_summary(fit, by = "region")
 }
 \seealso{
 \code{\link[=design_effect]{design_effect()}}, \code{\link[=weight_factors]{weight_factors()}}, \code{\link[=summary.prepped_weighting_spec]{summary.prepped_weighting_spec()}}
+
+Other cascade audit:
+\code{\link[=as_sae_input]{as_sae_input()}},
+\code{\link[=collect_propensities]{collect_propensities()}},
+\code{\link[=collect_step_detail]{collect_step_detail()}},
+\code{\link[=collect_weights]{collect_weights()}},
+\code{\link[=weight_factors]{weight_factors()}},
+\code{\link[=weighting_alerts]{weighting_alerts()}}
 }
+\concept{cascade audit}

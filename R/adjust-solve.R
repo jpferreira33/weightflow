@@ -65,6 +65,21 @@
          call. = FALSE)
   as.integer(x)
 }
+.wf_num <- function(x, arg, min = -Inf, max = Inf) {
+  if (!is.numeric(x) || length(x) != 1L || !is.finite(x) || x < min || x > max)
+    stop(sprintf("`%s` must be a single finite number%s; got %s.", arg,
+                 if (is.finite(min) || is.finite(max))
+                   sprintf(" in [%s, %s]", format(min), format(max)) else "",
+                 deparse(x)[1]), call. = FALSE)
+  as.numeric(x)
+}
+.wf_id <- function(x, arg = "id") {
+  if (is.null(x)) return(NULL)
+  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(trimws(x)))
+    stop(sprintf("`%s` must be a single non-empty string (not NA or \"\"); got %s.",
+                 arg, deparse(x)[1]), call. = FALSE)
+  x
+}
 .wf_level <- function(level) {
   if (!is.numeric(level) || length(level) != 1L || is.na(level) || level <= 0 || level >= 1)
     stop("`level` must be a single number strictly between 0 and 1 (e.g. 0.95, not 95).",

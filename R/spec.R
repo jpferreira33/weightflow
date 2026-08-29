@@ -14,12 +14,24 @@
 #' the result.
 #'
 #' @param data data.frame with the sample units (one row per case).
-#' @param base_weights unquoted name of the design base-weight column.
+#' @param base_weights unquoted name of the design base-weight column. For a
+#'   non-probability sample with no design weights, leave it `NULL` and set
+#'   `nonprob = TRUE`: every unit then starts with a base weight of 1.
+#' @param nonprob logical. Declare the sample as non-probability (an opt-in panel,
+#'   a volunteer or river sample). Required when `base_weights = NULL`. The flag
+#'   is recorded so the report states the sample is non-probability and adds the
+#'   methodological caveat; a non-probability sample is usually adjusted with
+#'   [step_pseudoweight()] (inverse participation propensity against a reference)
+#'   and/or `step_calibrate()` / `step_model_calibration()` to a `reference_sample()`.
+#'   A non-probability panel that already carries recruitment/base weights can pass
+#'   them as `base_weights` together with `nonprob = TRUE`.
 #' @return an object of class "weighting_spec".
 #' @examples
 #' rec <- weighting_spec(sample_survey, base_weights = pw)
 #' rec
-weighting_spec <- function(data, base_weights) {
+#' # a non-probability sample: no design weights, base weight 1
+#' np <- weighting_spec(sample_survey, base_weights = NULL, nonprob = TRUE)
+weighting_spec <- function(data, base_weights = NULL, nonprob = FALSE) {
   bw_expr <- substitute(base_weights)
   if (!is.data.frame(data)) stop("`data` must be a data.frame.")
   if (nrow(data) == 0L) stop("`data` has 0 rows (an upstream filter may have emptied it).")
@@ -28,23 +40,37 @@ weighting_spec <- function(data, base_weights) {
                         "building a weighting_spec."),
                  paste(unique(names(data)[duplicated(names(data))]), collapse = ", ")),
          call. = FALSE)
-  # Accept a bare column name (NSE) or a length-1 character string naming a column.
-  bw <- if (is.character(bw_expr) && length(bw_expr) == 1L) bw_expr else deparse(bw_expr)
-  if (!bw %in% names(data)) stop(sprintf("Base-weight column '%s' not found in the data.", bw))
-  if (!is.numeric(data[[bw]]))
-    stop(sprintf("Base weights must be numeric; column '%s' is a %s.",
-                 bw, class(data[[bw]])[1]), call. = FALSE)
-  if (any(is.na(data[[bw]]))) stop("Base weights cannot contain NA.")
-  if (!all(is.finite(data[[bw]]))) stop("Base weights must be finite (no Inf or NaN).")
-  if (any(data[[bw]] < 0)) stop("Base weights cannot be negative.")
-  if (any(data[[bw]] == 0))
-    warning("Some base weights are 0; those units start inactive and are dropped ",
-            "from every step.", call. = FALSE)
+  nonprob <- .wf_flag(nonprob, "nonprob")
+  if (is.null(bw_expr)) {
+    # No design weights: only valid for an explicitly declared non-probability
+    # sample, where every unit starts self-representing (base weight 1).
+    if (!nonprob)
+      stop(paste0("`base_weights` is required for a probability sample. If this is a ",
+                  "NON-probability sample (no design weights), set nonprob = TRUE, which ",
+                  "starts every unit at a base weight of 1."), call. = FALSE)
+    bw <- ".wf_base1"
+    while (bw %in% names(data)) bw <- paste0(bw, "_")
+    data[[bw]] <- 1
+  } else {
+    # Accept a bare column name (NSE) or a length-1 character string naming a column.
+    bw <- if (is.character(bw_expr) && length(bw_expr) == 1L) bw_expr else deparse(bw_expr)
+    if (!bw %in% names(data)) stop(sprintf("Base-weight column '%s' not found in the data.", bw))
+    if (!is.numeric(data[[bw]]))
+      stop(sprintf("Base weights must be numeric; column '%s' is a %s.",
+                   bw, class(data[[bw]])[1]), call. = FALSE)
+    if (any(is.na(data[[bw]]))) stop("Base weights cannot contain NA.")
+    if (!all(is.finite(data[[bw]]))) stop("Base weights must be finite (no Inf or NaN).")
+    if (any(data[[bw]] < 0)) stop("Base weights cannot be negative.")
+    if (any(data[[bw]] == 0))
+      warning("Some base weights are 0; those units start inactive and are dropped ",
+              "from every step.", call. = FALSE)
+  }
   structure(
     list(
       data         = data,
       base_weights = bw,
-      steps        = list()
+      steps        = list(),
+      nonprob      = nonprob
     ),
     class = "weighting_spec"
   )
@@ -67,6 +93,7 @@ weighting_spec <- function(data, base_weights) {
     spec <- structure(
       list(data         = data,
            base_weights = spec$base_weights,
+           nonprob      = spec$nonprob %||% FALSE,
            steps        = lapply(spec$steps, function(s) {
              s$diagnostics <- NULL; s$alerts <- NULL; s })),
       class = "weighting_spec")

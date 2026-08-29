@@ -79,4 +79,18 @@ spec <- weighting_spec(sample_survey, base_weights = pw) |>
 boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
                           psu = "psu", seed = 1)
 boot_total(boot, "responded")
+# with a first-stage finite-population correction (per-stratum sampling fraction)
+d <- sample_survey; d$f <- 0.1
+spec_f <- weighting_spec(d, base_weights = pw)
+bootstrap_weights(spec_f, replicates = 50, strata = "region", psu = "psu",
+                  fpc = "f", seed = 1)
 }
+\seealso{
+Other variance estimation:
+\code{\link[=as_svydesign]{as_svydesign()}},
+\code{\link[=bootstrap_estimate]{bootstrap_estimate()}},
+\code{\link[=collect_replicate_weights]{collect_replicate_weights()}},
+\code{\link[=jackknife_estimate]{jackknife_estimate()}},
+\code{\link[=jackknife_weights]{jackknife_weights()}}
+}
+\concept{variance estimation}
