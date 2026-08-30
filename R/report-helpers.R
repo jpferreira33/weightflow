@@ -120,13 +120,17 @@
   # display only, never touches a value used in a computation.
   for (nm in names(df)) if (is.numeric(df[[nm]])) {
     col <- df[[nm]]; fin <- is.finite(col)
-    df[[nm]] <- if (any(fin) && all(col[fin] == round(col[fin])))
+    out <- if (any(fin) && all(col[fin] == round(col[fin])))
       format(col, big.mark = ",", trim = TRUE, scientific = FALSE)
-    else round(col, 4)
+    else format(round(col, 4), trim = TRUE, scientific = FALSE)
+    out[!fin] <- NA_character_            # NA/Inf -> rendered as a dash below
+    df[[nm]] <- out
   }
   hd <- paste0("<th scope='col'>", .html_escape(names(df)), "</th>", collapse = "")
-  rows <- apply(df, 1, function(r)
-    paste0("<tr>", paste0("<td>", .html_escape(as.character(r)), "</td>", collapse = ""), "</tr>"))
+  rows <- apply(df, 1, function(r) {
+    cells <- ifelse(is.na(r), "&ndash;", .html_escape(as.character(r)))  # NA -> dash, like the rest of the report
+    paste0("<tr>", paste0("<td>", cells, "</td>", collapse = ""), "</tr>")
+  })
   sprintf("<table><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
           hd, paste(rows, collapse = ""))
 }
@@ -268,26 +272,52 @@
 
 # Histogram of a per-unit quantity (default: the adjustment factor after/before),
 # with a reference line at 1.
-.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215, refline = 1, lang = "en", title = NULL) {
+.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215,
+                      refline = 1, lang = "en", title = NULL, density = FALSE) {
   ml <- 48; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
   v <- v[is.finite(v)]
   if (!length(v)) return("")
-  hh <- graphics::hist(v, breaks = 30, plot = FALSE)
-  xr <- range(hh$breaks); yr <- c(0, max(hh$counts))
-  if (diff(xr) == 0) xr <- xr + c(-1, 1)
-  if (yr[2] == 0) yr[2] <- 1
-  sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
-  sy <- function(z) mt + ph - (z - yr[1]) / diff(yr) * ph
-  bars <- paste(sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="1.5" fill="#b7abdf"/>',
-                sx(hh$breaks[-length(hh$breaks)]), sy(hh$counts),
-                pmax(sx(hh$breaks[-1]) - sx(hh$breaks[-length(hh$breaks)]) - 0.5, 0.5),
-                pmax(sy(0) - sy(hh$counts), 0)), collapse = "")
+  uv <- unique(round(v, 8))
+  ylab <- .t("count", "conteo", lang)
+  if (length(uv) <= 30L) {
+    # Few distinct values (e.g. adjustment-cell factors, integer 1/prob counts): a
+    # fixed-bin histogram would show mostly empty bins and a few tall spikes. Draw a
+    # frequency-by-VALUE dot plot (lollipop) instead -- one stem + dot per value.
+    lv   <- sort(uv)
+    cnts <- as.integer(table(factor(round(v, 8), levels = lv)))
+    xr <- range(lv); xr <- if (diff(xr) == 0) xr + c(-0.5, 0.5) else xr + diff(xr) * c(-0.08, 0.08)
+    yr <- c(0, max(cnts, 1))
+    sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
+    sy <- function(z) mt + ph - (z - yr[1]) / diff(yr) * ph
+    xx <- sx(lv); yy <- sy(cnts); y0 <- sy(0)
+    stems <- paste(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#b7abdf" stroke-width="2"/>',
+                   xx, y0, xx, yy), collapse = "")
+    dots  <- paste(sprintf('<circle cx="%.1f" cy="%.1f" r="3.2" fill="#3d3580"/>', xx, yy), collapse = "")
+    bars  <- paste0(stems, dots)
+  } else {
+    hh <- graphics::hist(v, breaks = 30, plot = FALSE)
+    dd <- if (density) tryCatch(stats::density(v), error = function(e) NULL) else NULL
+    if (!is.null(dd)) dd$c <- dd$y * length(v) * diff(hh$breaks)[1]   # density -> count scale
+    xr <- range(hh$breaks); if (diff(xr) == 0) xr <- xr + c(-1, 1)
+    yr <- c(0, max(max(hh$counts), if (!is.null(dd)) max(dd$c) else 0, 1))
+    sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
+    sy <- function(z) mt + ph - (z - yr[1]) / diff(yr) * ph
+    bars <- paste(sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="1.5" fill="#b7abdf"/>',
+                  sx(hh$breaks[-length(hh$breaks)]), sy(hh$counts),
+                  pmax(sx(hh$breaks[-1]) - sx(hh$breaks[-length(hh$breaks)]) - 0.5, 0.5),
+                  pmax(sy(0) - sy(hh$counts), 0)), collapse = "")
+    if (!is.null(dd)) {
+      keep <- dd$x >= xr[1] & dd$x <= xr[2]
+      bars <- paste0(bars, sprintf('<polyline points="%s" fill="none" stroke="#3d3580" stroke-width="1.6" opacity="0.9"/>',
+                     paste(sprintf("%.1f,%.1f", sx(dd$x[keep]), sy(dd$c[keep])), collapse = " ")))
+    }
+  }
   vl <- if (!is.null(refline) && refline >= xr[1] && refline <= xr[2])
     paste0(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#6b7280" stroke-dasharray="4 3"/>',
                    sx(refline), mt, sx(refline), mt + ph),
            sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#6b7280">%s</text>',
                    sx(refline) + 3, mt + 9, .t("factor = 1", "factor = 1", lang))) else ""
-  svg <- .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, .t("count", "conteo", lang), sx, sy),
+  svg <- .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, ylab, sx, sy),
                     bars, vl), w, h)
   if (is.null(title)) svg else paste0("<div class='viz-h'>", title, "</div>", svg)
 }
@@ -319,7 +349,7 @@
   note <- if (sum(keep) > 3000L)
     sprintf("<p class='muted'>%s</p>", .t(
       sprintf("Showing 3,000 of %s points (both tails and the largest departures from y = x are kept).", format(sum(keep), big.mark = ",")),
-      sprintf("Se muestran 3.000 de %s puntos (se conservan ambas colas y las mayores desviaciones de y = x).", format(sum(keep), big.mark = ",")), lang)) else ""
+      sprintf("Se muestran 3,000 de %s puntos (se conservan ambas colas y las mayores desviaciones de y = x).", format(sum(keep), big.mark = ",")), lang)) else ""
   sprintf("<div class='viz'><div>%s</div><div>%s</div></div>%s", sc, hi, note)
 }
 
@@ -330,7 +360,7 @@
   if (!is.null(ptab)) {
     ptab <- ptab[order(-ptab$partial_R), , drop = FALSE]
     ptab$partial_R <- round(ptab$partial_R, 4)
-    ph <- paste0(sprintf("<p class='muted'>%s</p>", .t("Partial R-indicators (0&ndash;0.5):", "R-indicadores parciales (0&ndash;0,5):", lang)), .df_to_html(ptab))
+    ph <- paste0(sprintf("<p class='muted'>%s</p>", .t("Partial R-indicators (0&ndash;0.5):", "R-indicadores parciales (0&ndash;0.5):", lang)), .df_to_html(ptab))
   }
   if (!is.null(ri$num_aux) && length(ri$num_aux))
     ph <- paste0(ph, sprintf(

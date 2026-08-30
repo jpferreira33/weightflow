@@ -83,6 +83,20 @@ prediction. Add \code{crossfit} to estimate each unit out of sample.
 }
 }
 
+\section{Two-phase (double) sampling}{
+
+\itemize{
+\item \emph{Few phase-2 sampling units}: fewer than 30 units were subsampled at the
+second phase. The recipe-aware bootstrap resamples the phase-2 variance
+component (V2) at this level, so few units leave V2 with few degrees of
+freedom and an unstable phase-2 standard error. Inspect the split with
+\code{\link[=two_phase_variance]{two_phase_variance()}}.
+\item \emph{Tiny phase-2 probability}: a minimum phase-2 selection probability below
+0.02 expands the subsampled weights sharply (up to \code{1/pi2}), inflating V2.
+Check the phase-2 design or trim the expanded weights.
+}
+}
+
 \section{Finalising}{
 
 \itemize{

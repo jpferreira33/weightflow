@@ -11,7 +11,10 @@
        sprintf("Este reporte documenta el proceso de ponderaci&oacute;n de <strong>%s</strong>.", .html_escape(survey)), lang)
     else .t("This report documents the survey weighting process.",
             "Este reporte documenta el proceso de ponderaci&oacute;n de la muestra.", lang)
-  s2 <- .t(
+  s2 <- if (n == 0L)
+    .t("No weighting steps were applied; the final weights are the base weights.",
+       "No se aplicaron pasos de ponderaci&oacute;n; los pesos finales son los de base.", lang)
+  else .t(
     sprintf("%s weighting %s applied: %s.", n, if (n == 1L) "step was" else "steps were", listed),
     sprintf("%s de ponderaci&oacute;n: %s.",
             if (n == 1L) "Se aplic&oacute; 1 paso" else sprintf("Se aplicaron %d pasos", n), listed),
@@ -255,7 +258,7 @@
     kv(.t("Method", "M\u00e9todo", lang), method),
     kv(.t("Replicates (B)", "R\u00e9plicas (B)", lang), format(rep$R, big.mark = ",")),
     kv(.t("Failed replicates", "R\u00e9plicas fallidas", lang),
-       sprintf("%s of %s", format(nfail, big.mark = ","), format(nrep, big.mark = ","))),
+       sprintf(.t("%s of %s", "%s de %s", lang), format(nfail, big.mark = ","), format(nrep, big.mark = ","))),
     if (tp)
       kv(.t("Phase-2 sampling units", "Unidades de muestreo de fase 2", lang),
          format(if (!is.null(rep$design$n_psu2)) rep$design$n_psu2 else nstr, big.mark = ","))
@@ -344,6 +347,72 @@
        "En cada r\u00e9plica se recalcula todo el procedimiento de ponderaci\u00f3n. Los pesos r\u00e9plica resultantes reflejan la variabilidad muestral asociada a los ajustes de ponderaci\u00f3n que se reestiman dentro del procedimiento de replicaci\u00f3n. Us\u00e1 los pesos finales y los pesos r\u00e9plica con 'survey' o 'srvyr' para estimar errores est\u00e1ndar, coeficientes de variaci\u00f3n e intervalos de confianza de estimaciones concretas.", lang))
 }
 
+# Two-phase variance decomposition card (V = V1 + V2 per study variable). Rendered
+# only for a two-phase recipe with a bootstrap object and study variables; it
+# re-runs the two component bootstraps once per variable (see two_phase_variance()).
+.two_phase_variance_card <- function(object, replicates, y_vars, lang) {
+  if (is.null(object$steps) || is.null(.find_subsample_step(object$steps))) return("")
+  if (is.null(replicates) || !inherits(replicates, "weightflow_boot")) return("")
+  yv <- if (is.null(y_vars)) character(0) else y_vars[y_vars %in% names(object$data)]
+  if (!length(yv)) return("")
+  B   <- if (!is.null(replicates$replicates)) ncol(replicates$replicates)
+         else (replicates$R %||% 200L)
+  fmt <- function(x) formatC(x, digits = 4, format = "g")
+  rows <- character(0)
+  for (v in yv) {
+    tpv <- tryCatch(two_phase_variance(object, v, replicates = B, seed = replicates$seed),
+                    error = function(e) NULL)
+    if (is.null(tpv) || !is.finite(tpv$prop_phase2)) next
+    pct <- 100 * tpv$prop_phase2
+    bar <- sprintf(paste0(
+      "<div style='display:flex;height:13px;border-radius:6px;overflow:hidden;border:1px solid #e4e2f2;margin:2px 0'>",
+      "<div style='width:%.1f%%;background:#b9b2e6'></div><div style='width:%.1f%%;background:#3d3580'></div></div>",
+      "<div style='font-size:11px;color:#6b6b83;margin-bottom:4px'>",
+      "<span style='color:#b9b2e6'>&#9632;</span> V1 (%.0f%%) &nbsp; ",
+      "<span style='color:#3d3580'>&#9632;</span> V2 (%.0f%%)</div>"),
+      100 - pct, pct, 100 - pct, pct)
+    rows <- c(rows, sprintf(
+      "<tr><td>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'><strong>%.0f%%</strong></td></tr><tr><td colspan='5'>%s</td></tr>",
+      .html_escape(v), fmt(tpv$se1), fmt(tpv$se2), fmt(tpv$se), pct, bar))
+  }
+  if (!length(rows)) return("")
+  hdr <- sprintf("<thead><tr><th>%s</th><th>SE V1</th><th>SE V2</th><th>SE V</th><th>%s</th></tr></thead>",
+                 .t("Study variable", "Variable de estudio", lang),
+                 .t("phase-2 share (V2/V)", "aporte fase 2 (V2/V)", lang))
+  sprintf("<div class='meta feature'><h4>%s</h4><table class='params'>%s<tbody>%s</tbody></table><p class='note'>%s</p></div>",
+    .t("Two-phase variance decomposition (V = V1 + V2)",
+       "Descomposici\u00f3n de la varianza de dos fases (V = V1 + V2)", lang),
+    hdr, paste(rows, collapse = ""),
+    .t("V splits into a first-phase (V1) and a second-phase (V2) component. A large phase-2 share means a denser subsample would cut the variance; a small share means it would not.",
+       "V se separa en un componente de primera fase (V1) y uno de segunda (V2). Un aporte alto de la fase 2 indica que un submuestreo m\u00e1s denso reducir\u00eda la varianza; uno bajo, que no.", lang))
+}
+
+# Second-phase design card: names the phase-2 selection scheme, sampling unit,
+# strata and selection probability range. Rendered only for a two-phase recipe.
+.two_phase_design_card <- function(object, lang) {
+  sub <- .find_subsample_step(object$steps)
+  if (is.null(sub)) return("")
+  kv <- function(k, v) sprintf("<tr><td class='k'>%s</td><td class='r'>%s</td></tr>", k, v)
+  scheme <- .t("Poisson (independent / Bernoulli selection)",
+               "Poisson (selecci&oacute;n independiente / Bernoulli)", lang)
+  # phase-2 selection probability range, if the step's diagnostic recorded it
+  pr <- ""
+  di <- sub$diagnostics
+  if (!is.null(di) && all(c("min_prob", "max_prob") %in% names(di)))
+    pr <- kv(.t("Selection probability (&pi;2)", "Probabilidad de selecci&oacute;n (&pi;2)", lang),
+             if (isTRUE(di$min_prob == di$max_prob)) format(di$min_prob)
+             else sprintf("%s &ndash; %s", format(di$min_prob), format(di$max_prob)))
+  rows <- paste0(
+    kv(.t("Second-phase sampling unit", "Unidad de muestreo de fase 2", lang),
+       sprintf("<code>%s</code>", .html_escape(sub$psu))),
+    kv(.t("Selection scheme", "Esquema de selecci&oacute;n", lang), scheme),
+    pr)
+  sprintf("<div class='meta feature'><h4>%s</h4><table class='params'><tbody>%s</tbody></table><p class='note'>%s</p></div>",
+    .t("Second-phase design", "Dise&ntilde;o de la segunda fase", lang), rows,
+    .t("The second phase subsamples the first-phase units; the recipe-aware bootstrap couples the two phases as V = V1 + V2.",
+       "La segunda fase submuestrea las unidades de la primera; el bootstrap recipe-aware acopla las dos fases como V = V1 + V2.", lang))
+}
+
 
 # Fieldwork outcome rates (AAPOR Standard Definitions). From the recipe's
 # eligibility / nonresponse steps we reconstruct the disposition of every case
@@ -352,9 +421,19 @@
 # CASRO allocation), the e-adjusted response rate RR3 = ER / (ER + ENR + e*UNK) and
 # the nonresponse rate, both unweighted and weighted by the base (design)
 # weights. Returns "" when the recipe has no nonresponse step.
-.response_account <- function(object, lang) {
+.response_account <- function(object, lang, phase = c("all", "phase1", "phase2")) {
+  phase <- match.arg(phase)
   steps <- object$steps
-  is_nr <- vapply(steps, function(s) inherits(s, "step_nonresponse"), logical(1))
+  # In a two-phase recipe the response rates split at the subsample: steps BEFORE
+  # it are phase-1 fieldwork (on the full first-phase sample), steps AFTER it are
+  # phase-2 fieldwork (on the subsample). `phase` selects which to report.
+  s_sub <- { w <- which(vapply(steps, function(s) inherits(s, "step_subsample"), logical(1)))
+             if (length(w)) w[1L] else NA_integer_ }
+  if (phase != "all" && is.na(s_sub)) return("")
+  phmask <- if (phase == "all" || is.na(s_sub)) rep(TRUE, length(steps))
+            else if (phase == "phase1") seq_along(steps) < s_sub
+            else seq_along(steps) > s_sub
+  is_nr <- vapply(steps, function(s) inherits(s, "step_nonresponse"), logical(1)) & phmask
   if (!any(is_nr)) return("")
   h   <- object$history
   bw  <- h[["base"]]
@@ -373,10 +452,14 @@
     v & active
   }
   U <- NE <- rep(FALSE, n)
-  iu <- which(vapply(steps, function(s) inherits(s, "step_unknown_eligibility"), logical(1)))
+  iu <- which(vapply(steps, function(s) inherits(s, "step_unknown_eligibility"), logical(1)) & phmask)
   if (length(iu)) { k <- iu[1L]; U  <- ev(steps[[k]]$unknown,    h[[k]] > 0) }
-  id <- which(vapply(steps, function(s) inherits(s, "step_drop_ineligible"), logical(1)))
+  id <- which(vapply(steps, function(s) inherits(s, "step_drop_ineligible"), logical(1)) & phmask)
   if (length(id)) { k <- id[1L]; NE <- ev(steps[[k]]$ineligible, h[[k]] > 0) }
+  # Denominator: phase-1 / single-phase = the whole issued sample; phase-2 = the
+  # subsampled cases (those active right after the subsample step).
+  n_total <- if (phase == "phase2" && !is.na(s_sub) && s_sub < length(h))
+    sum(h[[s_sub + 1L]] > 0) else n
   kr   <- max(which(is_nr))
   actr <- h[[kr]] > 0
   # Reconstruct disposition only among IN-SCOPE active cases. `ev` passes `active`
@@ -387,8 +470,10 @@
   R    <- ev(steps[[kr]]$respondent, actr)
   NR   <- actr & !R & !NE & !U
 
-  cnt  <- c(T = n, NE = sum(NE), U = sum(U), R = sum(R), NR = sum(NR))
-  wsum <- c(T = sum(bw), NE = sum(bw[NE]), U = sum(bw[U]),
+  t_act <- if (phase == "phase2" && !is.na(s_sub) && s_sub < length(h))
+    (h[[s_sub + 1L]] > 0) else rep(TRUE, n)
+  cnt  <- c(T = n_total, NE = sum(NE), U = sum(U), R = sum(R), NR = sum(NR))
+  wsum <- c(T = sum(bw[t_act]), NE = sum(bw[NE]), U = sum(bw[U]),
             R = sum(bw[R]), NR = sum(bw[NR]))
   rate <- function(r, nr, ne, u) {
     known <- r + nr
@@ -408,7 +493,9 @@
   sym <- function(lbl, sy) sprintf(
     "%s <span class='muted' style='font-family:ui-monospace,Menlo,monospace'>(%s)</span>", lbl, sy)
   lab <- list(
-    T  = sym(.t("Total sample (issued cases)", "Muestra total (casos emitidos)", lang), "n"),
+    T  = sym(if (phase == "phase2")
+               .t("Subsampled sample (phase 2)", "Muestra submuestreada (fase 2)", lang)
+             else .t("Total sample (issued cases)", "Muestra total (casos emitidos)", lang), "n"),
     NE = sym(.t("Ineligible / out of scope", "Inelegibles / fuera de alcance", lang), "IN"),
     U  = sym(.t("Unknown eligibility", "Elegibilidad desconocida", lang), "UNK"),
     R  = sym(.t("Eligible respondents", "Elegibles respondentes", lang), "ER"),
@@ -455,6 +542,29 @@
                 "tasas reflejan los pasos declarados, no que no existieran esos casos; agreg\u00e1 ",
                 "step_unknown_eligibility() / step_drop_ineligible() para modelar la elegibilidad."),
          lang)) else ""
+  # A2: in the phase-1 card, report the phase-1 cases that were subsampled OUT at
+  # phase 2 (not selected for the follow-up). They leave the cascade at the
+  # step_subsample, but they are a designed subselection, not nonresponse, so they
+  # are shown as an informational note and kept OUT of the AAPOR rates above.
+  note_ss <- ""
+  if (phase == "phase1" && !is.na(s_sub) && s_sub < length(h)) {
+    active_in <- h[[s_sub]] > 0
+    ss_out    <- active_in & !(h[[s_sub + 1L]] > 0)
+    if (sum(ss_out) > 0)
+      note_ss <- sprintf("<p class='note'>%s</p>",
+        .t(sprintf(paste0("Of the phase-1 cases, %s (base-weighted %s) were subsampled out at ",
+                          "phase 2 (not selected for the follow-up) and leave the cascade. They ",
+                          "are a designed subselection, not nonresponse, so they do not enter the ",
+                          "rates above; the phase-2 fieldwork card reports response on the ",
+                          "subsampled cases only."),
+                   f0(sum(ss_out)), f0(sum(bw[ss_out]))),
+           sprintf(paste0("De los casos de fase 1, %s (ponderado base %s) quedaron fuera del ",
+                          "submuestreo de fase 2 (no seleccionados para el seguimiento) y salen de ",
+                          "la cascada. Son una subselecci\u00f3n por dise\u00f1o, no no respuesta, por lo ",
+                          "que no entran en las tasas de arriba; la tarjeta de campo de la fase 2 ",
+                          "reporta la respuesta solo sobre los casos submuestreados."),
+                   f0(sum(ss_out)), f0(sum(bw[ss_out]))), lang))
+  }
   cap_disp <- .t("AAPOR disposition of the issued sample: counts, percentage and base-weighted sums by outcome category.",
                  "Disposici&oacute;n AAPOR de la muestra emitida: conteos, porcentaje y sumas ponderadas por el peso base seg&uacute;n categor&iacute;a de resultado.", lang)
   cap_rate <- .t("AAPOR eligibility and response rates, unweighted and base-weighted.",
@@ -462,8 +572,10 @@
   sprintf("<div class='meta racct feature'><h4>%s</h4>%s
     <table class='params'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%%</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     <table class='params' style='margin-top:10px'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
-    <p class='note'>%s</p></div>",
-    .t("Fieldwork outcomes (AAPOR)", "Resultados del trabajo de campo (AAPOR)", lang), note_elig,
+    %s<p class='note'>%s</p></div>",
+    paste0(switch(phase, phase1 = .t("Phase 1 &mdash; ", "Fase 1 &mdash; ", lang),
+                         phase2 = .t("Phase 2 &mdash; ", "Fase 2 &mdash; ", lang), ""),
+           .t("Fieldwork outcomes (AAPOR)", "Resultados del trabajo de campo (AAPOR)", lang)), note_elig,
     cap_disp,
     .t("Disposition", "Disposici\u00f3n", lang),
     .t("n (cases)", "n (casos)", lang),
@@ -471,7 +583,7 @@
     cap_rate,
     .t("Rate", "Tasa", lang),
     .t("unweighted", "sin ponderar", lang),
-    .t("weighted (base)", "ponderado (base)", lang), rrows, foot)
+    .t("weighted (base)", "ponderado (base)", lang), rrows, note_ss, foot)
 }
 
 # Reference-metadata card (SIMS / ESMS concepts relevant to weighting, GSBPM

@@ -38,12 +38,14 @@
 #'   call.
 #' @seealso [domain_summary()], [bootstrap_estimate()], [design_effect()]
 #' @examples
+#' \donttest{
 #' spec <- weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_calibrate(method = "raking",
 #'                  margins = list(region = c(table(population$region))))
 #' boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
 #'                           psu = "psu", seed = 1)
 #' as_sae_input(boot, "responded", by = "region")
+#' }
 #' @export
 #' @family cascade audit
 as_sae_input <- function(object, variable, by, type = c("mean", "total"),

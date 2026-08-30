@@ -125,6 +125,7 @@ reference:
   desc: Bootstrap and jackknife that re-apply the recipe, plus survey/srvyr bridges.
   contents:
   - bootstrap_weights
+  - two_phase_variance
   - bootstrap_estimate
   - jackknife_weights
   - jackknife_estimate

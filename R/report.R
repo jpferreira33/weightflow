@@ -282,6 +282,8 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     sprintf("Interpretaci\u00f3n: el efecto de dise\u00f1o de Kish es %.3f (muestra efectiva %s); %s",
             de_f$deff, format(round(de_f$n_eff), big.mark = ","), imsg), lang)))
   repl_html <- .replication_card(replicates, lang, object)
+  tpd_html  <- .two_phase_design_card(object, lang)
+  tpv_html  <- .two_phase_variance_card(object, replicates, y_vars, lang)
   domain_html <- .domain_reliability(object, domains, lang)
   step_anchors <- paste(vapply(seq_along(object$steps), function(i)
     sprintf("<a href='#step-%d'>%d</a>", i, i), character(1)), collapse = " ")
@@ -292,7 +294,10 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     .t("Weight distribution", "Distribuci\u00f3n de pesos", lang),
     .t("Steps", "Pasos", lang), step_anchors)
   meta_html <- .metadata_card(metadata, lang)
-  racct <- .response_account(object, lang)
+  racct <- if (!is.null(.find_subsample_step(object$steps)))
+    paste0(.response_account(object, lang, "phase1"), "\n",
+           .response_account(object, lang, "phase2"))
+  else .response_account(object, lang)
   repro_html <- .reproducibility_card(object, replicates, lang)
 
   done_txt <- local({
@@ -382,7 +387,9 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     sprintf("<h2 id='pipeline'>%s</h2>", .t("Pipeline", "Flujo de pasos", lang)), diagram, "\n",
     sprintf("<p class='muted'>%s</p>", .t("Variables used:", "Variables usadas:", lang)), vars_chips, "\n",
     sprintf("<h2 id='stages'>%s</h2>", .t("Per-stage summary", "Resumen por etapa", lang)), stab_html, "\n",
+    tpd_html, "\n",
     repl_html, "\n",
+    tpv_html, "\n",
     domain_html, "\n",
     sprintf("<h2 id='weights'>%s</h2>", .t("Weight distribution (final)", "Distribuci\u00f3n de pesos (final)", lang)), wdist, "\n",
     sprintf("<h2 id='steps'>%s</h2>\n", .t("Steps", "Pasos", lang)),

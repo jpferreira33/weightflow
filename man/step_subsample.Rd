@@ -4,15 +4,7 @@
 \alias{step_subsample}
 \title{Second-phase subsampling (two-phase sampling)}
 \usage{
-step_subsample(
-  spec,
-  selected,
-  prob,
-  psu,
-  strata = NULL,
-  design = c("poisson", "srswor"),
-  id = NULL
-)
+step_subsample(spec, selected, prob, psu, id = NULL)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
@@ -30,14 +22,6 @@ phase-2 sampling unit.}
 at which the subsample was drawn). The two-phase resampling factor is
 generated at this level and shared by the members of the unit.}
 
-\item{strata}{character. Phase-2 design strata (where \code{prob} is constant),
-optional.}
-
-\item{design}{the phase-2 selection scheme: "poisson" (independent /
-Bernoulli selection, the default) or "srswor" (simple random sampling
-without replacement within a stratum). Only "poisson" is fully implemented
-in this version.}
-
 \item{id}{optional string: a stable identifier for this step, shown in the
 recipe print-out and usable to select it in \code{collect_step_detail()};
 defaults to a derived \code{"<class>_<k>"}.}
@@ -54,8 +38,8 @@ sample. Their weight is multiplied by the inverse of the phase-2 selection
 probability, and the not-subsampled units leave the cascade (weight 0).
 }
 \details{
-The step also \emph{records the phase-2 design} (the selection probability, the
-phase-2 sampling unit, its stratification, and the selection scheme) so that
+The step also \emph{records the phase-2 design} (the selection probability and the
+phase-2 sampling unit) so that
 \code{\link[=bootstrap_weights]{bootstrap_weights()}} can reproduce the two-phase variance
 \eqn{V = V_1 + V_2}{V = V1 + V2}: the phase-1 sampling variance plus the
 expected conditional variance of the phase-2 subsample. A single-phase
@@ -69,12 +53,17 @@ the subsample) and the phase-2 conditional component
 interaction term and is too wide. In practice the factor is drawn once per
 phase-2 sampling unit from a strictly positive Gamma of that mean and
 variance, so every replicate weight stays positive (a downstream
-propensity/GLM step re-runs cleanly). See the package's two-phase methodology
-notes.
+propensity/GLM step re-runs cleanly). See \code{vignette("two-phase-sampling")} for
+the methodology and its Monte Carlo validation.
 
-This first version covers a Poisson (independent) second phase whose sampling
-unit is nested in the first phase (e.g. households subsampled from a
-first-phase household sample). The phase-1 sampling fraction \eqn{f_1}{f1} is
+The second phase is modelled as Poisson (independent / Bernoulli) selection of
+the sampling unit nested in the first phase (e.g. households subsampled from a
+first-phase household sample). This is the general-purpose choice: a Poisson
+second phase is conservative for, and closely approximates, the without-
+replacement and stratified subsampling schemes used in practice when the
+phase-2 sampling fraction is small -- which is the usual case, since a costly
+follow-up subsamples only a fraction of the first phase. The phase-1 sampling
+fraction \eqn{f_1}{f1} is
 taken from the \code{fpc} argument of \code{\link[=bootstrap_weights]{bootstrap_weights()}} and defaults to 0
 (negligible, the usual case in household surveys), which reduces the coupling
 to a single independent per-unit factor of variance 1 -- a Gamma of variance 1,

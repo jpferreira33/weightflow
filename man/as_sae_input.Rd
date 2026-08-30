@@ -56,12 +56,14 @@ whole recipe per replicate), so it already reflects nonresponse and
 calibration, not just the final weights.
 }
 \examples{
+\donttest{
 spec <- weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region))))
 boot <- bootstrap_weights(spec, replicates = 50, strata = "region",
                           psu = "psu", seed = 1)
 as_sae_input(boot, "responded", by = "region")
+}
 }
 \seealso{
 \code{\link[=domain_summary]{domain_summary()}}, \code{\link[=bootstrap_estimate]{bootstrap_estimate()}}, \code{\link[=design_effect]{design_effect()}}

@@ -239,6 +239,10 @@ step_calibrate <- function(spec, margins = NULL,
                        count, paste(names(d), collapse = ", ")))
     }
   } else {                                   # linear
+    if (!is.null(margins))
+      warning("`margins` is ignored with method = \"linear\" (which uses `formula` + ",
+              "`totals`); use method = \"raking\" / \"poststratify\" to calibrate to margins.",
+              call. = FALSE)
     if (is.null(formula) || is.null(totals))
       stop("method = 'linear' requires `formula` and `totals`.")
     if (totals_is_df)

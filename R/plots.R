@@ -29,10 +29,15 @@ plot.prepped_weighting_spec <- function(x, type = c("all", "factors", "summary")
   h      <- x$history
   ns     <- length(x$steps)
   base_w <- h[["base"]]; fin_w <- x$final_weight; act <- .wf_active(fin_w)
+  if (!any(act)) {   # a recipe that leaves every unit at weight 0 has nothing to draw
+    message("Nothing to plot: every unit ended at weight 0 (all dropped from the cascade).")
+    return(invisible(x))
+  }
 
   # Per-step factor histogram (weight after / before, among survivors)
   draw_factor <- function(i) {
     prev <- h[[i]]; cur <- h[[i + 1L]]; keep <- .wf_active(cur) & .wf_active(prev)
+    if (!any(keep)) { graphics::plot.new(); graphics::title(main = x$steps[[i]]$label); return(invisible()) }
     graphics::hist(cur[keep] / prev[keep], breaks = 30, col = "grey80",
                    border = "white", main = x$steps[[i]]$label,
                    xlab = "weight after / before", cex.main = 0.9)

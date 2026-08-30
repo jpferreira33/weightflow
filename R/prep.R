@@ -322,6 +322,28 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
                "different auxiliary vector."), sum(gg <= 0)))
   }
 
+  # C2: two-phase subsample. The recipe-aware bootstrap resamples the phase-2
+  # variance component (V2) at the phase-2 sampling-unit level, so few such units
+  # give V2 few degrees of freedom and an unstable phase-2 SE; and a tiny phase-2
+  # selection probability expands the subsampled weights sharply, inflating V2.
+  if (identical(step_class, "step_subsample") && !is.null(diag) && is.data.frame(diag)) {
+    npsu <- if ("n_psu2"   %in% names(diag)) suppressWarnings(as.numeric(diag$n_psu2[1]))   else NA_real_
+    pmin <- if ("min_prob" %in% names(diag)) suppressWarnings(as.numeric(diag$min_prob[1])) else NA_real_
+    if (is.finite(npsu) && npsu < 30)
+      msgs <- c(msgs, sprintf(
+        paste0("Only %d phase-2 sampling unit(s) were subsampled. The two-phase bootstrap ",
+               "resamples the phase-2 variance component (V2) at this level, so few units ",
+               "give V2 few degrees of freedom and an unstable phase-2 standard error; ",
+               "inspect the split with two_phase_variance() and read the phase-2 SE with care."),
+        as.integer(npsu)))
+    if (is.finite(pmin) && pmin > 0 && pmin < 0.02)
+      msgs <- c(msgs, sprintf(
+        paste0("A very small phase-2 selection probability (min pi2 = %.4f) expands the ",
+               "subsampled weights by up to %.0fx, which inflates the phase-2 variance ",
+               "component (V2). Check the phase-2 design or trim the expanded weights."),
+        pmin, 1 / pmin))
+  }
+
   # Ill-conditioned linear/GREG calibration: near-collinear auxiliaries make the
   # calibration factors unstable; point to the ridge penalty.
   cbd <- attr(diag, "calibrate")

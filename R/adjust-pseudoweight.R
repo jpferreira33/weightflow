@@ -13,10 +13,10 @@
 #'
 #' For a non-probability sample (opt-in panel, volunteer or river sample) with no
 #' design weights, `step_pseudoweight()` estimates each unit's *participation
-#' propensity* `p` against a probability `reference_sample()` and assigns the
-#' pseudo-weight `(1 - p)/p` (the participation odds; Elliott and Valliant 2017),
-#' which inflates each unit to the population so the weights sum to the reference's
-#' estimated population size. It stacks the non-probability sample and the
+#' propensity* \eqn{\hat p} against a probability `reference_sample()` and assigns
+#' the pseudo-weight \eqn{(1 - \hat{p})/\hat{p}}{(1 - p)/p} (the participation odds;
+#' Elliott and Valliant 2017), which inflates each unit to the population so the
+#' weights sum to the reference's estimated population size. It stacks the non-probability sample and the
 #' reference internally (the participation indicator and the two samples' weights
 #' are built for you), fits the propensity, and returns the pseudo-weight on the
 #' non-probability units only; the reference is used to train the model and then
@@ -53,6 +53,24 @@
 #' Elliott, M. R. and Valliant, R. (2017). Inference for non-probability samples.
 #' Statistical Science 32(2), 249-264.
 #' @seealso [reference_sample()], [step_calibrate()], [step_model_calibration()]
+#' @examples
+#' \donttest{
+#' set.seed(1)
+#' N   <- nrow(population)
+#' # a biased volunteer sample (men over-participate) and a probability reference
+#' vol <- population[rbinom(N, 1, plogis(-2 + 0.9 * (population$sex == "M"))) == 1,
+#'                   c("region", "sex", "income")]
+#' ref <- population[sample(N, 600), c("region", "sex")]
+#' ref$d <- N / 600                                   # its design weights
+#' fit <- weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+#'   step_pseudoweight(reference = reference_sample(ref, "d"),
+#'                     formula = ~ region + sex, engine = "logit") |>
+#'   prep()
+#' # the pseudo-weighted mean corrects the volunteer bias
+#' c(naive = mean(vol$income),
+#'   pseudo = weighted.mean(vol$income, fit$final_weight),
+#'   truth = mean(population$income))
+#' }
 #' @export
 #' @family weighting steps
 step_pseudoweight <- function(spec, reference, formula,

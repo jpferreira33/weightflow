@@ -31,6 +31,11 @@
 #' *ignorance interval* to read alongside the sampling confidence interval; see
 #' [nr_sensitivity()] and the report block.
 #'
+#' The adjusted mean at sensitivity \eqn{\phi} is
+#' \deqn{\mu(\phi) = \bar{y}_r + (1 - \pi)\,\frac{s_{yr}}{s_{xr}}\,m(\phi)\,(\bar{x}_{nr} - \bar{x}_r),}
+#' with slope \eqn{m(\phi) = \frac{(1-\phi)\rho + \phi}{(1-\phi) + \phi\rho}}, so that
+#' \eqn{m(0) = \rho} (ignorable given the proxy) and \eqn{m(1) = 1/\rho}.
+#'
 #' The proxy correlation `rho` (the multiple correlation of `y` on the auxiliaries
 #' among respondents) sets how informative the auxiliaries are: a weak proxy widens
 #' the ignorance interval (at `phi = 1` the slope is `1/rho`). The step reads the

@@ -10,8 +10,8 @@
 #' sample. Their weight is multiplied by the inverse of the phase-2 selection
 #' probability, and the not-subsampled units leave the cascade (weight 0).
 #'
-#' The step also *records the phase-2 design* (the selection probability, the
-#' phase-2 sampling unit, its stratification, and the selection scheme) so that
+#' The step also *records the phase-2 design* (the selection probability and the
+#' phase-2 sampling unit) so that
 #' [bootstrap_weights()] can reproduce the two-phase variance
 #' \eqn{V = V_1 + V_2}{V = V1 + V2}: the phase-1 sampling variance plus the
 #' expected conditional variance of the phase-2 subsample. A single-phase
@@ -25,12 +25,17 @@
 #' interaction term and is too wide. In practice the factor is drawn once per
 #' phase-2 sampling unit from a strictly positive Gamma of that mean and
 #' variance, so every replicate weight stays positive (a downstream
-#' propensity/GLM step re-runs cleanly). See the package's two-phase methodology
-#' notes.
+#' propensity/GLM step re-runs cleanly). See `vignette("two-phase-sampling")` for
+#' the methodology and its Monte Carlo validation.
 #'
-#' This first version covers a Poisson (independent) second phase whose sampling
-#' unit is nested in the first phase (e.g. households subsampled from a
-#' first-phase household sample). The phase-1 sampling fraction \eqn{f_1}{f1} is
+#' The second phase is modelled as Poisson (independent / Bernoulli) selection of
+#' the sampling unit nested in the first phase (e.g. households subsampled from a
+#' first-phase household sample). This is the general-purpose choice: a Poisson
+#' second phase is conservative for, and closely approximates, the without-
+#' replacement and stratified subsampling schemes used in practice when the
+#' phase-2 sampling fraction is small -- which is the usual case, since a costly
+#' follow-up subsamples only a fraction of the first phase. The phase-1 sampling
+#' fraction \eqn{f_1}{f1} is
 #' taken from the `fpc` argument of [bootstrap_weights()] and defaults to 0
 #' (negligible, the usual case in household surveys), which reduces the coupling
 #' to a single independent per-unit factor of variance 1 -- a Gamma of variance 1,
@@ -49,12 +54,6 @@
 #' @param psu character. The phase-2 sampling unit column (e.g. the household id
 #'   at which the subsample was drawn). The two-phase resampling factor is
 #'   generated at this level and shared by the members of the unit.
-#' @param strata character. Phase-2 design strata (where `prob` is constant),
-#'   optional.
-#' @param design the phase-2 selection scheme: "poisson" (independent /
-#'   Bernoulli selection, the default) or "srswor" (simple random sampling
-#'   without replacement within a stratum). Only "poisson" is fully implemented
-#'   in this version.
 #' @param id optional string: a stable identifier for this step, shown in the
 #'   recipe print-out and usable to select it in `collect_step_detail()`;
 #'   defaults to a derived `"<class>_<k>"`.
@@ -71,21 +70,16 @@
 #'   step_subsample(selected = in_phase2, prob = p2, psu = "household_id")
 #' @family weighting steps
 #' @export
-step_subsample <- function(spec, selected, prob, psu, strata = NULL,
-                           design = c("poisson", "srswor"), id = NULL) {
-  design <- match.arg(design)
+step_subsample <- function(spec, selected, prob, psu, id = NULL) {
   if (missing(psu) || is.null(psu) || !is.character(psu) || length(psu) != 1L || !nzchar(psu))
     stop("`psu` (the phase-2 sampling unit column, e.g. a household id) is required ",
          "and must be a single column name.", call. = FALSE)
-  if (!is.null(strata) && (!is.character(strata)))
-    stop("`strata` must be NULL or a character vector of column names.", call. = FALSE)
   step <- structure(
     list(label    = "phase-2 subsample",
          selected = substitute(selected),
          prob     = substitute(prob),
          psu      = psu,
-         strata   = strata,
-         design   = design,
+         design   = "poisson",
          env      = parent.frame()),
     class = c("step_subsample", "weighting_step")
   )
@@ -98,6 +92,7 @@ apply_step.step_subsample <- function(step, data, w) {
   active <- .wf_active(w)
   sel    <- .eval_cond(step$selected, data, step$env, active = active)
   p2     <- .eval_num(step$prob, "prob", data, ecenv)
+  if (length(p2) == 1L) p2 <- rep(p2, nrow(data))   # a constant prob is the common case
   use    <- active & sel
   if (!any(use))
     stop("`step_subsample`: no active unit is selected in phase 2 (`selected` is ",
@@ -153,7 +148,7 @@ apply_step.step_subsample <- function(step, data, w) {
 # lambda1 + lambda2 - 1 have exactly this variance, so a single per-PSU factor of
 # variance d is equivalent for the estimator variance; drawing it from a strictly
 # positive smooth distribution (see .twophase_fac) keeps every replicate weight
-# positive. See METODO_dos_fases.
+# positive. See vignette("two-phase-sampling").
 .twophase_setup <- function(sub, data, fvec) {
   n   <- nrow(data)
   # M-1: this is a design-summary evaluation, not the adjustment (apply_step
@@ -163,6 +158,7 @@ apply_step.step_subsample <- function(step, data, w) {
   # in-scope NA check and coerces NA to FALSE.
   sel <- .eval_cond(sub$selected, data, sub$env, active = logical(n))
   p2  <- .eval_num(sub$prob, "prob", data, sub$env)
+  if (length(p2) == 1L) p2 <- rep(p2, n)            # a constant prob is the common case
   sel[is.na(sel)] <- FALSE
   psu <- as.character(data[[sub$psu]])
   use <- sel & is.finite(p2) & p2 > 0 & p2 <= 1 & !is.na(psu)
@@ -182,9 +178,13 @@ apply_step.step_subsample <- function(step, data, w) {
          "'; it must be a single value per unit.", call. = FALSE)
   f1_psu <- as.numeric(tapply(fvec[use], psu[use], function(z) z[1])[selpsu])
   f1_psu[is.na(f1_psu)] <- 0
-  d      <- (1 - f1_psu) * p2_psu + (1 - p2_psu)     # = 1 - f1 * pi2, in (0, 1]
+  d1     <- (1 - f1_psu) * p2_psu                    # phase-1 component (via the subsample)
+  d2     <- (1 - p2_psu)                             # phase-2 conditional component
+  d      <- d1 + d2                                  # = 1 - f1 * pi2, in (0, 1]
+  # d1 and d2 are the two identified terms of the coupling; running the same
+  # machinery with each in turn (see two_phase_variance) decomposes V = V1 + V2.
   list(n = n, use = use, unit_psu_idx = idx, selpsu = selpsu,
-       d = d, design = sub$design)
+       d = d, d1 = d1, d2 = d2, design = sub$design)
 }
 
 # One replicate's two-phase factor vector (Poisson second phase): a single
@@ -195,8 +195,8 @@ apply_step.step_subsample <- function(step, data, w) {
 # re-runs cleanly on every replicate -- and gives slightly better coverage than a
 # two-point factor. Non-selected units get factor 1 (they leave the cascade at
 # step_subsample anyway). Units with d ~ 0 (no sampling variance) keep factor 1.
-.twophase_fac <- function(setup) {
-  v    <- setup$d
+.twophase_fac <- function(setup, dvar = setup$d) {
+  v    <- dvar
   npsu <- length(setup$selpsu)
   lam  <- rep(1, npsu)
   pos  <- v > 1e-12

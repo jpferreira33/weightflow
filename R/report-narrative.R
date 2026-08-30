@@ -108,6 +108,8 @@
   if (inherits(step, "step_assert")) return(.t("quality checkpoint", "punto de control", lang))
   if (inherits(step, "step_nr_sensitivity"))
     return(.t("nonresponse sensitivity", "sensibilidad a la no respuesta", lang))
+  if (inherits(step, "step_subsample"))
+    return(.t("second-phase subsampling", "submuestreo de segunda fase", lang))
   .html_escape(step$label)
 }
 
@@ -312,6 +314,11 @@
   } else if (inherits(step, "step_nr_sensitivity")) {
     txt <- .t("A proxy pattern-mixture sensitivity analysis (Andridge and Little 2011) was run. It does not change the weights: it reports how far the study mean could move under nonignorable nonresponse, as an ignorance interval indexed by a single parameter. See the sensitivity block.",
               "Se corri\u00f3 un an\u00e1lisis de sensibilidad por mixtura de patrones con proxy (Andridge y Little 2011). No cambia los pesos: informa cu\u00e1nto podr\u00eda moverse la media bajo no respuesta no ignorable, como un intervalo de ignorancia indexado por un solo par\u00e1metro. Ver el bloque de sensibilidad.", lang)
+  } else if (inherits(step, "step_subsample")) {
+    txt <- .t(
+      "A second phase of sampling was undone: the subsampled units had their weight multiplied by the inverse of the phase-2 selection probability, so they represent the whole first-phase sample, and the not-subsampled units left the cascade. When the variance is estimated by bootstrap, weightflow uses the two-phase coupling V = V1 + V2 &mdash; the first-phase sampling variance plus the expected conditional variance of the phase-2 subsample &mdash; which a single-phase bootstrap would understate.",
+      "Se deshizo una segunda fase de muestreo: a las unidades submuestreadas se les multiplic&oacute; el peso por el inverso de la probabilidad de selecci&oacute;n de fase 2, para que representen a toda la muestra de primera fase, y las no submuestreadas salieron de la cascada. Cuando la varianza se estima por bootstrap, weightflow usa el acople de dos fases V = V1 + V2 &mdash; la varianza de muestreo de fase 1 m&aacute;s la varianza condicional esperada del submuestreo de fase 2 &mdash; que un bootstrap de una sola fase subestimar&iacute;a.",
+      lang)
   } else return("")
 
   if (!nzchar(txt)) return("")

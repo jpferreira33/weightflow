@@ -47,6 +47,10 @@
 #'   are identical to the serial run: the resampling is drawn up front with the
 #'   seed and only the deterministic re-prep is parallelised.
 #' @param progress print progress every 25 replicates (serial only).
+#' @param .tp_component internal. For a two-phase recipe, `"full"` (default) draws
+#'   the coupled factor; `"phase1"` / `"phase2"` draw only the phase-1 or phase-2
+#'   component of the coupling. Used by `two_phase_variance()` to split
+#'   \eqn{V = V_1 + V_2}; not for direct use.
 #' @return An object of class `weightflow_boot` with the `replicates` matrix
 #'   (units x replicates), the point `weights`, and the design metadata.
 #' @examples
@@ -66,7 +70,9 @@
 bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
                               psu = NULL, m = NULL, fpc = NULL,
                               lonely_psu = c("certainty", "collapse"),
-                              seed = NULL, cores = 1L, progress = TRUE) {
+                              seed = NULL, cores = 1L, progress = TRUE,
+                              .tp_component = c("full", "phase1", "phase2")) {
+  .tp_component <- match.arg(.tp_component)
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
   # NP-07: a finite-population correction is a probability-sampling concept (it needs
@@ -215,10 +221,14 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     get(".Random.seed", envir = .GlobalEnv) else .rng_entry
   if (!is.null(.rng_restore))
     on.exit(assign(".Random.seed", .rng_restore, envir = .GlobalEnv), add = TRUE)
+  tp_dvar <- if (two_phase) switch(.tp_component,
+    full = tp_setup$d, phase1 = tp_setup$d1, phase2 = tp_setup$d2) else NULL
   for (b in seq_len(replicates)) {
     # Two-phase coupling replaces the single-phase Rao-Wu factor entirely: a single
-    # per-PSU factor of variance d = (1-f1)pi2 + (1-pi2) (see METODO).
-    if (two_phase) { facs[[b]] <- .twophase_fac(tp_setup); next }
+    # per-PSU factor of variance d = (1-f1)pi2 + (1-pi2) (see vignette two-phase-sampling).
+    # `.tp_component` draws only the phase-1 (d1) or phase-2 (d2) part for the
+    # V = V1 + V2 decomposition (two_phase_variance()).
+    if (two_phase) { facs[[b]] <- .twophase_fac(tp_setup, dvar = tp_dvar); next }
     facs[[b]] <- raowu_fac()
   }
 
@@ -263,11 +273,12 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   if (two_phase) {
     # Degrees of freedom and design summary come from the phase-2 sampling units,
     # not the (single-phase) strata/PSU columns, which do not describe this design.
-    # Count only phase-2 PSUs that survive to a positive final weight: a household
-    # dropped BEFORE the subsample (ineligible, whole-household nonresponse) is
-    # still selected in `selpsu` but carries no weight, so counting it would
-    # overstate the degrees of freedom (e.g. 17 vs the ~10 effective PSUs).
-    active_psu <- unique(as.character(data[[sub$psu]])[point > 0])
+    # Count only phase-2 PSUs that survive as ACTIVE units (finite, non-zero weight
+    # -- .wf_active, so a valid negative GREG weight still counts, matching the rest
+    # of the package): a household dropped BEFORE the subsample (ineligible,
+    # whole-household nonresponse) carries weight 0, so counting it would overstate
+    # the degrees of freedom (e.g. 17 vs the ~10 effective PSUs).
+    active_psu <- unique(as.character(data[[sub$psu]])[.wf_active(point)])
     npsu2  <- length(active_psu)
     df     <- max(npsu2 - 1L, 1L)
     design <- list(two_phase = TRUE, phase2_design = sub$design,
@@ -748,6 +759,72 @@ jack_mean <- function(jack, variable) {
   })
 }
 
+#' Decompose a two-phase variance into V = V1 + V2
+#'
+#' For a recipe containing [step_subsample()], `two_phase_variance()` splits the
+#' recipe-aware bootstrap variance of an estimate into its first-phase and
+#' second-phase components, \eqn{V = V_1 + V_2}. The per-unit coupling factor has
+#' variance \eqn{d = (1-f_1)\pi_2 + (1-\pi_2)}, the sum of the phase-1 term
+#' \eqn{(1-f_1)\pi_2} and the phase-2 conditional term \eqn{1-\pi_2}; running the
+#' same bootstrap with each term in turn yields the two components.
+#'
+#' The share `prop_phase2` = V2 / V is an operational read: a large share means
+#' the second-phase subsampling drives the uncertainty, so subsampling more would
+#' pay off; a small share means a denser (more expensive) subsample would buy
+#' little, and the first phase is the binding constraint.
+#'
+#' @param object a `weighting_spec` (or prepped) whose recipe contains
+#'   [step_subsample()].
+#' @param variable name of the study variable (a single column).
+#' @param estimator `"mean"` (default) or `"total"`.
+#' @param replicates,seed,fpc passed through to [bootstrap_weights()].
+#' @return An object of class `weightflow_tp_variance`: `V1`, `V2`, `V`, the
+#'   matching standard errors `se1`, `se2`, `se`, and `prop_phase2` = V2 / V.
+#' @seealso [bootstrap_weights()], [step_subsample()].
+#' @examples
+#' \donttest{
+#' df <- transform(sample_survey,
+#'                 in2 = as.integer(runif(nrow(sample_survey)) < 0.3), p2 = 0.3)
+#' spec <- weighting_spec(df, base_weights = pw) |>
+#'   step_subsample(selected = in2, prob = p2, psu = "household_id")
+#' two_phase_variance(spec, "income", replicates = 100)
+#' }
+#' @export
+two_phase_variance <- function(object, variable, estimator = c("mean", "total"),
+                               replicates = 500L, seed = NULL, fpc = NULL) {
+  estimator <- match.arg(estimator)
+  if (!inherits(object, "weighting_spec"))
+    stop("`object` must be a weighting_spec or a prepped weighting_spec.", call. = FALSE)
+  if (is.null(.find_subsample_step(object$steps)))
+    stop("two_phase_variance() needs a recipe with a step_subsample() (a two-phase ",
+         "design); there is nothing to decompose.", call. = FALSE)
+  if (!is.character(variable) || length(variable) != 1L)
+    stop("`variable` must be a single column name.", call. = FALSE)
+  est <- if (estimator == "mean") boot_mean else boot_total
+  b1  <- bootstrap_weights(object, replicates = replicates, seed = seed, fpc = fpc,
+                           progress = FALSE, .tp_component = "phase1")
+  b2  <- bootstrap_weights(object, replicates = replicates, seed = seed, fpc = fpc,
+                           progress = FALSE, .tp_component = "phase2")
+  se1 <- est(b1, variable)$se
+  se2 <- est(b2, variable)$se
+  V1  <- se1^2; V2 <- se2^2; V <- V1 + V2
+  structure(list(variable = variable, estimator = estimator,
+                 V1 = V1, V2 = V2, V = V, se1 = se1, se2 = se2, se = sqrt(V),
+                 prop_phase2 = if (V > 0) V2 / V else NA_real_),
+            class = "weightflow_tp_variance")
+}
+
+#' @export
+print.weightflow_tp_variance <- function(x, ...) {
+  cat(sprintf("Two-phase variance of the %s of '%s'  (V = V1 + V2)\n",
+              x$estimator, x$variable))
+  cat(sprintf("  V1  phase-1  = %.6g   (SE %.5g)\n", x$V1, x$se1))
+  cat(sprintf("  V2  phase-2  = %.6g   (SE %.5g)\n", x$V2, x$se2))
+  cat(sprintf("  V   total    = %.6g   (SE %.5g)\n", x$V, x$se))
+  cat(sprintf("  phase-2 share  V2/V = %.1f%%\n", 100 * x$prop_phase2))
+  invisible(x)
+}
+
 #' Export weightflow weights to a survey design
 #'
 #' `as_svydesign()` builds a linearization (ultimate-cluster) `survey.design`
@@ -777,6 +854,15 @@ jack_mean <- function(jack, variable) {
 as_svydesign <- function(object, ids, strata = NULL, weight_name = ".weight", ...) {
   if (!requireNamespace("survey", quietly = TRUE))
     stop("Install the 'survey' package to use as_svydesign().")
+  # A two-phase recipe cannot be exported as an ordinary single-phase design: the
+  # resulting svydesign would capture only the first-phase variance and silently
+  # undercover the two-phase variance V = V1 + V2. Refuse, as jackknife_weights()
+  # does, and point to the right tools.
+  if (inherits(object, "weighting_spec") && !is.null(.find_subsample_step(object$steps)))
+    stop("as_svydesign() does not support a two-phase design (the recipe has a ",
+         "step_subsample()): a single-phase survey design would omit the phase-2 ",
+         "variance component. Use bootstrap_weights() for the two-phase variance, ",
+         "or survey::twophase() to build a two-phase design directly.", call. = FALSE)
   if (inherits(object, "prepped_weighting_spec")) {
     df <- object$data; df[[weight_name]] <- object$final_weight
   } else if (is.data.frame(object)) {

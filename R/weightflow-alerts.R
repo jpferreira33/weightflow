@@ -60,6 +60,16 @@
 #'   run without `crossfit` can understate the variance through same-sample
 #'   prediction. Add `crossfit` to estimate each unit out of sample.
 #'
+#' @section Two-phase (double) sampling:
+#' - *Few phase-2 sampling units*: fewer than 30 units were subsampled at the
+#'   second phase. The recipe-aware bootstrap resamples the phase-2 variance
+#'   component (V2) at this level, so few units leave V2 with few degrees of
+#'   freedom and an unstable phase-2 standard error. Inspect the split with
+#'   [two_phase_variance()].
+#' - *Tiny phase-2 probability*: a minimum phase-2 selection probability below
+#'   0.02 expands the subsampled weights sharply (up to `1/pi2`), inflating V2.
+#'   Check the phase-2 design or trim the expanded weights.
+#'
 #' @section Finalising:
 #' - *Rounded to zero*: rounding pushed a small or negative weight to exactly 0,
 #'   so the unit left the active set and [collect_weights()]; round to more

@@ -425,13 +425,18 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
   achieved  <- colSums(new_w[elig_idx[resp_e]] * Xr)
   truncated <- !is.null(step$bounds) || step$calfun == "logit"
   conv_ok   <- sol$converged
-  if (is.null(step$penalty) && !truncated) {
+  if (is.null(step$penalty)) {
+    # Verify the totals were reached, even with bounds/logit (a bounded calibration
+    # still meets the totals when feasible; if the bounds bite, they are NOT met and
+    # the user must be told -- previously this check was skipped under `truncated`).
     rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
     if (any(rel_dev > 1e-6)) {
       conv_ok <- FALSE
       warning(sprintf(paste0("Nonresponse calibration did not fully satisfy the ",
-                             "constraints (max relative deviation = %.2e)."),
-                      max(rel_dev)), call. = FALSE)
+                             "constraints (max relative deviation = %.2e)%s."),
+                      max(rel_dev),
+                      if (truncated) " -- the bounds/calfun truncated the weights" else ""),
+              call. = FALSE)
     }
   }
   diag <- data.frame(variable = cn, target = Tvec, achieved = round(achieved, 2),

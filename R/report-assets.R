@@ -30,7 +30,8 @@
              "Extremo = peso final por encima de 4&times; la mediana (una convenci\u00f3n; ajuste a sus cotas de recorte).", lang)
   if (!isTRUE(plots))
     return(paste0("<table class='params'>", rows, "</table><p class='muted'>", note, "</p>"))
-  hist <- tryCatch(.svg_hist(wnz, xlab = .t("final weight", "peso final", lang), refline = NULL),
+  hist <- tryCatch(.svg_hist(wnz, xlab = .t("final weight", "peso final", lang),
+                             refline = NULL, density = TRUE),
                    error = function(e) "")
   hblock <- if (nzchar(hist))
     sprintf("<div class='viz-h'>%s</div><div class='wdhist'>%s</div>",

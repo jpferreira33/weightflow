@@ -14,7 +14,8 @@ bootstrap_weights(
   lonely_psu = c("certainty", "collapse"),
   seed = NULL,
   cores = 1L,
-  progress = TRUE
+  progress = TRUE,
+  .tp_component = c("full", "phase1", "phase2")
 )
 }
 \arguments{
@@ -52,6 +53,11 @@ are identical to the serial run: the resampling is drawn up front with the
 seed and only the deterministic re-prep is parallelised.}
 
 \item{progress}{print progress every 25 replicates (serial only).}
+
+\item{.tp_component}{internal. For a two-phase recipe, \code{"full"} (default) draws
+the coupled factor; \code{"phase1"} / \code{"phase2"} draw only the phase-1 or phase-2
+component of the coupling. Used by \code{two_phase_variance()} to split
+\eqn{V = V_1 + V_2}; not for direct use.}
 }
 \value{
 An object of class \code{weightflow_boot} with the \code{replicates} matrix

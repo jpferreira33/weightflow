@@ -163,6 +163,7 @@
 
   idx_by <- split(which(active), skey[active])      # active rows per cell key, once
   diag <- vector("list", nrow(cells))
+  zeroed <- character(0)                             # cells zeroed by a 0 population total
   for (i in seq_len(nrow(cells))) {
     key    <- cells$.key[i]
     target <- cells$.Freq[i]
@@ -170,6 +171,8 @@
     cur <- sum(new_w[idx])
     fac <- if (cur > 0) target / cur else NA_real_
     if (!is.na(fac)) new_w[idx] <- new_w[idx] * fac
+    if (isTRUE(target == 0) && cur > 0 && length(idx) > 0L)
+      zeroed <- c(zeroed, gsub("\r", " x ", key))
     diag[[i]] <- data.frame(
       variable   = paste(prep$vars, collapse = " x "),
       category   = gsub("\r", " x ", key),
@@ -180,6 +183,13 @@
       stringsAsFactors = FALSE
     )
   }
+  if (length(zeroed))
+    warning(sprintf(paste0("Post-stratification: %d cell(s) with a population total of 0 sent their ",
+                          "sample units to weight 0 (%s). Those units leave the cascade -- this is a ",
+                          "0 control total, not an ordinary nonresponse/ineligibility drop; check the ",
+                          "totals if that cell should not be empty."),
+                   length(zeroed),
+                   paste(utils::head(zeroed, 5L), collapse = "; ")), call. = FALSE)
   list(weights = new_w, diagnostics = do.call(rbind, diag))
 }
 
