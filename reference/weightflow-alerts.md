@@ -84,6 +84,19 @@ defaults unless noted; `min_cell_n` and `max_factor` are arguments of
   same-sample prediction. Add `crossfit` to estimate each unit out of
   sample.
 
+## Two-phase (double) sampling
+
+- *Few phase-2 sampling units*: fewer than 30 units were subsampled at
+  the second phase. The recipe-aware bootstrap resamples the phase-2
+  variance component (V2) at this level, so few units leave V2 with few
+  degrees of freedom and an unstable phase-2 standard error. Inspect the
+  split with
+  [`two_phase_variance()`](https://jpferreira33.github.io/weightflow/reference/two_phase_variance.md).
+
+- *Tiny phase-2 probability*: a minimum phase-2 selection probability
+  below 0.02 expands the subsampled weights sharply (up to `1/pi2`),
+  inflating V2. Check the phase-2 design or trim the expanded weights.
+
 ## Finalising
 
 - *Rounded to zero*: rounding pushed a small or negative weight to

@@ -152,6 +152,19 @@ run without <code>crossfit</code> can understate the variance through same-sampl
 prediction. Add <code>crossfit</code> to estimate each unit out of sample.</p></li>
 </ul></div>
     <div class="section level2">
+    <h2 id="two-phase-double-sampling">Two-phase (double) sampling<a class="anchor" aria-label="anchor" href="#two-phase-double-sampling"></a></h2>
+
+
+<ul><li><p><em>Few phase-2 sampling units</em>: fewer than 30 units were subsampled at the
+second phase. The recipe-aware bootstrap resamples the phase-2 variance
+component (V2) at this level, so few units leave V2 with few degrees of
+freedom and an unstable phase-2 standard error. Inspect the split with
+<code><a href="two_phase_variance.html">two_phase_variance()</a></code>.</p></li>
+<li><p><em>Tiny phase-2 probability</em>: a minimum phase-2 selection probability below
+0.02 expands the subsampled weights sharply (up to <code>1/pi2</code>), inflating V2.
+Check the phase-2 design or trim the expanded weights.</p></li>
+</ul></div>
+    <div class="section level2">
     <h2 id="finalising">Finalising<a class="anchor" aria-label="anchor" href="#finalising"></a></h2>
 
 

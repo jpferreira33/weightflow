@@ -81,15 +81,7 @@ probability, and the not-subsampled units leave the cascade (weight 0).</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">step_subsample</span><span class="op">(</span></span>
-<span>  <span class="va">spec</span>,</span>
-<span>  <span class="va">selected</span>,</span>
-<span>  <span class="va">prob</span>,</span>
-<span>  <span class="va">psu</span>,</span>
-<span>  strata <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  design <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"poisson"</span>, <span class="st">"srswor"</span><span class="op">)</span>,</span>
-<span>  id <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">step_subsample</span><span class="op">(</span><span class="va">spec</span>, <span class="va">selected</span>, <span class="va">prob</span>, <span class="va">psu</span>, id <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -119,18 +111,6 @@ at which the subsample was drawn). The two-phase resampling factor is
 generated at this level and shared by the members of the unit.</p></dd>
 
 
-<dt id="arg-strata">strata<a class="anchor" aria-label="anchor" href="#arg-strata"></a></dt>
-<dd><p>character. Phase-2 design strata (where <code>prob</code> is constant),
-optional.</p></dd>
-
-
-<dt id="arg-design">design<a class="anchor" aria-label="anchor" href="#arg-design"></a></dt>
-<dd><p>the phase-2 selection scheme: "poisson" (independent /
-Bernoulli selection, the default) or "srswor" (simple random sampling
-without replacement within a stratum). Only "poisson" is fully implemented
-in this version.</p></dd>
-
-
 <dt id="arg-id">id<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
 <dd><p>optional string: a stable identifier for this step, shown in the
 recipe print-out and usable to select it in <code><a href="collect_step_detail.html">collect_step_detail()</a></code>;
@@ -144,8 +124,8 @@ step is recorded only; it is evaluated when <code><a href="prep.html">prep()</a>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The step also <em>records the phase-2 design</em> (the selection probability, the
-phase-2 sampling unit, its stratification, and the selection scheme) so that
+    <p>The step also <em>records the phase-2 design</em> (the selection probability and the
+phase-2 sampling unit) so that
 <code><a href="bootstrap_weights.html">bootstrap_weights()</a></code> can reproduce the two-phase variance
 \(V = V_1 + V_2\): the phase-1 sampling variance plus the
 expected conditional variance of the phase-2 subsample. A single-phase
@@ -158,11 +138,16 @@ the subsample) and the phase-2 conditional component
 interaction term and is too wide. In practice the factor is drawn once per
 phase-2 sampling unit from a strictly positive Gamma of that mean and
 variance, so every replicate weight stays positive (a downstream
-propensity/GLM step re-runs cleanly). See the package's two-phase methodology
-notes.</p>
-<p>This first version covers a Poisson (independent) second phase whose sampling
-unit is nested in the first phase (e.g. households subsampled from a
-first-phase household sample). The phase-1 sampling fraction \(f_1\) is
+propensity/GLM step re-runs cleanly). See <code><a href="../articles/two-phase-sampling.html">vignette("two-phase-sampling")</a></code> for
+the methodology and its Monte Carlo validation.</p>
+<p>The second phase is modelled as Poisson (independent / Bernoulli) selection of
+the sampling unit nested in the first phase (e.g. households subsampled from a
+first-phase household sample). This is the general-purpose choice: a Poisson
+second phase is conservative for, and closely approximates, the without-
+replacement and stratified subsampling schemes used in practice when the
+phase-2 sampling fraction is small – which is the usual case, since a costly
+follow-up subsamples only a fraction of the first phase. The phase-1 sampling
+fraction \(f_1\) is
 taken from the <code>fpc</code> argument of <code><a href="bootstrap_weights.html">bootstrap_weights()</a></code> and defaults to 0
 (negligible, the usual case in household surveys), which reduces the coupling
 to a single independent per-unit factor of variance 1 – a Gamma of variance 1,

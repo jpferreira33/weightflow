@@ -88,6 +88,7 @@ Other cascade audit:
 ## Examples
 
 ``` r
+# \donttest{
 spec <- weighting_spec(sample_survey, base_weights = pw) |>
   step_calibrate(method = "raking",
                  margins = list(region = c(table(population$region))))
@@ -106,4 +107,5 @@ as_sae_input(boot, "responded", by = "region")
 #> 2 publishable
 #> 3 publishable
 #> 4 publishable
+# }
 ```

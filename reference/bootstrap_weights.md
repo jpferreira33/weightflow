@@ -21,7 +21,8 @@ bootstrap_weights(
   lonely_psu = c("certainty", "collapse"),
   seed = NULL,
   cores = 1L,
-  progress = TRUE
+  progress = TRUE,
+  .tp_component = c("full", "phase1", "phase2")
 )
 ```
 
@@ -82,6 +83,14 @@ bootstrap_weights(
 - progress:
 
   print progress every 25 replicates (serial only).
+
+- .tp_component:
+
+  internal. For a two-phase recipe, `"full"` (default) draws the coupled
+  factor; `"phase1"` / `"phase2"` draw only the phase-1 or phase-2
+  component of the coupling. Used by
+  [`two_phase_variance()`](https://jpferreira33.github.io/weightflow/reference/two_phase_variance.md)
+  to split \\V = V_1 + V_2\\; not for direct use.
 
 ## Value
 

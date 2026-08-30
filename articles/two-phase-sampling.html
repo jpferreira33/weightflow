@@ -200,6 +200,23 @@ cleanly.</p>
 0 (negligible, as in most household surveys) and can be supplied through
 the <code>fpc</code> argument of <code><a href="../reference/bootstrap_weights.html">bootstrap_weights()</a></code> when
 it is not.</p>
+<p>Note what <code>f1 = 0</code> does to the factor variance:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"></mspace><msub><mi>π</mi><mn>2</mn></msub><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>π</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">(1-0)\,\pi_2 + (1-\pi_2) = 1</annotation></semantics></math>
+for every unit, so
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>π</mi><mn>2</mn></msub><annotation encoding="application/x-tex">\pi_2</annotation></semantics></math>
+drops out of the <em>coupling</em>. With a negligible first-phase
+fraction each phase-2 sampling unit simply gets an independent factor of
+variance 1 (a Bayesian-bootstrap / Exponential(1) multiplier). This is
+correct, not a bug:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>π</mi><mn>2</mn></msub><annotation encoding="application/x-tex">\pi_2</annotation></semantics></math>
+enters the estimate through the weights
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>=</mo><msub><mi>w</mi><mn>1</mn></msub><mi>/</mi><msub><mi>π</mi><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">w = w_1/\pi_2</annotation></semantics></math>),
+not through the resampling factor, so lowering
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>π</mi><mn>2</mn></msub><annotation encoding="application/x-tex">\pi_2</annotation></semantics></math>
+does <em>not</em> move <code>d</code> when <code>f1 = 0</code> – it is
+the phase-1 fraction, not
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>π</mi><mn>2</mn></msub><annotation encoding="application/x-tex">\pi_2</annotation></semantics></math>,
+that pulls <code>d</code> below 1.</p>
 </div>
 <div class="section level2">
 <h2 id="the-cascade-is-re-run-on-every-replicate">The cascade is re-run on every replicate<a class="anchor" aria-label="anchor" href="#the-cascade-is-re-run-on-every-replicate"></a>
@@ -254,15 +271,24 @@ nonresponse and clustered households.</p>
 <div class="section level2">
 <h2 id="scope">Scope<a class="anchor" aria-label="anchor" href="#scope"></a>
 </h2>
-<p>This version covers a <strong>Poisson (independent) second
-phase</strong> whose sampling unit is nested in the first phase (the
-household-subsampling case). It does not yet cover a without-replacement
-second phase (<code>design = "srswor"</code>) or a coarser first-phase
-clustering (areas then households); <code><a href="../reference/bootstrap_weights.html">bootstrap_weights()</a></code>
-raises a clear error rather than silently undercovering when
-<code>strata</code>/<code>psu</code> are supplied with a two-phase
-recipe, and <code><a href="../reference/jackknife_weights.html">jackknife_weights()</a></code> refuses a two-phase recipe
-(use the bootstrap).</p>
+<p>The second phase is modelled as a <strong>Poisson (independent /
+Bernoulli) selection</strong> of the sampling unit nested in the first
+phase (the household-subsampling case). This is deliberately the
+<em>general-purpose</em> model rather than one design per scheme: when
+the phase-2 sampling fraction is small – the usual situation, since a
+costly follow-up subsamples only a fraction of the first phase – a
+Poisson second phase closely approximates, and is slightly conservative
+for, the without-replacement and stratified subsampling schemes used in
+practice, because the finite-population correction they add is
+negligible at a small fraction. The per-unit factor therefore needs only
+the selection probability and the sampling unit, not the full phase-2
+stratification. An exact stratified without-replacement second phase,
+and a coarser first-phase clustering (areas then households), are
+planned extensions; today <code><a href="../reference/jackknife_weights.html">jackknife_weights()</a></code> refuses a
+two-phase recipe (use the bootstrap), and
+<code><a href="../reference/bootstrap_weights.html">bootstrap_weights()</a></code> raises a clear error rather than
+silently undercovering when first-phase
+<code>strata</code>/<code>psu</code> are supplied.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

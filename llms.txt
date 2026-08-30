@@ -728,6 +728,8 @@ bridges.
 
 - [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
   : Recipe-aware bootstrap replicate weights
+- [`two_phase_variance()`](https://jpferreira33.github.io/weightflow/reference/two_phase_variance.md)
+  : Decompose a two-phase variance into V = V1 + V2
 - [`bootstrap_estimate()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
   [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
   [`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)

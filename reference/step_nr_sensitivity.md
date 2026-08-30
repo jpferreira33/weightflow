@@ -76,6 +76,13 @@ the input `weighting_spec` with this diagnostic step appended.
 
 ## Details
 
+The adjusted mean at sensitivity \\\phi\\ is \$\$\mu(\phi) =
+\bar{y}\_r + (1 -
+\pi)\\\frac{s\_{yr}}{s\_{xr}}\\m(\phi)\\(\bar{x}\_{nr} -
+\bar{x}\_r),\$\$ with slope \\m(\phi) = \frac{(1-\phi)\rho +
+\phi}{(1-\phi) + \phi\rho}\\, so that \\m(0) = \rho\\ (ignorable given
+the proxy) and \\m(1) = 1/\rho\\.
+
 The proxy correlation `rho` (the multiple correlation of `y` on the
 auxiliaries among respondents) sets how informative the auxiliaries are:
 a weak proxy widens the ignorance interval (at `phi = 1` the slope is

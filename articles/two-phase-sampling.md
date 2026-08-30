@@ -117,6 +117,16 @@ argument of
 [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
 when it is not.
 
+Note what `f1 = 0` does to the factor variance:
+$`(1-0)\,\pi_2 + (1-\pi_2) = 1`$ for every unit, so $`\pi_2`$ drops out
+of the *coupling*. With a negligible first-phase fraction each phase-2
+sampling unit simply gets an independent factor of variance 1 (a
+Bayesian-bootstrap / Exponential(1) multiplier). This is correct, not a
+bug: $`\pi_2`$ enters the estimate through the weights
+($`w = w_1/\pi_2`$), not through the resampling factor, so lowering
+$`\pi_2`$ does *not* move `d` when `f1 = 0` – it is the phase-1
+fraction, not $`\pi_2`$, that pulls `d` below 1.
+
 ## The cascade is re-run on every replicate
 
 The whole recipe is re-executed for each bootstrap replicate, so any
@@ -177,16 +187,25 @@ households.
 
 ## Scope
 
-This version covers a **Poisson (independent) second phase** whose
-sampling unit is nested in the first phase (the household-subsampling
-case). It does not yet cover a without-replacement second phase
-(`design = "srswor"`) or a coarser first-phase clustering (areas then
-households);
-[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
-raises a clear error rather than silently undercovering when
-`strata`/`psu` are supplied with a two-phase recipe, and
+The second phase is modelled as a **Poisson (independent / Bernoulli)
+selection** of the sampling unit nested in the first phase (the
+household-subsampling case). This is deliberately the *general-purpose*
+model rather than one design per scheme: when the phase-2 sampling
+fraction is small – the usual situation, since a costly follow-up
+subsamples only a fraction of the first phase – a Poisson second phase
+closely approximates, and is slightly conservative for, the
+without-replacement and stratified subsampling schemes used in practice,
+because the finite-population correction they add is negligible at a
+small fraction. The per-unit factor therefore needs only the selection
+probability and the sampling unit, not the full phase-2 stratification.
+An exact stratified without-replacement second phase, and a coarser
+first-phase clustering (areas then households), are planned extensions;
+today
 [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
-refuses a two-phase recipe (use the bootstrap).
+refuses a two-phase recipe (use the bootstrap), and
+[`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+raises a clear error rather than silently undercovering when first-phase
+`strata`/`psu` are supplied.
 
 ## References
 

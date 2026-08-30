@@ -155,7 +155,11 @@ mechanism is often unrealistically strong.</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The proxy correlation <code>rho</code> (the multiple correlation of <code>y</code> on the auxiliaries
+    <p>The adjusted mean at sensitivity \(\phi\) is
+$$\mu(\phi) = \bar{y}_r + (1 - \pi)\,\frac{s_{yr}}{s_{xr}}\,m(\phi)\,(\bar{x}_{nr} - \bar{x}_r),$$
+with slope \(m(\phi) = \frac{(1-\phi)\rho + \phi}{(1-\phi) + \phi\rho}\), so that
+\(m(0) = \rho\) (ignorable given the proxy) and \(m(1) = 1/\rho\).</p>
+<p>The proxy correlation <code>rho</code> (the multiple correlation of <code>y</code> on the auxiliaries
 among respondents) sets how informative the auxiliaries are: a weak proxy widens
 the ignorance interval (at <code>phi = 1</code> the slope is <code>1/rho</code>). The step reads the
 base design weights, so place it anywhere in the recipe; it needs the

@@ -10,15 +10,7 @@ cascade (weight 0).
 ## Usage
 
 ``` r
-step_subsample(
-  spec,
-  selected,
-  prob,
-  psu,
-  strata = NULL,
-  design = c("poisson", "srswor"),
-  id = NULL
-)
+step_subsample(spec, selected, prob, psu, id = NULL)
 ```
 
 ## Arguments
@@ -46,17 +38,6 @@ step_subsample(
   which the subsample was drawn). The two-phase resampling factor is
   generated at this level and shared by the members of the unit.
 
-- strata:
-
-  character. Phase-2 design strata (where `prob` is constant), optional.
-
-- design:
-
-  the phase-2 selection scheme: "poisson" (independent / Bernoulli
-  selection, the default) or "srswor" (simple random sampling without
-  replacement within a stratum). Only "poisson" is fully implemented in
-  this version.
-
 - id:
 
   optional string: a stable identifier for this step, shown in the
@@ -73,9 +54,8 @@ is called.
 
 ## Details
 
-The step also *records the phase-2 design* (the selection probability,
-the phase-2 sampling unit, its stratification, and the selection scheme)
-so that
+The step also *records the phase-2 design* (the selection probability
+and the phase-2 sampling unit) so that
 [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
 can reproduce the two-phase variance \\V = V_1 + V_2\\: the phase-1
 sampling variance plus the expected conditional variance of the phase-2
@@ -89,12 +69,18 @@ conditional component \\1-\pi_2\\. A naive product of two factors adds a
 spurious interaction term and is too wide. In practice the factor is
 drawn once per phase-2 sampling unit from a strictly positive Gamma of
 that mean and variance, so every replicate weight stays positive (a
-downstream propensity/GLM step re-runs cleanly). See the package's
-two-phase methodology notes.
+downstream propensity/GLM step re-runs cleanly). See
+[`vignette("two-phase-sampling")`](https://jpferreira33.github.io/weightflow/articles/two-phase-sampling.md)
+for the methodology and its Monte Carlo validation.
 
-This first version covers a Poisson (independent) second phase whose
-sampling unit is nested in the first phase (e.g. households subsampled
-from a first-phase household sample). The phase-1 sampling fraction
+The second phase is modelled as Poisson (independent / Bernoulli)
+selection of the sampling unit nested in the first phase (e.g.
+households subsampled from a first-phase household sample). This is the
+general-purpose choice: a Poisson second phase is conservative for, and
+closely approximates, the without- replacement and stratified
+subsampling schemes used in practice when the phase-2 sampling fraction
+is small – which is the usual case, since a costly follow-up subsamples
+only a fraction of the first phase. The phase-1 sampling fraction
 \\f_1\\ is taken from the `fpc` argument of
 [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
 and defaults to 0 (negligible, the usual case in household surveys),

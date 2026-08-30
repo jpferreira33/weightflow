@@ -2,16 +2,16 @@
 
 For a non-probability sample (opt-in panel, volunteer or river sample)
 with no design weights, `step_pseudoweight()` estimates each unit's
-*participation propensity* `p` against a probability
+*participation propensity* \\\hat p\\ against a probability
 [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
-and assigns the pseudo-weight `(1 - p)/p` (the participation odds;
-Elliott and Valliant 2017), which inflates each unit to the population
-so the weights sum to the reference's estimated population size. It
-stacks the non-probability sample and the reference internally (the
-participation indicator and the two samples' weights are built for you),
-fits the propensity, and returns the pseudo-weight on the
-non-probability units only; the reference is used to train the model and
-then dropped.
+and assigns the pseudo-weight \\(1 - \hat{p})/\hat{p}\\ (the
+participation odds; Elliott and Valliant 2017), which inflates each unit
+to the population so the weights sum to the reference's estimated
+population size. It stacks the non-probability sample and the reference
+internally (the participation indicator and the two samples' weights are
+built for you), fits the propensity, and returns the pseudo-weight on
+the non-probability units only; the reference is used to train the model
+and then dropped.
 
 ## Usage
 
@@ -117,3 +117,27 @@ Other weighting steps:
 [`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md),
 [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md),
 [`step_unknown_eligibility()`](https://jpferreira33.github.io/weightflow/reference/step_unknown_eligibility.md)
+
+## Examples
+
+``` r
+# \donttest{
+set.seed(1)
+N   <- nrow(population)
+# a biased volunteer sample (men over-participate) and a probability reference
+vol <- population[rbinom(N, 1, plogis(-2 + 0.9 * (population$sex == "M"))) == 1,
+                  c("region", "sex", "income")]
+ref <- population[sample(N, 600), c("region", "sex")]
+ref$d <- N / 600                                   # its design weights
+fit <- weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+  step_pseudoweight(reference = reference_sample(ref, "d"),
+                    formula = ~ region + sex, engine = "logit") |>
+  prep()
+# the pseudo-weighted mean corrects the volunteer bias
+c(naive = mean(vol$income),
+  pseudo = weighted.mean(vol$income, fit$final_weight),
+  truth = mean(population$income))
+#>    naive   pseudo    truth 
+#> 19353.58 18936.79 19298.11 
+# }
+```
