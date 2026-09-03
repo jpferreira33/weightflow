@@ -7,9 +7,10 @@ apply_step.step_round <- function(step, data, w) {
   f      <- 10^step$digits
   sum_before <- sum(w[active])
 
+  bal_dev <- NA_real_
   if (step$method == "nearest") {
     new_w[active] <- round(w[active], step$digits)
-  } else {
+  } else if (step$method == "preserve_total") {
     # largest-remainder method: preserves the sum (on the `digits` scale)
     x      <- w[active] * f
     fl     <- floor(x)
@@ -20,6 +21,19 @@ apply_step.step_round <- function(step, data, w) {
       fl[ord[seq_len(min(k, length(fl)))]] <- fl[ord[seq_len(min(k, length(fl)))]] + 1
     }
     new_w[active] <- fl / f
+  } else {
+    # balanced (cube) rounding: keep the total of each `by` cell -- the calibrated
+    # domains -- not only the grand total. Cell indicators over the ACTIVE units
+    # form the balancing matrix; preserving every cell preserves the margins and
+    # the grand total too. .make_cells() crosses `by` exactly as the other steps.
+    cells <- .make_cells(data, step$by, length(w), active = active)[active]
+    cells <- droplevels(cells)
+    Z     <- stats::model.matrix(~ cells - 1)          # one indicator column per cell
+    new_w[active] <- .wf_balanced_round(w[active], Z, step$digits)
+    # honest quality number: worst preserved cell-total deviation (weight scale)
+    tot_before <- colSums(w[active] * Z)
+    tot_after  <- colSums(new_w[active] * Z)
+    bal_dev    <- max(abs(tot_after - tot_before) / pmax(abs(tot_before), 1))
   }
 
   diag <- data.frame(
@@ -30,6 +44,8 @@ apply_step.step_round <- function(step, data, w) {
     n_modified = sum(abs(new_w[active] - w[active]) > 1e-9),
     stringsAsFactors = FALSE
   )
+  if (identical(step$method, "balanced"))
+    diag$max_total_reldev <- signif(bal_dev, 3)
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -275,12 +291,21 @@ apply_step.step_model_calibration <- function(step, data, w) {
   colnames(Z) <- c(colnames(X), names(step$models))
   Tvec <- c(Tx, Tmu)
 
+  # Calibration solver: closed-form linear GREG when unbounded (the default),
+  # bounded Deville-Sarndal iteration when `bounds`/`calfun` are set. Shared with
+  # step_calibrate() through .solve_calibration(). The defaults guard specs built
+  # before `bounds` existed (an older step list has no calfun/bounds/maxit/tol).
+  cf_fun <- if (is.null(step$calfun)) "linear" else step$calfun
+  cf_bnd <- step$bounds
+  cf_mx  <- if (is.null(step$maxit)) 100L else step$maxit
+  cf_tl  <- if (is.null(step$tol))   1e-7 else step$tol
+  solver_ok <- TRUE
+
   if (!step$equal_within_cluster) {
-    # Unit-level linear calibration
-    A      <- t(Z) %*% (d * Z)
-    rhs    <- Tvec - colSums(d * Z)
-    lambda <- .solve_calib(A, rhs)
-    g      <- as.numeric(1 + Z %*% lambda)
+    # Unit-level calibration
+    sol    <- .solve_calibration(Z, d, Tvec, cf_fun, cf_bnd, maxit = cf_mx, tol = cf_tl)
+    g      <- sol$g
+    solver_ok <- isTRUE(sol$converged)
     new_w[active] <- d * g
     note_clust <- ""
   } else {
@@ -297,10 +322,9 @@ apply_step.step_model_calibration <- function(step, data, w) {
     n_h  <- as.numeric(tapply(d, cl, length)[hh])   # persons per household
     Wsum <- as.numeric(tapply(d, cl, sum)[hh])      # total base weight in household
     Xbar <- rowsum(Z, group = cl)[hh, , drop = FALSE] / n_h  # household MEANS of Z
-    A      <- t(Xbar) %*% (Wsum * Xbar)
-    rhs    <- Tvec - colSums(Wsum * Xbar)
-    lambda <- .solve_calib(A, rhs)
-    gh     <- as.numeric(1 + Xbar %*% lambda)
+    sol    <- .solve_calibration(Xbar, Wsum, Tvec, cf_fun, cf_bnd, maxit = cf_mx, tol = cf_tl)
+    gh     <- sol$g
+    solver_ok <- isTRUE(sol$converged)
     names(gh) <- hh
     new_w[active] <- d * gh[cl]                     # own base weight x household g-factor
     g <- gh
@@ -309,26 +333,39 @@ apply_step.step_model_calibration <- function(step, data, w) {
 
   achieved <- colSums(new_w[active] * Z)
   # Check that the calibration constraints (X and model blocks) are satisfied.
-  # Model calibration is unbounded linear, so deviations only arise from
-  # collinear auxiliaries or an ill-conditioned system.
+  # Unbounded model calibration is exact up to numerical precision, so a deviation
+  # points to collinear auxiliaries or an ill-conditioned system; with `bounds`,
+  # a deviation can also mean the requested range is infeasible for these totals.
   rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
   off     <- which(rel_dev > 1e-6)
-  if (length(off) > 0L)
+  if (length(off) > 0L) {
+    cause <- if (is.null(cf_bnd))
+      "collinear auxiliaries or an ill-conditioned system; check the auxiliary variables."
+    else
+      "collinear auxiliaries, an ill-conditioned system, or an infeasible `bounds` range; widen the bounds or check the auxiliaries."
     warning(sprintf(
       paste0("Model calibration did not fully satisfy the constraints for: %s. ",
              "The achieved totals differ from the targets (max relative ",
-             "deviation = %.2e); this can happen with collinear auxiliaries or ",
-             "an ill-conditioned system; check the auxiliary variables."),
-      paste(utils::head(colnames(Z)[off], 10L), collapse = ", "), max(rel_dev)),
+             "deviation = %.2e); this can happen with %s"),
+      paste(utils::head(colnames(Z)[off], 10L), collapse = ", "), max(rel_dev), cause),
       call. = FALSE)
+  }
   type <- c(rep("X (consistency)", ncol(X)),
             rep("y (model)", length(step$models)))
   diag <- data.frame(constraint = colnames(Z), type = type,
                      target = round(Tvec, 2), achieved = round(achieved, 2),
                      stringsAsFactors = FALSE)
-  attr(diag, "converged") <- (length(off) == 0L)
-  attr(diag, "note") <- sprintf("g (calibration factor) in [%.3f, %.3f]%s",
-                                min(g), max(g), note_clust)
+  attr(diag, "converged") <- (length(off) == 0L) && isTRUE(solver_ok)
+  bnd_note <- if (is.null(cf_bnd)) "" else sprintf(", bounds [%.3f, %.3f]", cf_bnd[1], cf_bnd[2])
+  attr(diag, "note") <- sprintf("g (calibration factor) in [%.3f, %.3f]%s%s",
+                                min(g), max(g), bnd_note, note_clust)
+  # Save the model-prediction columns (the mu block of Z) on the weights so a
+  # FOLLOWING step_trim_calibrated() can preserve the model totals T_mu, not only
+  # the X margins. prep() passes `w` forward to the next step, which reads this
+  # attribute; it is consumed and stripped there (and by prep() at the end).
+  mu_mat <- do.call(cbind, mu_cols)
+  colnames(mu_mat) <- names(step$models)
+  attr(new_w, "wf_modelcal") <- list(mu = mu_mat, active = which(active))
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -541,6 +578,22 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
          "trimmed calibration needs them observed for every unit being trimmed.")
   cn <- colnames(X)
 
+  # If the previous step was a step_model_calibration(), it saved its prediction
+  # columns (the mu block of Z) on the incoming weights. Append them so we preserve
+  # the MODEL totals T_mu too, not only the X margins in `formula`. Absent (the usual
+  # case, after step_calibrate) -> unchanged behaviour.
+  mc <- attr(w, "wf_modelcal")
+  if (!is.null(mc)) {
+    if (identical(mc$active, which(active)) && nrow(mc$mu) == length(d)) {
+      X  <- cbind(X, mc$mu)
+      cn <- colnames(X)
+    } else {
+      warning(paste0("A preceding step_model_calibration()'s predictions are not aligned ",
+                     "with the active sample here (an intermediate step changed it); trimming ",
+                     "preserves only the X margins in `formula`."), call. = FALSE)
+    }
+  }
+
   # Totals to PRESERVE: the ones the incoming weights already reproduce.
   Tvec <- colSums(d * X)
 
@@ -650,6 +703,7 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
     redistribute = "calibration", method = step$calfun, kind = "calibrated",
     f = f, unredist = NA_real_,
     deff_before = design_effect(w)$deff, deff_after = design_effect(new_w)$deff)
+  attr(new_w, "wf_modelcal") <- NULL   # consumed; do not carry it further
   list(weights = new_w, diagnostics = diag)
 }
 

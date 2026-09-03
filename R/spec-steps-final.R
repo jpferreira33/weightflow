@@ -118,6 +118,18 @@ reference_sample <- function(data, weights, replicates = NULL) {
 #' @param equal_within_cluster logical. If TRUE, integrative calibration: a
 #'   single weight per cluster. Requires `cluster` and that the incoming weight
 #'   be uniform within the cluster.
+#' @param calfun distance function for the calibration, as in [step_calibrate()]:
+#'   `"linear"` (GREG, the default; closed form when unbounded), `"raking"` or
+#'   `"logit"` (both solved by the Deville-Sarndal iteration). `"logit"` requires
+#'   `bounds`.
+#' @param bounds optional numeric `c(L, U)` with `L < 1 < U`, bounding the
+#'   calibration g-factor so the final weights stay in `[L, U]` times the incoming
+#'   weight (same meaning and validation as in [step_calibrate()]). `NULL`
+#'   (default) leaves the calibration unbounded. When set, the g-factors are found
+#'   by the bounded Deville-Sarndal iteration, which keeps weights from turning
+#'   negative or exploding; an infeasible range raises a non-convergence warning.
+#' @param maxit,tol iteration cap and convergence tolerance for the bounded /
+#'   non-linear solver (ignored for unbounded `calfun = "linear"`).
 #' @param crossfit integer or NULL. If given (K >= 2 folds), the outcome models
 #'   are fitted by K-fold cross-fitting: the sample predictions are out-of-fold
 #'   (each unit predicted by a model that did not see it), which avoids
@@ -189,12 +201,31 @@ reference_sample <- function(data, weights, replicates = NULL) {
 step_model_calibration <- function(spec, x_formula, models, population,
                                    x_totals = NULL, count = "Freq",
                                    cluster = NULL, equal_within_cluster = FALSE,
+                                   calfun = c("linear", "logit", "raking"),
+                                   bounds = NULL, maxit = 100L, tol = 1e-7,
                                    crossfit = NULL, crossfit_seed = NULL, id = NULL) {
   if (!inherits(spec, "weighting_spec"))
     stop("The first argument must be a weighting_spec.")
   if (missing(x_formula) || missing(models) || missing(population))
     stop("`x_formula`, `models` and `population` are required.")
   if (!inherits(x_formula, "formula")) stop("`x_formula` must be a formula ~ x.")
+  calfun <- match.arg(calfun)
+  # `bounds` on the g-factor, with the same meaning and validation as
+  # step_calibrate(method = "linear"): keeps the final weight in [L, U] * base.
+  if (calfun == "logit" && is.null(bounds))
+    stop("calfun = 'logit' requires `bounds` = c(L, U).", call. = FALSE)
+  if (!is.null(bounds)) {
+    if (!is.numeric(bounds) || length(bounds) != 2L || anyNA(bounds) ||
+        any(!is.finite(bounds)))
+      stop("`bounds` must be a numeric vector c(L, U) of two finite numbers.",
+           call. = FALSE)
+    if (bounds[1] >= 1 || bounds[2] <= 1)
+      stop("`bounds` must be c(L, U) with L < 1 < U.", call. = FALSE)
+  }
+  maxit <- .wf_count(maxit, "maxit", min = 1L)
+  if (!is.numeric(tol) || length(tol) != 1L || !is.finite(tol) || tol <= 0)
+    stop(sprintf("`tol` must be a single positive finite number; got %s.",
+                 deparse(tol)[1]), call. = FALSE)
   if (!is.list(models) || is.null(names(models)))
     stop("`models` must be a named list of y_model().")
   # Each element must be a y_model() result, not a bare formula (a common slip:
@@ -236,6 +267,10 @@ step_model_calibration <- function(spec, x_formula, models, population,
       count      = count,
       cluster    = cluster,
       equal_within_cluster = equal_within_cluster,
+      calfun     = calfun,
+      bounds     = bounds,
+      maxit      = maxit,
+      tol        = tol,
       crossfit      = if (is.null(crossfit)) NULL else as.integer(crossfit),
       crossfit_seed = crossfit_seed
     ),
@@ -397,15 +432,21 @@ step_trim_weights <- function(spec, lower = 1, upper = NULL,
 #' is too tight to preserve every total, the totals that cannot be met are relaxed
 #' and a warning is raised.
 #'
-#' This step is meant to run **after** a `step_calibrate()`: it acts on the
-#' active incoming weights (including any negative weights an unbounded linear
-#' calibration produced, which it can bring back into `[lower, upper]`) and
-#' leaves dropped units (weight 0) alone.
+#' This step is meant to run **after** a `step_calibrate()` or a
+#' `step_model_calibration()`: it acts on the active incoming weights (including
+#' any negative weights an unbounded linear calibration produced, which it can
+#' bring back into `[lower, upper]`) and leaves dropped units (weight 0) alone.
+#' After a `step_model_calibration()` it preserves both the known-margin totals
+#' and the model-prediction totals: that step saves its prediction columns, which
+#' this step appends to `formula`'s design so the trimmed weights keep every total
+#' the model calibration reproduced (pass the same `x_formula` as `formula`).
 #'
 #' @param spec a weighting_spec.
 #' @param formula the auxiliaries whose calibration totals must be preserved
 #'   (right-hand side only), e.g. `~ region + age_group`. Usually the same
-#'   formula used in the preceding `step_calibrate()`.
+#'   formula used in the preceding `step_calibrate()` (or the `x_formula` of the
+#'   preceding `step_model_calibration()`, whose model-prediction totals are then
+#'   preserved as well).
 #' @param lower,upper numeric. Absolute bounds on the trimmed weight. At least
 #'   one must be supplied; the other defaults to no bound. For positive variance,
 #'   use a positive `lower`. Each may be a single number (the same bound for every

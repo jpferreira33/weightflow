@@ -7,7 +7,8 @@
 step_round(
   spec,
   digits = 0L,
-  method = c("nearest", "preserve_total"),
+  method = c("nearest", "preserve_total", "balanced"),
+  by = NULL,
   id = NULL
 )
 }
@@ -16,9 +17,19 @@ step_round(
 
 \item{digits}{integer. Decimals to keep (0 = integers).}
 
-\item{method}{"nearest" (simple rounding) or "preserve_total" (keeps the sum
-of weights). Note: "preserve_total" can break equality of weights within a
-cluster; if you need integer and equal weights per household, use "nearest".}
+\item{method}{one of \code{"nearest"} (simple rounding), \code{"preserve_total"}
+(largest remainder; keeps the grand total exactly) or \code{"balanced"} (cube
+method; keeps the totals of the domains named in \code{by} as close as the grid
+allows). Note: \code{"preserve_total"} and \code{"balanced"} can break equality of
+weights within a cluster; if you need integer and equal weights per
+household, use \code{"nearest"}.}
+
+\item{by}{for \code{method = "balanced"} only: a character vector of variables
+whose (crossed) cell totals must be preserved, e.g. \code{by = c("dam", "estrato")} -- the same domains you calibrated to. Every weight is sent to
+its floor or ceiling by balanced sampling on the cell indicators (cube
+method), so each cell total (and hence each margin, and the grand total) is
+reproduced up to at most one unit's worth. Required when
+\code{method = "balanced"}.}
 
 \item{id}{optional string: a stable identifier for this step, shown in the
 recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
@@ -30,14 +41,26 @@ step is recorded only; it is evaluated when \code{prep()} is called.
 }
 \description{
 Rounds the weights to a given number of decimals, either unit by unit
-(\code{"nearest"}) or with the largest-remainder method (\code{"preserve_total"}), which
-keeps the weighted total exactly. Typically the last step of a recipe, after
+(\code{"nearest"}), with the largest-remainder method (\code{"preserve_total"}), which
+keeps the weighted total exactly, or with the cube method (\code{"balanced"}), which
+keeps the calibrated totals -- by domain, not only the grand total -- as close
+as the integer grid allows. Typically the last step of a recipe, after
 calibration, when the weights have to be delivered as integers or with a fixed
 number of decimals.
+}
+\details{
+The \code{"balanced"} method implements balanced rounding by the cube
+method (Deville and Tille 2004; ECLAC/CEPAL household-survey methodology,
+chapter 9, section F.2) natively, with no external sampling dependency. It is
+randomized: call \code{\link[=set.seed]{set.seed()}} before \code{\link[=prep]{prep()}} for a reproducible result.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>
   step_round(digits = 0) |> prep()
+}
+\references{
+Deville J-C, Tille Y (2004). Efficient balanced sampling: the cube method.
+\emph{Biometrika} 91(4):893-912.
 }
 \seealso{
 Other weighting steps:

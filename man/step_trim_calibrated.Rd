@@ -23,7 +23,9 @@ step_trim_calibrated(
 
 \item{formula}{the auxiliaries whose calibration totals must be preserved
 (right-hand side only), e.g. \code{~ region + age_group}. Usually the same
-formula used in the preceding \code{step_calibrate()}.}
+formula used in the preceding \code{step_calibrate()} (or the \code{x_formula} of the
+preceding \code{step_model_calibration()}, whose model-prediction totals are then
+preserved as well).}
 
 \item{lower, upper}{numeric. Absolute bounds on the trimmed weight. At least
 one must be supplied; the other defaults to no bound. For positive variance,
@@ -81,10 +83,14 @@ saturate at their bound and the rest move as little as possible. If the range
 is too tight to preserve every total, the totals that cannot be met are relaxed
 and a warning is raised.
 
-This step is meant to run \strong{after} a \code{step_calibrate()}: it acts on the
-active incoming weights (including any negative weights an unbounded linear
-calibration produced, which it can bring back into \verb{[lower, upper]}) and
-leaves dropped units (weight 0) alone.
+This step is meant to run \strong{after} a \code{step_calibrate()} or a
+\code{step_model_calibration()}: it acts on the active incoming weights (including
+any negative weights an unbounded linear calibration produced, which it can
+bring back into \verb{[lower, upper]}) and leaves dropped units (weight 0) alone.
+After a \code{step_model_calibration()} it preserves both the known-margin totals
+and the model-prediction totals: that step saves its prediction columns, which
+this step appends to \code{formula}'s design so the trimmed weights keep every total
+the model calibration reproduced (pass the same \code{x_formula} as \code{formula}).
 }
 \examples{
 # calibrate, then trim the calibrated weights into [5.5, 13.5] without breaking

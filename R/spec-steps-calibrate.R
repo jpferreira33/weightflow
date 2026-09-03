@@ -477,16 +477,35 @@ design_effect <- function(w) {
 #' Round the final weights
 #'
 #' Rounds the weights to a given number of decimals, either unit by unit
-#' (`"nearest"`) or with the largest-remainder method (`"preserve_total"`), which
-#' keeps the weighted total exactly. Typically the last step of a recipe, after
+#' (`"nearest"`), with the largest-remainder method (`"preserve_total"`), which
+#' keeps the weighted total exactly, or with the cube method (`"balanced"`), which
+#' keeps the calibrated totals -- by domain, not only the grand total -- as close
+#' as the integer grid allows. Typically the last step of a recipe, after
 #' calibration, when the weights have to be delivered as integers or with a fixed
 #' number of decimals.
 #'
 #' @param spec a weighting_spec.
 #' @param digits integer. Decimals to keep (0 = integers).
-#' @param method "nearest" (simple rounding) or "preserve_total" (keeps the sum
-#'   of weights). Note: "preserve_total" can break equality of weights within a
-#'   cluster; if you need integer and equal weights per household, use "nearest".
+#' @param method one of `"nearest"` (simple rounding), `"preserve_total"`
+#'   (largest remainder; keeps the grand total exactly) or `"balanced"` (cube
+#'   method; keeps the totals of the domains named in `by` as close as the grid
+#'   allows). Note: `"preserve_total"` and `"balanced"` can break equality of
+#'   weights within a cluster; if you need integer and equal weights per
+#'   household, use `"nearest"`.
+#' @param by for `method = "balanced"` only: a character vector of variables
+#'   whose (crossed) cell totals must be preserved, e.g. `by = c("dam",
+#'   "estrato")` -- the same domains you calibrated to. Every weight is sent to
+#'   its floor or ceiling by balanced sampling on the cell indicators (cube
+#'   method), so each cell total (and hence each margin, and the grand total) is
+#'   reproduced up to at most one unit's worth. Required when
+#'   `method = "balanced"`.
+#' @details The `"balanced"` method implements balanced rounding by the cube
+#'   method (Deville and Tille 2004; ECLAC/CEPAL household-survey methodology,
+#'   chapter 9, section F.2) natively, with no external sampling dependency. It is
+#'   randomized: call [set.seed()] before [prep()] for a reproducible result.
+#' @references
+#' Deville J-C, Tille Y (2004). Efficient balanced sampling: the cube method.
+#'   \emph{Biometrika} 91(4):893-912.
 #' @examples
 #' weighting_spec(sample_survey, base_weights = pw) |>
 #'   step_round(digits = 0) |> prep()
@@ -496,18 +515,29 @@ design_effect <- function(w) {
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 #' @family weighting steps
-step_round <- function(spec, digits = 0L, method = c("nearest", "preserve_total"), id = NULL) {
+step_round <- function(spec, digits = 0L,
+                       method = c("nearest", "preserve_total", "balanced"),
+                       by = NULL, id = NULL) {
   method <- match.arg(method)
   if (!is.numeric(digits) || length(digits) != 1L || !is.finite(digits) ||
       digits < 0 || digits != round(digits))
     stop("`digits` must be a single non-negative whole number (e.g. 0 for integers).",
          call. = FALSE)
   digits <- as.integer(digits)
+  if (identical(method, "balanced")) {
+    if (is.null(by) || !is.character(by) || !length(by))
+      stop("step_round(method = \"balanced\") needs `by`, a character vector of the ",
+           "domain variables whose totals must be preserved, e.g. by = c(\"dam\", \"estrato\").",
+           call. = FALSE)
+  } else if (!is.null(by)) {
+    warning("`by` is ignored unless method = \"balanced\".", call. = FALSE)
+  }
   step <- structure(
     list(
       label  = sprintf("rounding (%s, %d decimals)", method, digits),
       digits = digits,
-      method = method
+      method = method,
+      by     = if (identical(method, "balanced")) by else NULL
     ),
     class = c("step_round", "weighting_step")
   )

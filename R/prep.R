@@ -115,6 +115,10 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   # collect_weights() output. A user-supplied base column is never dropped.
   if (isTRUE(spec$nonprob) && grepl("^\\.wf_base1", spec$base_weights))
     data[[spec$base_weights]] <- NULL
+  # A step_model_calibration() not followed by step_trim_calibrated() leaves its
+  # internal prediction-columns attribute on the weights; strip it so it does not
+  # leak into the user-facing final weight.
+  attr(w, "wf_modelcal") <- NULL
   structure(
     list(
       data         = data,

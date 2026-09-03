@@ -13,6 +13,10 @@ step_model_calibration(
   count = "Freq",
   cluster = NULL,
   equal_within_cluster = FALSE,
+  calfun = c("linear", "logit", "raking"),
+  bounds = NULL,
+  maxit = 100L,
+  tol = 1e-07,
   crossfit = NULL,
   crossfit_seed = NULL,
   id = NULL
@@ -55,6 +59,21 @@ weights within the cluster.}
 \item{equal_within_cluster}{logical. If TRUE, integrative calibration: a
 single weight per cluster. Requires \code{cluster} and that the incoming weight
 be uniform within the cluster.}
+
+\item{calfun}{distance function for the calibration, as in \code{\link[=step_calibrate]{step_calibrate()}}:
+\code{"linear"} (GREG, the default; closed form when unbounded), \code{"raking"} or
+\code{"logit"} (both solved by the Deville-Sarndal iteration). \code{"logit"} requires
+\code{bounds}.}
+
+\item{bounds}{optional numeric \code{c(L, U)} with \verb{L < 1 < U}, bounding the
+calibration g-factor so the final weights stay in \verb{[L, U]} times the incoming
+weight (same meaning and validation as in \code{\link[=step_calibrate]{step_calibrate()}}). \code{NULL}
+(default) leaves the calibration unbounded. When set, the g-factors are found
+by the bounded Deville-Sarndal iteration, which keeps weights from turning
+negative or exploding; an infeasible range raises a non-convergence warning.}
+
+\item{maxit, tol}{iteration cap and convergence tolerance for the bounded /
+non-linear solver (ignored for unbounded \code{calfun = "linear"}).}
 
 \item{crossfit}{integer or NULL. If given (K >= 2 folds), the outcome models
 are fitted by K-fold cross-fitting: the sample predictions are out-of-fold
