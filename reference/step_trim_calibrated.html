@@ -110,7 +110,9 @@ calibration totals intact.</p>
 <dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
 <dd><p>the auxiliaries whose calibration totals must be preserved
 (right-hand side only), e.g. <code>~ region + age_group</code>. Usually the same
-formula used in the preceding <code><a href="step_calibrate.html">step_calibrate()</a></code>.</p></dd>
+formula used in the preceding <code><a href="step_calibrate.html">step_calibrate()</a></code> (or the <code>x_formula</code> of the
+preceding <code><a href="step_model_calibration.html">step_model_calibration()</a></code>, whose model-prediction totals are then
+preserved as well).</p></dd>
 
 
 <dt id="arg-lower-upper">lower, upper<a class="anchor" aria-label="anchor" href="#arg-lower-upper"></a></dt>
@@ -178,10 +180,14 @@ range that are not needed to restore the totals stay put; the out-of-range ones
 saturate at their bound and the rest move as little as possible. If the range
 is too tight to preserve every total, the totals that cannot be met are relaxed
 and a warning is raised.</p>
-<p>This step is meant to run <strong>after</strong> a <code><a href="step_calibrate.html">step_calibrate()</a></code>: it acts on the
-active incoming weights (including any negative weights an unbounded linear
-calibration produced, which it can bring back into <code>[lower, upper]</code>) and
-leaves dropped units (weight 0) alone.</p>
+<p>This step is meant to run <strong>after</strong> a <code><a href="step_calibrate.html">step_calibrate()</a></code> or a
+<code><a href="step_model_calibration.html">step_model_calibration()</a></code>: it acts on the active incoming weights (including
+any negative weights an unbounded linear calibration produced, which it can
+bring back into <code>[lower, upper]</code>) and leaves dropped units (weight 0) alone.
+After a <code><a href="step_model_calibration.html">step_model_calibration()</a></code> it preserves both the known-margin totals
+and the model-prediction totals: that step saves its prediction columns, which
+this step appends to <code>formula</code>'s design so the trimmed weights keep every total
+the model calibration reproduced (pass the same <code>x_formula</code> as <code>formula</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

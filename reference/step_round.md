@@ -1,10 +1,12 @@
 # Round the final weights
 
 Rounds the weights to a given number of decimals, either unit by unit
-(`"nearest"`) or with the largest-remainder method (`"preserve_total"`),
-which keeps the weighted total exactly. Typically the last step of a
-recipe, after calibration, when the weights have to be delivered as
-integers or with a fixed number of decimals.
+(`"nearest"`), with the largest-remainder method (`"preserve_total"`),
+which keeps the weighted total exactly, or with the cube method
+(`"balanced"`), which keeps the calibrated totals – by domain, not only
+the grand total – as close as the integer grid allows. Typically the
+last step of a recipe, after calibration, when the weights have to be
+delivered as integers or with a fixed number of decimals.
 
 ## Usage
 
@@ -12,7 +14,8 @@ integers or with a fixed number of decimals.
 step_round(
   spec,
   digits = 0L,
-  method = c("nearest", "preserve_total"),
+  method = c("nearest", "preserve_total", "balanced"),
+  by = NULL,
   id = NULL
 )
 ```
@@ -29,10 +32,22 @@ step_round(
 
 - method:
 
-  "nearest" (simple rounding) or "preserve_total" (keeps the sum of
-  weights). Note: "preserve_total" can break equality of weights within
-  a cluster; if you need integer and equal weights per household, use
-  "nearest".
+  one of `"nearest"` (simple rounding), `"preserve_total"` (largest
+  remainder; keeps the grand total exactly) or `"balanced"` (cube
+  method; keeps the totals of the domains named in `by` as close as the
+  grid allows). Note: `"preserve_total"` and `"balanced"` can break
+  equality of weights within a cluster; if you need integer and equal
+  weights per household, use `"nearest"`.
+
+- by:
+
+  for `method = "balanced"` only: a character vector of variables whose
+  (crossed) cell totals must be preserved, e.g.
+  `by = c("dam", "estrato")` – the same domains you calibrated to. Every
+  weight is sent to its floor or ceiling by balanced sampling on the
+  cell indicators (cube method), so each cell total (and hence each
+  margin, and the grand total) is reproduced up to at most one unit's
+  worth. Required when `method = "balanced"`.
 
 - id:
 
@@ -47,6 +62,21 @@ The input `weighting_spec` with this step appended to its recipe. The
 step is recorded only; it is evaluated when
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 is called.
+
+## Details
+
+The `"balanced"` method implements balanced rounding by the cube method
+(Deville and Tille 2004; ECLAC/CEPAL household-survey methodology,
+chapter 9, section F.2) natively, with no external sampling dependency.
+It is randomized: call
+[`set.seed()`](https://rdrr.io/r/base/Random.html) before
+[`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
+for a reproducible result.
+
+## References
+
+Deville J-C, Tille Y (2004). Efficient balanced sampling: the cube
+method. *Biometrika* 91(4):893-912.
 
 ## See also
 

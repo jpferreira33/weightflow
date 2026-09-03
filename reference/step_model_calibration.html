@@ -99,6 +99,10 @@ precision that calibrating on <code>x</code> alone cannot.</p>
 <span>  count <span class="op">=</span> <span class="st">"Freq"</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  calfun <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linear"</span>, <span class="st">"logit"</span>, <span class="st">"raking"</span><span class="op">)</span>,</span>
+<span>  bounds <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  maxit <span class="op">=</span> <span class="fl">100L</span>,</span>
+<span>  tol <span class="op">=</span> <span class="fl">1e-07</span>,</span>
 <span>  crossfit <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  crossfit_seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  id <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -160,6 +164,27 @@ weights within the cluster.</p></dd>
 <dd><p>logical. If TRUE, integrative calibration: a
 single weight per cluster. Requires <code>cluster</code> and that the incoming weight
 be uniform within the cluster.</p></dd>
+
+
+<dt id="arg-calfun">calfun<a class="anchor" aria-label="anchor" href="#arg-calfun"></a></dt>
+<dd><p>distance function for the calibration, as in <code><a href="step_calibrate.html">step_calibrate()</a></code>:
+<code>"linear"</code> (GREG, the default; closed form when unbounded), <code>"raking"</code> or
+<code>"logit"</code> (both solved by the Deville-Sarndal iteration). <code>"logit"</code> requires
+<code>bounds</code>.</p></dd>
+
+
+<dt id="arg-bounds">bounds<a class="anchor" aria-label="anchor" href="#arg-bounds"></a></dt>
+<dd><p>optional numeric <code>c(L, U)</code> with <code>L &lt; 1 &lt; U</code>, bounding the
+calibration g-factor so the final weights stay in <code>[L, U]</code> times the incoming
+weight (same meaning and validation as in <code><a href="step_calibrate.html">step_calibrate()</a></code>). <code>NULL</code>
+(default) leaves the calibration unbounded. When set, the g-factors are found
+by the bounded Deville-Sarndal iteration, which keeps weights from turning
+negative or exploding; an infeasible range raises a non-convergence warning.</p></dd>
+
+
+<dt id="arg-maxit-tol">maxit, tol<a class="anchor" aria-label="anchor" href="#arg-maxit-tol"></a></dt>
+<dd><p>iteration cap and convergence tolerance for the bounded /
+non-linear solver (ignored for unbounded <code>calfun = "linear"</code>).</p></dd>
 
 
 <dt id="arg-crossfit">crossfit<a class="anchor" aria-label="anchor" href="#arg-crossfit"></a></dt>

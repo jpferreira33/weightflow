@@ -36,7 +36,10 @@ step_trim_calibrated(
   the auxiliaries whose calibration totals must be preserved (right-hand
   side only), e.g. `~ region + age_group`. Usually the same formula used
   in the preceding
-  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md).
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+  (or the `x_formula` of the preceding
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
+  whose model-prediction totals are then preserved as well).
 
 - lower, upper:
 
@@ -109,10 +112,17 @@ to preserve every total, the totals that cannot be met are relaxed and a
 warning is raised.
 
 This step is meant to run **after** a
-[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md):
+[`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+or a
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md):
 it acts on the active incoming weights (including any negative weights
 an unbounded linear calibration produced, which it can bring back into
-`[lower, upper]`) and leaves dropped units (weight 0) alone.
+`[lower, upper]`) and leaves dropped units (weight 0) alone. After a
+[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
+it preserves both the known-margin totals and the model-prediction
+totals: that step saves its prediction columns, which this step appends
+to `formula`'s design so the trimmed weights keep every total the model
+calibration reproduced (pass the same `x_formula` as `formula`).
 
 ## References
 

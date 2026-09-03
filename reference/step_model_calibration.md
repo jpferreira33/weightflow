@@ -22,6 +22,10 @@ step_model_calibration(
   count = "Freq",
   cluster = NULL,
   equal_within_cluster = FALSE,
+  calfun = c("linear", "logit", "raking"),
+  bounds = NULL,
+  maxit = 100L,
+  tol = 1e-07,
   crossfit = NULL,
   crossfit_seed = NULL,
   id = NULL
@@ -84,6 +88,30 @@ step_model_calibration(
   logical. If TRUE, integrative calibration: a single weight per
   cluster. Requires `cluster` and that the incoming weight be uniform
   within the cluster.
+
+- calfun:
+
+  distance function for the calibration, as in
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md):
+  `"linear"` (GREG, the default; closed form when unbounded), `"raking"`
+  or `"logit"` (both solved by the Deville-Sarndal iteration). `"logit"`
+  requires `bounds`.
+
+- bounds:
+
+  optional numeric `c(L, U)` with `L < 1 < U`, bounding the calibration
+  g-factor so the final weights stay in `[L, U]` times the incoming
+  weight (same meaning and validation as in
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)).
+  `NULL` (default) leaves the calibration unbounded. When set, the
+  g-factors are found by the bounded Deville-Sarndal iteration, which
+  keeps weights from turning negative or exploding; an infeasible range
+  raises a non-convergence warning.
+
+- maxit, tol:
+
+  iteration cap and convergence tolerance for the bounded / non-linear
+  solver (ignored for unbounded `calfun = "linear"`).
 
 - crossfit:
 

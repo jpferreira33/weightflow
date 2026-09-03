@@ -63,6 +63,16 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="weightflow-development-version">weightflow (development version)<a class="anchor" aria-label="anchor" href="#weightflow-development-version"></a></h2>
+<div class="section level3">
+<h3 id="new-features-development-version">New features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<ul><li>
+<strong><code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> gains <code>bounds</code></strong> (and <code>calfun</code>), matching <code>step_calibrate(method = "linear")</code>: an optional <code>c(L, U)</code> with <code>L &lt; 1 &lt; U</code> bounds the calibration g-factor so the final weights stay in <code>[L, U]</code> times the incoming weight, found by the bounded Deville-Sarndal iteration. This keeps model-calibration weights from turning negative or exploding when the projected totals pull hard; the default (no bounds) is unchanged.</li>
+<li>
+<strong><code><a href="../reference/step_trim_calibrated.html">step_trim_calibrated()</a></code> now supports a preceding <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code>.</strong> The model-calibration step saves its prediction columns, which the trim step appends to <code>formula</code>’s design, so range-restricted trimming preserves the model-prediction totals as well as the known margins (previously it kept only the <code>X</code> margins). Pass the same <code>x_formula</code> as <code>formula</code>.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.2.0" id="weightflow-120">weightflow 1.2.0<a class="anchor" aria-label="anchor" href="#weightflow-120"></a></h2>
 <div class="section level3">
 <h3 id="new-features-1-2-0">New features<a class="anchor" aria-label="anchor" href="#new-features-1-2-0"></a></h3>

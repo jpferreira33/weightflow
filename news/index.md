@@ -1,5 +1,26 @@
 # Changelog
 
+## weightflow (development version)
+
+### New features
+
+- **[`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
+  gains `bounds`** (and `calfun`), matching
+  `step_calibrate(method = "linear")`: an optional `c(L, U)` with
+  `L < 1 < U` bounds the calibration g-factor so the final weights stay
+  in `[L, U]` times the incoming weight, found by the bounded
+  Deville-Sarndal iteration. This keeps model-calibration weights from
+  turning negative or exploding when the projected totals pull hard; the
+  default (no bounds) is unchanged.
+- **[`step_trim_calibrated()`](https://jpferreira33.github.io/weightflow/reference/step_trim_calibrated.md)
+  now supports a preceding
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).**
+  The model-calibration step saves its prediction columns, which the
+  trim step appends to `formula`’s design, so range-restricted trimming
+  preserves the model-prediction totals as well as the known margins
+  (previously it kept only the `X` margins). Pass the same `x_formula`
+  as `formula`.
+
 ## weightflow 1.2.0
 
 ### New features
