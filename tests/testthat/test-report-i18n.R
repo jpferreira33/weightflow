@@ -25,7 +25,7 @@ test_that(".wf_translate renders the trimmed / model calibration note in Spanish
               "lower, 51 capped at upper; f (adjustment) in [0.540, 1.369]")
   tr <- weightflow:::.wf_translate(n, "es")
   expect_match(tr, "^calibraci")                  # "calibracion recortada a"
-  expect_match(tr, "topados al techo", fixed = TRUE)
+  expect_match(tr, "recortados a la cota superior", fixed = TRUE)
   expect_match(tr, "f (ajuste) en", fixed = TRUE)
 
   m <- "g (calibration factor) in [0.540, 1.369], bounds [0.100, 10.000]"
