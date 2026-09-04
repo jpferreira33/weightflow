@@ -95,21 +95,52 @@
   out
 }
 
+# Spanish display labels for the standard diagnostic-table column headers and the
+# step-parameter keys of the "Requested" table (the data frames and the step list
+# carry English/argument names; this only relabels them for the Spanish report).
+# Names not in the map (id, n, factor, variable, phi, ...) pass through unchanged.
+.wf_es_labels <- c(
+  constraint = "restricci\u00f3n", type = "tipo", target = "objetivo", achieved = "logrado",
+  method = "m\u00e9todo", decimals = "decimales", sum_before = "suma_antes",
+  sum_after = "suma_despu\u00e9s", n_modified = "n_modificados",
+  max_total_reldev = "desv_rel_m\u00e1x", propensity_class = "clase_propensi\u00f3n",
+  category = "categor\u00eda", `dev %` = "desv. %",
+  mean_prop = "prop_media", partial_R = "R_parcial", cell = "celda", class = "clase",
+  n_respondents = "n_respondentes", n_known = "n_conocidos", weight_class = "clase_peso",
+  min_prob = "prob_m\u00edn", n_psu2 = "n_upm2", n_hh = "n_hogares", n_resp_hh = "n_hog_resp",
+  # step-parameter keys (Requested table)
+  digits = "d\u00edgitos", by = "por", respondent = "respondente", formula = "f\u00f3rmula",
+  engine = "motor", weight_model = "modela_peso", num_classes = "num_clases",
+  lower = "inferior", upper = "superior", margins = "m\u00e1rgenes", totals = "totales",
+  count = "conteo", bounds = "cotas", penalty = "penalizaci\u00f3n", calfun = "distancia",
+  cluster = "conglomerado", population = "poblaci\u00f3n", unknown = "desconocido")
+.wf_relabel <- function(nms, lang) {
+  if (!identical(lang, "es")) return(nms)
+  hit <- nms %in% names(.wf_es_labels)
+  nms[hit] <- .wf_es_labels[nms[hit]]
+  nms
+}
+
 # If a diagnostics table has target/achieved columns, insert a relative-%
-# difference column right after 'achieved' (100 * (achieved - target)/target).
+# difference column right after 'achieved' (100 * (achieved - target)/target),
+# then relabel every column header for the Spanish report (display only).
 .with_reldiff <- function(df, lang) {
-  if (is.null(df) || !is.data.frame(df) ||
-      !all(c("target", "achieved") %in% names(df))) return(df)
-  tt  <- suppressWarnings(as.numeric(as.character(df$target)))
-  aa  <- suppressWarnings(as.numeric(as.character(df$achieved)))
-  rel <- 100 * (aa - tt) / tt
-  nm  <- .t("rel. diff (%)", "dif. rel. (%)", lang)
-  # < 0.005 rounds to 0.00 at two decimals, so show a plain "0.00%" (no misleading
-  # "+0.00%" sign); non-finite (e.g. target 0) shows "-", not a green "+0.000".
-  df[[nm]] <- ifelse(is.finite(rel), ifelse(abs(rel) < 0.005, "0.00%", sprintf("%+.2f%%", rel)), "-")
-  new <- setdiff(names(df), nm)
-  ord <- append(new, nm, after = match("achieved", new))
-  df[, ord, drop = FALSE]
+  if (is.null(df) || !is.data.frame(df)) return(df)
+  out <- df
+  if (all(c("target", "achieved") %in% names(out))) {
+    tt  <- suppressWarnings(as.numeric(as.character(out$target)))
+    aa  <- suppressWarnings(as.numeric(as.character(out$achieved)))
+    rel <- 100 * (aa - tt) / tt
+    nm  <- .t("rel. diff (%)", "dif. rel. (%)", lang)
+    # < 0.005 rounds to 0.00 at two decimals, so show a plain "0.00%" (no misleading
+    # "+0.00%" sign); non-finite (e.g. target 0) shows "-", not a green "+0.000".
+    out[[nm]] <- ifelse(is.finite(rel), ifelse(abs(rel) < 0.005, "0.00%", sprintf("%+.2f%%", rel)), "-")
+    new <- setdiff(names(out), nm)
+    ord <- append(new, nm, after = match("achieved", new))
+    out <- out[, ord, drop = FALSE]
+  }
+  names(out) <- .wf_relabel(names(out), lang)
+  out
 }
 
 # data.frame -> HTML table
@@ -360,6 +391,7 @@
   if (!is.null(ptab)) {
     ptab <- ptab[order(-ptab$partial_R), , drop = FALSE]
     ptab$partial_R <- round(ptab$partial_R, 4)
+    names(ptab) <- .wf_relabel(names(ptab), lang)
     ph <- paste0(sprintf("<p class='muted'>%s</p>", .t("Partial R-indicators (0&ndash;0.5):", "R-indicadores parciales (0&ndash;0.5):", lang)), .df_to_html(ptab))
   }
   if (!is.null(ri$num_aux) && length(ri$num_aux))
@@ -416,7 +448,7 @@
 <p class='muted'>Steps after calibration (trimming, rounding, rescaling) move the weighted totals away from the calibration targets. <code>achieved</code> is recomputed at the final weights; max deviation %.2f%%.</p>%s",
        "<h2>Deriva de calibraci\u00f3n</h2>
 <p class='muted'>Los pasos posteriores a la calibraci\u00f3n (recorte, redondeo, reescalado) alejan los totales ponderados de los objetivos de calibraci\u00f3n. <code>logrado</code> se recalcula con los pesos finales; desviaci\u00f3n m\u00e1xima %.2f%%.</p>%s", lang),
-    maxdev, .df_to_html(rows))
+    maxdev, .df_to_html(`names<-`(rows, .wf_relabel(names(rows), lang))))
   attr(out, "maxdev") <- maxdev            # so the closing checklist can read the real drift
   out
 }

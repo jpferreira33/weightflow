@@ -100,7 +100,7 @@
                        hd, paste(rows, collapse = ""))
   lead <- .t(
     "Big Data Paradox: for a non-probability sample the error is driven by the correlation between the outcome and participation (the data-defect correlation), not by the sample size. A tiny residual correlation collapses a large sample to a small effective one.",
-    "Paradoja de los datos masivos: en una muestra no probabil&iacute;stica el error lo gobierna la correlaci&oacute;n entre la variable y la participaci&oacute;n (la correlaci&oacute;n de defecto), no el tama&ntilde;o muestral. Una correlaci&oacute;n residual min&uacute;scula reduce una muestra grande a una efectiva chica.", lang)
+    "Paradoja de los datos masivos: en una muestra no probabil&iacute;stica el error lo gobierna la correlaci&oacute;n entre la variable y la participaci&oacute;n (la correlaci&oacute;n de defecto), no el tama&ntilde;o muestral. Una correlaci&oacute;n residual min&uacute;scula reduce una muestra grande a una efectiva peque\u00f1a.", lang)
   note <- .t(
     "Effective size n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). The residual &rho; on the target variable is not observable from the sample, so read the table as an ignorance range, not a single number: it holds for any estimand with that residual correlation. See Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.",
     "Tama&ntilde;o efectivo n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). El &rho; residual sobre la variable de inter&eacute;s no es observable desde la muestra, as&iacute; que la tabla se lee como un rango de ignorancia, no un &uacute;nico n&uacute;mero: vale para cualquier estimando con esa correlaci&oacute;n residual. Ver Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.", lang)
@@ -223,7 +223,7 @@
           .t("Domain reliability", "Fiabilidad por dominio", lang),
           paste(tables, collapse = ""),
           .t("Effective sample size and design effect within each domain; domains with a small effective n yield less reliable estimates.",
-             "Tama\u00f1o de muestra efectivo y efecto de dise\u00f1o dentro de cada dominio; los dominios con n efectivo chico dan estimaciones menos confiables.", lang))
+             "Tama\u00f1o de muestra efectivo y efecto de dise\u00f1o dentro de cada dominio; los dominios con n efectivo peque\u00f1o dan estimaciones menos confiables.", lang))
 }
 
 # Optional card: replication design for variance (from a weightflow_boot /
@@ -344,7 +344,7 @@
     .t("Replication-based variance estimation", "Estimaci\u00f3n de la varianza por replicaci\u00f3n", lang),
     body, ok_line, fail_alert, warn, ref_note,
     .t("For each replicate, the complete survey weighting procedure is re-run. The resulting replicate weights therefore reflect the sampling variability associated with the weighting adjustments that are re-estimated within the replication procedure. Use the final and replicate weights with the 'survey' or 'srvyr' package to estimate standard errors, coefficients of variation, and confidence intervals for specific survey estimates.",
-       "En cada r\u00e9plica se recalcula todo el procedimiento de ponderaci\u00f3n. Los pesos r\u00e9plica resultantes reflejan la variabilidad muestral asociada a los ajustes de ponderaci\u00f3n que se reestiman dentro del procedimiento de replicaci\u00f3n. Us\u00e1 los pesos finales y los pesos r\u00e9plica con 'survey' o 'srvyr' para estimar errores est\u00e1ndar, coeficientes de variaci\u00f3n e intervalos de confianza de estimaciones concretas.", lang))
+       "En cada r\u00e9plica se recalcula todo el procedimiento de ponderaci\u00f3n. Los pesos r\u00e9plica resultantes reflejan la variabilidad muestral asociada a los ajustes de ponderaci\u00f3n que se reestiman dentro del procedimiento de replicaci\u00f3n. Use los pesos finales y los pesos r\u00e9plica con 'survey' o 'srvyr' para estimar errores est\u00e1ndar, coeficientes de variaci\u00f3n e intervalos de confianza de estimaciones concretas.", lang))
 }
 
 # Two-phase variance decomposition card (V = V1 + V2 per study variable). Rendered
@@ -628,7 +628,7 @@
 # Lightweight, dependency-free 31-bit fingerprint of character pieces. Not a
 # cryptographic hash; enough to tell "same recipe/data" from "changed".
 .hash32 <- function(...) {
-  b <- utf8ToInt(enc2utf8(paste(unlist(list(...)), collapse = "\u001f")))
+  b <- utf8ToInt(enc2utf8(paste(unlist(list(...)), collapse = "")))
   h <- 0
   for (x in b) h <- (h * 31 + x) %% 2147483647
   sprintf("%07x", as.integer(h))
@@ -721,7 +721,7 @@
   floor_note <- .t(
     sprintf("Respondents with &phi;&#770; below 0.10: %s; below 0.05: %s (min %s). Small propensities become large 1/&phi;&#770; weights; a very sharp model can hide extreme weights in a few units.",
             pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))),
-    sprintf("Respondentes con &phi;&#770; bajo 0.10: %s; bajo 0.05: %s (m\u00ednimo %s). Las propensiones chicas se vuelven pesos 1/&phi;&#770; grandes; un modelo muy filoso puede esconder pesos extremos en pocas unidades.",
+    sprintf("Respondentes con &phi;&#770; bajo 0.10: %s; bajo 0.05: %s (m\u00ednimo %s). Las propensiones bajas se vuelven pesos 1/&phi;&#770; grandes; un modelo demasiado ajustado puede esconder pesos extremos en pocas unidades.",
             pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))), lang)
 
   # (c) covariate balance: weighted respondents (before dw, after dw/p) vs the
@@ -848,7 +848,7 @@
     stab_note <- sprintf("<p class='muted'>%s</p>", .t(
       sprintf("Out-of-fold AUC %s vs in-sample AUC %s (gap %s). A large gap means the learner overfits; all diagnostics above use the out-of-fold predictions.",
               d3(auc), d3(auc_in), d3(auc_in - auc)),
-      sprintf("AUC out-of-fold %s vs in-sample %s (brecha %s). Una brecha grande indica sobreajuste; todos los diagn\u00f3sticos de arriba usan las predicciones out-of-fold.",
+      sprintf("AUC fuera de pliegue %s vs en muestra %s (brecha %s). Una brecha grande indica sobreajuste; todos los diagn\u00f3sticos de arriba usan las predicciones fuera de pliegue.",
               d3(auc), d3(auc_in), d3(auc_in - auc)), lang))
   }
 
@@ -896,7 +896,7 @@
   note <- .t(
     sprintf("Implicit response propensity &phi;&#770; = 1/g, recovered from the calibration g-weights. Information level: <strong>%s</strong>. Respondents with &phi;&#770; &gt; 1 (g &lt; 1): %s; non-positive g: %s. A large share with &phi;&#770; &gt; 1 signals the auxiliary vector pushes the wrong way for part of the sample (Sarndal and Lundstrom 2005).",
             info_lab, pc1(pct_gt1), pc1(pct_neg)),
-    sprintf("Propensi\u00f3n de respuesta impl\u00edcita &phi;&#770; = 1/g, recuperada de los g-weights de la calibraci\u00f3n. Nivel de informaci\u00f3n: <strong>%s</strong>. Respondentes con &phi;&#770; &gt; 1 (g &lt; 1): %s; g no positivo: %s. Una fracci\u00f3n grande con &phi;&#770; &gt; 1 indica que el vector auxiliar empuja en la direcci\u00f3n equivocada para parte de la muestra (Sarndal y Lundstrom 2005).",
+    sprintf("Propensi\u00f3n de respuesta impl\u00edcita &phi;&#770; = 1/g, recuperada de los factores g de la calibraci\u00f3n. Nivel de informaci\u00f3n: <strong>%s</strong>. Respondentes con &phi;&#770; &gt; 1 (g &lt; 1): %s; g no positivo: %s. Una fracci\u00f3n grande con &phi;&#770; &gt; 1 indica que el vector auxiliar empuja en la direcci\u00f3n equivocada para parte de la muestra (Sarndal y Lundstrom 2005).",
             info_lab, pc1(pct_gt1), pc1(pct_neg)), lang)
   # (4i/4ii) auxiliary-vector quality (Sarndal-Lundstrom): does each auxiliary
   # explain response, and (if y_vars given) the outcomes y?
@@ -1001,11 +1001,11 @@
   if (n_neg > 0)
     notes <- c(notes, .t(
       sprintf("%s unit(s) received a negative weight (g &lt; 0), the classic linear-calibration accident. Use bounds = c(lo, hi) or calfun = \"raking\" to keep the weights positive.", nf(n_neg)),
-      sprintf("%s unidad(es) recibieron peso negativo (g &lt; 0), el accidente cl\u00e1sico de la calibraci\u00f3n lineal. Us\u00e1 bounds = c(lo, hi) o calfun = \"raking\" para mantener pesos positivos.", nf(n_neg)), lang))
+      sprintf("%s unidad(es) recibieron peso negativo (g &lt; 0), el accidente cl\u00e1sico de la calibraci\u00f3n lineal. Use bounds = c(lo, hi) o calfun = \"raking\" para mantener pesos positivos.", nf(n_neg)), lang))
   if (is.finite(cd$cond) && cd$cond > 1e10)
     notes <- c(notes, .t(
       "The calibration system is ill-conditioned (near-collinear auxiliaries), so the factors can be unstable. Drop a redundant auxiliary, or set penalty = <lambda> for a ridge-stabilized calibration.",
-      "El sistema de calibraci\u00f3n est\u00e1 mal condicionado (auxiliares casi colineales), as\u00ed que los factores pueden ser inestables. Quit\u00e1 un auxiliar redundante, o us\u00e1 penalty = <lambda> para una calibraci\u00f3n ridge estabilizada.", lang))
+      "El sistema de calibraci\u00f3n est\u00e1 mal condicionado (auxiliares casi colineales), as\u00ed que los factores pueden ser inestables. Quite un auxiliar redundante, o use penalty = <lambda> para una calibraci\u00f3n ridge estabilizada.", lang))
   eff <- ""
   if (!is.null(object) && !is.null(y_vars) && !is.null(cov) && ncol(cov)) {
     yn <- intersect(y_vars, names(object$data))
@@ -1084,7 +1084,7 @@
   sprintf("<div class='ri'><h4>%s</h4><p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>",
     .t("Calibration diagnostics by domain", "Diagn\u00f3sticos de calibraci\u00f3n por dominio", lang),
     .t("Each domain is calibrated independently; small domains with extreme g, weights at the bounds, negative weights or non-convergence are where the partition strains. Troublesome domains are listed first.",
-       "Cada dominio se calibra por separado; los dominios chicos con g extremos, pesos en las cotas, pesos negativos o sin convergencia son donde la partici\u00f3n sufre. Los problem\u00e1ticos van primero.", lang),
+       "Cada dominio se calibra por separado; los dominios peque\u00f1os con g extremos, pesos en las cotas, pesos negativos o sin convergencia son donde la partici\u00f3n sufre. Los problem\u00e1ticos van primero.", lang),
     hd, paste(rows, collapse = ""))
 }
 
@@ -1170,7 +1170,7 @@
     }, character(1))
     bias <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>SE</th></tr></thead><tbody>%s</tbody></table>",
       .t("Bias cost: how much the trim moved each estimated mean, as a percent and in standard errors of the (post-trim) estimate. Small multiples of an SE are cheap; large ones are the price paid for the variance reduction.",
-         "Costo en sesgo: cu\u00e1nto movi\u00f3 el recorte cada media estimada, en porcentaje y en errores est\u00e1ndar del estimador (post-recorte). M\u00faltiplos chicos de un SE son baratos; grandes son el precio de la reducci\u00f3n de varianza.", lang),
+         "Costo en sesgo: cu\u00e1nto movi\u00f3 el recorte cada media estimada, en porcentaje y en errores est\u00e1ndar del estimador (post-recorte). M\u00faltiplos peque\u00f1os de un SE son baratos; los grandes son el precio de la reducci\u00f3n de varianza.", lang),
       .t("outcome", "variable", lang), .t("shift", "corrimiento", lang), .t("shift (SE)", "corrim. (SE)", lang),
       paste(rows, collapse = ""))
   } else if (!is.null(rec$by)) {
@@ -1230,7 +1230,7 @@
         exceed <- sum(is.finite(cap) & is.finite(fw) & fw > cap + tolc)
         if (exceed > 0) undone <- sprintf("<p class='note'>%s</p>", .t(
           sprintf("%s final weight(s) exceed the cap applied here: a later calibration re-inflated them above this trim. Use step_trim_calibrated() (range-restricted, totals-preserving calibration) or trim after calibrating.", nf(exceed)),
-          sprintf("%s peso(s) final(es) superan la cota aplicada aqu\u00ed: una calibraci\u00f3n posterior los reinfl\u00f3 por encima de este recorte. Us\u00e1 step_trim_calibrated() (calibraci\u00f3n de rango restringido que preserva los totales) o record\u00e1 despu\u00e9s de calibrar.", nf(exceed)), lang))
+          sprintf("%s peso(s) final(es) superan la cota aplicada aqu\u00ed: una calibraci\u00f3n posterior los reinfl\u00f3 por encima de este recorte. Use step_trim_calibrated() (calibraci\u00f3n de rango restringido que preserva los totales) o recorte despu\u00e9s de calibrar.", nf(exceed)), lang))
       }
     }
   }

@@ -193,14 +193,16 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     prows <- if (length(pp))
       vapply(names(pp), function(p)
         sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>",
-                .html_escape(p), .fmt_val(pp[[p]])), character(1))
-      else "<tr><td class='muted' colspan='2'>defaults only</td></tr>"
+                .html_escape(.wf_relabel(p, lang)), .fmt_val(pp[[p]])), character(1))
+      else sprintf("<tr><td class='muted' colspan='2'>%s</td></tr>",
+                   .t("defaults only", "solo valores por defecto", lang))
     note <- attr(s$diagnostics, "note")
     it   <- attr(s$diagnostics, "iterations")
     cv   <- attr(s$diagnostics, "converged")
-    al   <- s$alerts
+    al   <- .wf_translate(s$alerts, lang)
     alerts_html <- if (!is.null(al) && length(al))
-      paste0("<div class='alert'><strong>Quality alerts</strong><ul>",
+      paste0("<div class='alert'><strong>",
+             .t("Quality alerts", "Alertas de calidad", lang), "</strong><ul>",
              paste0("<li>", vapply(al, .html_escape, character(1)), "</li>", collapse = ""),
              "</ul></div>") else ""
     conv_html <- if (identical(cv, FALSE)) {
@@ -225,7 +227,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     } else ""
     extra <- paste0(
       iter_html,
-      if (!is.null(note)) sprintf("<p class='note'>%s</p>", .html_escape(note)) else "",
+      if (!is.null(note)) sprintf("<p class='note'>%s</p>", .html_escape(.wf_translate(note, lang))) else "",
       conv_html, alerts_html)
     de1 <- design_effect(h[[i]]); de2 <- design_effect(h[[i + 1L]])
     viz <- if (plots) .step_visual(s, h[[i]], h[[i + 1L]], lang) else ""
@@ -269,7 +271,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   exec  <- paste0(exec, .attention_panel(object, lang))
   imsg  <- if (!is.finite(de_f$deff))
              .t("the design effect could not be computed \u2014 check the weights.",
-                "no se pudo calcular el efecto de dise\u00f1o \u2014 revis\u00e1 los pesos.", lang)
+                "no se pudo calcular el efecto de dise\u00f1o \u2014 revise los pesos.", lang)
            else if (de_f$deff < 1.2)
              .t("weight variability is low.", "la variabilidad de los pesos es baja.", lang)
            else if (de_f$deff < 1.4)
@@ -350,7 +352,7 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
   })
   foot_txt <- .t(
     "deff_K = 1 + CV&sup2; is the Kish design effect (n = active units; CV = coefficient of variation of the weights), a measure of weight variability benchmarked against equal weighting (Kish 1992). The corresponding effective sample size is n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; = n / deff_K. It assumes equal weights would be optimal, so read it in context: when the weights correlate with the outcome, as calibration to informative auxiliaries induces, deff_K overstates the variance and can rise even as precision improves (Spencer 2000; Little and Vartivarian 2005); a nonresponse adjustment instead accepts extra weight variability to reduce bias, so a high deff_K there reflects a more genuine bias-variance trade-off, and unequal weights can still beat equal ones when response and the outcome both depend on the adjustment variables. deff_K is best used as a post-hoc diagnostic: large values flag a step that may inject unjustified variability, or an error worth checking (Valliant, Dever and Kreuter 2018). This report shows the weights only; for design-based inference (standard errors, confidence intervals) use the 'survey' or 'srvyr' package.",
-    "deff_K = 1 + CV&sup2; es el efecto de dise\u00f1o de Kish (n = unidades activas; CV = coeficiente de variaci\u00f3n de los pesos), una medida de la variabilidad de los pesos comparada contra la ponderaci\u00f3n igual (Kish 1992). El tama\u00f1o de muestra efectivo correspondiente es n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; = n / deff_K. Supone que la ponderaci\u00f3n igual ser\u00eda \u00f3ptima, as\u00ed que conviene leerlo en contexto: cuando los pesos correlacionan con la variable de inter\u00e9s, como induce la calibraci\u00f3n a auxiliares informativos, el deff_K sobreestima la varianza y puede subir aunque la precisi\u00f3n mejore (Spencer 2000; Little y Vartivarian 2005); en cambio un ajuste por no respuesta acepta m\u00e1s variabilidad para reducir el sesgo, por lo que un deff_K alto ah\u00ed refleja un compromiso sesgo-varianza m\u00e1s real, y los pesos desiguales pueden aun as\u00ed superar a los iguales cuando la respuesta y la variable de inter\u00e9s dependen de las variables de ajuste. El deff_K conviene usarlo como diagn\u00f3stico posterior: valores grandes se\u00f1alan un paso que puede inyectar variabilidad injustificada, o un error que vale la pena revisar (Valliant, Dever y Kreuter 2018). Este reporte muestra solo los pesos; para inferencia basada en el dise\u00f1o (errores est\u00e1ndar, intervalos de confianza) us\u00e1 el paquete 'survey' o 'srvyr'.",
+    "deff_K = 1 + CV&sup2; es el efecto de dise\u00f1o de Kish (n = unidades activas; CV = coeficiente de variaci\u00f3n de los pesos), una medida de la variabilidad de los pesos comparada contra la ponderaci\u00f3n igual (Kish 1992). El tama\u00f1o de muestra efectivo correspondiente es n_eff = (&Sigma;w)&sup2; / &Sigma;w&sup2; = n / deff_K. Supone que la ponderaci\u00f3n igual ser\u00eda \u00f3ptima, as\u00ed que conviene leerlo en contexto: cuando los pesos correlacionan con la variable de inter\u00e9s, como induce la calibraci\u00f3n a auxiliares informativos, el deff_K sobreestima la varianza y puede subir aunque la precisi\u00f3n mejore (Spencer 2000; Little y Vartivarian 2005); en cambio un ajuste por no respuesta acepta m\u00e1s variabilidad para reducir el sesgo, por lo que un deff_K alto ah\u00ed refleja un compromiso sesgo-varianza m\u00e1s real, y los pesos desiguales pueden aun as\u00ed superar a los iguales cuando la respuesta y la variable de inter\u00e9s dependen de las variables de ajuste. El deff_K conviene usarlo como diagn\u00f3stico posterior: valores grandes se\u00f1alan un paso que puede inyectar variabilidad injustificada, o un error que vale la pena revisar (Valliant, Dever y Kreuter 2018). Este reporte muestra solo los pesos; para inferencia basada en el dise\u00f1o (errores est\u00e1ndar, intervalos de confianza) use el paquete 'survey' o 'srvyr'.",
     lang)
   # HTML assembled by named interpolation (paste0), not a positional sprintf, so
   # sections cannot be misaligned when one is added or removed.
