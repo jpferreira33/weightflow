@@ -71,6 +71,11 @@
 <li>
 <strong><code><a href="../reference/step_trim_calibrated.html">step_trim_calibrated()</a></code> now supports a preceding <code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code>.</strong> The model-calibration step saves its prediction columns, which the trim step appends to <code>formula</code>’s design, so range-restricted trimming preserves the model-prediction totals as well as the known margins (previously it kept only the <code>X</code> margins). Pass the same <code>x_formula</code> as <code>formula</code>.</li>
 </ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>
+<strong><code>report_weighting(lang = "es")</code> now renders the quality alerts and the calibration/trim notes in Spanish.</strong> The “Quality alerts” box header, the <code>target</code>/<code>achieved</code> diagnostic-table headers, and every compute-time quality alert (propensity miscalibration and g-factor bounds, but also very small / near-certain propensities, collapsed propensity classes, non-positive or negative calibration weights, an ill-conditioned system, weights below 1, large or empty adjustment cells, cells with too few cases, the two-phase phase-2 alerts, partial-household nonresponse, and the flexible-learner / cross-fitting notes) were left in English under <code>lang = "es"</code>, because they are generated without a language at compute time (English stays canonical for the R warnings). The report now translates all of them at render time; English output is unchanged.</li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.2.0" id="weightflow-120">weightflow 1.2.0<a class="anchor" aria-label="anchor" href="#weightflow-120"></a></h2>

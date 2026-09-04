@@ -21,6 +21,22 @@
   (previously it kept only the `X` margins). Pass the same `x_formula`
   as `formula`.
 
+### Bug fixes
+
+- **`report_weighting(lang = "es")` now renders the quality alerts and
+  the calibration/trim notes in Spanish.** The “Quality alerts” box
+  header, the `target`/`achieved` diagnostic-table headers, and every
+  compute-time quality alert (propensity miscalibration and g-factor
+  bounds, but also very small / near-certain propensities, collapsed
+  propensity classes, non-positive or negative calibration weights, an
+  ill-conditioned system, weights below 1, large or empty adjustment
+  cells, cells with too few cases, the two-phase phase-2 alerts,
+  partial-household nonresponse, and the flexible-learner /
+  cross-fitting notes) were left in English under `lang = "es"`, because
+  they are generated without a language at compute time (English stays
+  canonical for the R warnings). The report now translates all of them
+  at render time; English output is unchanged.
+
 ## weightflow 1.2.0
 
 ### New features
