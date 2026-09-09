@@ -1,6 +1,6 @@
 Package: weightflow
 Title: Declarative Recipes for Staged Survey Weighting with Recipe-Aware Replicate Variances
-Version: 1.2.0
+Version: 1.3.0
 Authors@R: c(
     person("Juan Pablo", "Ferreira", email = "juanpablo.ferreira@fcea.edu.uy",
            role = c("aut", "cre", "cph"),

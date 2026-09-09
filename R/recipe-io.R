@@ -61,7 +61,7 @@
   x
 }
 
-.wf_decode <- function(x, references, step_id) {
+.wf_decode <- function(x, references, step_id, allow_code = FALSE) {
   if (is.list(x) && !is.null(x$.wf)) {
     switch(x$.wf,
       formula = stats::as.formula(x$value, env = baseenv()),
@@ -87,7 +87,24 @@
       },
       y_model = y_model(stats::as.formula(x$formula, env = baseenv()),
                         engine = x$engine, family = x$family),
-      `function` = eval(str2lang(x$value), envir = baseenv()),
+      `function` = {
+        # SECURITY: a `.wf: function` node carries arbitrary R source that would run
+        # immediately here (eval at read time, before any prep()). A recipe is meant to
+        # be exchanged between organisations, so evaluating it is a code-execution vector.
+        # Refuse by default; only evaluate when the caller explicitly trusts the file.
+        if (!isTRUE(allow_code))
+          stop(sprintf(paste0("Step '%s' stores an R function as executable source. Reading it ",
+                              "would run that code. If you trust this file, re-read with ",
+                              "read_recipe(..., allow_code = TRUE); otherwise inspect the ",
+                              "'value' under the function node first."), step_id),
+               call. = FALSE)
+        eval(str2lang(x$value), envir = baseenv())
+      },
+      previous_wave = stop(sprintf(paste0(
+        "Step '%s' is a step_cre() whose `previous` is a fitted wave (its data, weights and ",
+        "history), which the recipe does not store. A composite (CRE) recipe cannot be rebuilt ",
+        "from YAML alone: build the previous wave in R and call step_cre(previous = <fit>) ",
+        "directly."), step_id), call. = FALSE),
       reference_sample = {
         ref <- if (is.list(references)) references[[step_id]] else NULL
         if (!inherits(ref, "wf_reference_sample"))
@@ -99,7 +116,7 @@
       },
       stop(sprintf("Unknown encoded type '%s' in the recipe.", x$.wf), call. = FALSE))
   } else if (is.list(x)) {
-    lapply(x, .wf_decode, references = references, step_id = step_id)
+    lapply(x, .wf_decode, references = references, step_id = step_id, allow_code = allow_code)
   } else x
 }
 
@@ -149,6 +166,12 @@ write_recipe <- function(object, file, timestamp = TRUE) {
   bw_out <- if (isTRUE(object$nonprob) && grepl("^\\.wf_base1", bw)) NULL else bw
   steps <- lapply(object$steps, function(s) {
     fields <- s[setdiff(names(s), c("env", "diagnostics", "alerts", "id"))]
+    # step_cre() holds the entire PREPPED previous wave (data + weights + history) in
+    # `previous`. That is a fitted object, not recipe metadata: serializing it would dump
+    # the previous wave's microdata into the YAML (a data leak) or abort on a realistic wave.
+    # Replace it with a marker; the previous wave is re-supplied on read, like a reference. (IO-02)
+    if (inherits(s, "step_cre") && !is.null(fields$previous))
+      fields$previous <- list(.wf = "previous_wave")
     list(id = s$id %||% NA_character_, type = class(s)[1],
          params = .wf_encode(fields))
   })
@@ -181,6 +204,11 @@ write_recipe <- function(object, file, timestamp = TRUE) {
 #' @param references optional named list of `reference_sample()` objects, named by
 #'   the id of the step that uses each one, to restore the steps that calibrate or
 #'   pseudo-weight against a reference (whose microdata the recipe does not store).
+#' @param allow_code single logical. A step may store an R **function** as source
+#'   (a custom distance or statistic). Reconstructing it evaluates that source, which
+#'   is a code-execution risk for a recipe received from elsewhere. `FALSE` (default)
+#'   refuses such nodes with an error; set `TRUE` only for a file you trust, exactly
+#'   as you would `source()` it.
 #' @return With `data = NULL`, a `weightflow_recipe` manifest (a list with a print
 #'   method). With `data`, a `weighting_spec`.
 #' @seealso [write_recipe()]
@@ -192,7 +220,7 @@ write_recipe <- function(object, file, timestamp = TRUE) {
 #' spec2 <- read_recipe(f, data = sample_survey)   # rebuild an executable recipe
 #' @export
 #' @family recipe serialization
-read_recipe <- function(file, data = NULL, references = NULL) {
+read_recipe <- function(file, data = NULL, references = NULL, allow_code = FALSE) {
   if (!requireNamespace("yaml", quietly = TRUE))
     stop("read_recipe() needs the 'yaml' package. Run install.packages('yaml').", call. = FALSE)
   doc <- yaml::read_yaml(file)$weightflow_recipe
@@ -221,7 +249,7 @@ read_recipe <- function(file, data = NULL, references = NULL) {
                          nonprob = isTRUE(manifest$nonprob)),
                     class = "weighting_spec")
   for (st in doc$steps) {
-    params <- .wf_decode(st$params, references, st$id)
+    params <- .wf_decode(st$params, references, st$id, allow_code = allow_code)
     if (!is.list(params)) params <- list()
     params$env <- baseenv()
     class(params) <- c(st$type, "weighting_step")

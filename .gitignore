@@ -27,3 +27,7 @@ report_cepal_*.html
 reportes/
 
 reportes/
+
+# FUSE mount / testthat scratch
+.fuse_hidden*
+tests/testthat/_problems/

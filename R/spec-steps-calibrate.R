@@ -416,6 +416,15 @@ step_trim <- function(spec, max_ratio, min_ratio = NULL,
     if (min_ratio <= 0)
       stop(sprintf("`min_ratio` must be greater than 0 (got %s).", format(min_ratio)),
            call. = FALSE)
+    # Symmetric to the max_ratio check: for a RELATIVE reference the floor is a multiple of
+    # the reference weight, so min_ratio >= 1 would raise every weight up to (or above) the
+    # reference and inflate the total. (TRIM-03)
+    if (reference %in% c("base", "median") && min_ratio >= 1)
+      stop(sprintf(paste0("`min_ratio` must be less than 1 for reference = \"%s\" (got %s): ",
+                          "it is a multiple of the reference weight, so a floor at or above 1 ",
+                          "would raise every weight up to the reference and distort the total. ",
+                          "Use reference = \"value\" if you meant an absolute floor."),
+                   reference, format(min_ratio)), call. = FALSE)
   }
   step <- structure(
     list(

@@ -261,7 +261,14 @@ apply_step.step_calibrate <- function(step, data, w) {
     # Closed form for unbounded linear; Deville-Sarndal solver for bounded or
     # logit (calfun), which keeps g within `bounds`.
     d  <- new_w[active]
-    X  <- stats::model.matrix(step$formula, data = data[active, , drop = FALSE])
+    # droplevels() on the active subset, to agree with .prep_linear_totals(), which also
+    # drops them: model.matrix() builds a column per DEFINED factor level, so a level with
+    # no active unit would add an all-zero column that no target can match. Without this the
+    # two sides disagree and the recipe deadlocks -- omitting the empty level from `totals`
+    # fails the column-name check here, and including it fails the "no units in the sample"
+    # check there, each message asking for the action that triggers the other. (CAL-04)
+    X  <- stats::model.matrix(step$formula,
+                              data = droplevels(data[active, , drop = FALSE]))
     if (nrow(X) != length(d) || anyNA(X))
       stop("Auxiliaries in `formula` have missing values (NA) in the active ",
            "sample; calibration needs a value for every unit. Impute them first, ",

@@ -64,6 +64,11 @@ weighting_spec <- function(data, base_weights = NULL, nonprob = FALSE) {
     if (any(data[[bw]] == 0))
       warning("Some base weights are 0; those units start inactive and are dropped ",
               "from every step.", call. = FALSE)
+    # A haven_labelled / units / difftime column passes is.numeric() but carries a class and
+    # value labels that the final weight would inherit -- so haven::write_sav() would tag the
+    # weights with the base weight's labels. Coerce to a plain numeric. (SPEC-01)
+    if (!is.null(oldClass(data[[bw]])))
+      data[[bw]] <- as.numeric(data[[bw]])
   }
   structure(
     list(

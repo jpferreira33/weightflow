@@ -22,11 +22,29 @@
   if (inherits(v, "formula") || is.call(v) || is.symbol(v) || is.language(v))
     return(.html_escape(paste(deparse(v), collapse = " ")))
   if (is.data.frame(v)) return(sprintf("data.frame [%d &times; %d]", nrow(v), ncol(v)))
+  # A nested fit object (e.g. step_cre's `previous`) is a whole recipe, not a
+  # tunable scalar; summarise it in one line instead of dumping its weight
+  # vectors (history/final_weight, one number per case) into the report.
+  if (inherits(v, c("prepped_weighting_spec", "weighting_spec"))) {
+    lab <- if (length(v$steps)) v$steps[[length(v$steps)]]$label else "empty recipe"
+    n   <- if (!is.null(v$data)) nrow(v$data) else length(v$final_weight)
+    return(.html_escape(sprintf("fit: %s (%s cases)", lab,
+                                format(n, big.mark = ",", trim = TRUE))))
+  }
   if (is.list(v)) {
     parts <- vapply(seq_along(v), function(i)
       sprintf("<i>%s</i>: %s", .html_escape(names(v)[i] %||% i), .fmt_val(v[[i]])),
       character(1))
     return(paste(parts, collapse = "<br>"))
+  }
+  # Cap long atomic vectors: no report field should ever spill one value per case.
+  cap <- 10L
+  if (length(v) > cap) {
+    head_v <- if (is.numeric(v)) format(v[seq_len(cap)], big.mark = ",", trim = TRUE)
+              else format(v[seq_len(cap)], trim = TRUE)
+    # \u2026 as an escape, not a literal: R CMD check requires ASCII-only R code
+    return(.html_escape(sprintf("%s, \u2026 (%s values)", paste(head_v, collapse = ", "),
+                                format(length(v), big.mark = ",", trim = TRUE))))
   }
   if (is.numeric(v) && !is.null(names(v)))
     return(.html_escape(paste(sprintf("%s=%s", names(v),
@@ -107,13 +125,42 @@
   category = "categor\u00eda", `dev %` = "desv. %",
   mean_prop = "prop_media", partial_R = "R_parcial", cell = "celda", class = "clase",
   n_respondents = "n_respondentes", n_known = "n_conocidos", weight_class = "clase_peso",
-  min_prob = "prob_m\u00edn", n_psu2 = "n_upm2", n_hh = "n_hogares", n_resp_hh = "n_hog_resp",
+  min_prob = "prob_m\u00edn", max_prob = "prob_m\u00e1x",
+  p_min = "p_m\u00edn", p_max = "p_m\u00e1x",
+  n_psu2 = "n_upm2", n_hh = "n_hogares", n_resp_hh = "n_hog_resp",
+  level = "nivel", design = "dise\u00f1o", psu = "upm", reference = "referencia",
+  floor = "cota_inf", cap = "cota_sup", trimmed = "recortadas",
+  redistributed = "redistribuidas", n_dropped = "n_descartadas",
+  n_selected = "n_seleccionadas", n_unknown = "n_desconocidas",
+  n_nonresponse = "n_no_respuesta", prev_sum = "suma_previa",
+  prev_total = "total_previo", deff_before = "deff_antes", deff_after = "deff_despu\u00e9s",
+  variable = "variable", threshold = "umbral", importance = "importancia",
+  predicted = "predicho", observed = "observado",
   # step-parameter keys (Requested table)
   digits = "d\u00edgitos", by = "por", respondent = "respondente", formula = "f\u00f3rmula",
   engine = "motor", weight_model = "modela_peso", num_classes = "num_clases",
   lower = "inferior", upper = "superior", margins = "m\u00e1rgenes", totals = "totales",
   count = "conteo", bounds = "cotas", penalty = "penalizaci\u00f3n", calfun = "distancia",
   cluster = "conglomerado", population = "poblaci\u00f3n", unknown = "desconocido")
+# Values the package writes itself into a diagnostics table (as opposed to the
+# arguments the user typed, which stay verbatim so the report matches the code).
+# Keyed by column, so a genuine data value that happens to read "household" in
+# some other table is never rewritten.
+.wf_es_values <- list(
+  level  = c(person = "persona", household = "hogar", unit = "unidad"),
+  method = c(`1/p per household` = "1/p por hogar", `1/p per unit` = "1/p por unidad"))
+
+.wf_revalue <- function(df, lang) {
+  if (!identical(lang, "es") || is.null(df) || !is.data.frame(df)) return(df)
+  for (cn in intersect(names(df), names(.wf_es_values))) {
+    map <- .wf_es_values[[cn]]
+    v   <- as.character(df[[cn]])
+    hit <- v %in% names(map)
+    if (any(hit)) { v[hit] <- map[v[hit]]; df[[cn]] <- v }
+  }
+  df
+}
+
 .wf_relabel <- function(nms, lang) {
   if (!identical(lang, "es")) return(nms)
   hit <- nms %in% names(.wf_es_labels)
@@ -126,7 +173,7 @@
 # then relabel every column header for the Spanish report (display only).
 .with_reldiff <- function(df, lang) {
   if (is.null(df) || !is.data.frame(df)) return(df)
-  out <- df
+  out <- .wf_revalue(df, lang)
   if (all(c("target", "achieved") %in% names(out))) {
     tt  <- suppressWarnings(as.numeric(as.character(out$target)))
     aa  <- suppressWarnings(as.numeric(as.character(out$achieved)))
@@ -143,9 +190,24 @@
   out
 }
 
-# data.frame -> HTML table
-.df_to_html <- function(df) {
-  if (is.null(df) || !nrow(df)) return("<p class='muted'>no diagnostics</p>")
+# data.frame -> HTML table. Numeric columns are right-aligned with tabular
+# figures (a weighting report is read down its number columns, and ragged left
+# alignment makes magnitudes impossible to compare at a glance); the percentage
+# columns produced by .with_reldiff() are character but read as numbers, so they
+# get the same treatment. The table is wrapped so a wide one scrolls in its own
+# box instead of pushing the whole page sideways.
+.df_to_html <- function(df, lang = "en") {
+  if (is.null(df) || !nrow(df))
+    return(sprintf("<p class='muted'>%s</p>",
+                   .t("no diagnostics", "sin diagn\u00f3sticos", lang)))
+  # A column counts as numeric for alignment if it is numeric, or if every
+  # non-missing entry looks like a number/percentage/dash.
+  looks_num <- function(col) {
+    if (is.numeric(col)) return(TRUE)
+    s <- trimws(as.character(col)); s <- s[!is.na(s) & nzchar(s)]
+    length(s) > 0 && all(grepl("^[+-]?[0-9,]*\\.?[0-9]+%?$|^&ndash;$|^-$", s))
+  }
+  isnum <- vapply(df, looks_num, logical(1))
   # Integer-valued numeric columns (counts, calibration targets/totals) get a
   # thousands separator so they read like the header tiles ("1,570", not "1570");
   # display only, never touches a value used in a computation.
@@ -157,13 +219,14 @@
     out[!fin] <- NA_character_            # NA/Inf -> rendered as a dash below
     df[[nm]] <- out
   }
-  hd <- paste0("<th scope='col'>", .html_escape(names(df)), "</th>", collapse = "")
+  cls <- ifelse(isnum, " class='numc'", "")
+  hd  <- paste0("<th scope='col'", cls, ">", .html_escape(names(df)), "</th>", collapse = "")
   rows <- apply(df, 1, function(r) {
     cells <- ifelse(is.na(r), "&ndash;", .html_escape(as.character(r)))  # NA -> dash, like the rest of the report
-    paste0("<tr>", paste0("<td>", cells, "</td>", collapse = ""), "</tr>")
+    paste0("<tr>", paste0("<td", cls, ">", cells, "</td>", collapse = ""), "</tr>")
   })
-  sprintf("<table><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
-          hd, paste(rows, collapse = ""))
+  .tw(sprintf("<table><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+              hd, paste(rows, collapse = "")))
 }
 
 # Hand-rolled SVG plotting: builds the SVG string directly from coordinates,
@@ -188,79 +251,112 @@
 
 .svg_axes <- function(ml, mt, pw, ph, xr, yr, xlab, ylab, sx, sy, yfmt = NULL) {
   xt <- c(xr[1], mean(xr), xr[2]); yt <- c(yr[1], mean(yr), yr[2])
-  # faint gridlines at the tick positions (drawn first, so they sit behind data)
+  # The first and last x labels sit exactly on the plot edges. Centring them there
+  # pushes half the text outside the viewBox and the browser clips it ("12.5" ->
+  # "12."), so anchor the outer two inward and only centre the middle one.
+  xanch <- c("start", "middle", "end")
+  # faint gridlines at the tick positions (drawn first, so they sit behind data).
+  # Stroke/fill come from CSS classes, not literals, so the charts follow the
+  # report's colour scheme (including dark mode and print).
   grid <- paste(c(
-    sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#eef0f4"/>',
+    sprintf('<line class="wf-grid" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>',
             sx(xt), mt, sx(xt), mt + ph),
-    sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#eef0f4"/>',
+    sprintf('<line class="wf-grid" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>',
             ml, sy(yt), ml + pw, sy(yt))), collapse = "")
   # thin axis lines
-  axln <- sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#d5d9e0" stroke-width="0.8"/>',
+  axln <- sprintf('<line class="wf-axis" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>',
                   c(ml, ml), c(mt + ph, mt), c(ml + pw, ml), c(mt + ph, mt + ph))
   # short tick marks
   tick <- paste(c(
-    sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#cbd0d8"/>',
+    sprintf('<line class="wf-tick" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>',
             sx(xt), mt + ph, sx(xt), mt + ph + 3),
-    sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#cbd0d8"/>',
+    sprintf('<line class="wf-tick" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>',
             ml - 3, sy(yt), ml, sy(yt))), collapse = "")
-  xtk <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#6b7280">%s</text>',
-               sx(xt), mt + ph + 13, .uniq_ticks(xt)), collapse = "")
+  xtk <- paste(sprintf('<text class="wf-tk" x="%.1f" y="%.1f" text-anchor="%s">%s</text>',
+               sx(xt), mt + ph + 14, xanch, .uniq_ticks(xt)), collapse = "")
   ylabs <- if (is.null(yfmt)) .uniq_ticks(yt) else yfmt(yt)
-  ytk <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">%s</text>',
-               ml - 5, sy(yt) + 3, ylabs), collapse = "")
-  xl  <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="11" fill="#6b7280">%s</text>',
-                 ml + pw / 2, mt + ph + 27, xlab)
-  yl  <- sprintf('<text x="11" y="%.1f" text-anchor="middle" font-size="11" fill="#6b7280" transform="rotate(-90 11 %.1f)">%s</text>',
+  # Same at the top/bottom of the y axis: nudge the outer labels inward so a tall
+  # label is not cut off by the viewBox edge.
+  ytk <- paste(sprintf('<text class="wf-tk" x="%.1f" y="%.1f" text-anchor="end">%s</text>',
+               ml - 6, sy(yt) + c(2, 3, 7), ylabs), collapse = "")
+  xl  <- sprintf('<text class="wf-al" x="%.1f" y="%.1f" text-anchor="middle">%s</text>',
+                 ml + pw / 2, mt + ph + 29, xlab)
+  yl  <- sprintf('<text class="wf-al" x="11" y="%.1f" text-anchor="middle" transform="rotate(-90 11 %.1f)">%s</text>',
                  mt + ph / 2, mt + ph / 2, ylab)
   paste0(grid, paste(axln, collapse = ""), tick, xtk, ytk, xl, yl)
 }
 
-.svg_evolution <- function(labels, y, w = 640L, h = 190L, lang = "en") {
+.svg_evolution <- function(labels, y, w = 900L, h = 235L, lang = "en") {
   # N-20: skip the plot if any deff is non-finite (Inf overflow / NaN from
   # all-zero base weights); range()/diff()/any()/min() would otherwise error.
   n <- length(y); if (n < 2L || !all(is.finite(y))) return("")
   disp <- ifelse(seq_len(n) == 1L, "base", as.character(seq_len(n) - 1L))  # base,1,2,...
-  ml <- 48; mr <- 14; mt <- 12; mb <- 34; pw <- w - ml - mr; ph <- h - mt - mb
-  yr <- range(y); if (diff(yr) == 0) yr <- yr + c(-0.05, 0.05)
-  pad <- diff(yr) * 0.10; yr <- yr + c(-pad, pad)          # aire arriba/abajo
+  ml <- 56; mr <- 22; mt <- 16; mb <- 40; pw <- w - ml - mr; ph <- h - mt - mb
+  # A single spiking stage (a 1/p nonresponse step can push deff_K from 1.1 to 55)
+  # flattens every other stage onto the baseline on a linear axis, which is
+  # exactly where the reader needs to see movement. Switch to log10 when the
+  # series spans more than an order of magnitude, and say so on the axis.
+  logsc <- all(y > 0) && is.finite(max(y) / min(y)) && max(y) / min(y) >= 12
+  ty  <- if (logsc) log10(y) else y
+  yr  <- range(ty); if (diff(yr) == 0) yr <- yr + c(-0.05, 0.05)
+  pad <- diff(yr) * 0.10; yr <- yr + c(-pad, pad)          # air above/below
   sx <- function(i) ml + (i - 1) / (n - 1) * pw
   sy <- function(v) mt + ph - (v - yr[1]) / diff(yr) * ph
   yt <- pretty(yr, 3)
-  grid <- paste(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#eef" stroke-width="1"/>',
+  yt <- yt[yt >= yr[1] & yt <= yr[2]]      # pretty() overshoots the range; those
+  if (!length(yt)) yt <- yr                # ticks drew a stray label under the axis
+  grid <- paste(sprintf('<line class="wf-grid" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f"/>',
                         ml, sy(yt), ml + pw, sy(yt)), collapse = "")
-  ytk  <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">%s</text>',
-                        ml - 6, sy(yt) + 3, .uniq_ticks(yt)), collapse = "")
-  d    <- paste(sprintf("%.1f %.1f", sx(seq_len(n)), sy(y)), collapse = " L ")
-  line <- sprintf('<path d="M %s" fill="none" stroke="#3d3580" stroke-width="2"/>', d)
-  dots <- paste(sprintf('<circle cx="%.1f" cy="%.1f" r="3" fill="#3d3580"/>',
-                        sx(seq_len(n)), sy(y)), collapse = "")
-  xtk  <- paste(sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#6b7280">%s</text>',
+  ylabs <- if (logsc) .uniq_ticks(10^yt) else .uniq_ticks(yt)
+  ytk  <- paste(sprintf('<text class="wf-tk" x="%.1f" y="%.1f" text-anchor="end">%s</text>',
+                        ml - 6, sy(yt) + 3, ylabs), collapse = "")
+  d    <- paste(sprintf("%.1f %.1f", sx(seq_len(n)), sy(ty)), collapse = " L ")
+  # Soft band under the line: gives the series weight without a heavy fill.
+  area <- sprintf('<path class="wf-area" d="M %.1f %.1f L %s L %.1f %.1f Z"/>',
+                  sx(1), mt + ph, d, sx(n), mt + ph)
+  line <- sprintf('<path class="wf-line" d="M %s" fill="none" stroke-width="2" stroke-linejoin="round"/>', d)
+  dots <- paste(sprintf('<circle class="wf-mark" cx="%.1f" cy="%.1f" r="3"/>',
+                        sx(seq_len(n)), sy(ty)), collapse = "")
+  xtk  <- paste(sprintf('<text class="wf-tk" x="%.1f" y="%.1f" text-anchor="middle">%s</text>',
                         sx(seq_len(n)), mt + ph + 16, .html_escape(disp)), collapse = "")
   dd <- diff(y); ann <- ""
   if (length(dd) && any(dd > 0)) {
     ii  <- which.max(dd) + 1L
-    ann <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="12" fill="#b45309">&#9650;</text>',
-                   sx(ii), sy(y[ii]) - 7)
+    ann <- sprintf('<text class="wf-up" x="%.1f" y="%.1f" text-anchor="middle" font-size="12">&#9650;</text>',
+                   sx(ii), sy(ty[ii]) - 7)
   }
   if (length(dd) && min(dd) < -0.0005) {
     jj  <- which.min(dd) + 1L
-    ann <- paste0(ann, sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="12" fill="#065f46">&#9660;</text>',
-                               sx(jj), sy(y[jj]) + 16))
+    ann <- paste0(ann, sprintf('<text class="wf-dn" x="%.1f" y="%.1f" text-anchor="middle" font-size="12">&#9660;</text>',
+                               sx(jj), sy(ty[jj]) + 16))
   }
+  albl <- .t("deff_K by stage", "deff_K por etapa", lang)
   svg <- paste0('<svg viewBox="0 0 ', w, ' ', h,
-         '" width="100%" role="img" aria-label="Kish design effect by stage" font-family="-apple-system,Segoe UI,Roboto,sans-serif"><title>deff_K by stage</title>',
-         grid, ytk, line, dots, xtk, ann, '</svg>')
-  ttl <- .t("Kish Design Effect Across Weighting Steps",
+         '" width="100%" role="img" aria-label="', albl, '"><title>', albl, '</title>',
+         grid, ytk, area, line, dots, xtk, ann, '</svg>')
+  ttl <- .t("Kish design effect across weighting steps",
             "Efecto de dise&ntilde;o de Kish por paso de ponderaci&oacute;n", lang)
-  leg <- if (nzchar(ann)) sprintf("<div class='muted' style='font-size:13px;margin-top:4px;text-align:center'>%s</div>",
-    .t("<span style='color:#b45309'>&#9650;</span> largest rise in deff_K &#183; <span style='color:#065f46'>&#9660;</span> largest drop",
-       "<span style='color:#b45309'>&#9650;</span> mayor aumento del deff_K &#183; <span style='color:#065f46'>&#9660;</span> mayor ca&iacute;da", lang)) else ""
-  paste0("<div class='viz-h'>", ttl, "</div>", svg, leg)
+  if (logsc) ttl <- paste0(ttl, .t(" <span class='muted'>(log scale)</span>",
+                                   " <span class='muted'>(escala logar&iacute;tmica)</span>", lang))
+  leg <- if (nzchar(ann)) sprintf("<div class='muted' style='margin-top:2px'>%s</div>",
+    .t("<span class='sw-up'>&#9650;</span> largest rise in deff_K &#183; <span class='sw-dn'>&#9660;</span> largest drop",
+       "<span class='sw-up'>&#9650;</span> mayor aumento del deff_K &#183; <span class='sw-dn'>&#9660;</span> mayor ca&iacute;da", lang)) else ""
+  paste0("<figure class='chartblk'><figcaption class='viz-h'>", ttl, "</figcaption>", svg, leg, "</figure>")
 }
 
-.svg_frame <- function(body, w, h, title = "diagnostic plot") sprintf(
-  '<svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="%s" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="9"><title>%s</title>%s</svg>',
-  w, h, title, title, body)
+.svg_frame <- function(body, w, h, title = NULL, lang = "en") {
+  if (is.null(title)) title <- .t("diagnostic plot", "gr\u00e1fico de diagn\u00f3stico", lang)
+  sprintf('<svg viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="%s"><title>%s</title>%s</svg>',
+          w, h, title, title, body)
+}
+
+# A chart with its caption, as one <figure> so the title travels with the plot
+# and cannot be orphaned at a page break.
+.chart_figure <- function(svg, title = NULL) {
+  if (!nzchar(svg)) return("")
+  if (is.null(title)) return(sprintf("<figure class='chartblk'>%s</figure>", svg))
+  sprintf("<figure class='chartblk'><figcaption class='viz-h'>%s</figcaption>%s</figure>", title, svg)
+}
 
 # Deterministic thinning for the scatter (rendering only). Keeps both tails on
 # each axis (smallest/largest weights before and after) and the largest
@@ -281,33 +377,54 @@
 }
 
 # Scatter of weight before (x) vs after (y), with a y = x reference line.
-.svg_scatter <- function(x, y, w = 330, h = 215, cap = 3000L, lang = "en", title = NULL) {
-  ml <- 54; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
+.svg_scatter <- function(x, y, w = 340, h = 224, cap = 3000L, lang = "en", title = NULL) {
+  # mr must clear half of the last x tick label; 8px clipped it ("12.5" -> "12.").
+  ml <- 56; mr <- 16; mt <- 12; mb <- 36; pw <- w - ml - mr; ph <- h - mt - mb
   i <- .thin_scatter(x, y, cap); x <- x[i]; y <- y[i]
   xr <- range(x); yr <- range(c(y, x))
   if (diff(xr) == 0) xr <- xr + c(-1, 1)
   if (diff(yr) == 0) yr <- yr + c(-1, 1)
   sx <- function(v) ml + (v - xr[1]) / diff(xr) * pw
   sy <- function(v) mt + ph - (v - yr[1]) / diff(yr) * ph
-  pts <- paste(sprintf('<circle cx="%.1f" cy="%.1f" r="2.4" fill="#7a6ad0" fill-opacity="0.24"/>',
+  pts <- paste(sprintf('<circle class="wf-pt" cx="%.1f" cy="%.1f" r="2.4"/>',
                sx(x), sy(y)), collapse = "")
   lo <- max(xr[1], yr[1]); hi <- min(xr[2], yr[2])
-  ln  <- sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#6b7280" stroke-dasharray="4 3"/>',
+  ln  <- sprintf('<line class="wf-ref" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke-dasharray="4 3"/>',
                  sx(lo), sy(lo), sx(hi), sy(hi))
-  lbl <- sprintf('<text x="%.1f" y="%.1f" text-anchor="end" font-size="10" fill="#6b7280">y = x</text>',
-                 sx(hi) - 3, sy(hi) + 12)
+  lbl <- sprintf('<text class="wf-tk" x="%.1f" y="%.1f" text-anchor="end">y = x</text>',
+                 sx(hi) - 4, sy(hi) + 13)
   svg <- .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, .t("weight before", "peso antes", lang), .t("weight after", "peso despu\u00e9s", lang), sx, sy),
-                    pts, ln, lbl), w, h)
-  if (is.null(title)) svg else paste0("<div class='viz-h'>", title, "</div>", svg)
+                    pts, ln, lbl), w, h,
+                    .t("weight before vs after", "peso antes vs despu\u00e9s", lang), lang)
+  .chart_figure(svg, title)
 }
 
 # Histogram of a per-unit quantity (default: the adjustment factor after/before),
 # with a reference line at 1.
-.svg_hist <- function(v, xlab = "adjustment factor (after / before)", w = 330, h = 215,
+.svg_hist <- function(v, xlab = NULL, w = 340, h = 224,
                       refline = 1, lang = "en", title = NULL, density = FALSE) {
-  ml <- 48; mr <- 8; mt <- 8; mb <- 32; pw <- w - ml - mr; ph <- h - mt - mb
+  if (is.null(xlab))
+    xlab <- .t("adjustment factor (after / before)",
+               "factor de ajuste (despu\u00e9s / antes)", lang)
+  ml <- 52; mr <- 16; mt <- 12; mb <- 36; pw <- w - ml - mr; ph <- h - mt - mb
   v <- v[is.finite(v)]
   if (!length(v)) return("")
+  # A handful of extreme values (a 36,000x adjustment factor, say) stretches the
+  # axis until every other value collapses onto one pixel and the padded range
+  # runs into negative territory for a quantity that cannot be negative. Clip the
+  # display to the central 99% when the tail is that long, and say so in a note
+  # rather than silently hiding data.
+  clipped <- 0L; vfull <- v
+  if (length(v) >= 40L) {
+    qq <- as.numeric(stats::quantile(v, c(0.005, 0.995)))
+    if (is.finite(qq[1]) && is.finite(qq[2]) && qq[2] > qq[1] &&
+        diff(range(v)) > 12 * (qq[2] - qq[1])) {
+      keep <- v >= qq[1] & v <= qq[2]
+      clipped <- sum(!keep); v <- v[keep]
+      if (!length(v)) { v <- vfull; clipped <- 0L }
+    }
+  }
+  pos_only <- all(vfull > 0)
   uv <- unique(round(v, 8))
   ylab <- .t("count", "conteo", lang)
   if (length(uv) <= 30L) {
@@ -317,40 +434,48 @@
     lv   <- sort(uv)
     cnts <- as.integer(table(factor(round(v, 8), levels = lv)))
     xr <- range(lv); xr <- if (diff(xr) == 0) xr + c(-0.5, 0.5) else xr + diff(xr) * c(-0.08, 0.08)
+    if (pos_only) xr[1] <- max(xr[1], 0)     # no negative axis for a positive quantity
     yr <- c(0, max(cnts, 1))
     sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
     sy <- function(z) mt + ph - (z - yr[1]) / diff(yr) * ph
     xx <- sx(lv); yy <- sy(cnts); y0 <- sy(0)
-    stems <- paste(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#b7abdf" stroke-width="2"/>',
+    stems <- paste(sprintf('<line class="wf-stem" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke-width="2"/>',
                    xx, y0, xx, yy), collapse = "")
-    dots  <- paste(sprintf('<circle cx="%.1f" cy="%.1f" r="3.2" fill="#3d3580"/>', xx, yy), collapse = "")
+    dots  <- paste(sprintf('<circle class="wf-mark" cx="%.1f" cy="%.1f" r="3.2"/>', xx, yy), collapse = "")
     bars  <- paste0(stems, dots)
   } else {
     hh <- graphics::hist(v, breaks = 30, plot = FALSE)
     dd <- if (density) tryCatch(stats::density(v), error = function(e) NULL) else NULL
     if (!is.null(dd)) dd$c <- dd$y * length(v) * diff(hh$breaks)[1]   # density -> count scale
     xr <- range(hh$breaks); if (diff(xr) == 0) xr <- xr + c(-1, 1)
+    if (pos_only) xr[1] <- max(xr[1], 0)
     yr <- c(0, max(max(hh$counts), if (!is.null(dd)) max(dd$c) else 0, 1))
     sx <- function(z) ml + (z - xr[1]) / diff(xr) * pw
     sy <- function(z) mt + ph - (z - yr[1]) / diff(yr) * ph
-    bars <- paste(sprintf('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="1.5" fill="#b7abdf"/>',
+    bars <- paste(sprintf('<rect class="wf-bar" x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="1.5"/>',
                   sx(hh$breaks[-length(hh$breaks)]), sy(hh$counts),
                   pmax(sx(hh$breaks[-1]) - sx(hh$breaks[-length(hh$breaks)]) - 0.5, 0.5),
                   pmax(sy(0) - sy(hh$counts), 0)), collapse = "")
     if (!is.null(dd)) {
       keep <- dd$x >= xr[1] & dd$x <= xr[2]
-      bars <- paste0(bars, sprintf('<polyline points="%s" fill="none" stroke="#3d3580" stroke-width="1.6" opacity="0.9"/>',
+      bars <- paste0(bars, sprintf('<polyline class="wf-line" points="%s" fill="none" stroke-width="1.6"/>',
                      paste(sprintf("%.1f,%.1f", sx(dd$x[keep]), sy(dd$c[keep])), collapse = " ")))
     }
   }
   vl <- if (!is.null(refline) && refline >= xr[1] && refline <= xr[2])
-    paste0(sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#6b7280" stroke-dasharray="4 3"/>',
+    paste0(sprintf('<line class="wf-ref" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke-dasharray="4 3"/>',
                    sx(refline), mt, sx(refline), mt + ph),
-           sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#6b7280">%s</text>',
-                   sx(refline) + 3, mt + 9, .t("factor = 1", "factor = 1", lang))) else ""
+           sprintf('<text class="wf-tk" x="%.1f" y="%.1f">%s</text>',
+                   sx(refline) + 4, mt + 9, .t("factor = 1", "factor = 1", lang))) else ""
   svg <- .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, ylab, sx, sy),
-                    bars, vl), w, h)
-  if (is.null(title)) svg else paste0("<div class='viz-h'>", title, "</div>", svg)
+                    bars, vl), w, h, .html_escape(gsub("<[^>]+>", "", title %||% xlab)), lang)
+  if (clipped > 0L)
+    svg <- paste0(svg, sprintf("<div class='muted'>%s</div>", .t(
+      sprintf("Axis clipped to the central 99%%; %s value(s) outside the range are not drawn.",
+              format(clipped, big.mark = ",")),
+      sprintf("Eje recortado al 99%% central; %s valor(es) fuera del rango no se dibujan.",
+              format(clipped, big.mark = ",")), lang)))
+  .chart_figure(svg, title)
 }
 
 # Per-step visual, dispatched by step type. Steps that only zero-out weights,
@@ -381,7 +506,7 @@
     sprintf("<p class='muted'>%s</p>", .t(
       sprintf("Showing 3,000 of %s points (both tails and the largest departures from y = x are kept).", format(sum(keep), big.mark = ",")),
       sprintf("Se muestran 3,000 de %s puntos (se conservan ambas colas y las mayores desviaciones de y = x).", format(sum(keep), big.mark = ",")), lang)) else ""
-  sprintf("<div class='viz'><div>%s</div><div>%s</div></div>%s", sc, hi, note)
+  sprintf("<div class='viz'>%s%s</div>%s", sc, hi, note)
 }
 
 # Compact R-indicator block, rendered inside the (last) nonresponse step card.
@@ -392,7 +517,7 @@
     ptab <- ptab[order(-ptab$partial_R), , drop = FALSE]
     ptab$partial_R <- round(ptab$partial_R, 4)
     names(ptab) <- .wf_relabel(names(ptab), lang)
-    ph <- paste0(sprintf("<p class='muted'>%s</p>", .t("Partial R-indicators (0&ndash;0.5):", "R-indicadores parciales (0&ndash;0.5):", lang)), .df_to_html(ptab))
+    ph <- paste0(sprintf("<p class='muted'>%s</p>", .t("Partial R-indicators (0&ndash;0.5):", "R-indicadores parciales (0&ndash;0.5):", lang)), .df_to_html(ptab, lang))
   }
   if (!is.null(ri$num_aux) && length(ri$num_aux))
     ph <- paste0(ph, sprintf(
@@ -400,10 +525,10 @@
          "<p class='muted'>Los auxiliares num\u00e9ricos se agrupan en quintiles para su parcial; no computable (muy pocos valores distintos): %s.</p>", lang),
       .html_escape(paste(ri$num_aux, collapse = ", "))))
   sprintf(
-    .t("<div class='ri'><h4>Response representativity (R-indicator)</h4>
+    .t("<div class='ri'><h3 class='card-t'>Response representativity (R-indicator)</h3>
 <p class='muted'>Design-weighted logistic of response on <code>%s</code> (n = %s). Closer to 1 = more representative response; the partials show which variable drives the gap.</p>
 <p class='ri-val'><strong>R = %.3f</strong> <span class='muted'>(0&ndash;1)</span></p>%s</div>",
-       "<div class='ri'><h4>Representatividad de la respuesta (R-indicador)</h4>
+       "<div class='ri'><h3 class='card-t'>Representatividad de la respuesta (R-indicador)</h3>
 <p class='muted'>Log\u00edstica ponderada por dise\u00f1o de la respuesta sobre <code>%s</code> (n = %s). M\u00e1s cerca de 1 = respuesta m\u00e1s representativa; los parciales muestran qu\u00e9 variable explica la brecha.</p>
 <p class='ri-val'><strong>R = %.3f</strong> <span class='muted'>(0&ndash;1)</span></p>%s</div>", lang),
     .html_escape(paste(ri$aux, collapse = ", ")),
@@ -444,11 +569,11 @@
   if (is.null(rows) || !nrow(rows)) return("")
   maxdev <- max(abs(rows[["dev %"]]), na.rm = TRUE)
   out <- sprintf(
-    .t("<h2>Calibration drift</h2>
+    .t("<h2 id='drift'>Calibration drift</h2>
 <p class='muted'>Steps after calibration (trimming, rounding, rescaling) move the weighted totals away from the calibration targets. <code>achieved</code> is recomputed at the final weights; max deviation %.2f%%.</p>%s",
-       "<h2>Deriva de calibraci\u00f3n</h2>
+       "<h2 id='drift'>Deriva de calibraci\u00f3n</h2>
 <p class='muted'>Los pasos posteriores a la calibraci\u00f3n (recorte, redondeo, reescalado) alejan los totales ponderados de los objetivos de calibraci\u00f3n. <code>logrado</code> se recalcula con los pesos finales; desviaci\u00f3n m\u00e1xima %.2f%%.</p>%s", lang),
-    maxdev, .df_to_html(`names<-`(rows, .wf_relabel(names(rows), lang))))
+    maxdev, .df_to_html(`names<-`(rows, .wf_relabel(names(rows), lang)), lang))
   attr(out, "maxdev") <- maxdev            # so the closing checklist can read the real drift
   out
 }
@@ -491,7 +616,7 @@
   for (i in seq_along(object$steps)) {
     s <- object$steps[[i]]
     nodes <- c(nodes, sprintf(
-      "<div class='node'><div class='nl'><span class='num'>%d</span>%s</div>%s</div>",
+      "<div class='node'><div class='nl'><span class='numc'>%d</span>%s</div>%s</div>",
       i, .step_short(s, lang), .chips(.step_vars(s))))
   }
   nodes <- c(nodes, sprintf(
@@ -515,10 +640,10 @@
 # Overlap (common-support) plot for ML nonresponse: two weighted histograms of
 # the estimated propensity phi-hat, respondents vs nonrespondents. Poor overlap
 # (little common support) is the visual warning about the MAR assumption.
-.svg_overlap <- function(p, resp, dw, lang = "en", w = 340, h = 170, title = NULL) {
+.svg_overlap <- function(p, resp, dw, lang = "en", w = 348, h = 182, title = NULL) {
   ok <- is.finite(p) & is.finite(dw); p <- p[ok]; resp <- as.logical(resp[ok]); dw <- dw[ok]
   if (length(p) < 20L || length(unique(resp)) < 2L) return("")
-  ml <- 42; mr <- 8; mt <- 10; mb <- 30; pw <- w - ml - mr; ph <- h - mt - mb
+  ml <- 46; mr <- 16; mt <- 12; mb <- 34; pw <- w - ml - mr; ph <- h - mt - mb
   rng <- range(p); if (diff(rng) == 0) rng <- rng + c(-0.05, 0.05)
   K  <- 24L; br <- seq(rng[1], rng[2], length.out = K + 1L)
   wprop <- function(sel) {
@@ -530,17 +655,18 @@
   hr <- wprop(resp); hn <- wprop(!resp); ymax <- max(hr, hn, 1e-9)
   sx <- function(z) ml + (z - rng[1]) / diff(rng) * pw
   sy <- function(z) mt + ph - z / ymax * ph
-  bar <- function(v, fill) paste(vapply(seq_len(K), function(i) sprintf(
-    '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" fill-opacity="0.45"/>',
-    sx(br[i]), sy(v[i]), max(sx(br[i + 1]) - sx(br[i]) - 0.5, 0.5),
-    max(sy(0) - sy(v[i]), 0), fill), character(1)), collapse = "")
-  leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">%s</text><text x="%.1f" y="%.1f" font-size="10" fill="#e8941f">%s</text>',
+  bar <- function(v, cls) paste(vapply(seq_len(K), function(i) sprintf(
+    '<rect class="%s" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill-opacity="0.45"/>',
+    cls, sx(br[i]), sy(v[i]), max(sx(br[i + 1]) - sx(br[i]) - 0.5, 0.5),
+    max(sy(0) - sy(v[i]), 0)), character(1)), collapse = "")
+  leg <- sprintf('<text class="wf-resp" x="%.1f" y="%.1f" font-size="10">%s</text><text class="wf-nonresp" x="%.1f" y="%.1f" font-size="10">%s</text>',
     ml + 6, mt + 10, .t("respondents", "respondentes", lang),
     ml + 6, mt + 22, .t("nonrespondents", "no respondentes", lang))
   svg <- .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, rng, c(0, ymax), "&phi;&#770;",
              .t("share", "proporci\u00f3n", lang), sx, sy),
-             bar(hn, "#e8941f"), bar(hr, "#2a78d6"), leg), w, h, "propensity overlap")
-  if (is.null(title)) svg else paste0("<div class='viz-h'>", title, "</div>", svg)
+             bar(hn, "wf-nonresp"), bar(hr, "wf-resp"), leg), w, h,
+             .t("propensity overlap", "solapamiento de propensiones", lang), lang)
+  .chart_figure(svg, title)
 }
 
 # Potter (1990) MSE-optimal trimming curve: estimated bias^2 (rising as the cut
@@ -560,17 +686,63 @@
   sy <- function(z) mt + ph - z / yr[2] * ph
   path <- function(y, col, wd) sprintf('<path d="M %s" fill="none" stroke="%s" stroke-width="%s"/>',
     paste(sprintf("%.1f %.1f", sx(grid), sy(y)), collapse = " L "), col, wd)
-  vln <- sprintf('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#c0392b" stroke-width="1" stroke-dasharray="3,2"/>',
+  vln <- sprintf('<line class="wf-chosen" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke-width="1" stroke-dasharray="3,2"/>',
     sx(chosen), mt, sx(chosen), mt + ph)
-  vtx <- sprintf('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="10" fill="#c0392b">%s</text>',
+  vtx <- sprintf('<text class="wf-chosen" x="%.1f" y="%.1f" text-anchor="middle" font-size="10" stroke="none">%s</text>',
     sx(chosen), mt + 9, .t("chosen", "elegido", lang))
+  bias_lab <- .t("bias&sup2;", "sesgo&sup2;", lang)
   ly <- h - 8   # single legend row in the reserved bottom band, no overlap
-  leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="#3d3580">MSE</text><text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">bias&sup2;</text><text x="%.1f" y="%.1f" font-size="10" fill="#e8941f">var</text><text x="%.1f" y="%.1f" font-size="10" fill="#c0392b">%s</text>',
-    ml, ly, ml + 40, ly, ml + 92, ly, ml + 122, ly, .t("chosen", "elegido", lang))
+  leg <- sprintf('<text x="%.1f" y="%.1f" font-size="10" fill="var(--accent)">MSE</text><text x="%.1f" y="%.1f" font-size="10" fill="#2a78d6">%s</text><text x="%.1f" y="%.1f" font-size="10" fill="var(--warn)">var</text><text class="wf-chosen" x="%.1f" y="%.1f" font-size="10" stroke="none">%s</text>',
+    ml, ly, ml + 40, ly, bias_lab, ml + 96, ly, ml + 126, ly, .t("chosen", "elegido", lang))
   sprintf("<div class='chart1'>%s</div>",
     .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr,
-               .t("upper threshold", "umbral superior", lang), "bias&sup2; + var", sx, sy,
+               .t("upper threshold", "umbral superior", lang),
+               .t("bias&sup2; + var", "sesgo&sup2; + var", lang), sx, sy,
                yfmt = .fmt_si),
-               path(varc, "#e8941f", "1.2"), path(bias2, "#2a78d6", "1.2"),
-               path(mse, "#3d3580", "2"), vln, vtx, leg), w, h, "Potter MSE curve"))
+               path(varc, "var(--warn)", "1.2"), path(bias2, "#2a78d6", "1.2"),
+               path(mse, "var(--accent)", "2"), vln, vtx, leg), w, h,
+               .t("Potter MSE curve", "curva ECM de Potter", lang), lang))
+}
+
+# The family a step belongs to, as a short badge on the step card: it tells the
+# reader at a glance which kind of adjustment they are looking at (coverage,
+# nonresponse, calibration, ...) without reading the full label, and gives the
+# eye a fixed anchor down the right edge of the cascade.
+.step_kind <- function(step, lang) {
+  k <- function(en, es) .t(en, es, lang)
+  if (inherits(step, c("step_unknown_eligibility", "step_drop_ineligible")))
+    return(k("coverage", "cobertura"))
+  if (inherits(step, "step_select_within"))     return(k("selection", "selecci\u00f3n"))
+  if (inherits(step, "step_subsample"))         return(k("phase 2", "fase 2"))
+  if (inherits(step, "step_nonresponse"))       return(k("nonresponse", "no respuesta"))
+  if (inherits(step, "step_nr_sensitivity"))    return(k("sensitivity", "sensibilidad"))
+  if (inherits(step, "step_pseudoweight"))      return(k("pseudo-weights", "pseudo-pesos"))
+  if (inherits(step, c("step_calibrate", "step_model_calibration")))
+    return(k("calibration", "calibraci\u00f3n"))
+  if (inherits(step, c("step_trim", "step_trim_calibrated", "step_trim_weights")))
+    return(k("trimming", "recorte"))
+  if (inherits(step, "step_round"))             return(k("rounding", "redondeo"))
+  if (inherits(step, "step_rescale"))           return(k("rescaling", "reescalado"))
+  if (inherits(step, "step_assert"))            return(k("check", "control"))
+  k("step", "paso")
+}
+
+# The deff_K / n_eff move a step produced, as a small strip that closes the step
+# card. Arrow direction and colour are driven by the sign, so "this step cost
+# precision" is visible without reading the numbers.
+.delta_strip <- function(de1, de2, lang) {
+  d1 <- de1$deff; d2 <- de2$deff
+  n1 <- de1$n_eff; n2 <- de2$n_eff
+  dir <- if (!is.finite(d1) || !is.finite(d2) || abs(d2 - d1) < 5e-4) "flat"
+         else if (d2 > d1) "up" else "down"
+  mark <- switch(dir, up = "&#9650;", down = "&#9660;", "&#183;")
+  cls  <- switch(dir, up = "sw-up", down = "sw-dn", "muted")
+  f3   <- function(x) if (is.finite(x)) sprintf("%.3f", x) else "&ndash;"
+  fn   <- function(x) if (is.finite(x)) format(round(x), big.mark = ",") else "&ndash;"
+  pctd <- if (is.finite(n1) && is.finite(n2) && n1 > 0)
+    sprintf(" <span class='%s'>(%+.1f%%)</span>", cls, 100 * (n2 - n1) / n1) else ""
+  sprintf(paste0("<p class='delta'><span><span class='dk'>deff_K</span> ",
+                 "<b>%s</b> &rarr; <b>%s</b> <span class='%s'>%s</span></span>",
+                 "<span><span class='dk'>n_eff</span> <b>%s</b> &rarr; <b>%s</b>%s</span></p>"),
+          f3(d1), f3(d2), cls, mark, fn(n1), fn(n2), pctd)
 }

@@ -145,15 +145,23 @@ step_select_within <- function(spec, prob = NULL, n_eligible = NULL,
 #' weighting_spec(df, base_weights = pw) |>
 #'   step_drop_ineligible(ineligible = ineligible) |>
 #'   prep()
+#' @param reason optional string naming why the units are out of scope (e.g.
+#'   `"left the target population between waves"`). Recorded for the report
+#'   narrative; it makes the panel distinction between a **between-wave exit** of
+#'   the universe (the longitudinal population shrank -- weight 0, no reweighting)
+#'   and ordinary ineligibility explicit. Does not change the computation.
 #' @param id optional string: a stable identifier for this step, shown in the
 #'   recipe print-out and usable to select it in `collect_step_detail()`; defaults
 #'   to a derived `"<class>_<k>"`.
 #' @return The input `weighting_spec` with this step appended to its recipe. The
 #'   step is recorded only; it is evaluated when `prep()` is called.
 #' @family weighting steps
-step_drop_ineligible <- function(spec, ineligible, id = NULL) {
+step_drop_ineligible <- function(spec, ineligible, reason = NULL, id = NULL) {
+  if (!is.null(reason) && (!is.character(reason) || length(reason) != 1L))
+    stop("`reason` must be NULL or a single string.", call. = FALSE)
   step <- structure(
-    list(label = "drop ineligible", ineligible = substitute(ineligible),
+    list(label = if (is.null(reason)) "drop ineligible" else paste0("drop ineligible (", reason, ")"),
+         ineligible = substitute(ineligible), reason = reason,
          env = parent.frame()),
     class = c("step_drop_ineligible", "weighting_step")
   )

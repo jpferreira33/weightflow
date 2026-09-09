@@ -176,6 +176,7 @@ American Statistical Association}, 96(453), 185-193.
 Other weighting steps:
 \code{\link[=step_assert]{step_assert()}},
 \code{\link[=step_calibrate]{step_calibrate()}},
+\code{\link[=step_cre]{step_cre()}},
 \code{\link[=step_drop_ineligible]{step_drop_ineligible()}},
 \code{\link[=step_nonresponse]{step_nonresponse()}},
 \code{\link[=step_nr_sensitivity]{step_nr_sensitivity()}},

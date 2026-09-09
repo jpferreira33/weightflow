@@ -77,9 +77,10 @@ test_that("a single-covariate logit propensity does not crash the report", {
 
 test_that("the trim narrative does not claim preservation when redistribution was infeasible", {
   d <- ren_d(seed = 10); d$w[1] <- 5000
-  # infeasible upper bound: n * 6 < sum(w) -> the mass cannot be preserved
-  p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
-    step_trim_weights(lower = 3, upper = 6)))
+  # infeasible upper bound: n * 6 < sum(w) -> the mass cannot be preserved (and the step
+  # now warns about the unredistributable mass, which is exactly the point of this test)
+  p <- suppressWarnings(suppressMessages(prep(weighting_spec(d, base_weights = w) |>
+    step_trim_weights(lower = 3, upper = 6))))
   wfin <- collect_weights(p, drop_zero = FALSE)$.weight
   loss <- abs(sum(wfin) - sum(d$w)) / sum(d$w)
   expect_gt(loss, 0.5)
@@ -156,4 +157,26 @@ test_that("ML propensity (2+ covariates) shows the full diagnostics battery in E
     step_nonresponse(respondent = resp, method = "propensity",
                      formula = ~ x + y, engine = "logit", num_classes = 5)))
   expect_no_error(rep_en(p2))
+})
+
+test_that("report does not certify calibration preserved when drift is unmeasured (REP-01)", {
+  d   <- ren_d()
+  tot <- list(reg = data.frame(reg = c("N", "S"),
+                               N = as.numeric(tapply(d$w, d$reg, sum))))
+  p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
+    step_calibrate(method = "linear", formula = ~ reg, totals = tot, count = "N")))
+  h <- unesc(rep_en(p))
+  # linear/GREG drift is not measured -> must NOT assert "preserved", say "not re-checked"
+  expect_true(grepl("not re-checked", h))
+  expect_false(grepl("constraints preserved", h))
+})
+
+test_that("trim narrative says the total 'rose' when a floor raises it (REP-02)", {
+  d <- ren_d()
+  # absolute floor above some weights, nothing capped, no redistribution -> total RISES
+  p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
+    step_trim(max_ratio = 100, min_ratio = 5, reference = "value", redistribute = FALSE)))
+  h <- unesc(rep_en(p))
+  expect_true(grepl("rose by", h))
+  expect_false(grepl("fell by -", h))     # never a negative "fell by"
 })

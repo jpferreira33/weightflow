@@ -114,6 +114,15 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
     as.character(data[[psu]])
   }
   .assert_design_complete(data, strata, psu)
+  # Composite regression (step_cre) estimates its control totals Zhat from the previous
+  # wave's FROZEN point weights; this single-sample bootstrap does not re-inject the
+  # previous wave's replicate weights, so it holds Zhat fixed and understates the change
+  # variance -- the very error the panel engines exist to avoid. Warn and point there. (VAR-04)
+  if (any(vapply(object$steps, inherits, logical(1), "step_cre")))
+    warning("bootstrap_weights(): the recipe contains step_cre() (composite regression). ",
+            "This single-sample bootstrap treats the composite control totals Zhat as FIXED, ",
+            "so it understates the variance. Use wave_bootstrap() for the coordinated, honest ",
+            "variance of the recursive composite estimator.", call. = FALSE)
   # Two-phase design: if the recipe subsamples a second phase (step_subsample), a
   # single per-PSU factor of variance d = (1-f1)pi2 + (1-pi2) replaces the Rao-Wu
   # factor below and captures both phases. f1 comes from `fpc` (0 by default).
@@ -468,6 +477,14 @@ bootstrap_estimate <- function(boot, statistic, level = 0.95,
 #' @export
 boot_total <- function(boot, variable) {
   variable <- .wf_var(variable, boot)
+  # The two-phase replicate factor is a Hansen-Hurwitz (uncentred) per-PSU multiplier: it
+  # self-centres for a mean/ratio but NOT for a total, where it is conservative and can
+  # overestimate the variance substantially. Warn so the SE is read as an upper bound. (VAR-05)
+  if (isTRUE(boot$two_phase))
+    warning("boot_total(): with a two-phase design the replicate factor is a Hansen-Hurwitz ",
+            "(uncentred) phase-1 multiplier, which is CONSERVATIVE for a total and can ",
+            "overestimate the variance. It self-centres for a mean/ratio, so boot_mean() is ",
+            "unaffected; treat this total's SE as an upper bound.", call. = FALSE)
   bootstrap_estimate(boot, function(w, d)
     if (anyNA(w)) NA_real_ else sum(w * d[[variable]], na.rm = TRUE))
 }
@@ -563,6 +580,11 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
     as.character(data[[psu]])
   }
   .assert_design_complete(data, strata, psu)
+  if (any(vapply(object$steps, inherits, logical(1), "step_cre")))
+    warning("jackknife_weights(): the recipe contains step_cre() (composite regression). ",
+            "This single-sample jackknife treats the composite control totals Zhat as FIXED, ",
+            "so it understates the variance. Use wave_jackknife() for the coordinated, honest ",
+            "variance of the recursive composite estimator.", call. = FALSE)   # VAR-04
   if (lonely_psu == "collapse") {
     cl <- paste(st, cl, sep = "||")     # nest PSU ids so distinct PSUs stay distinct after merging strata
     st <- .collapse_lonely(st, cl)
@@ -590,6 +612,7 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL,
     fac[in_h & cl != rep_psu[r]] <- nh / (nh - 1) # inflate the rest of the stratum
     sp <- spec; sp$data[[bw]] <- bw0 * fac
     attr(sp$data, "wf_replicate") <- TRUE          # step_assert becomes a no-op in replicates
+    attr(sp$data, "wf_replicate_idx") <- r         # pairs with a reference_sample() replicate column
     tryCatch(prep(sp)$final_weight, error = function(e) rep(NA_real_, n))
   }
   fw_list <- .par_lapply(seq_len(R), one_rep, cores = cores,
@@ -801,12 +824,17 @@ two_phase_variance <- function(object, variable, estimator = c("mean", "total"),
   if (!is.character(variable) || length(variable) != 1L)
     stop("`variable` must be a single column name.", call. = FALSE)
   est <- if (estimator == "mean") boot_mean else boot_total
-  b1  <- bootstrap_weights(object, replicates = replicates, seed = seed, fpc = fpc,
-                           progress = FALSE, .tp_component = "phase1")
-  b2  <- bootstrap_weights(object, replicates = replicates, seed = seed, fpc = fpc,
-                           progress = FALSE, .tp_component = "phase2")
-  se1 <- est(b1, variable)$se
-  se2 <- est(b2, variable)$se
+  if (estimator == "total")
+    warning("two_phase_variance(estimator = \"total\"): the phase-1 component uses a ",
+            "Hansen-Hurwitz (uncentred) multiplier, which is CONSERVATIVE for a total and ",
+            "can overestimate the variance. estimator = \"mean\" (a ratio) is unaffected.",
+            call. = FALSE)
+  b1  <- suppressWarnings(bootstrap_weights(object, replicates = replicates, seed = seed,
+                           fpc = fpc, progress = FALSE, .tp_component = "phase1"))
+  b2  <- suppressWarnings(bootstrap_weights(object, replicates = replicates, seed = seed,
+                           fpc = fpc, progress = FALSE, .tp_component = "phase2"))
+  se1 <- suppressWarnings(est(b1, variable)$se)   # the total caveat is emitted once above
+  se2 <- suppressWarnings(est(b2, variable)$se)
   V1  <- se1^2; V2 <- se2^2; V <- V1 + V2
   structure(list(variable = variable, estimator = estimator,
                  V1 = V1, V2 = V2, V = V, se1 = se1, se2 = se2, se = sqrt(V),

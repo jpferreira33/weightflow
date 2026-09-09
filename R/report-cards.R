@@ -27,7 +27,7 @@
     .t(sprintf(" The response R-indicator is %.3f.", ri$R),
        sprintf(" El R-indicator de respuesta es %.3f.", ri$R), lang) else ""
   body <- paste0(s1, " ", s2, " ", s3, s4)
-  sprintf("<div class='exec feature-soft'><h4>%s</h4><p>%s</p></div>",
+  sprintf("<div class='exec feature-soft'><h3 class='card-t'>%s</h3><p>%s</p></div>",
           .t("Executive summary", "Resumen ejecutivo", lang), body)
 }
 
@@ -61,7 +61,7 @@
             g4(a$mu_mar), a$rho, format(a$n_resp, big.mark = ","), format(a$n_nonresp, big.mark = ",")),
     sprintf("Mixtura de patrones con proxy (Andridge y Little 2011). &phi; = 0 es ignorable dado el proxy (estimaci&oacute;n MAR %s); &phi; = 1 es respuesta que depende solo del resultado; &phi; = 0.5 es un valor central (Little et al. 2020). Fuerza del proxy &rho; = %.3f (un proxy m&aacute;s d&eacute;bil ampl&iacute;a el intervalo). Respondentes %s, no respondentes %s.",
             g4(a$mu_mar), a$rho, format(a$n_resp, big.mark = ","), format(a$n_nonresp, big.mark = ",")), lang)
-  sprintf("<div class='meta'><h4>%s</h4><p>%s</p>%s<p class='note'>%s</p></div>",
+  sprintf("<div class='meta'><h3 class='card-t'>%s</h3><p>%s</p>%s<p class='note'>%s</p></div>",
           .t("Nonresponse sensitivity (ignorance interval)",
              "Sensibilidad a la no respuesta (intervalo de ignorancia)", lang),
           lead, grid, note)
@@ -104,7 +104,7 @@
   note <- .t(
     "Effective size n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). The residual &rho; on the target variable is not observable from the sample, so read the table as an ignorance range, not a single number: it holds for any estimand with that residual correlation. See Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.",
     "Tama&ntilde;o efectivo n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). El &rho; residual sobre la variable de inter&eacute;s no es observable desde la muestra, as&iacute; que la tabla se lee como un rango de ignorancia, no un &uacute;nico n&uacute;mero: vale para cualquier estimando con esa correlaci&oacute;n residual. Ver Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.", lang)
-  sprintf("<div class='ddc feature'><h4>%s</h4><p class='ddc-lead'>%s</p>%s%s%s<p class='note'>%s</p></div>",
+  sprintf("<div class='ddc feature'><h3 class='card-t'>%s</h3><p class='ddc-lead'>%s</p>%s%s%s<p class='note'>%s</p></div>",
           .t("Data-defect diagnostics (non-probability sample)",
              "Diagn&oacute;stico de defecto de datos (muestra no probabil&iacute;stica)", lang),
           lead, facts, aux_html, grid_html, note)
@@ -112,25 +112,50 @@
 
 # Aggregates non-convergence and quality alerts across steps into a top panel
 # with conservative, templated recommendations. Empty string when all clear.
-.attention_panel <- function(object, lang) {
-  items <- character(0)
+# Aggregates non-convergence and quality alerts into a single panel, GROUPED BY
+# STEP: three alerts on step 2 were previously three bullets each repeating
+# "Step 2 (nonresponse (propensity: tree, 1/p per unit, by household_id))" in
+# full, which buried the actual findings. The step is now named once as a
+# subheading and its findings listed under it.
+#
+# The number of rendered findings is returned as attr(, "n") so the closing line
+# of the report can quote the same figure. It used to count *steps carrying at
+# least one alert*, and so reported "2 points of attention" above a list of six.
+.attention_panel <- function(object, lang, drift_note = NULL) {
+  groups <- character(0); nitem <- 0L
   for (i in seq_along(object$steps)) {
     st  <- object$steps[[i]]
-    lbl <- .html_escape(st$label)
+    # `label` is generated at compute time and is always English. .step_short()
+    # is the translated, HTML-escaped name already used by the headings, the
+    # pipeline and the per-stage table -- use it here too, so the Spanish panel
+    # does not announce "NONRESPONSE (PROPENSITY: TREE, 1/P PER UNIT, ...)".
+    lbl <- .step_short(st, lang)
+    items <- character(0)
     if (identical(attr(st$diagnostics, "converged"), FALSE))
       items <- c(items, .t(
-        sprintf("<strong>Step %d (%s)</strong> did not converge &mdash; relax the bounds or increase <code>maxit</code>, and check that the margins are mutually consistent.", i, lbl),
-        sprintf("<strong>Paso %d (%s)</strong> no convergi\u00f3 &mdash; relaje las cotas o aumente <code>maxit</code>, y verifique que los m\u00e1rgenes sean consistentes entre s\u00ed.", i, lbl), lang))
-    al <- st$alerts
+        "This step did not converge &mdash; relax the bounds or increase <code>maxit</code>, and check that the margins are mutually consistent.",
+        "Este paso no convergi\u00f3 &mdash; relaje las cotas o aumente <code>maxit</code>, y verifique que los m\u00e1rgenes sean consistentes entre s\u00ed.", lang))
+    al <- .wf_typo(.wf_translate(st$alerts, lang))
     if (!is.null(al) && length(al))
-      for (a in al)
-        items <- c(items, sprintf("<strong>%s %d (%s)</strong>: %s",
-                                  .t("Step", "Paso", lang), i, lbl, .html_escape(a)))
+      items <- c(items, vapply(al, .html_escape, character(1)))
+    if (!length(items)) next
+    nitem  <- nitem + length(items)
+    groups <- c(groups, sprintf(
+      "<div class='att-group'><p class='att-step'><a href='#step-%d'>%s %d</a> &middot; %s</p><ul>%s</ul></div>",
+      i, .t("Step", "Paso", lang), i, lbl,
+      paste0("<li>", items, "</li>", collapse = "")))
   }
-  if (!length(items)) return("")
-  sprintf("<div class='exec attention'><h4>%s</h4><ul>%s</ul></div>",
-          .t("Points of attention", "Puntos de atenci\u00f3n", lang),
-          paste0("<li>", items, "</li>", collapse = ""))
+  if (!is.null(drift_note) && nzchar(drift_note)) {
+    nitem  <- nitem + 1L
+    groups <- c(groups, sprintf(
+      "<div class='att-group'><p class='att-step'><a href='#drift'>%s</a></p><ul><li>%s</li></ul></div>",
+      .t("Calibration drift", "Deriva de calibraci\u00f3n", lang), drift_note))
+  }
+  if (!length(groups)) return("")
+  out <- sprintf("<div class='exec attention'><h3 class='card-t'>%s <span class='att-n'>%d</span></h3>%s</div>",
+          .t("Points of attention", "Puntos de atenci\u00f3n", lang), nitem,
+          paste(groups, collapse = ""))
+  structure(out, n = nitem)
 }
 
 # Truthful status checklist (green when OK, amber when not) for the summary.
@@ -167,14 +192,15 @@
       .t("Replicate weights for variance created.", "Pesos r\u00e9plica para la varianza creados.", lang)
       else .t("Replicate weights not created (add bootstrap/jackknife for variance).",
               "Sin pesos r\u00e9plica (agregue bootstrap/jackknife para la varianza).", lang)))
-  for (si in seq_along(object$steps)) {
-    al <- object$steps[[si]]$alerts
-    if (!is.null(al) && length(al))
-      for (a in al)
-        items <- c(items, item(FALSE, sprintf("%s %d (%s): %s",
-                   .t("Step", "Paso", lang), si, .html_escape(object$steps[[si]]$label), .html_escape(a))))
-  }
-  sprintf("<div class='exec'><h4>%s</h4><ul class='chk'>%s</ul></div>",
+  # The individual quality alerts are NOT repeated here: they are listed once,
+  # grouped by step, in .attention_panel() just below, and again inside the step
+  # card itself. This checklist stays what its name says -- the pass/fail
+  # invariants of the run -- with a single summary line pointing at the panel.
+  if (nalert > 0L)
+    items <- c(items, item(FALSE, .t(
+      sprintf("%d step(s) raised quality alerts &mdash; see <a href='#attention'>Points of attention</a>.", nalert),
+      sprintf("%d paso(s) generaron alertas de calidad &mdash; ver <a href='#attention'>Puntos de atenci\u00f3n</a>.", nalert), lang)))
+  sprintf("<div class='exec'><h3 class='card-t'>%s</h3><ul class='chk'>%s</ul></div>",
           .t("Status", "Estado", lang), paste(items, collapse = ""))
 }
 
@@ -194,7 +220,7 @@
   # the closing interpretation, so the table and the text agree.
   dcell <- function(v) if (is.na(v)) "&ndash;" else
     sprintf("<span class='%s'>%s%s</span>", if (v >= 1.4) "cell-warn" else "cell-ok", if (v >= 1.4) "&#9888; " else "", d3(v))
-  hd <- paste0("<th scope='col'>", c(.t("Domain", "Dominio", lang),
+  hd <- paste0("<th scope='col' class='hcol'>", c(.t("Domain", "Dominio", lang),
                          .t("Active units (n)", "Unidades activas (n)", lang),
                          .t("Sum of weights (&Sigma;w)", "Suma de pesos (&Sigma;w)", lang),
                          .t("CV of weights", "CV de los pesos", lang),
@@ -215,11 +241,11 @@
               if (is.na(de$cv)) "&ndash;" else d3(de$cv), dcell(de$deff), num(de$n_eff))
     }, character(1))
     tables <- c(tables, sprintf(
-      "<p class='muted'>%s <code>%s</code></p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
+      "<p class='muted'>%s <code>%s</code></p><div class='tw'><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>",
       .t("By", "Por", lang), .html_escape(term), hd, paste(rows, collapse = "")))
   }
   if (!length(tables)) return("")
-  sprintf("<div class='meta'><h4>%s</h4>%s<p class='note'>%s</p></div>",
+  sprintf("<div class='meta'><h3 class='card-t'>%s</h3>%s<p class='note'>%s</p></div>",
           .t("Domain reliability", "Fiabilidad por dominio", lang),
           paste(tables, collapse = ""),
           .t("Effective sample size and design effect within each domain; domains with a small effective n yield less reliable estimates.",
@@ -281,14 +307,14 @@
        else .t("None (with-replacement bootstrap)", "ninguna (bootstrap con reemplazo)", lang)),
     # Lonely-PSU handling is a single-phase resampling concept; omit it in two-phase.
     if (tp) "" else
-      kv(.t("Lonely-PSU handling", "Manejo de lonely PSU", lang), na(rep$lonely_psu)),
+      kv(.t("Lonely-PSU handling", "Manejo de UPM solitaria", lang), na(rep$lonely_psu)),
     kv(.t("Recipe-aware replication", "Replicaci\u00f3n recipe-aware", lang),
        if (nrep > 0L && nfail >= nrep)
          .t("not applicable (all replicates failed)", "no aplica (todas las r\u00e9plicas fallaron)", lang)
        else .t("Full weighting procedure re-run for each replicate",
                "todo el procedimiento de ponderaci\u00f3n se recalcula en cada r\u00e9plica", lang)),
     if (!is_jack) kv(.t("Seed", "Semilla", lang), na(rep$seed)) else "",
-    kv(.t("Cores", "Cores", lang), na(rep$cores)),
+    kv(.t("Cores", "N\u00facleos", lang), na(rep$cores)),
     kv(.t("Run time", "Tiempo de ejecuci\u00f3n", lang), tfmt))
   al <- function(msg) sprintf("<div class='alert'><strong>%s</strong><p>%s</p></div>",
                               .t("Point of attention", "Punto de atenci\u00f3n", lang), msg)
@@ -340,7 +366,7 @@
       sprintf("Las %s r\u00e9plicas se completaron correctamente.", format(nrep, big.mark = ",")), lang))
     else ""
   sprintf(
-    "<div class='meta racct feature'><h4>%s</h4><table class='params'><tbody>%s</tbody></table>%s%s%s%s<p class='note'>%s</p></div>",
+    "<div class='meta racct feature'><h3 class='card-t'>%s</h3><table class='params'><tbody>%s</tbody></table>%s%s%s%s<p class='note'>%s</p></div>",
     .t("Replication-based variance estimation", "Estimaci\u00f3n de la varianza por replicaci\u00f3n", lang),
     body, ok_line, fail_alert, warn, ref_note,
     .t("For each replicate, the complete survey weighting procedure is re-run. The resulting replicate weights therefore reflect the sampling variability associated with the weighting adjustments that are re-estimated within the replication procedure. Use the final and replicate weights with the 'survey' or 'srvyr' package to estimate standard errors, coefficients of variation, and confidence intervals for specific survey estimates.",
@@ -357,29 +383,40 @@
   if (!length(yv)) return("")
   B   <- if (!is.null(replicates$replicates)) ncol(replicates$replicates)
          else (replicates$R %||% 200L)
-  fmt <- function(x) formatC(x, digits = 4, format = "g")
-  rows <- character(0)
+  # The three standard errors are the same quantity on the same scale, so they get
+  # the same number of decimals; formatC(format = "g") gave "0.264" next to
+  # "0.3627" and the columns no longer lined up.
+  ses <- list(); pcts <- numeric(0); vars <- character(0)
   for (v in yv) {
     tpv <- tryCatch(two_phase_variance(object, v, replicates = B, seed = replicates$seed),
                     error = function(e) NULL)
     if (is.null(tpv) || !is.finite(tpv$prop_phase2)) next
-    pct <- 100 * tpv$prop_phase2
+    ses[[length(ses) + 1L]] <- c(tpv$se1, tpv$se2, tpv$se)
+    pcts <- c(pcts, 100 * tpv$prop_phase2); vars <- c(vars, v)
+  }
+  if (!length(vars)) return("")
+  allse <- unlist(ses); allse <- allse[is.finite(allse) & allse > 0]
+  dg  <- if (!length(allse)) 3L else max(2L, min(6L, 3L - floor(log10(min(allse)))))
+  fmt <- function(x) if (is.finite(x)) formatC(x, format = "f", digits = dg) else "&ndash;"
+  rows <- character(0)
+  for (i in seq_along(vars)) {
+    pct <- pcts[i]; se <- ses[[i]]
+    # Colours come from the report's tokens, so the split bar follows the colour
+    # scheme instead of freezing a light-mode purple pair.
     bar <- sprintf(paste0(
-      "<div style='display:flex;height:13px;border-radius:6px;overflow:hidden;border:1px solid #e4e2f2;margin:2px 0'>",
-      "<div style='width:%.1f%%;background:#b9b2e6'></div><div style='width:%.1f%%;background:#3d3580'></div></div>",
-      "<div style='font-size:11px;color:#6b6b83;margin-bottom:4px'>",
-      "<span style='color:#b9b2e6'>&#9632;</span> V1 (%.0f%%) &nbsp; ",
-      "<span style='color:#3d3580'>&#9632;</span> V2 (%.0f%%)</div>"),
+      "<div class='vsplit'><span class='v1' style='width:%.1f%%'></span>",
+      "<span class='v2' style='width:%.1f%%'></span></div>",
+      "<div class='vsplit-leg'><span><i class='sw sw1'></i>V1 %.0f%%</span>",
+      "<span><i class='sw sw2'></i>V2 %.0f%%</span></div>"),
       100 - pct, pct, 100 - pct, pct)
     rows <- c(rows, sprintf(
-      "<tr><td>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'><strong>%.0f%%</strong></td></tr><tr><td colspan='5'>%s</td></tr>",
-      .html_escape(v), fmt(tpv$se1), fmt(tpv$se2), fmt(tpv$se), pct, bar))
+      "<tr><td>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'>%s</td><td class='r'><strong>%.0f%%</strong></td></tr><tr class='barrow'><td colspan='5'>%s</td></tr>",
+      .html_escape(vars[i]), fmt(se[1]), fmt(se[2]), fmt(se[3]), pct, bar))
   }
-  if (!length(rows)) return("")
-  hdr <- sprintf("<thead><tr><th>%s</th><th>SE V1</th><th>SE V2</th><th>SE V</th><th>%s</th></tr></thead>",
+  hdr <- sprintf("<thead><tr><th>%s</th><th class='r'>SE V1</th><th class='r'>SE V2</th><th class='r'>SE V</th><th class='r'>%s</th></tr></thead>",
                  .t("Study variable", "Variable de estudio", lang),
                  .t("phase-2 share (V2/V)", "aporte fase 2 (V2/V)", lang))
-  sprintf("<div class='meta feature'><h4>%s</h4><table class='params'>%s<tbody>%s</tbody></table><p class='note'>%s</p></div>",
+  sprintf("<div class='meta feature'><h3 class='card-t'>%s</h3><table class='params'>%s<tbody>%s</tbody></table><p class='note'>%s</p></div>",
     .t("Two-phase variance decomposition (V = V1 + V2)",
        "Descomposici\u00f3n de la varianza de dos fases (V = V1 + V2)", lang),
     hdr, paste(rows, collapse = ""),
@@ -407,7 +444,7 @@
        sprintf("<code>%s</code>", .html_escape(sub$psu))),
     kv(.t("Selection scheme", "Esquema de selecci&oacute;n", lang), scheme),
     pr)
-  sprintf("<div class='meta feature'><h4>%s</h4><table class='params'><tbody>%s</tbody></table><p class='note'>%s</p></div>",
+  sprintf("<div class='meta feature'><h3 class='card-t'>%s</h3><table class='params'><tbody>%s</tbody></table><p class='note'>%s</p></div>",
     .t("Second-phase design", "Dise&ntilde;o de la segunda fase", lang), rows,
     .t("The second phase subsamples the first-phase units; the recipe-aware bootstrap couples the two phases as V = V1 + V2.",
        "La segunda fase submuestrea las unidades de la primera; el bootstrap recipe-aware acopla las dos fases como V = V1 + V2.", lang))
@@ -532,7 +569,7 @@
   # construction and RR1 = RR3 = RR5. Say so, so the reader does not misread three
   # identical rates as "there were no unknown-eligibility / ineligible cases".
   note_elig <- if (!length(iu) && !length(id))
-    sprintf("<p class='note' style='color:#b45309'>%s</p>",
+    sprintf("<p class='note note-warn'>%s</p>",
       .t(paste0("This recipe declares no eligibility steps, so UNK (unknown eligibility) and IN ",
                 "(ineligible) are 0 by construction and RR1 = RR3 = RR5. The rates reflect the ",
                 "declared steps, not that no such cases existed; add step_unknown_eligibility() / ",
@@ -565,11 +602,27 @@
                           "reporta la respuesta solo sobre los casos submuestreados."),
                    f0(sum(ss_out)), f0(sum(bw[ss_out]))), lang))
   }
+  # The disposition rows are reconstructed from the DECLARED eligibility/response steps, so a
+  # unit that left the sample by another mechanism (a cluster drop, step_select_within() or a
+  # step_assert()) is in no category and the rows do not sum to n. Note it rather than let the
+  # table silently fail to close. (REP-03)
+  resid <- cnt[["T"]] - (cnt[["NE"]] + cnt[["U"]] + cnt[["R"]] + cnt[["NR"]])
+  note_close <- if (abs(resid) > 0.5)
+    sprintf("<p class='note note-warn'>%s</p>", .t(
+      sprintf(paste0("The disposition rows do not add up to n: %s case(s) left the sample ",
+                     "through another step (a cluster drop, step_select_within() or ",
+                     "step_assert()) and are not an AAPOR disposition category. The rates ",
+                     "above are computed on the categories shown."), f0(abs(resid))),
+      sprintf(paste0("Las filas de disposici\u00f3n no suman n: %s caso(s) salieron de la muestra ",
+                     "por otro paso (drop por cl\u00faster, step_select_within() o step_assert()) y ",
+                     "no son una categor\u00eda de disposici\u00f3n AAPOR. Las tasas de arriba se ",
+                     "calculan sobre las categor\u00edas mostradas."), f0(abs(resid))), lang))
+    else ""
   cap_disp <- .t("AAPOR disposition of the issued sample: counts, percentage and base-weighted sums by outcome category.",
                  "Disposici&oacute;n AAPOR de la muestra emitida: conteos, porcentaje y sumas ponderadas por el peso base seg&uacute;n categor&iacute;a de resultado.", lang)
   cap_rate <- .t("AAPOR eligibility and response rates, unweighted and base-weighted.",
                  "Tasas AAPOR de elegibilidad y respuesta, sin ponderar y ponderadas por el peso base.", lang)
-  sprintf("<div class='meta racct feature'><h4>%s</h4>%s
+  sprintf("<div class='meta racct feature'><h3 class='card-t'>%s</h3>%s
     <table class='params'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%%</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     <table class='params' style='margin-top:10px'><caption class='sr-only'>%s</caption><thead><tr><th scope='col'>%s</th><th class='r' scope='col'>%s</th><th class='r' scope='col'>%s</th></tr></thead><tbody>%s</tbody></table>
     %s<p class='note'>%s</p></div>",
@@ -583,7 +636,7 @@
     cap_rate,
     .t("Rate", "Tasa", lang),
     .t("unweighted", "sin ponderar", lang),
-    .t("weighted (base)", "ponderado (base)", lang), rrows, note_ss, foot)
+    .t("weighted (base)", "ponderado (base)", lang), rrows, paste0(note_close, note_ss), foot)
 }
 
 # Reference-metadata card (SIMS / ESMS concepts relevant to weighting, GSBPM
@@ -618,7 +671,7 @@
   for (k in setdiff(names(md), names(known)))
     if (nzchar(k) && !is.null(md[[k]]) && nzchar(mdv(md[[k]])))
       rows <- paste0(rows, row(.html_escape(k), mdv(md[[k]])))
-  sprintf("<div class='meta'><h4>%s</h4><table class='params'><caption class='sr-only'>%s</caption>%s</table></div>",
+  sprintf("<div class='meta'><h3 class='card-t'>%s</h3><table class='params'><caption class='sr-only'>%s</caption>%s</table></div>",
           .t("Reference metadata (SIMS / GSBPM 5.6)", "Metadatos de referencia (SIMS / GSBPM 5.6)", lang),
           .t("Reference metadata: key survey and calibration concepts (SIMS / GSBPM 5.6).",
              "Metadatos de referencia: conceptos clave de la encuesta y la calibraci&oacute;n (SIMS / GSBPM 5.6).", lang),
@@ -660,8 +713,8 @@
     kv(.t("Rows &times; columns", "Filas &times; columnas", lang),
        if (is.null(d)) "-" else sprintf("%s &times; %d", format(nrow(d), big.mark = ","), ncol(d))),
     kv(.t("Environment", "Entorno", lang), env))
-  sprintf("<div class='meta repro'><h4>%s</h4><table class='params'>%s</table><p class='note'>%s</p></div>",
-    .t("Reproducibility - audit trail", "Reproducibilidad - traza de auditor\u00eda", lang),
+  sprintf("<div class='meta repro'><h3 class='card-t'>%s</h3><table class='params'>%s</table><p class='note'>%s</p></div>",
+    .t("Reproducibility &mdash; audit trail", "Reproducibilidad &mdash; traza de auditor\u00eda", lang),
     rows,
     .t("Two runs showing the same recipe and data fingerprints are exactly comparable; any difference indicates a change in code, data or environment. The fingerprint is a lightweight checksum of the recipe specification and of the data shape and weight totals (no microdata is stored).",
        "Dos corridas con las mismas huellas de receta y de datos son exactamente comparables; cualquier diferencia indica un cambio en el c\u00f3digo, los datos o el entorno. La huella es un checksum liviano de la especificaci\u00f3n de la receta y de la forma de los datos y los totales de pesos (no se guarda microdato).", lang))
@@ -857,7 +910,7 @@
                               "Soporte com&uacute;n de las propensiones de respuesta estimadas", lang)),
                  error = function(e) "")
   if (nzchar(ov)) ov <- sprintf("<div class='wdhist'>%s</div>", ov)
-  sprintf("<div class='ri'><h4>%s</h4>%s%s%s<p class='note'>%s</p><p class='muted'>%s</p>%s<p class='muted'>%s</p>%s%s</div>",
+  sprintf("<div class='ri'><h3 class='card-t'>%s</h3>%s%s%s<p class='note'>%s</p><p class='muted'>%s</p>%s<p class='muted'>%s</p>%s%s</div>",
           .t("Propensity model diagnostics", "Diagn\u00f3sticos del modelo de propensi\u00f3n", lang),
           spec_note, imp_html, cal_html, cal_note, auc_note, stab_note, floor_note, ov, bal_html)
 }
@@ -942,7 +995,7 @@
         hd, paste(arows, collapse = ""))
     }
   }
-  sprintf("<div class='ri'><h4>%s</h4><p class='muted'>%s</p><table class='params'>%s</table>%s</div>",
+  sprintf("<div class='ri'><h3 class='card-t'>%s</h3><p class='muted'>%s</p><table class='params'>%s</table>%s</div>",
           .t("Nonresponse calibration diagnostics", "Diagn\u00f3sticos de calibraci\u00f3n por no respuesta", lang),
           note, dist, aux_html)
 }
@@ -1058,7 +1111,7 @@
   }
   dom_tbl <- if (!is.null(dm) && nrow(dm)) .calib_domain_table(dm, lang) else ""
   notes_html <- if (length(notes)) paste0("<p class='note'>", notes, "</p>", collapse = "") else ""
-  sprintf("<div class='ri'><h4>%s</h4><table class='params'>%s</table>%s%s%s%s</div>%s",
+  sprintf("<div class='ri'><h3 class='card-t'>%s</h3><table class='params'>%s</table>%s%s%s%s</div>%s",
           .t("Calibration diagnostics", "Diagn\u00f3sticos de calibraci\u00f3n", lang),
           tab, notes_html, ovl, infl, eff, dom_tbl)
 }
@@ -1081,7 +1134,7 @@
     .kappa_cell(dm$cond[i], lang),
     if (isTRUE(dm$converged[i])) "&#10003;" else "<span class='cell-warn'>&#10007;</span>"),
     character(1))
-  sprintf("<div class='ri'><h4>%s</h4><p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>",
+  sprintf("<div class='ri'><h3 class='card-t'>%s</h3><p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>",
     .t("Calibration diagnostics by domain", "Diagn\u00f3sticos de calibraci\u00f3n por dominio", lang),
     .t("Each domain is calibrated independently; small domains with extreme g, weights at the bounds, negative weights or non-convergence are where the partition strains. Troublesome domains are listed first.",
        "Cada dominio se calibra por separado; los dominios peque\u00f1os con g extremos, pesos en las cotas, pesos negativos o sin convergencia son donde la partici\u00f3n sufre. Los problem\u00e1ticos van primero.", lang),
@@ -1135,7 +1188,7 @@
     lab, nf(b["nn"]), sf(b["sb"]), sf(b["sa"]), sf(b["sa"] - b["sb"]))
   acct <- sprintf(
     "<table class='params'><thead><tr><th scope='col'>%s</th><th scope='col'>n</th><th scope='col'>%s</th><th scope='col'>%s</th><th scope='col'>%s</th></tr></thead><tbody>%s%s%s</tbody></table>",
-    .t("band", "banda", lang), .t("sum before", "suma antes", lang), .t("sum after", "suma despues", lang),
+    .t("band", "banda", lang), .t("sum before", "suma_antes", lang), .t("sum after", "suma_despu\u00e9s", lang),
     .t("mass moved", "masa movida", lang),
     brow(.t("below floor", "bajo cota inf.", lang), b_lo),
     brow(.t("within band", "dentro", lang), b_in),
@@ -1144,8 +1197,17 @@
     .t("The trimmed mass was re-absorbed by the bounded re-calibration, which preserves the calibration totals by construction.",
        "La masa recortada fue reabsorbida por la re-calibraci\u00f3n acotada, que preserva los totales de calibraci\u00f3n por construcci\u00f3n.", lang)
   else if (identical(rec$redistribute, "none") || !preserved)
-    .t(sprintf("The trimmed mass was absorbed (weight total fell by %s, %s): the point estimates shift.", sf(tot_b - tot_a), pf(100 * (tot_b - tot_a) / tot_b)),
-       sprintf("La masa recortada fue absorbida (el total de pesos baj\u00f3 %s, %s): los estimadores puntuales se corren.", sf(tot_b - tot_a), pf(100 * (tot_b - tot_a) / tot_b)), lang)
+    # The total can rise (a floor raising weights) as well as fall (a cap lowering them):
+    # phrase it by the sign of the change, not a hard-coded "fell". (REP-02)
+    {
+      moved <- tot_b - tot_a                              # > 0 if the total fell
+      en_v <- if (moved >= 0) "fell" else "rose"
+      es_v <- if (moved >= 0) "baj\u00f3" else "subi\u00f3"
+      .t(sprintf("The trimmed mass was absorbed (weight total %s by %s, %s): the point estimates shift.",
+                 en_v, sf(abs(moved)), pf(100 * abs(moved) / tot_b)),
+         sprintf("La masa recortada fue absorbida (el total de pesos %s %s, %s): los estimadores puntuales se corren.",
+                 es_v, sf(abs(moved)), pf(100 * abs(moved) / tot_b)), lang)
+    }
   else
     .t("The trimmed mass was redistributed to the units within band, so the weight total is preserved.",
        "La masa recortada se redistribuy\u00f3 a las unidades dentro de banda, as\u00ed que el total de pesos se preserva.", lang)
@@ -1274,7 +1336,7 @@
       "Este paso de recorte no tuvo efecto material (deff casi sin cambio, menos del 0.5% de unidades tocadas); consider\u00e1 quitarlo para simplificar la cascada.", lang)) else ""
 
   hd <- function(t) sprintf("<h5 class='trim-h'>%s</h5>", t)
-  paste0("<div class='ri'><h4>", .t("Trimming diagnostics", "Diagn\u00f3sticos de recorte", lang), "</h4>",
+  paste0("<div class='ri'><h3 class='card-t'>", .t("Trimming diagnostics", "Diagn\u00f3sticos de recorte", lang), "</h3>",
     sec1,
     if (nzchar(bias))       paste0(hd(.t("Bias cost", "Costo en sesgo", lang)), bias) else "",
     if (nzchar(potter_svg)) paste0(hd(.t("Potter threshold", "Umbral de Potter", lang)), potter_svg) else "",

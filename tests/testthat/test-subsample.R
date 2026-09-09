@@ -55,6 +55,15 @@ test_that("bootstrap_weights takes the two-phase path and returns a positive SE"
   expect_true(is.finite(se) && se > 0)
 })
 
+test_that("boot_total warns (conservative) on a two-phase design; boot_mean does not (VAR-05)", {
+  df   <- .two_phase_df()
+  spec <- weighting_spec(df, base_weights = w1) |>
+    step_subsample(selected = sel2, prob = p2, psu = "hh")
+  boot <- bootstrap_weights(spec, replicates = 60L, seed = 1, progress = FALSE)
+  expect_warning(boot_total(boot, "y"), "upper bound")
+  expect_no_warning(boot_mean(boot, "y"))
+})
+
 test_that("no replicate weight is negative or zero-by-factor (Gamma coupling)", {
   # TP-01: the two-phase factor is a strictly positive Gamma, so selected units
   # keep positive replicate weights and a downstream GLM/propensity step could run.
@@ -99,7 +108,7 @@ test_that("step_subsample composes with reference_sample (calibrate to phase 1)"
     step_subsample(selected = sel2, prob = p2, psu = "hh") |>
     step_calibrate(method = "linear", formula = ~ x, population = ref)
   boot <- bootstrap_weights(spec, replicates = 60L, seed = 1, progress = FALSE)
-  se <- boot_total(boot, "y")$se
+  se <- suppressWarnings(boot_total(boot, "y")$se)   # two-phase total -> conservative warning
   expect_true(is.finite(se) && se > 0)
   expect_true(isTRUE(boot$two_phase))
 })

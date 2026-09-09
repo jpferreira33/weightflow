@@ -56,6 +56,51 @@ test_that(".prep_poststrata validates the counts column", {
   expect_error(.prep_poststrata(bad, "N", d4, act4), "must be numeric")
 })
 
+test_that(".prep_linear_totals rejects a non-numeric counts column (CRIT-2)", {
+  # numeric counts: fine
+  ok <- list(g = data.frame(g = c("a", "b"), N = c(10, 20), stringsAsFactors = FALSE))
+  expect_no_error(.prep_linear_totals(~ g, ok, "N", d4, act4))
+  # factor counts: rejected -- as.numeric() would use the level CODES (1, 2), not 10/20,
+  # calibrating to N = 3 with converged = TRUE (read.csv(stringsAsFactors = TRUE)).
+  fac <- list(g = data.frame(g = c("a", "b"), N = factor(c("10", "20"))))
+  expect_error(.prep_linear_totals(~ g, fac, "N", d4, act4), "must be numeric")
+  # character counts: also rejected
+  chr <- list(g = data.frame(g = c("a", "b"), N = c("10", "20"), stringsAsFactors = FALSE))
+  expect_error(.prep_linear_totals(~ g, chr, "N", d4, act4), "must be numeric")
+  # NA in a numeric counts column: rejected with the missing-values message
+  na <- list(g = data.frame(g = c("a", "b"), N = c(10, NA_real_)))
+  expect_error(.prep_linear_totals(~ g, na, "N", d4, act4), "missing values")
+})
+
+test_that(".prep_linear_totals requires full sample-level coverage (CAL-3)", {
+  # the sample (d4) has levels a and b; omitting b from totals would force b to an
+  # implicit population of 0 and misbuild the intercept N -> must error.
+  partial <- list(g = data.frame(g = "a", N = 30, stringsAsFactors = FALSE))
+  expect_error(.prep_linear_totals(~ g, partial, "N", d4, act4), "missing level")
+  # full coverage passes
+  full <- list(g = data.frame(g = c("a", "b"), N = c(10, 20), stringsAsFactors = FALSE))
+  expect_no_error(.prep_linear_totals(~ g, full, "N", d4, act4))
+})
+
+test_that(".prep_linear_totals drops empty factor levels instead of deadlocking (CAL-4)", {
+  # 'c' is a defined but unused level: without droplevels() model.matrix() adds a `gc`
+  # column of zeros whose target is a deadlock (include -> "no units", omit -> "no total").
+  d   <- data.frame(g = factor(c("a", "a", "b", "b"), levels = c("a", "b", "c")))
+  tot <- list(g = data.frame(g = c("a", "b"), N = c(10, 20), stringsAsFactors = FALSE))
+  expect_no_error(.prep_linear_totals(~ g, tot, "N", d, rep(TRUE, 4)))
+})
+
+test_that(".poststratify_calc flags non-convergence on a non-positive cell (CAL-5)", {
+  d   <- data.frame(g = c("a", "a", "b", "b"), stringsAsFactors = FALSE)
+  act <- rep(TRUE, 4)
+  tot <- data.frame(g = c("a", "b"), N = c(10, 20), stringsAsFactors = FALSE)
+  prep <- .prep_poststrata(tot, "N", d, act)
+  w <- c(-3, -3, 5, 5)                      # cell 'a' sums to -6 (<= 0): cannot be scaled
+  expect_warning(res <- .poststratify_calc(prep, w, act), "did NOT converge")
+  expect_false(isTRUE(attr(res$diagnostics, "converged")))
+  expect_equal(sum(res$weights[d$g == "b"]), 20)   # the positive cell still hits its target
+})
+
 test_that(".prep_poststrata needs at least one category column", {
   expect_error(.prep_poststrata(data.frame(N = 30), "N", d4, act4),
                "no category columns")
@@ -118,12 +163,13 @@ test_that(".poststratify_calc rescales each cell to its known total", {
   expect_equal(res$diagnostics$variable, rep("g", 2))
 })
 
-test_that(".poststratify_calc leaves a zero-weight cell alone and flags NA", {
+test_that(".poststratify_calc leaves a zero-weight cell alone and flags non-convergence", {
   prep <- .prep_poststrata(tot_g, "N", d4, act4)
-  res  <- .poststratify_calc(prep, c(0, 0, 1, 1), act4)
+  expect_warning(res <- .poststratify_calc(prep, c(0, 0, 1, 1), act4), "did NOT converge")
   expect_equal(res$weights[1:2], c(0, 0))
   expect_true(is.na(res$diagnostics$factor[1]))
   expect_equal(res$weights[3:4], c(10, 10))
+  expect_false(isTRUE(attr(res$diagnostics, "converged")))   # cell 'a' missed its target (CAL-5)
 })
 
 test_that(".poststratify_calc only touches active units", {

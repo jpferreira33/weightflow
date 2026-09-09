@@ -23,8 +23,10 @@ test_that("a recipe round-trips through YAML and reproduces the weights", {
   # executable read (with data): rebuilds a spec that preps to the SAME weights
   spec2 <- read_recipe(f, data = sample_survey)
   expect_s3_class(spec2, "weighting_spec")
-  w1 <- prep(spec)$final_weight
-  w2 <- prep(spec2)$final_weight
+  # (this recipe's trim step loses a little mass -> a step_trim_weights warning; not the
+  # subject here, so suppress it and just check the round-trip reproduces the weights)
+  w1 <- suppressWarnings(prep(spec)$final_weight)
+  w2 <- suppressWarnings(prep(spec2)$final_weight)
   expect_equal(w2, w1, tolerance = 1e-9)
 })
 
@@ -115,4 +117,38 @@ test_that("read_recipe rejects a non-recipe file", {
   f <- tempfile(fileext = ".yml")
   writeLines("something: else", f)
   expect_error(read_recipe(f), "not a weightflow recipe")
+})
+
+test_that("write_recipe does not serialize the previous wave's microdata for step_cre (IO-02)", {
+  skip_if_not_installed("yaml")
+  d <- data.frame(id = 1:6, sexo = factor(rep(c("F", "M"), 3)),
+                  cond = rep(c("emp", "unemp", "inact"), 2), w = 10)
+  Xt <- function(z) colSums(z$w * stats::model.matrix(~ sexo, z))
+  seed <- prep(weighting_spec(d, base_weights = w) |>
+                 step_cre(previous = NULL, status = cond, formula = ~ sexo,
+                          totals = Xt(d), status_ref = "inact"))
+  spec2 <- weighting_spec(d, base_weights = w) |>
+    step_cre(previous = seed, status = cond, id_unit = "id", formula = ~ sexo,
+             totals = Xt(d), status_ref = "inact")
+  f <- tempfile(fileext = ".yml")
+  write_recipe(spec2, f)                          # must not abort, must not dump the wave
+  txt <- paste(readLines(f), collapse = "\n")
+  expect_true(grepl("previous_wave", txt))        # the marker replaced the fitted wave
+  expect_false(grepl("final_weight|history", txt))# no prepped-wave internals leaked
+  # a CRE recipe cannot be rebuilt from YAML alone -> clear error, not a silent seed
+  expect_error(read_recipe(f, data = d), "cannot be rebuilt")
+})
+
+test_that("read_recipe does not execute stored code by default (CRIT-1)", {
+  node <- list(.wf = "function", value = "stop('code executed')")
+  # default (allow_code = FALSE): refused with the security message, NEVER evaluated
+  # (if it ran, the error message would be 'code executed', not the guard).
+  expect_error(.wf_decode(node, NULL, "s1"), "allow_code")
+  # explicit opt-in evaluates the source (here the stored stop() runs)
+  expect_error(.wf_decode(node, NULL, "s1", allow_code = TRUE), "code executed")
+  # a benign function round-trips only under allow_code = TRUE
+  fn <- .wf_decode(list(.wf = "function", value = "function(x) x + 1"),
+                   NULL, "s1", allow_code = TRUE)
+  expect_true(is.function(fn))
+  expect_equal(fn(1), 2)
 })

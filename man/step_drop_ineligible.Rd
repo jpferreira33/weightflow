@@ -4,13 +4,19 @@
 \alias{step_drop_ineligible}
 \title{Drop ineligible (out-of-scope) units}
 \usage{
-step_drop_ineligible(spec, ineligible, id = NULL)
+step_drop_ineligible(spec, ineligible, reason = NULL, id = NULL)
 }
 \arguments{
 \item{spec}{a weighting_spec.}
 
 \item{ineligible}{a 0/1 dummy column (1 = ineligible) or any logical
 condition (unquoted) that is TRUE for out-of-scope units.}
+
+\item{reason}{optional string naming why the units are out of scope (e.g.
+\code{"left the target population between waves"}). Recorded for the report
+narrative; it makes the panel distinction between a \strong{between-wave exit} of
+the universe (the longitudinal population shrank -- weight 0, no reweighting)
+and ordinary ineligibility explicit. Does not change the computation.}
 
 \item{id}{optional string: a stable identifier for this step, shown in the
 recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
@@ -45,6 +51,7 @@ weighting_spec(df, base_weights = pw) |>
 Other weighting steps:
 \code{\link[=step_assert]{step_assert()}},
 \code{\link[=step_calibrate]{step_calibrate()}},
+\code{\link[=step_cre]{step_cre()}},
 \code{\link[=step_model_calibration]{step_model_calibration()}},
 \code{\link[=step_nonresponse]{step_nonresponse()}},
 \code{\link[=step_nr_sensitivity]{step_nr_sensitivity()}},

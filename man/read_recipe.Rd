@@ -4,7 +4,7 @@
 \alias{read_recipe}
 \title{Read a weighting recipe from a YAML file}
 \usage{
-read_recipe(file, data = NULL, references = NULL)
+read_recipe(file, data = NULL, references = NULL, allow_code = FALSE)
 }
 \arguments{
 \item{file}{path to the recipe \code{.yml}/\code{.yaml} file.}
@@ -16,6 +16,12 @@ auxiliaries, disposition flags) must exist in \code{data}.}
 \item{references}{optional named list of \code{reference_sample()} objects, named by
 the id of the step that uses each one, to restore the steps that calibrate or
 pseudo-weight against a reference (whose microdata the recipe does not store).}
+
+\item{allow_code}{single logical. A step may store an R \strong{function} as source
+(a custom distance or statistic). Reconstructing it evaluates that source, which
+is a code-execution risk for a recipe received from elsewhere. \code{FALSE} (default)
+refuses such nodes with an error; set \code{TRUE} only for a file you trust, exactly
+as you would \code{source()} it.}
 }
 \value{
 With \code{data = NULL}, a \code{weightflow_recipe} manifest (a list with a print

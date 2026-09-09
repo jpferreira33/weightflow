@@ -164,6 +164,7 @@
   idx_by <- split(which(active), skey[active])      # active rows per cell key, once
   diag <- vector("list", nrow(cells))
   zeroed <- character(0)                             # cells zeroed by a 0 population total
+  unadj  <- character(0)                              # cells that could NOT be adjusted (cur <= 0)
   for (i in seq_len(nrow(cells))) {
     key    <- cells$.key[i]
     target <- cells$.Freq[i]
@@ -173,6 +174,11 @@
     if (!is.na(fac)) new_w[idx] <- new_w[idx] * fac
     if (isTRUE(target == 0) && cur > 0 && length(idx) > 0L)
       zeroed <- c(zeroed, gsub("\r", " x ", key))
+    # A non-positive weight sum (e.g. negative weights from a prior calibration) cannot be
+    # scaled to the target: fac is NA, the weights stay put, and the cell misses its total.
+    # Record it so the step reports NON-convergence instead of a silent success. (CAL-5)
+    if (is.na(fac) && !isTRUE(target == 0) && length(idx) > 0L)
+      unadj <- c(unadj, gsub("\r", " x ", key))
     diag[[i]] <- data.frame(
       variable   = paste(prep$vars, collapse = " x "),
       category   = gsub("\r", " x ", key),
@@ -190,7 +196,16 @@
                           "totals if that cell should not be empty."),
                    length(zeroed),
                    paste(utils::head(zeroed, 5L), collapse = "; ")), call. = FALSE)
-  list(weights = new_w, diagnostics = do.call(rbind, diag))
+  if (length(unadj))
+    warning(sprintf(paste0("Post-stratification did NOT converge: %d cell(s) have a non-positive ",
+                          "weight sum and could not be scaled to their target (%s), so those cells ",
+                          "miss their control total. This usually follows negative weights from an ",
+                          "earlier calibration -- bound the weights (e.g. calfun = \"logit\") before ",
+                          "post-stratifying."),
+                   length(unadj), paste(utils::head(unadj, 5L), collapse = "; ")), call. = FALSE)
+  dg <- do.call(rbind, diag)
+  attr(dg, "converged") <- length(unadj) == 0L        # non-convergence when a cell was unadjustable
+  list(weights = new_w, diagnostics = dg)
 }
 
 
@@ -340,20 +355,36 @@
         v))
   }
 
-  X  <- stats::model.matrix(formula, data = data[active, , drop = FALSE])
+  # droplevels() on the active subset: model.matrix() builds a column per DEFINED factor
+  # level, so a level that is defined but has no active unit (a factor imported with extra
+  # levels, or a cell emptied by an earlier step) would add a column of zeros. Its target
+  # is then a deadlock -- including it in `totals` errors ("no units in the sample"), and
+  # omitting it errors ("No population total was provided") -- so drop empty levels first,
+  # as the reference-calibration path already does. (CAL-4)
+  X  <- stats::model.matrix(formula, data = droplevels(data[active, , drop = FALSE]))
   cn <- colnames(X)
 
-  # NA in a counts column would make that margin's N NA, drop it from the
-  # reconciliation, and later crash at rec$factors[[v]] with "subscript out of
-  # bounds". Reject it early with a clear message (as the post-stratification
-  # path does), before the size is computed.
+  # The counts column must be numeric. A factor (or character) passes through
+  # as.numeric() as its INTEGER CODES, not its values, so the intercept N and the
+  # margins would be built from 1, 2, 3, ... -- an absurd population size that the
+  # solver then "converges" to (target == achieved on the wrong scale). This is
+  # exactly what read.csv(stringsAsFactors = TRUE) or a thousands-separated count
+  # ("1.000") produces. Reject it early with a clear message, as the
+  # post-stratification path already does; and NA counts would make that margin's
+  # N NA, drop it from the reconciliation, and later crash at rec$factors[[v]].
   for (v in names(totals)) {
     t <- totals[[v]]
-    if (is.data.frame(t) && count %in% names(t) &&
-        anyNA(suppressWarnings(as.numeric(t[[count]]))))
-      stop(sprintf(paste0("The totals for '%s' have missing or non-numeric values in ",
-                          "the counts column '%s'; provide a finite count for every ",
-                          "category."), v, count), call. = FALSE)
+    if (!is.data.frame(t) || !count %in% names(t)) next
+    if (!is.numeric(t[[count]]))
+      stop(sprintf(paste0("The counts column '%s' in the totals for '%s' must be numeric ",
+                          "(a factor or character would be read as its integer codes, ",
+                          "calibrating to a wrong population size). Convert it with ",
+                          "as.numeric() -- e.g. after read.csv(stringsAsFactors = TRUE) or a ",
+                          "thousands-separated value."), count, v), call. = FALSE)
+    if (anyNA(t[[count]]))
+      stop(sprintf(paste0("The totals for '%s' have missing values in the counts column ",
+                          "'%s'; provide a finite count for every category."), v, count),
+           call. = FALSE)
   }
 
   # population size N: if the categorical margins disagree, reconcile them to
@@ -414,6 +445,20 @@
           "`totals` if they are genuinely out of the sample's scope, or fix the ",
           "sample coverage before calibrating."),
           v, paste(utils::head(absent, 15L), collapse = ", ")), call. = FALSE)
+      # ...and the mirror: a level present in the SAMPLE but missing from `totals`. The
+      # reference level has no model.matrix column, so its target is never checked at the
+      # end; omitting it (or any level) makes the intercept N the sum of only the SUPPLIED
+      # counts and forces the missing level's population implicitly to 0. Require full
+      # coverage, as raking's .check_margin_levels() does. (CAL-3)
+      uncovered <- setdiff(sample_levels, levels_v)
+      if (length(uncovered))
+        stop(sprintf(paste0(
+          "The totals for '%s' are missing level(s) present in the sample: %s. ",
+          "Provide a population count for every level (including the reference level of ",
+          "the factor); otherwise the intercept N is built from only the supplied counts ",
+          "and the missing level is calibrated to an implicit total of 0. Tip: ",
+          "as.data.frame(table(population$%s)) lists every level."),
+          v, paste(utils::head(uncovered, 15L), collapse = ", "), v), call. = FALSE)
       for (j in seq_along(levels_v)) {
         col <- paste0(v, levels_v[j])
         if (col %in% cn) Tvec[col] <- counts_v[j]

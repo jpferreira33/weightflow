@@ -87,8 +87,10 @@ test_that("step_trim raises weights below the floor", {
 })
 
 test_that("step_trim stops when there is nowhere to redistribute", {
-  res <- apply_step.step_trim(trim_step(max_ratio = 5),
-                              data.frame(i = 1:3), c(10, 10, 10))
+  expect_warning(
+    res <- apply_step.step_trim(trim_step(max_ratio = 5),
+                                data.frame(i = 1:3), c(10, 10, 10)),
+    "could not be redistributed")
   expect_equal(res$weights, c(5, 5, 5))       # total not preserved: no free unit
   expect_equal(attr(res$diagnostics, "iterations"), 1L)
 })
@@ -247,15 +249,18 @@ test_that("step_trim_weights uses the survey-style uniform share", {
 })
 
 test_that("step_trim_weights records mass it cannot redistribute (uniform)", {
-  res <- apply_step.step_trim_weights(tw_step(redistribute = "uniform"),
-                                      data.frame(i = 1:3), c(10, 10, 10))
+  expect_warning(
+    res <- apply_step.step_trim_weights(tw_step(redistribute = "uniform"),
+                                        data.frame(i = 1:3), c(10, 10, 10)),
+    "could not be redistributed")
   expect_equal(res$weights, c(3, 3, 3))
   expect_equal(attr(res$diagnostics, "trim_rec")$unredist, 21)
 })
 
 test_that("step_trim_weights records mass it cannot redistribute (proportional)", {
-  res <- apply_step.step_trim_weights(tw_step(), data.frame(i = 1:3),
-                                      c(10, 10, 10))
+  expect_warning(
+    res <- apply_step.step_trim_weights(tw_step(), data.frame(i = 1:3), c(10, 10, 10)),
+    "could not be redistributed")
   expect_equal(res$weights, c(3, 3, 3))
   expect_equal(attr(res$diagnostics, "trim_rec")$unredist, 21)
 })
@@ -301,7 +306,8 @@ test_that("step_trim_weights picks a Potter cutoff when asked", {
 
 test_that("step_trim_weights leaves dropped units untouched", {
   w   <- c(0, 1, 2, 10)
-  res <- apply_step.step_trim_weights(tw_step(upper = 4), data.frame(i = 1:4), w)
+  res <- suppressWarnings(
+    apply_step.step_trim_weights(tw_step(upper = 4), data.frame(i = 1:4), w))
   expect_equal(res$weights[1], 0)
 })
 

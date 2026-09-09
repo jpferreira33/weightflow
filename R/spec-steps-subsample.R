@@ -195,6 +195,9 @@ apply_step.step_subsample <- function(step, data, w) {
 # re-runs cleanly on every replicate -- and gives slightly better coverage than a
 # two-point factor. Non-selected units get factor 1 (they leave the cascade at
 # step_subsample anyway). Units with d ~ 0 (no sampling variance) keep factor 1.
+# NOTE: this is a Hansen-Hurwitz (UNCENTRED) multiplier. It self-centres for a mean/
+# ratio, but for a TOTAL its variance contribution is sum d_k (w_k y_k)^2 -- materially
+# conservative (an overestimate). boot_total()/two_phase_variance("total") warn. (VAR-05)
 .twophase_fac <- function(setup, dvar = setup$d) {
   v    <- dvar
   npsu <- length(setup$selpsu)

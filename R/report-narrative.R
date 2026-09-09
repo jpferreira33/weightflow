@@ -7,7 +7,11 @@
 # ============================================================================
 
 # Pick the English or Spanish variant of a string.
-.t <- function(en, es, lang) if (identical(lang, "es")) es else en
+# Every bilingual display string in the report goes through .t(), so this is the
+# one place that can normalise typography for all of them: the sources are
+# written with ASCII "--" (legible in a console warning and in the R file), which
+# has to become a real em dash once it is HTML.
+.t <- function(en, es, lang) .wf_typo(if (identical(lang, "es")) es else en)
 
 # Translate the compute-time diagnostic strings (quality alerts from prep(), the
 # trimmed/model calibration `note` from apply_step()) for the Spanish report.
@@ -15,8 +19,24 @@
 # emitted to warnings); this only rewrites them for the HTML display. Detection is
 # by the fixed English prefix; the interpolated numbers are preserved, and any
 # string that does not match a known pattern passes through unchanged.
+# Typographic normalisation applied to every alert and note on its way into the
+# report, in both languages: the message generators write ASCII "--" (readable in
+# a console warning), which renders as two hyphens in HTML where an em dash is
+# meant. Doing it here, at the single point every message passes through, keeps
+# the generators' text stable -- the Spanish translation below matches on it.
+.wf_typo <- function(x) {
+  if (is.null(x) || !length(x) || !is.character(x)) return(x)
+  x <- gsub(" -- ", " \u2014 ", x, fixed = TRUE)   # spaced em dash
+  x <- gsub("--", "\u2014", x, fixed = TRUE)       # tight em dash (es: "--que ... --o")
+  x
+}
+
+# NOTE: no typography here. .wf_translate() is a translator, and translating to
+# English must be an exact no-op (tests assert identical(f(x, "en"), x)). The
+# ASCII "--" is turned into an em dash by .wf_typo() at the point of RENDER.
 .wf_translate <- function(x, lang) {
-  if (!identical(lang, "es") || is.null(x) || !length(x)) return(x)
+  if (is.null(x) || !length(x)) return(x)
+  if (!identical(lang, "es")) return(x)
   one <- function(s) {
     if (!is.character(s) || is.na(s)) return(s)
     # Miscalibrated response propensities (R/prep.R)
@@ -424,6 +444,15 @@
 }
 
 .step_short <- function(step, lang) {
+  if (inherits(step, "step_cre"))                  # step_cre(): composite regression estimator
+    return(if (is.null(step$previous))
+      .t("composite regression estimator (seed calibration)",
+         "estimador de regresi\u00f3n compuesto (calibraci\u00f3n semilla)", lang)
+      else .t("composite regression estimator (CRE)",
+              "estimador de regresi\u00f3n compuesto (CRE)", lang))
+  if (!is.null(step$attrition_method))            # step_attrition(): label as attrition, not nonresponse
+    return(.t(sprintf("attrition adjustment (%s)", step$attrition_method),
+              sprintf("ajuste por atrici\u00f3n (%s)", step$attrition_method), lang))
   if (inherits(step, "step_unknown_eligibility"))
     return(.t("unknown-eligibility adjustment", "ajuste por elegibilidad desconocida", lang))
   if (inherits(step, "step_drop_ineligible"))
@@ -482,6 +511,17 @@
     return(.t("calibration-preserving weight trimming", "recorte de pesos que preserva la calibraci\u00f3n", lang))
   if (inherits(step, "step_trim_weights"))
     return(.t("weight trimming", "recorte de pesos", lang))
+  if (inherits(step, "step_trim")) {
+    ref <- switch(as.character(step$reference %||% "base"),
+      base = .t("base weight", "peso base", lang),
+      median = .t("median", "mediana", lang),
+      value = .t("fixed value", "valor fijo", lang),
+      .html_escape(as.character(step$reference)))
+    return(if (!is.null(step$max_ratio))
+      .t(sprintf("weight trimming (%s, cap %s)", ref, .fmt_val(step$max_ratio)),
+         sprintf("recorte de pesos (%s, tope %s)", ref, .fmt_val(step$max_ratio)), lang)
+      else .t("weight trimming", "recorte de pesos", lang))
+  }
   if (inherits(step, "step_round"))  return(.t("weight rounding", "redondeo de pesos", lang))
   if (inherits(step, "step_rescale")) return(.t("rescaling", "reescalado", lang))
   if (inherits(step, "step_assert")) return(.t("quality checkpoint", "punto de control", lang))
@@ -489,6 +529,18 @@
     return(.t("nonresponse sensitivity", "sensibilidad a la no respuesta", lang))
   if (inherits(step, "step_subsample"))
     return(.t("second-phase subsampling", "submuestreo de segunda fase", lang))
+  if (inherits(step, "step_pseudoweight")) {
+    eng <- switch(step$engine %||% "logit",
+      logit = .t("logistic model", "modelo log\u00edstico", lang),
+      tree  = .t("regression tree", "\u00e1rbol de regresi\u00f3n", lang),
+      forest = "random forest", boost = "gradient boosting",
+      .html_escape(step$engine))
+    return(if (is.null(step$num_classes))
+      .t(sprintf("pseudo-weights against a probability reference (%s)", eng),
+         sprintf("pseudo-pesos contra una referencia probabil\u00edstica (%s)", eng), lang)
+      else .t(sprintf("pseudo-weights against a probability reference (%s, %d classes)", eng, step$num_classes),
+              sprintf("pseudo-pesos contra una referencia probabil\u00edstica (%s, %d clases)", eng, step$num_classes), lang))
+  }
   .html_escape(step$label)
 }
 

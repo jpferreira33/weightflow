@@ -1,6 +1,155 @@
-# weightflow (development version)
+# weightflow 1.3.0
 
 ## New features
+
+* **`step_filter()` restricts a coordinated estimation to a subpopulation.** Add it
+  to a `step_domain()` / `step_estimate()` pipeline to estimate a change or level over
+  a domain -- e.g. `step_filter(edad >= 25 & edad <= 54)`. The condition is evaluated
+  per wave and the rows are **masked, not dropped**, so the PSU-coordinated replicate
+  alignment between waves (and hence the overlap covariance of a change) is preserved.
+  Filters stack (their conditions are ANDed) and compose with `step_domain()`.
+
+* **`wave_bootstrap()` now resamples PSUs with an exact multinomial by default
+  (`resample = "multinom"`).** The previous independent-binomial Rao-Wu draw
+  (`resample = "binom"`, still available) does not force the per-stratum resample
+  counts to sum to `m_h`; that extra between-PSU variance is amplified by the
+  composite-regression block (`step_cre()`) and inflated its replicate SE by
+  ~8-10% in simulation against a known truth. The exact multinomial removes the
+  inflation (bias of the composite change SE drops from ~+10% to ~+2%) while
+  preserving the overlap covariance. Coordination across rotating waves is exact
+  when the PSU sets match and approximate otherwise.
+
+* **Panel / longitudinal support (in progress): `panel_design()` and
+  `panel_merge()`.** `panel_design()` tags stacked per-wave data with its
+  rotating-panel structure the way `reference_sample()` tags a reference survey:
+  it derives the observed wave-to-wave overlap matrix, the panel-selection
+  probability `Pr(panel selection)` from rotation-group cohort continuity (the
+  reciprocal of the CEPAL panel base-weight factor), and the linkage quality,
+  raising alerts (`PN-01` overlap vs. pattern, `PN-02` uneven rotation groups,
+  `PN-06` no unit links across waves) *before* any weighting. `panel_merge()`
+  reshapes a named list of per-wave surveys into the wide, one-row-per-unit
+  longitudinal file with `.wf_in_<wave>` / `.wf_resp_<wave>` indicators. Neither
+  changes `weighting_spec()`; the descriptor travels in `attr(data, "wf_panel")`.
+  This is the structure/linkage layer of the panel roadmap (CEPAL ch. XVI-XVII);
+  the longitudinal-weight steps and the coordinated-replicate variance follow.
+* **`step_panel_overlap()` and `panel_pr()`** add the CEPAL panel base-weight
+  adjustment: `step_panel_overlap(prob = ...)` divides the incoming weight by the
+  panel-selection probability (`d_base = d1 / Pr`), the first step of the
+  Verma-Betti-Ghellini longitudinal-weight sequence. `prob` is a per-unit column
+  or a constant; `panel_pr(pd, waves)` derives that constant from a `panel_design()`
+  with a rotation group (the fraction of rotation-group cohorts present in all the
+  combined waves). Surveys with no public rotation group pass a probability derived
+  otherwise. Validated on real ECH (Uruguay) and ENE (Chile) microdata.
+* **Coordinated bootstrap for panel change: `wave_bootstrap()` + `change_estimate()`
+  (`change_mean()` / `change_total()`).** Builds recipe-aware bootstrap replicate weights
+  for several waves that are **coordinated by PSU** -- a PSU present in more than one wave
+  gets the same resampling in all of them -- so the sampling covariance the overlap of a
+  rotating panel induces is captured, and the honest variance of a net change follows:
+  `V = V1 + V2 - 2*Cov`, with `rho` and `deff_change` reported. It is fully **self-contained**
+  in `R/variance-panel.R` and does **not** touch the CRAN bootstrap in `R/variance.R`
+  (frozen and guarded by a firewall snapshot test), at the cost of a small copy of the
+  Rao-Wu draw. The method was validated by Monte Carlo before implementation (the naive
+  independent bootstrap over-estimates the change variance up to ~11x under high overlap
+  and correlation, which this fixes).
+* **`wave_jackknife()`: coordinated delete-one jackknife.** A deterministic counterpart to
+  `wave_bootstrap()` that removes the same PSU from every wave at once, so the change
+  covariance is captured with no randomness. It feeds the same `change_estimate()` /
+  `change_mean()` / `change_total()` and reports the same `V = V1 + V2 - 2*Cov`. It serves
+  as the cheap exact oracle for the coordinated bootstrap -- in the full-overlap regime it
+  reproduces the textbook stratified delete-one jackknife of the per-PSU difference, and it
+  is exact in the disjoint limit (`Cov = 0`) -- and is a valid variance estimator on its own.
+  Also self-contained in `R/variance-panel.R`; `R/variance.R` untouched.
+* **Panel HTML report: `report_panel()`.** Assembles a standalone HTML page from whichever panel
+  objects it is given -- the rotation structure ([panel_design()]: overlap heat-map, Pr(panel
+  selection), linkage, PN alerts), the coordinated net-change variance ([change_estimate()]:
+  V1/V2/Cov/rho/deff and the explicit contrast against the independent bootstrap), the
+  longitudinal attrition/retention (a prepped longitudinal recipe), and the gross flows
+  ([transition_matrix()] / [boot_transition()]: a **Sankey** of the flows plus a heat-mapped matrix
+  with per-cell SE). The cards carry hand-built inline-SVG visualisations (no dependency): a flow
+  Sankey, a retention bar, an overlap heat-map, and a coordinated-vs-independent SE bar. Any
+  argument may be `NULL`; its card is skipped. Reuses the existing report CSS/i18n (English/Spanish).
+* **Gross flows: `transition_matrix()` and `boot_transition()`.** The weighted flow between a
+  categorical state at an earlier wave and a later one (CEPAL ch. XVII) -- who moved between which
+  states -- on the **longitudinal** weight of the wide file. `transition_matrix()` is the point
+  estimate (`"row"` = P(to|from), `"col"`, `"joint"`, `"counts"`); `boot_transition()` adds a
+  per-cell standard error from the ordinary bootstrap replicate weights (re-running the recipe per
+  replicate). Self-contained base R, no new dependency; the per-cell SE reuses
+  `bootstrap_estimate()`'s vector-valued-statistic path.
+* **`boot_flows()`: gross-flow TOTALS with standard errors.** The gross change is about the *number
+  of people* who move between states, so this returns the from x to count matrix (population
+  totals), the **net** flow matrix (`i->j` minus `j->i`), and the margins -- origin totals (started
+  in each state), destination totals (ended in each), stayers (diagonal) and movers (off-diagonal)
+  -- **each with a bootstrap SE** computed within each replicate, in one pass. The totals
+  counterpart of the mean/proportion estimands.
+* **`step_attrition()`: the panel-facing attrition adjustment.** A thin wrapper over
+  [step_nonresponse()] that reads correctly in a longitudinal cascade and carries the panel
+  conventions (covariates from an observed wave; it does not absorb eligibility). The estimator
+  ECLAC's manual (ch. XVI) and Statistics Canada's SLID (Naud 2002; LaRoche 2003) prescribe is
+  **response-propensity weighting** -- individual `1/phi` (Little 1986; Rosenbaum 1987), i.e.
+  `method = "propensity"`, not an ECLAC invention; `method = "rhg"` is the response-homogeneity-
+  group variant (propensity stratified into `num_classes` classes). `"weighting_class"` and
+  `"calibration"` also available. The **discrete-time attrition hazard** (the retention product
+  `1/prod(phi_t)` used by PSID/EU-SILC/SOEP) needs no special method: because a nonresponse step
+  fits only on the units still alive (`.wf_active`), **chaining `step_attrition()` per wave
+  reproduces the multiplicative hazard**, monotone (no resurrection), with the theory visible in
+  the recipe. (The SLID/ECLAC fallback imputations and a doubly-robust `model_calibration` method
+  follow.)
+* **Longitudinal panel weights (case c), built by reusing the cascade.** The longitudinal
+  weight -- for the population followed across waves -- is assembled on the wide file
+  (`panel_merge(..., require = "all")`, which keeps only the units in sample in every wave, i.e.
+  the overlapping rotation groups) with the ordinary cascade on top of `step_panel_overlap()`:
+  `step_unknown_eligibility()` (UNK), `step_drop_ineligible()` (OS, out of scope -> weight 0, no
+  reweight), `step_nonresponse()` (NR attrition). The same recipe serves a pure panel (Pr = 1)
+  and a rotating one (Pr < 1). Its variance is the existing ordinary `bootstrap_weights()` --
+  no new engine; `R/variance.R` untouched. `step_drop_ineligible()` gains a `reason=` argument
+  that records why units are out of scope (e.g. "left the target population between waves"), so
+  the report narrative distinguishes a between-wave universe exit from ordinary ineligibility.
+* **Declarative estimation grammar: `step_domain()`, `step_estimate()`, `collect_estimates()`.**
+  A sibling of the weighting recipe that runs over a saved [wave_bootstrap()] /
+  [wave_jackknife()] object and emits estimates, not weights. `wb |> step_domain(region, sexo)
+  |> step_estimate(mean(desocupado), over = "change", type = "relative")` disaggregates and
+  estimates with the honest overlap covariance. Needed because survey/srvyr cannot express the
+  change covariance of overlapping waves (they would treat them as independent). It is a thin
+  front end over the engine (`change_estimate` / `panel_estimate` / `level_estimate`), typed as
+  `weightflow_estimation` so it never collides with the weighting steps; heavy replicate build
+  once, cheap estimation many times. A `statistic` DSL covers `mean/total/prop/ratio/quantile`
+  or a raw function. (`step_transition()` for gross flows is stubbed pending the longitudinal
+  bootstrap object.)
+* **`change_estimate()` rounded out: relative change, by-domain, and `level_estimate()`.**
+  `type = "relative"` gives `theta2/theta1 - 1` (e.g. the percent change of a rate) with the
+  overlap covariance from the coordinated replicates (exact for the bootstrap, delta method for
+  the jackknife). `by =` returns one change per domain. `level_estimate()` /`level_mean()` /
+  `level_total()` estimate a single wave's level with its replicate variance, so a level and a
+  change come from the same object. `change_mean()` / `change_total()` gain `type=` / `by=`.
+* **`refit_steps` in `wave_bootstrap()` / `wave_jackknife()`: choose which recipe steps are
+  re-run per replicate.** `"all"` (default) is the honest recipe-aware bootstrap that re-preps
+  the whole cascade, propagating every step's variance -- the choice the coordinated-bootstrap
+  literature endorses (Roberts, Kovacevic, Mantel & Phillips 2001). `"calibration"` freezes the
+  subweights and re-runs only calibration per replicate, reproducing the **Statistics Canada
+  LFS** convention (the Rao-Wu factor enters at the frozen pre-calibration weight). A character
+  vector of step classes splits the recipe at the first match: prefix frozen, suffix re-prepped.
+  This is the "what is refit" axis that lets one engine both replicate other NSOs and offer the
+  more honest full-recipe variance; it uses only the public `prep()` and leaves `R/variance.R`
+  untouched. The point estimate never depends on `refit_steps`; only the replicate variance does.
+* **`panel_estimate(contrast = )` (with `panel_mean()` / `panel_total()`): any linear
+  combination of waves.** Generalises `change_estimate()` to an arbitrary contrast
+  `psi = sum(contrast * theta_wave)` -- an annual average (`rep(1/W, W)`, the default), a
+  net change (`c(-1, 1)`), a semester-vs-semester contrast, etc. -- with the honest
+  variance `a' Sigma a`, where `Sigma` is the between-wave covariance matrix taken directly
+  from the coordinated replicates (works with either `wave_bootstrap()` or
+  `wave_jackknife()`). Reports the covariance matrix and `deff = V / V(independent)`, making
+  explicit that ignoring the overlap covariance **understates** the variance of an average
+  and **overstates** that of a change. `contrast = c(-1, 1)` reproduces `change_estimate()`
+  exactly.
+* **`step_longitudinal()` and `step_cross_sectional()`** declare, without arguments,
+  whether a recipe builds the panel (longitudinal) weight or the ordinary
+  cross-sectional weight -- the panel detail (waves, rotation group, reference
+  wave) already lives in `panel_design()`. They leave the weights unchanged (like
+  `step_assert()`); the declaration governs how the rest of the recipe and the
+  report behave, and flags a wrong-purpose set-up (`step_panel_overlap()` warns
+  on panel data when `step_longitudinal()` was not declared). `panel_design()`
+  gains `reference_wave` (defaults to the first wave), the population the
+  longitudinal weight represents.
 
 * **`step_model_calibration()` gains `bounds`** (and `calfun`), matching
   `step_calibrate(method = "linear")`: an optional `c(L, U)` with `L < 1 < U`
@@ -15,6 +164,181 @@
   `X` margins). Pass the same `x_formula` as `formula`.
 
 ## Bug fixes
+
+* **Robustness of `step_cre()`, the panel jackknife, `wave_bootstrap()` and labelled base
+  weights.** `step_cre()` now captures the calling environment, so a `birth =` expression can
+  reference a variable from the caller instead of failing with "object not found" (CRE-03),
+  and composite cells are joined with `|` rather than `.`, so two distinct cells of a
+  multi-column crossing can no longer collide on the same column name and overwrite each
+  other's constraint (CRE-04). The coordinated jackknife drops a failed (non-finite)
+  delete-one replicate from its stratum and warns, instead of turning the whole variance into
+  `NA` or aborting (VAR-08). `wave_bootstrap()` restores the caller's RNG state on exit, so
+  its internal `set.seed()` no longer advances the global stream (VAR-10). And a
+  `haven_labelled` base-weight column is coerced to a plain numeric, so the final weight is
+  not tagged with the base weight's value labels when exported with `haven::write_sav()`
+  (SPEC-01).
+
+* **Panel variance: PSU ids are nested within strata, `step_domain()` requires the column in
+  every wave, and the panel intervals offer a t option.** `wave_bootstrap()` /
+  `wave_jackknife()` collapsed PSUs that share an id across strata (published microdata often
+  restart PSU ids at 1 per stratum), understating the variance; the PSU identity is now
+  `(stratum, id)`, a no-op when ids are already unique (VAR-09). `step_domain()` validated the
+  grouping column against the union of the waves, so a column present in only some waves
+  silently produced NA cells; it now requires the column in every wave (EST-03). And the
+  panel estimators (`change_estimate()`, `level_estimate()`, `panel_estimate()`) gain
+  `ci_type = "t"` with a design `df` (total PSUs minus strata) for a wider, safer interval
+  when the number of PSUs is small; the default `"normal"` is unchanged (VAR-14).
+
+* **The `"boost"` (xgboost) learner now encodes factors with the training levels.**
+  `model.matrix()` chooses a factor's reference level from the levels present in each data
+  frame, so under cross-fitting (or when predicting on the population) a fold missing a level
+  got a different reference and silently encoded that category as the training reference.
+  Categorical predictors are now coerced to the training levels before the design matrix is
+  built, so the encoding is identical everywhere (ML-01).
+
+* **The report no longer certifies "calibration constraints preserved" without checking,
+  and the trim narrative respects the sign of the change.** The checklist only measures the
+  post-calibration drift for post-stratification/raking; for linear/GREG, model calibration
+  and trimmed calibration it could not, yet it printed "constraints preserved"
+  unconditionally -- even when a later `step_round()` broke the totals. It now says the
+  totals were "not re-checked for this method" in that case (REP-01). The trim card said the
+  weight total "fell" even when a floor raised it (printing a negative "fell by -X%"); it now
+  says "rose" or "fell" by the sign (REP-02). And the AAPOR disposition table adds a note when
+  its rows do not sum to the issued sample because units left through another step (a cluster
+  drop, `step_select_within()` or `step_assert()`), instead of silently failing to close
+  (REP-03).
+
+* **More symmetric validation and honest diagnostics across the cascade.** `step_trim()`
+  now records the mass it could not redistribute (previously `NA`, so the report could never
+  flag it), reports `sum_before` / `sum_after` like the other trim steps, and warns when the
+  weighted total changed (TRIM-02); its constructor rejects `min_ratio >= 1` for a relative
+  reference, mirroring the `max_ratio > 1` rule, instead of silently inflating the total
+  (TRIM-03). `prep()` now validates the base-weight column is numeric -- a character column
+  from a recipe rebuilt outside `weighting_spec()` (e.g. `read_recipe()`) used to flow
+  through and yield an empty `collect_weights()` (PREP-02) -- and raises an alert naming the
+  step that leaves 0 active units, rather than running the rest of the recipe silently on an
+  empty sample (PREP-01). `step_cre()`'s `status_ref` documentation now matches the code
+  (`NULL` drops the last level; one level is always dropped for identifiability) (CRE-01).
+
+* **`write_recipe()` no longer serializes the previous wave's microdata for a
+  `step_cre()` recipe.** A composite step holds the entire prepped previous wave (its data,
+  weights and history) in `previous`; the serializer used to write that whole object into the
+  YAML -- leaking the previous wave's microdata for a small wave, and aborting outright for a
+  realistic one. It is now replaced with a `previous_wave` marker, and the executable
+  `read_recipe(file, data =)` raises a clear error that a CRE recipe cannot be rebuilt from
+  YAML alone (the previous wave is a fitted object, not metadata) instead of silently
+  degrading to a seed calibration (IO-02).
+
+* **`read_recipe()` no longer executes code from the recipe file by default.** A step
+  that stored an R function was serialized as its source and evaluated on read, so
+  opening an untrusted recipe ran arbitrary code. `read_recipe()` gains
+  `allow_code = FALSE` (default): a function node now raises an error instead of being
+  evaluated; pass `allow_code = TRUE` only for a file you trust, as you would `source()`.
+
+* **`step_trim_weights()` with the automatic Tukey fence no longer loses weight mass
+  when the IQR is 0.** With a dominant modal weight (or a near self-weighting design) the
+  far-out fence degenerated to the third quartile, capping every unit above the mode and
+  leaving no units to receive the trimmed mass, so the weighted total silently dropped.
+  The fence now falls back to a high quantile in that case, and the step emits a
+  `warning()` whenever any mass cannot be redistributed (previously only a deferred alert
+  that `prep(warn = FALSE)` hid).
+
+* **The composite-regression card now renders in reports.** The report guards keyed on a
+  `step$cre` field that never existed, so the `step_cre()` card (alpha, composite
+  constraints, block/cell/status table) never appeared and, under `lang = "es"`, the step
+  showed in English in the diagram and per-stage table. The guards now test the step class.
+
+* **Calibration no longer deadlocks on an empty factor level, and post-stratification
+  reports non-convergence when a cell cannot be adjusted.** A factor level that is defined
+  but has no active unit (imported with extra levels, or a cell emptied upstream) added a
+  zero column to the linear/GREG design whose target could neither be supplied nor omitted
+  without an error; the empty levels are now dropped before building the model matrix
+  (CAL-4). And a post-stratification cell whose weights sum to a non-positive value (after
+  negative weights from an earlier step) cannot be scaled to its target: the step now
+  warns and reports `converged = FALSE` instead of silently leaving the cell off-target
+  with a success flag (CAL-5).
+
+* **`step_calibrate(method = "linear")` now requires the tidy `totals` to cover every
+  sample level of a factor.** A level present in the sample but missing from `totals` --
+  in particular the factor's reference level, which has no model-matrix column and so was
+  never checked -- built the intercept N from only the supplied counts and calibrated the
+  missing level to an implicit population of 0, reporting `converged = TRUE`. The linear
+  path now errors on incomplete coverage, matching raking's margin-level check.
+
+* **`step_calibrate(method = "linear")` now rejects a non-numeric counts column
+  in tidy `totals`.** A factor or character counts column (e.g. from
+  `read.csv(stringsAsFactors = TRUE)` or a thousands-separated value) previously
+  passed through `as.numeric()` as its integer level codes, so the calibration
+  targeted an absurd population size (the sum of the codes) yet reported
+  `converged = TRUE` with `target == achieved` on the wrong scale -- weights could
+  come out hundreds of times too small with no error. The linear/GREG path now
+  validates the counts column up front, matching the post-stratification and
+  raking paths.
+
+* **`boot_total()` and `two_phase_variance(estimator = "total")` now warn that the
+  two-phase total variance is conservative.** The two-phase replicate factor is a
+  Hansen-Hurwitz (uncentred) per-PSU multiplier: it self-centres for a mean/ratio but not
+  for a total, where it can overestimate the variance substantially. The total estimators
+  warn (read the SE as an upper bound) and the two-phase vignette documents the caveat
+  (VAR-05). `boot_mean()` / ratio estimates are unaffected.
+
+* **`bootstrap_weights()` / `jackknife_weights()` now warn on a `step_cre()` recipe.** The
+  single-sample engines re-estimate the composite control totals `Zhat` from the previous
+  wave's frozen point weights, holding them fixed and understating the change variance; they
+  now warn and point to `wave_bootstrap()` / `wave_jackknife()`, which coordinate `Zhat` per
+  replicate (VAR-04).
+
+* **`wave_bootstrap(resample = "binom")` documentation corrected.** The legacy binomial
+  draw loses the multinomial's negative between-PSU covariance and estimates an uncentred
+  variance: only mildly high for a ratio or mean (~+8-10%) but a large overestimate for a
+  total. The help now says so and recommends the default `"multinom"` for totals (VAR-02).
+
+* **Replicate variance now propagates the reference-sample replicates and disables
+  `step_assert()` in the jackknife and both panel engines.** `jackknife_weights()` set
+  `wf_replicate` but not `wf_replicate_idx`, and `wave_bootstrap()` / `wave_jackknife()`
+  set neither, so a recipe calibrating against a `reference_sample()` with replicates fell
+  back to the frozen point totals (understating the variance), and a `step_assert()`
+  evaluated against the Rao-Wu-perturbed replicate weights failed every replicate. Both
+  attributes are now set in all four engines: the reference replicate is paired per
+  replicate, and `step_assert()` is a no-op inside replicates as it already is in the
+  single-sample bootstrap.
+
+* **The coordinated panel variance now fails loudly instead of silently
+  under-reporting.** Four silent failure modes flagged by an external audit of the
+  panel module were closed, all in the coordinated engines and none touching
+  `variance.R`: (1) when a `step_cre()`'s `previous` wave does not align with the
+  preceding wave in `specs` (row-count mismatch), the coordinated `Zhat*` is held
+  fixed and the change variance is anticonservative -- `wave_bootstrap()` /
+  `wave_jackknife()` now emit a `warning()` and expose `$n_cre_injected` /
+  `$n_cre_skipped` counts (shown by `print()`); (2) `change_estimate()` warns when
+  more than 5% of coordinated replicates were non-finite and dropped (the dropped
+  replicates are not missing at random, so a high drop rate biases the SE down) and
+  reports the effective replicate count in `$R`; (3) the coordinated jackknife warns
+  when `V = V1 + V2 - 2*cov` goes negative and is truncated to a zero SE (high
+  overlap, few PSUs), instead of silently reporting perfect precision; (4)
+  `wave_bootstrap()` / `wave_jackknife()` warn that `psu = NULL` coordinates the
+  waves **by row position**, which is only valid for row-aligned samples.
+
+* **`report_panel()` now validates the class of every argument instead of writing
+  an empty report.** Passing an object of the wrong class (e.g. a fitted
+  `prepped_weighting_spec` as `design`) previously passed the "at least one
+  argument" guard, rendered as an empty card, and produced a valid-but-empty HTML
+  file that read as success. Each of `design`, `change`, `longitudinal`,
+  `transition`, `coordinated` and `variance` is now checked up front and a
+  wrong-class object raises an informative error.
+
+* **The estimation grammar no longer hides mistakes.** `step_domain()` now errors on
+  a column absent from every wave (it previously warned and silently fell back to the
+  national total under the requested breakdown); `collect_estimates()` accumulates
+  per-cell estimation failures and reports them in a single `warning()` (rather than
+  dropping failed domain cells without a trace), erroring only if every estimate
+  failed; and `print()` of an estimation pipeline lists the declared estimands
+  instead of silently running the full (possibly minutes-long) coordinated estimation.
+
+* **`.wf_pattern_overlap()` now parses the CPS "in-out-in" rotation form.** A pattern
+  like `"4-8-4"` is read as 4 months in, 8 out, 4 in -- `n_groups = 8`, adjacent
+  overlap 0.75 -- instead of taking only the first integer (`n_groups = 4`). CEPAL
+  `"4(0)1"` and plain-integer `"6"` forms are unchanged.
 
 * **`report_weighting(lang = "es")` now renders the quality alerts and the
   calibration/trim notes in Spanish.** The "Quality alerts" box header, the

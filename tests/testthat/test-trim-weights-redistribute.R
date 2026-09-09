@@ -1,5 +1,15 @@
 # step_trim_weights(): redistribution mode and negative-weight flooring.
 
+test_that("step_trim_weights preserves the total when the IQR is 0 (CRIT-3)", {
+  # Dominant modal weight -> Q1 == Q3 -> the Tukey fence used to degenerate to the mode,
+  # capping the high group with no units left to receive the mass -> the total dropped.
+  d <- data.frame(pw = c(rep(10, 1000), rep(30, 50)))
+  f <- weighting_spec(d, base_weights = pw) |>
+    step_trim_weights() |>              # automatic (Tukey) fence, IQR == 0 here
+    prep(warn = FALSE)
+  expect_equal(sum(f$final_weight), sum(d$pw), tolerance = 1e-6)
+})
+
 test_that("step_trim_weights floors negative weights (bug fix)", {
   # Unbounded linear calibration to a small total forces a negative weight on the
   # high-x unit. A lower floor of 1 must raise it (previously w > 0 skipped it).

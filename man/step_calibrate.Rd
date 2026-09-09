@@ -204,6 +204,7 @@ weighting_spec(samp, base_weights = pw) |>
 \seealso{
 Other weighting steps:
 \code{\link[=step_assert]{step_assert()}},
+\code{\link[=step_cre]{step_cre()}},
 \code{\link[=step_drop_ineligible]{step_drop_ineligible()}},
 \code{\link[=step_model_calibration]{step_model_calibration()}},
 \code{\link[=step_nonresponse]{step_nonresponse()}},

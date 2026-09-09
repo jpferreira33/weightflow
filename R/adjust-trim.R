@@ -107,6 +107,8 @@ apply_step.step_trim <- function(step, data, w) {
   # Iterative cap + redistribution (Potter/NAEP style), group by group
   total_trimmed <- 0L
   it_global     <- 0L
+  unredist      <- 0                 # mass that could not be handed back (TRIM-02)
+  sum_before    <- sum(new_w[active])
   for (g in levels(cells)) {
     gi <- which(cells == g & active)
     if (!length(gi)) next
@@ -135,7 +137,7 @@ apply_step.step_trim <- function(step, data, w) {
       }
       # spread the excess proportionally among those within band
       free <- gi[new_w[gi] < cap[gi] & new_w[gi] > floor_v[gi]]
-      if (!length(free)) break                  # nowhere to redistribute
+      if (!length(free)) { unredist <- unredist + excess; break }  # nowhere to redistribute
       # Proportional-to-weight redistribution assumes positive weights. If the
       # free set's weight sum is not clearly positive (negative weights from an
       # earlier GREG), the proportional factor explodes or flips sign -- fall back
@@ -148,12 +150,21 @@ apply_step.step_trim <- function(step, data, w) {
   }
 
   deff_after <- design_effect(new_w)$deff
+  sum_after  <- sum(new_w[active])
+  # Warn (not just a deferred alert) when mass could not be handed back, like the other
+  # two trim steps -- prep(warn = FALSE) is the default, so a silent total change is easy
+  # to miss. (TRIM-02)
+  if (abs(unredist) > 1e-9)
+    warning(sprintf(paste0("step_trim(): %.4g of weight could not be redistributed (no units ",
+                          "left within the band to receive it), so the weighted total changed ",
+                          "by that amount."), unredist), call. = FALSE)
   diag <- data.frame(
     reference   = step$reference,
     cap         = step$max_ratio,
     floor       = ifelse(is.null(step$min_ratio), NA, step$min_ratio),
     trimmed     = total_trimmed,
     redistributed = step$redistribute,
+    sum_before  = round(sum_before, 2), sum_after = round(sum_after, 2),
     deff_before = round(deff_before, 3),
     deff_after  = round(deff_after, 3),
     stringsAsFactors = FALSE
@@ -165,7 +176,7 @@ apply_step.step_trim <- function(step, data, w) {
     by = if (!is.null(step$by)) as.character(cells)[ai] else NULL,
     redistribute = if (isTRUE(step$redistribute)) "proportional" else "none",
     method = step$reference, kind = "ratio", f = new_w[ai] / w[ai],
-    unredist = NA_real_, deff_before = deff_before, deff_after = deff_after)
+    unredist = unredist, deff_before = deff_before, deff_after = deff_after)
   list(weights = new_w, diagnostics = diag)
 }
 
@@ -445,8 +456,19 @@ apply_step.step_trim_weights <- function(step, data, w) {
       pot_obj <- upper                               # keep grid/mse for the report
       upper   <- as.numeric(upper)
     } else {
-      q  <- stats::quantile(wv, c(.25, .75))
-      upper <- as.numeric(q[2] + 3 * (q[2] - q[1]))  # Tukey far-out fence
+      q   <- stats::quantile(wv, c(.25, .75))
+      iqr <- as.numeric(q[2] - q[1])
+      if (iqr > 0) {
+        upper <- as.numeric(q[2] + 3 * iqr)          # Tukey far-out fence
+      } else {
+        # IQR == 0: a dominant modal weight or a (near) self-weighting design. The
+        # Tukey fence then degenerates to Q3 (the mode), so every unit above the mode
+        # is capped and the receiving set (units strictly below the cap) is EMPTY --
+        # the capped mass would be lost silently. Fall back to a high quantile, which
+        # keeps the modal units as a non-empty receiving set.
+        upper <- as.numeric(stats::quantile(wv, 0.99))
+        if (upper <= q[2]) upper <- max(wv)          # still degenerate -> nothing to trim
+      }
     }
   }
   # `lower = NULL` means "no floor" -> -Inf. (Leaving it NULL makes `wv < lower`
@@ -505,6 +527,16 @@ apply_step.step_trim_weights <- function(step, data, w) {
     }
   }
   new_w[active] <- wv
+
+  # Mass that could not be handed back (no eligible receiving units) changes the weighted
+  # total. The report emits a deferred alert, but prep(warn = FALSE) is the default, so warn
+  # from the step itself -- silent mass loss is the failure this preserves-the-total step
+  # exists to avoid.
+  if (abs(unredist) > 1e-9)
+    warning(sprintf(paste0("step_trim_weights(): %.4g of weight could not be redistributed ",
+                          "(no units left to receive the trimmed mass), so the weighted total ",
+                          "changed by that amount. Set `upper`/`lower` explicitly, or check for ",
+                          "a dominant modal weight."), unredist), call. = FALSE)
 
   diag <- data.frame(
     method = if (is.null(step$method)) "tukey" else step$method,
@@ -671,8 +703,12 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
   conv_ok  <- isTRUE(attr(gsol, "converged")) && max(rel_dev) <= 1e-6
   # bounds may be per-unit (subgroup `by`); label them as a single value when
   # constant, else "by group", and count units at their OWN bound.
-  lo_lab <- if (length(unique(lower)) == 1L) format(lower[1]) else "by group"
-  up_lab <- if (length(unique(upper)) == 1L) format(upper[1]) else "by group"
+  # Both endpoints go through ONE formatter. format() uses 7 *significant* digits,
+  # so a pair like (0.00083516172, 109.806432) printed as
+  # "[0.0008351617, 109.8064]" -- ten decimals on one side, four on the other.
+  .b <- function(z) formatC(z, format = "fg", digits = 4, big.mark = ",", drop0trailing = TRUE)
+  lo_lab <- if (length(unique(lower)) == 1L) .b(lower[1]) else "by group"
+  up_lab <- if (length(unique(upper)) == 1L) .b(upper[1]) else "by group"
   if (!conv_ok)
     warning(sprintf(paste0("Trimmed calibration could not both stay within ",
       "[%s, %s] and preserve every total (max relative deviation = %.2e). ",
@@ -687,9 +723,9 @@ apply_step.step_trim_calibrated <- function(step, data, w) {
   attr(diag, "converged") <- conv_ok
   attr(diag, "note") <- sprintf(
     paste0("trimmed calibration to [%s, %s] (calfun = %s); %d weights raised to ",
-           "lower, %d capped at upper; f (adjustment) in [%.3f, %.3f]%s"),
+           "lower, %d capped at upper; f (adjustment) in [%s, %s]%s"),
     lo_lab, up_lab, step$calfun, n_at_lower, n_at_upper,
-    min(f), max(f), note_clust)
+    .b(min(f)), .b(max(f)), note_clust)
   attr(diag, "trim") <- data.frame(
     lower = if (length(unique(lower)) == 1L) lower[1] else NA_real_,
     upper = if (length(unique(upper)) == 1L) upper[1] else NA_real_,

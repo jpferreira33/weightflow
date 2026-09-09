@@ -12,8 +12,21 @@
   if (!requireNamespace("xgboost", quietly = TRUE))
     stop("engine = 'boost' requires the 'xgboost' package (install.packages('xgboost')).")
   rhs <- stats::reformulate(attr(stats::terms(formula), "term.labels"))
+  # Freeze the factor levels of the TRAINING data. model.matrix() picks a factor's
+  # reference level from the levels observed in each data.frame, so a fold (or the
+  # population) that is missing a level would get a DIFFERENT reference and encode that
+  # category as the training reference -- a silent misclassification under crossfit and in
+  # the population prediction. Coerce every categorical predictor to the training levels
+  # first, so the reference and the columns are identical everywhere. (ML-01)
+  cat_vars <- Filter(function(v) v %in% names(train) &&
+                       (is.factor(train[[v]]) || is.character(train[[v]])), all.vars(rhs))
+  lev <- stats::setNames(lapply(cat_vars, function(v) levels(as.factor(train[[v]]))), cat_vars)
+  fix_levels <- function(df) {
+    for (v in names(lev)) if (v %in% names(df)) df[[v]] <- factor(df[[v]], levels = lev[[v]])
+    df
+  }
   mm  <- function(df) {
-    M <- stats::model.matrix(rhs, data = df)
+    M <- stats::model.matrix(rhs, data = fix_levels(df))
     M[, colnames(M) != "(Intercept)", drop = FALSE]
   }
   Xtr <- mm(train)

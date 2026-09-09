@@ -56,6 +56,17 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
       !(spec$base_weights %in% names(data)))
     data[[spec$base_weights]] <- 1
   w    <- data[[spec$base_weights]]
+  # Validate the base weights here, not only in weighting_spec(): read_recipe() builds the
+  # spec with structure() and bypasses the constructor, so a character base column (from a
+  # CSV / SPSS import) would otherwise flow through as-is, make every weight non-numeric, and
+  # collect_weights() would return 0 rows -- a silent total loss. (PREP-02)
+  if (is.null(w))
+    stop(sprintf("Base-weight column '%s' is not in the data.", spec$base_weights),
+         call. = FALSE)
+  if (!is.numeric(w))
+    stop(sprintf(paste0("Base-weight column '%s' must be numeric, not <%s>. Convert it with ",
+                        "as.numeric() (e.g. after read.csv(stringsAsFactors = TRUE) or an ",
+                        "SPSS/Stata import)."), spec$base_weights, class(w)[1]), call. = FALSE)
   attr(data, "weightflow_base_w") <- w     # available to step_trim(reference = "base")
 
   history <- list(base = w)             # weight at each stage
@@ -83,9 +94,16 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
                           "cell total, or an extreme calibration factor -- check that step's ",
                           "inputs."),
                    i, class(steps[[i]])[1], sum(!is.finite(w))), call. = FALSE)
+    # A step that leaves 0 active units (every weight 0) makes the rest of the cascade a
+    # no-op and collect_weights() empty; without an alert this is silent. Flag the step that
+    # emptied the sample (once, on the transition from some-active to none). (PREP-01)
+    if (sum(.wf_active(w)) == 0L && sum(.wf_active(w_before)) > 0L)
+      step_warnings <- c(step_warnings, paste0(
+        "this step left 0 active units (every weight is 0); the rest of the recipe is a ",
+        "no-op and the weighted result is empty -- check the step's condition or totals."))
     steps[[i]]$diagnostics <- res$diagnostics
     step_cls  <- class(steps[[i]])[1]
-    is_calib  <- inherits(steps[[i]], c("step_calibrate", "step_model_calibration"))
+    is_calib  <- inherits(steps[[i]], c("step_calibrate", "step_model_calibration", "step_cre"))
     cell_step <- inherits(steps[[i]], c("step_nonresponse", "step_unknown_eligibility",
                                         "step_calibrate"))
     # Alerts derived from the weights/diagnostics of this step. These are emitted
@@ -274,9 +292,9 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
   if (!is.null(pm) && is.finite(pm) && pm < 0.01)
     msgs <- c(msgs, sprintf(
       paste0("Very small response propensities (min p = %.4f among respondents) ",
-             "produce extreme 1/p weights (up to %.0fx). Check the propensity model, ",
+             "produce extreme 1/p weights (up to %sx). Check the propensity model, ",
              "or trim with step_trim_weights()."),
-      pm, 1 / pm))
+      pm, format(round(1 / pm), big.mark = ",", scientific = FALSE)))
 
   # NP-01 mirror: for a pseudo-weight (participation odds (1 - p)/p) a participation
   # propensity near 1 sends the pseudo-weight toward 0, so the unit all but drops out
@@ -343,9 +361,9 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
     if (is.finite(pmin) && pmin > 0 && pmin < 0.02)
       msgs <- c(msgs, sprintf(
         paste0("A very small phase-2 selection probability (min pi2 = %.4f) expands the ",
-               "subsampled weights by up to %.0fx, which inflates the phase-2 variance ",
+               "subsampled weights by up to %sx, which inflates the phase-2 variance ",
                "component (V2). Check the phase-2 design or trim the expanded weights."),
-        pmin, 1 / pmin))
+        pmin, format(round(1 / pmin), big.mark = ",", scientific = FALSE)))
   }
 
   # Ill-conditioned linear/GREG calibration: near-collinear auxiliaries make the
