@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,10 +41,16 @@
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Panels</h6></li>
+    <li><a class="dropdown-item" href="../articles/rotating-panels.html">Rotating panels: net change, chaining and gross flows</a></li>
+    <li><a class="dropdown-item" href="../articles/panel-longitudinal.html">Pure panels: the longitudinal weight and gross flows</a></li>
+    <li><a class="dropdown-item" href="../articles/coordinated-replication.html">Coordinated replication: what travels between waves</a></li>
+    <li><a class="dropdown-item" href="../articles/composite-estimation.html">Composite estimation: borrowing strength from the previous wave</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
-    <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
+    <li><a class="dropdown-item" href="../articles/validation.html">Validation against survey and ReGenesees</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -270,6 +276,34 @@
 
         </dt>
         <dd>Sensitivity of a mean to nonignorable nonresponse or selection</dd>
+
+        <dt>
+
+          <code><a href="step_cross_sectional.html">step_cross_sectional()</a></code> <code><a href="step_cross_sectional.html">step_longitudinal()</a></code>
+
+        </dt>
+        <dd>Declare the recipe's scope: cross-sectional or longitudinal weights</dd>
+
+        <dt>
+
+          <code><a href="step_panel_overlap.html">step_panel_overlap()</a></code>
+
+        </dt>
+        <dd>Adjust base weights by the panel-selection probability (CEPAL ch. XVI)</dd>
+
+        <dt>
+
+          <code><a href="step_attrition.html">step_attrition()</a></code>
+
+        </dt>
+        <dd>Attrition adjustment for panel waves</dd>
+
+        <dt>
+
+          <code><a href="step_cre.html">step_cre()</a></code>
+
+        </dt>
+        <dd>Composite regression estimator (CRE / regression composite estimation)</dd>
       </dl></div><div class="section level2">
       <h2 id="diagnostics-and-reporting">Diagnostics and reporting<a class="anchor" aria-label="anchor" href="#diagnostics-and-reporting"></a></h2>
 
@@ -436,6 +470,143 @@
         </dt>
         <dd>Print a jackknife replicate-weight object</dd>
       </dl></div><div class="section level2">
+      <h2 id="panels">Panels<a class="anchor" aria-label="anchor" href="#panels"></a></h2>
+
+      <div class="section-desc"><p>Rotating and pure panels – structure, net change, chaining and gross flows.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="panel_design.html">panel_design()</a></code>
+
+        </dt>
+        <dd>Describe the rotating-panel structure of a survey</dd>
+
+        <dt>
+
+          <code><a href="panel_merge.html">panel_merge()</a></code>
+
+        </dt>
+        <dd>Build the wide longitudinal file from per-wave surveys</dd>
+
+        <dt>
+
+          <code><a href="panel_pr.html">panel_pr()</a></code>
+
+        </dt>
+        <dd>Panel-selection probability for a set of combined waves</dd>
+
+        <dt>
+
+          <code><a href="wave_bootstrap.html">wave_bootstrap()</a></code>
+
+        </dt>
+        <dd>Coordinated bootstrap across panel waves</dd>
+
+        <dt>
+
+          <code><a href="wave_jackknife.html">wave_jackknife()</a></code>
+
+        </dt>
+        <dd>Coordinated delete-one jackknife across panel waves</dd>
+
+        <dt>
+
+          <code><a href="change_estimate.html">change_estimate()</a></code> <code><a href="change_estimate.html">change_mean()</a></code> <code><a href="change_estimate.html">change_total()</a></code>
+
+        </dt>
+        <dd>Net change between two panel waves, with honest variance</dd>
+
+        <dt>
+
+          <code><a href="level_estimate.html">level_estimate()</a></code> <code><a href="level_estimate.html">level_mean()</a></code> <code><a href="level_estimate.html">level_total()</a></code>
+
+        </dt>
+        <dd>Level estimate for a single panel wave, with its replicate variance</dd>
+
+        <dt>
+
+          <code><a href="panel_estimate.html">panel_estimate()</a></code> <code><a href="panel_estimate.html">panel_mean()</a></code> <code><a href="panel_estimate.html">panel_total()</a></code>
+
+        </dt>
+        <dd>Linear combination of panel waves, with honest between-wave variance</dd>
+
+        <dt>
+
+          <code><a href="wave_step.html">wave_step()</a></code>
+
+        </dt>
+        <dd>One period of a coordinated panel bootstrap, chained from the previous ones</dd>
+
+        <dt>
+
+          <code><a href="wave_carry.html">wave_carry()</a></code>
+
+        </dt>
+        <dd>Extract the carry artifact of a period</dd>
+
+        <dt>
+
+          <code><a href="wave_contrast.html">wave_contrast()</a></code>
+
+        </dt>
+        <dd>Linear combination of an estimand across a chain of periods</dd>
+
+        <dt>
+
+          <code><a href="transition_matrix.html">transition_matrix()</a></code>
+
+        </dt>
+        <dd>Gross-flow transition matrix between two panel waves</dd>
+
+        <dt>
+
+          <code><a href="boot_transition.html">boot_transition()</a></code>
+
+        </dt>
+        <dd>Transition matrix with per-cell bootstrap standard errors</dd>
+
+        <dt>
+
+          <code><a href="boot_flows.html">boot_flows()</a></code>
+
+        </dt>
+        <dd>Gross-flow TOTALS with standard errors, plus net flows and margins</dd>
+
+        <dt>
+
+          <code><a href="report_panel.html">report_panel()</a></code>
+
+        </dt>
+        <dd>Panel / longitudinal HTML report</dd>
+      </dl></div><div class="section level2">
+      <h2 id="estimation-grammar">Estimation grammar<a class="anchor" aria-label="anchor" href="#estimation-grammar"></a></h2>
+
+      <div class="section-desc"><p>Declare domains and estimands once, read them off a saved replicate object.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="step_domain.html">step_domain()</a></code> <code><a href="step_domain.html">step_filter()</a></code> <code><a href="step_domain.html">step_estimate()</a></code> <code><a href="step_domain.html">step_transition()</a></code>
+
+        </dt>
+        <dd>Declarative estimation over a coordinated panel object</dd>
+
+        <dt>
+
+          <code><a href="collect_estimates.html">collect_estimates()</a></code>
+
+        </dt>
+        <dd>Evaluate an estimation pipeline</dd>
+      </dl></div><div class="section level2">
       <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a></h2>
 
 
@@ -465,6 +636,13 @@
 
         </dt>
         <dd>Synthetic address sample with one selected person per household</dd>
+
+        <dt>
+
+          <code><a href="panel_datasets.html">panel_puro</a></code> <code><a href="panel_datasets.html">panel_cl</a></code> <code><a href="panel_datasets.html">panel_ine</a></code> <code><a href="panel_datasets.html">panel_us</a></code>
+
+        </dt>
+        <dd>Synthetic rotating- and pure-panel datasets</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

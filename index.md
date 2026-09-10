@@ -618,6 +618,23 @@ adjustment, define a `step_*()` constructor (inert) and its
   Springer.
 - Lumley, T. (2010). *Complex Surveys: A Guide to Analysis Using R*.
   Wiley.
+- Berger, Y. G., & Priam, R. (2016). A simple variance estimator of
+  change for rotating repeated surveys. *Journal of the Royal
+  Statistical Society A*, 179(1), 251–272.
+- Statistics Canada (2008). *Methodology of the Canadian Labour Force
+  Survey*, cat. 71-526-X, sec. 7.2.2. *(coordinated bootstrap for
+  rotating panels)*.
+
+## Citation
+
+If you use weightflow in published work, please cite:
+
+> Ferreira, J. P. (2026). Weightflow: Reproducible, recipe-aware survey
+> weighting for official statistics in R. *Statistical Journal of the
+> IAOS*. Advance online publication.
+> <https://doi.org/10.1177/18747655261484262>
+
+`citation("weightflow")` returns the same reference as BibTeX.
 
 ## License
 

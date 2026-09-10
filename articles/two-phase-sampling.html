@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -63,10 +63,16 @@
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Panels</h6></li>
+    <li><a class="dropdown-item" href="../articles/rotating-panels.html">Rotating panels: net change, chaining and gross flows</a></li>
+    <li><a class="dropdown-item" href="../articles/panel-longitudinal.html">Pure panels: the longitudinal weight and gross flows</a></li>
+    <li><a class="dropdown-item" href="../articles/coordinated-replication.html">Coordinated replication: what travels between waves</a></li>
+    <li><a class="dropdown-item" href="../articles/composite-estimation.html">Composite estimation: borrowing strength from the previous wave</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
-    <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
+    <li><a class="dropdown-item" href="../articles/validation.html">Validation against survey and ReGenesees</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -289,6 +295,23 @@ two-phase recipe (use the bootstrap), and
 <code><a href="../reference/bootstrap_weights.html">bootstrap_weights()</a></code> raises a clear error rather than
 silently undercovering when first-phase
 <code>strata</code>/<code>psu</code> are supplied.</p>
+<p><strong>Means and ratios vs. totals.</strong> The per-PSU Gamma
+factor is a Hansen-Hurwitz (uncentred) multiplier: its variance
+contribution enters through the sum of squares
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∑</mo><msub><mi>d</mi><mi>k</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>w</mi><mi>k</mi></msub><msub><mi>y</mi><mi>k</mi></msub><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\sum d_k (w_k y_k)^2</annotation></semantics></math>,
+not the stratum-centred Rao-Wu form
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∑</mo><mfrac><msub><mi>n</mi><mi>h</mi></msub><mrow><msub><mi>n</mi><mi>h</mi></msub><mo>−</mo><mn>1</mn></mrow></mfrac><mo>∑</mo><mo stretchy="false" form="prefix">(</mo><mi>z</mi><mo>−</mo><mover><mi>z</mi><mo accent="true">‾</mo></mover><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\sum \frac{n_h}{n_h-1}\sum (z-\bar z)^2</annotation></semantics></math>.
+For a <strong>mean or ratio</strong> the factor cancels between
+numerator and denominator, so the estimate self-centres and the variance
+is right. For a <strong>total</strong> it does not cancel: the phase-1
+component is then <em>materially</em> conservative and can overestimate
+the variance substantially (not merely “slightly”).
+<code><a href="../reference/bootstrap_estimate.html">boot_total()</a></code> and
+<code>two_phase_variance(estimator = "total")</code> therefore warn, and
+their SE should be read as an upper bound; use the
+<code>"mean"</code>/ratio path, or an exact stratified
+without-replacement second phase (a planned extension), when a tight
+total variance is required.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

@@ -105,6 +105,7 @@ samples. Statistical Science 32(2), 249-264.
 Other weighting steps:
 [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
 [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md),
 [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
 [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
@@ -121,7 +122,6 @@ Other weighting steps:
 ## Examples
 
 ``` r
-# \donttest{
 set.seed(1)
 N   <- nrow(population)
 # a biased volunteer sample (men over-participate) and a probability reference
@@ -139,5 +139,4 @@ c(naive = mean(vol$income),
   truth = mean(population$income))
 #>    naive   pseudo    truth 
 #> 19353.58 18936.79 19298.11 
-# }
 ```

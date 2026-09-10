@@ -63,7 +63,6 @@ binding constraint.
 ## Examples
 
 ``` r
-# \donttest{
 df <- transform(sample_survey,
                 in2 = as.integer(runif(nrow(sample_survey)) < 0.3), p2 = 0.3)
 spec <- weighting_spec(df, base_weights = pw) |>
@@ -74,5 +73,4 @@ two_phase_variance(spec, "income", replicates = 100)
 #>   V2  phase-2  = 1.34677e+06   (SE 1160.5)
 #>   V   total    = 2.07849e+06   (SE 1441.7)
 #>   phase-2 share  V2/V = 64.8%
-# }
 ```

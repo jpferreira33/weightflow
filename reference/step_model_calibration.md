@@ -171,6 +171,7 @@ American Statistical Association*, 96(453), 185-193.
 Other weighting steps:
 [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
 [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md),
 [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
 [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
 [`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),

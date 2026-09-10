@@ -217,6 +217,7 @@ Sarndal-Lundstrom approach).
 Other weighting steps:
 [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
 [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md),
 [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
 [`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),
@@ -292,7 +293,6 @@ weighting_spec(sample_survey, base_weights = pw) |>
 #> 
 
 # gradient boosting engine (requires the 'xgboost' package)
-# \donttest{
 if (requireNamespace("xgboost", quietly = TRUE)) {
   weighting_spec(sample_survey, base_weights = pw) |>
     step_nonresponse(respondent = responded, method = "propensity",
@@ -311,13 +311,12 @@ if (requireNamespace("xgboost", quietly = TRUE)) {
 #> Stage summary:
 #>                     stage n_active sum_wts cv_wts deff_kish n_eff
 #>                      base      467    4371  0.236     1.056   442
-#>  stage_1_step_nonresponse      270    4371  0.254     1.065   254
+#>  stage_1_step_nonresponse      270    4371  0.245     1.060   255
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and
 #> improve with trimming.
 #> 
-# }
 
 # nonresponse by calibration (two-phase): calibrate the respondents to the
 # R+NR design-weighted totals of the auxiliaries at that stage, so their

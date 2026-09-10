@@ -1,0 +1,225 @@
+# Coordinated replication: what travels between waves
+
+A rotating panel measures part of the same sample twice. That shared
+part is what makes a **change** more precise than the two levels it is
+built from – and it is also what makes the change harder to estimate,
+because the two samples are not independent. With replication, the
+covariance is not something you compute from a formula: it is something
+the replicates either carry or lose. This article is about the mechanism
+that carries it, so that `$strata` can be read as the quality indicator
+it is meant to be.
+
+## What has to travel
+
+In a rescaling bootstrap each replicate draws, for every stratum, how
+many times each PSU is selected – its **multiplicity** `c_hi` – and
+turns it into the replicate factor
+
+``` math
+\lambda_{hi} = 1 - a_h + a_h \frac{n_h}{m_h} c_{hi}, \qquad a_h = \sqrt{\frac{m_h}{n_h - 1}}.
+```
+
+For replicate *b* of period *t* to be comparable with replicate *b* of
+period *t-1*, a PSU present in both must be resampled **the same way**
+in both. So what travels between periods is the multiplicity matrix
+itself, not the random seed and not the uniforms behind it.
+
+The distinction matters. Re-drawing period *t* from a stored uniform
+looks equivalent and is not: the exact multinomial draw is a joint
+constraint over the whole stratum (the multiplicities must add up to
+`m_h`), so re-drawing cannot both keep the stratum total right *and*
+give every shared PSU exactly the multiplicity it had. Transferring the
+integers does both. This is the Statistics Canada LFS procedure (cat.
+71-526-X, sec. 7.2.2, after Roberts, Kovacevic, Mantel and Phillips
+2001), and it is what
+[`wave_step()`](https://jpferreira33.github.io/weightflow/reference/wave_step.md)
+implements.
+
+## The four cases
+
+Which of these applies is decided by the stratum, not by the design as a
+whole, and it is decided anew every period:
+
+| case | situation | what happens | exact? |
+|----|----|----|----|
+| **i** | the stratum keeps exactly its PSUs | each PSU inherits its own multiplicity | yes |
+| **ii** | some PSUs rotate out and as many rotate in, `n_h` unchanged | each incoming PSU is paired with an outgoing one and inherits its multiplicity: a permutation | yes |
+| **iii** | the stratum has **fewer** PSUs than before | the transfer leaves the column short, and multiplicity is added at random until it closes on `m_h` | no |
+| **iv** | the stratum has **more** PSUs than before | the column overshoots, and multiplicity is dropped at random | no |
+
+Cases i and ii preserve two things at once: the stratum total stays
+exactly `m_h`, so the replicate is a valid Rao-Wu replicate, and every
+shared PSU keeps exactly its resampling, so the covariance is
+transmitted intact. Cases iii and iv can only preserve the first, so
+some replicates have to be adjusted and the coordination becomes
+approximate.
+
+Two labels are not cases: `fresh` (the first period of a chain – there
+is nothing to coordinate with) and `singleton` (a stratum with one PSU,
+which has no within-stratum variance to resample).
+
+## Reading `$strata`
+
+A rotating design with four strata, five PSUs each, two of which are
+replaced between waves:
+
+``` r
+
+set.seed(11)
+mk <- function(psus, shift = 0) {
+  do.call(rbind, lapply(psus, function(k) {
+    data.frame(stratum = (k - 1L) %/% 100L, psu = k, w = 20,
+               y = rnorm(8, 10 + 2 * ((k %% 7) - 3) + shift, 2))
+  }))
+}
+w1 <- mk(unlist(lapply(1:4, function(h) h * 100L + 1:5)))              # PSUs 1-5
+w2 <- mk(unlist(lapply(1:4, function(h) h * 100L + c(3:5, 6:7))), 0.5) # 3-7: rotates 2 of 5
+w3 <- mk(unlist(lapply(1:4, function(h) h * 100L + c(5:7, 8))), 1)     # 5-8: only 4 left
+
+sp  <- function(d) weighting_spec(d, base_weights = w)
+EST <- list(mean_y = function(w, d) weighted.mean(d$y, w))
+```
+
+``` r
+
+t1 <- wave_step(sp(w1), estimands = EST, replicates = 300, strata = "stratum",
+                psu = "psu", period = "T1", seed = 1, progress = FALSE)
+k1 <- wave_carry(t1)
+
+t2 <- wave_step(sp(w2), previous = k1, estimands = EST, replicates = 300,
+                strata = "stratum", psu = "psu", period = "T2", seed = 2, progress = FALSE)
+t2$strata
+#>   stratum n_psu inherited fresh case coordinated
+#> 1       1     5         3     2   ii           1
+#> 2       2     5         3     2   ii           1
+#> 3       3     5         3     2   ii           1
+#> 4       4     5         3     2   ii           1
+```
+
+Five PSUs before, five after, three of them shared: **case ii**, and
+`coordinated = 1` – every one of the 300 replicates closed without
+adjustment. That column is the quality indicator. It is the share of
+replicates in which the transferred multiplicities already summed to
+`m_h`, so nothing had to be added or dropped at random. At 1 the
+coordination is exact and the reported covariance is the design’s; below
+1, that fraction of replicates has been perturbed.
+
+Now let the third wave lose a PSU per stratum:
+
+``` r
+
+k2 <- wave_carry(t2)
+t3 <- wave_step(sp(w3), previous = list(k2, k1), estimands = EST, replicates = 300,
+                strata = "stratum", psu = "psu", period = "T3", seed = 3, progress = FALSE)
+t3$strata
+#>   stratum n_psu inherited fresh case coordinated
+#> 1       1     4         3     1  iii   0.4166667
+#> 2       2     4         3     1  iii   0.4133333
+#> 3       3     4         3     1  iii   0.4233333
+#> 4       4     4         3     1  iii   0.4233333
+```
+
+**Case iii**, and `coordinated` falls to about 0.42: in roughly three of
+every five replicates the transferred column came up short of `m_h` and
+had to be topped up at random. The estimate is still usable – this is a
+nuisance, not a failure – but it is no longer exact, and a figure whose
+`coordinated` column sits near zero is one to report with that caveat,
+or to fix upstream by keeping the stratum’s PSU count stable across
+waves.
+
+## The covariance *is* the pairing
+
+The claim that coordination transmits the covariance can be verified in
+one line. The carry stores the `R` replicate values of every declared
+estimand, so the correlation between the two periods’ replicate vectors
+should be exactly the `rho` reported for the change:
+
+``` r
+
+c(cor_replicates = cor(k1$theta$mean_y, k2$theta$mean_y),
+  rho_reported   = t2$change$rho)
+#> cor_replicates   rho_reported 
+#>      0.6216396      0.6215412
+```
+
+They agree to three decimals. The two are not literally the same
+arithmetic – `$change` centres the replicates on the point estimate and
+divides by `R`, while [`cor()`](https://rdrr.io/r/stats/cor.html)
+centres on the replicate mean and divides by `R - 1` – but they are two
+readings of the same alignment, and nothing else in the run produces it.
+The pairing is the whole of it – destroy the alignment and the
+covariance goes with it, even though both vectors are untouched as sets:
+
+``` r
+
+set.seed(4)
+cor(k1$theta$mean_y, sample(k2$theta$mean_y))
+#> [1] -0.02947148
+```
+
+That is the reason the variance of a change cannot be recovered after
+the fact from two independently produced sets of replicate weights,
+however carefully each was built. It has to be arranged while the second
+set is drawn.
+
+## `previous` is a list, and the lag is a design property
+
+[`wave_step()`](https://jpferreira33.github.io/weightflow/reference/wave_step.md)
+takes a **list** of carries because which earlier periods share sample
+with this one is decided by the rotation calendar, not by proximity. A
+6-consecutive design overlaps at lags 1 to 5; a `4-8-4` design overlaps
+at lags 1-3 and again at 9-15; a `1(2)5` design shares nothing at all
+with the adjacent quarter. Each PSU inherits from the **most recent**
+carry that contains it, so gaps and returning cohorts resolve themselves
+and no window parameter is needed. Supply every carry whose period
+shares sample with this one;
+[`panel_design()`](https://jpferreira33.github.io/weightflow/reference/panel_design.md)
+prints the overlap profile that tells you which those are.
+
+The third wave above was given both earlier carries, so it reports a
+change against each, with the correlation decaying as the overlap thins:
+
+``` r
+
+t3$change[, c("from", "to", "estimate", "se", "rho", "deff_change")]
+#>   from to    estimate        se       rho deff_change
+#> 1   T2 T3 -0.03451029 0.9577166 0.4682287   0.5362414
+#> 2   T1 T3  0.40947474 1.2734017 0.1164931   0.8837216
+```
+
+`deff_change` is `V / (V1 + V2)`: what the overlap saved relative to
+treating the two periods as independent samples. Note that ignoring the
+overlap is not conservative – it is simply wrong, and in which direction
+depends on the sign of the covariance.
+
+## What coordination does not touch
+
+The published cross-sectional weights. `t2$weights` is identical to
+`prep(spec)$final_weight`:
+
+``` r
+
+identical(t2$weights, prep(sp(w2))$final_weight)
+#> [1] TRUE
+```
+
+Coordination adds the change, the diagnostics and the carry. It never
+moves the point estimate the office publishes, which is what makes it
+safe to add to a production run that already exists.
+
+## Where to look next
+
+[`?wave_step`](https://jpferreira33.github.io/weightflow/reference/wave_step.md)
+and
+[`?wave_carry`](https://jpferreira33.github.io/weightflow/reference/wave_carry.md)
+for the chaining engine,
+[`?wave_contrast`](https://jpferreira33.github.io/weightflow/reference/wave_contrast.md)
+for linear combinations over a chain (a rolling quarter, an annual
+average),
+[`?panel_design`](https://jpferreira33.github.io/weightflow/reference/panel_design.md)
+for the rotation calendar and the overlap profile it implies, and
+[`vignette("rotating-panels")`](https://jpferreira33.github.io/weightflow/articles/rotating-panels.md)
+for the production workflow these pieces serve. The agreement of the
+resulting change variance with an analytic estimator from a different
+family is checked in
+[`vignette("validation")`](https://jpferreira33.github.io/weightflow/articles/validation.md).

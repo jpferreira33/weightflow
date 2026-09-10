@@ -179,6 +179,7 @@ exactly, as \\c_j \to 0\\ the weights return to \\d_i\\.
 
 Other weighting steps:
 [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
+[`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md),
 [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
 [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),

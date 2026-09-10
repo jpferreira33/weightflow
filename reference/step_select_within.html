@@ -17,7 +17,7 @@ nonresponse step."><meta property="og:image" content="https://jpferreira33.githu
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,10 +51,16 @@ nonresponse step."><meta property="og:image" content="https://jpferreira33.githu
     <li><h6 class="dropdown-header" data-toc-skip>Case study</h6></li>
     <li><a class="dropdown-item" href="../articles/ech-case-study.html">A full weighting pipeline on a real household survey (ECH 2019)</a></li>
     <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Panels</h6></li>
+    <li><a class="dropdown-item" href="../articles/rotating-panels.html">Rotating panels: net change, chaining and gross flows</a></li>
+    <li><a class="dropdown-item" href="../articles/panel-longitudinal.html">Pure panels: the longitudinal weight and gross flows</a></li>
+    <li><a class="dropdown-item" href="../articles/coordinated-replication.html">Coordinated replication: what travels between waves</a></li>
+    <li><a class="dropdown-item" href="../articles/composite-estimation.html">Composite estimation: borrowing strength from the previous wave</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Variance and validation</h6></li>
     <li><a class="dropdown-item" href="../articles/variance-estimation.html">Variance estimation</a></li>
     <li><a class="dropdown-item" href="../articles/two-phase-sampling.html">Two-phase (double) sampling</a></li>
-    <li><a class="dropdown-item" href="../articles/validation-against-survey.html">Validation against the survey package</a></li>
+    <li><a class="dropdown-item" href="../articles/validation.html">Validation against survey and ReGenesees</a></li>
   </ul></li>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -147,6 +153,7 @@ occurrence undoing one stage of subsampling.</p>
     <div class="dont-index"><p>Other weighting steps:
 <code><a href="step_assert.html">step_assert()</a></code>,
 <code><a href="step_calibrate.html">step_calibrate()</a></code>,
+<code><a href="step_cre.html">step_cre()</a></code>,
 <code><a href="step_drop_ineligible.html">step_drop_ineligible()</a></code>,
 <code><a href="step_model_calibration.html">step_model_calibration()</a></code>,
 <code><a href="step_nonresponse.html">step_nonresponse()</a></code>,

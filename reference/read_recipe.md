@@ -10,7 +10,7 @@ executable `weighting_spec` bound to that data, ready for
 ## Usage
 
 ``` r
-read_recipe(file, data = NULL, references = NULL)
+read_recipe(file, data = NULL, references = NULL, allow_code = FALSE)
 ```
 
 ## Arguments
@@ -32,6 +32,15 @@ read_recipe(file, data = NULL, references = NULL)
   objects, named by the id of the step that uses each one, to restore
   the steps that calibrate or pseudo-weight against a reference (whose
   microdata the recipe does not store).
+
+- allow_code:
+
+  single logical. A step may store an R **function** as source (a custom
+  distance or statistic). Reconstructing it evaluates that source, which
+  is a code-execution risk for a recipe received from elsewhere. `FALSE`
+  (default) refuses such nodes with an error; set `TRUE` only for a file
+  you trust, exactly as you would
+  [`source()`](https://rdrr.io/r/base/source.html) it.
 
 ## Value
 
@@ -61,7 +70,7 @@ spec <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region")
 f <- tempfile(fileext = ".yml"); write_recipe(spec, f)
 read_recipe(f)                       # inspect the manifest
-#> weightflow recipe (written by version 1.2.0, 2026-09-04T02:48:01Z)
+#> weightflow recipe (written by version 1.3.0, 2026-09-10T17:23:45Z)
 #>   base weights: pw
 #>   1 step(s):
 #>     - nonresponse    nonresponse_1

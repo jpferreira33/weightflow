@@ -58,6 +58,7 @@ is called and does not modify the weights.
 
 Other weighting steps:
 [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md),
 [`step_drop_ineligible()`](https://jpferreira33.github.io/weightflow/reference/step_drop_ineligible.md),
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
 [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),

@@ -102,7 +102,7 @@ data:
 c(in_sample = design_effect(collect_weights(fit_boost)$.weight)$deff,
   crossfit  = design_effect(collect_weights(fit_cf)$.weight)$deff)
 #> in_sample  crossfit 
-#>  2.393923  1.491576
+#>  1.702181  1.458120
 ```
 
 In-sample boosting overfits and inflates the design effect;

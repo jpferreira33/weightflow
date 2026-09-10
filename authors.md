@@ -13,17 +13,15 @@
 Source:
 [`inst/CITATION`](https://github.com/jpferreira33/weightflow/blob/master/inst/CITATION)
 
-Ferreira, J. P. (2026). weightflow: reproducible, recipe-aware survey
-weighting for official statistics in R. arXiv preprint arXiv:2607.08491.
-https://arxiv.org/abs/2607.08491
+Ferreira, J. P. (2026). Weightflow: Reproducible, recipe-aware survey
+weighting for official statistics in R. Statistical Journal of the IAOS.
+Advance online publication. https://doi.org/10.1177/18747655261484262
 
-    @Misc{,
-      title = {weightflow: reproducible, recipe-aware survey weighting for official statistics in R},
+    @Article{,
+      title = {Weightflow: Reproducible, recipe-aware survey weighting for official statistics in R},
       author = {Juan Pablo Ferreira},
+      journal = {Statistical Journal of the IAOS},
       year = {2026},
-      eprint = {2607.08491},
-      archiveprefix = {arXiv},
-      doi = {10.48550/arXiv.2607.08491},
-      url = {https://arxiv.org/abs/2607.08491},
-      note = {arXiv preprint arXiv:2607.08491},
+      doi = {10.1177/18747655261484262},
+      note = {Advance online publication},
     }

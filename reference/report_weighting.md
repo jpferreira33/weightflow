@@ -106,9 +106,7 @@ report_weighting(
 fitted <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
   prep()
-# \donttest{
 # writes a self-contained HTML report to a temporary file (open = FALSE so
 # nothing is launched); use open = TRUE to view it in the browser.
 path <- report_weighting(fitted, open = FALSE)
-# }
 ```

@@ -12,7 +12,7 @@ been resolved, immediately after
 ## Usage
 
 ``` r
-step_drop_ineligible(spec, ineligible, id = NULL)
+step_drop_ineligible(spec, ineligible, reason = NULL, id = NULL)
 ```
 
 ## Arguments
@@ -25,6 +25,15 @@ step_drop_ineligible(spec, ineligible, id = NULL)
 
   a 0/1 dummy column (1 = ineligible) or any logical condition
   (unquoted) that is TRUE for out-of-scope units.
+
+- reason:
+
+  optional string naming why the units are out of scope (e.g.
+  `"left the target population between waves"`). Recorded for the report
+  narrative; it makes the panel distinction between a **between-wave
+  exit** of the universe (the longitudinal population shrank – weight 0,
+  no reweighting) and ordinary ineligibility explicit. Does not change
+  the computation.
 
 - id:
 
@@ -54,6 +63,7 @@ scope).
 Other weighting steps:
 [`step_assert()`](https://jpferreira33.github.io/weightflow/reference/step_assert.md),
 [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md),
+[`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md),
 [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md),
 [`step_nonresponse()`](https://jpferreira33.github.io/weightflow/reference/step_nonresponse.md),
 [`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md),

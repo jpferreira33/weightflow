@@ -45,11 +45,22 @@
 - [A full weighting pipeline on a real household survey (ECH
   2019)](https://jpferreira33.github.io/weightflow/articles/ech-case-study.md):
 
+### Panels
+
+- [Rotating panels: net change, chaining and gross
+  flows](https://jpferreira33.github.io/weightflow/articles/rotating-panels.md):
+- [Pure panels: the longitudinal weight and gross
+  flows](https://jpferreira33.github.io/weightflow/articles/panel-longitudinal.md):
+- [Coordinated replication: what travels between
+  waves](https://jpferreira33.github.io/weightflow/articles/coordinated-replication.md):
+- [Composite estimation: borrowing strength from the previous
+  wave](https://jpferreira33.github.io/weightflow/articles/composite-estimation.md):
+
 ### Variance and validation
 
 - [Variance
   estimation](https://jpferreira33.github.io/weightflow/articles/variance-estimation.md):
 - [Two-phase (double)
   sampling](https://jpferreira33.github.io/weightflow/articles/two-phase-sampling.md):
-- [Validation against the survey
-  package](https://jpferreira33.github.io/weightflow/articles/validation-against-survey.md):
+- [Validation against survey and
+  ReGenesees](https://jpferreira33.github.io/weightflow/articles/validation.md):

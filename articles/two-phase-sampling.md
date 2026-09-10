@@ -207,6 +207,21 @@ refuses a two-phase recipe (use the bootstrap), and
 raises a clear error rather than silently undercovering when first-phase
 `strata`/`psu` are supplied.
 
+**Means and ratios vs. totals.** The per-PSU Gamma factor is a
+Hansen-Hurwitz (uncentred) multiplier: its variance contribution enters
+through the sum of squares $`\sum d_k (w_k y_k)^2`$, not the
+stratum-centred Rao-Wu form $`\sum \frac{n_h}{n_h-1}\sum (z-\bar z)^2`$.
+For a **mean or ratio** the factor cancels between numerator and
+denominator, so the estimate self-centres and the variance is right. For
+a **total** it does not cancel: the phase-1 component is then
+*materially* conservative and can overestimate the variance
+substantially (not merely “slightly”).
+[`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+and `two_phase_variance(estimator = "total")` therefore warn, and their
+SE should be read as an upper bound; use the `"mean"`/ratio path, or an
+exact stratified without-replacement second phase (a planned extension),
+when a tight total variance is required.
+
 ## References
 
 Sarndal, Swensson and Wretman (1992), *Model Assisted Survey Sampling*,

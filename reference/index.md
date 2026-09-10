@@ -67,6 +67,17 @@ The staged adjustments, applied in the order you pipe them.
   : Assert quality conditions on the weights
 - [`step_nr_sensitivity()`](https://jpferreira33.github.io/weightflow/reference/step_nr_sensitivity.md)
   : Sensitivity of a mean to nonignorable nonresponse or selection
+- [`step_cross_sectional()`](https://jpferreira33.github.io/weightflow/reference/step_cross_sectional.md)
+  [`step_longitudinal()`](https://jpferreira33.github.io/weightflow/reference/step_cross_sectional.md)
+  : Declare the recipe's scope: cross-sectional or longitudinal weights
+- [`step_panel_overlap()`](https://jpferreira33.github.io/weightflow/reference/step_panel_overlap.md)
+  : Adjust base weights by the panel-selection probability (CEPAL ch.
+  XVI)
+- [`step_attrition()`](https://jpferreira33.github.io/weightflow/reference/step_attrition.md)
+  : Attrition adjustment for panel waves
+- [`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md)
+  : Composite regression estimator (CRE / regression composite
+  estimation)
 
 ## Diagnostics and reporting
 
@@ -128,6 +139,62 @@ bridges.
 - [`print(`*`<weightflow_jack>`*`)`](https://jpferreira33.github.io/weightflow/reference/print.weightflow_jack.md)
   : Print a jackknife replicate-weight object
 
+## Panels
+
+Rotating and pure panels – structure, net change, chaining and gross
+flows.
+
+- [`panel_design()`](https://jpferreira33.github.io/weightflow/reference/panel_design.md)
+  : Describe the rotating-panel structure of a survey
+- [`panel_merge()`](https://jpferreira33.github.io/weightflow/reference/panel_merge.md)
+  : Build the wide longitudinal file from per-wave surveys
+- [`panel_pr()`](https://jpferreira33.github.io/weightflow/reference/panel_pr.md)
+  : Panel-selection probability for a set of combined waves
+- [`wave_bootstrap()`](https://jpferreira33.github.io/weightflow/reference/wave_bootstrap.md)
+  : Coordinated bootstrap across panel waves
+- [`wave_jackknife()`](https://jpferreira33.github.io/weightflow/reference/wave_jackknife.md)
+  : Coordinated delete-one jackknife across panel waves
+- [`change_estimate()`](https://jpferreira33.github.io/weightflow/reference/change_estimate.md)
+  [`change_mean()`](https://jpferreira33.github.io/weightflow/reference/change_estimate.md)
+  [`change_total()`](https://jpferreira33.github.io/weightflow/reference/change_estimate.md)
+  : Net change between two panel waves, with honest variance
+- [`level_estimate()`](https://jpferreira33.github.io/weightflow/reference/level_estimate.md)
+  [`level_mean()`](https://jpferreira33.github.io/weightflow/reference/level_estimate.md)
+  [`level_total()`](https://jpferreira33.github.io/weightflow/reference/level_estimate.md)
+  : Level estimate for a single panel wave, with its replicate variance
+- [`panel_estimate()`](https://jpferreira33.github.io/weightflow/reference/panel_estimate.md)
+  [`panel_mean()`](https://jpferreira33.github.io/weightflow/reference/panel_estimate.md)
+  [`panel_total()`](https://jpferreira33.github.io/weightflow/reference/panel_estimate.md)
+  : Linear combination of panel waves, with honest between-wave variance
+- [`wave_step()`](https://jpferreira33.github.io/weightflow/reference/wave_step.md)
+  : One period of a coordinated panel bootstrap, chained from the
+  previous ones
+- [`wave_carry()`](https://jpferreira33.github.io/weightflow/reference/wave_carry.md)
+  : Extract the carry artifact of a period
+- [`wave_contrast()`](https://jpferreira33.github.io/weightflow/reference/wave_contrast.md)
+  : Linear combination of an estimand across a chain of periods
+- [`transition_matrix()`](https://jpferreira33.github.io/weightflow/reference/transition_matrix.md)
+  : Gross-flow transition matrix between two panel waves
+- [`boot_transition()`](https://jpferreira33.github.io/weightflow/reference/boot_transition.md)
+  : Transition matrix with per-cell bootstrap standard errors
+- [`boot_flows()`](https://jpferreira33.github.io/weightflow/reference/boot_flows.md)
+  : Gross-flow TOTALS with standard errors, plus net flows and margins
+- [`report_panel()`](https://jpferreira33.github.io/weightflow/reference/report_panel.md)
+  : Panel / longitudinal HTML report
+
+## Estimation grammar
+
+Declare domains and estimands once, read them off a saved replicate
+object.
+
+- [`step_domain()`](https://jpferreira33.github.io/weightflow/reference/step_domain.md)
+  [`step_filter()`](https://jpferreira33.github.io/weightflow/reference/step_domain.md)
+  [`step_estimate()`](https://jpferreira33.github.io/weightflow/reference/step_domain.md)
+  [`step_transition()`](https://jpferreira33.github.io/weightflow/reference/step_domain.md)
+  : Declarative estimation over a coordinated panel object
+- [`collect_estimates()`](https://jpferreira33.github.io/weightflow/reference/collect_estimates.md)
+  : Evaluate an estimation pipeline
+
 ## Example data
 
 - [`population`](https://jpferreira33.github.io/weightflow/reference/population.md)
@@ -136,3 +203,8 @@ bridges.
   : Synthetic person sample with a take-all household roster
 - [`sample_one`](https://jpferreira33.github.io/weightflow/reference/sample_one.md)
   : Synthetic address sample with one selected person per household
+- [`panel_puro`](https://jpferreira33.github.io/weightflow/reference/panel_datasets.md)
+  [`panel_cl`](https://jpferreira33.github.io/weightflow/reference/panel_datasets.md)
+  [`panel_ine`](https://jpferreira33.github.io/weightflow/reference/panel_datasets.md)
+  [`panel_us`](https://jpferreira33.github.io/weightflow/reference/panel_datasets.md)
+  : Synthetic rotating- and pure-panel datasets
