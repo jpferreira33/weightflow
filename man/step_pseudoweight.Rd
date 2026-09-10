@@ -65,7 +65,6 @@ additionally, calibrate to a \code{reference_sample()} with \code{\link[=step_ca
 gives the doubly robust estimator.
 }
 \examples{
-\donttest{
 set.seed(1)
 N   <- nrow(population)
 # a biased volunteer sample (men over-participate) and a probability reference
@@ -81,7 +80,6 @@ fit <- weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
 c(naive = mean(vol$income),
   pseudo = weighted.mean(vol$income, fit$final_weight),
   truth = mean(population$income))
-}
 }
 \references{
 Elliott, M. R. and Valliant, R. (2017). Inference for non-probability samples.

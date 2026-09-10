@@ -63,7 +63,7 @@ are those not found in \code{previous} by \code{id_unit}.}
 \item{alpha}{MR1/MR2 mixing constant between 0 and 1. \code{alpha = 0} targets the
 level only (MR1), \code{alpha = 1} the change only (MR2). Default 2/3 (Chen and Liu 2002).}
 
-\item{overlap}{the overlap rate used by MR2's carry-backward correction: "auto"
+\item{overlap}{the overlap rate used by the MR2 carry-backward correction: "auto"
 (default) estimates it as the \code{w_nr}-weighted overlap fraction, or a number
 (e.g. 5/6, the nominal LFS/ECH rate).}
 
@@ -126,7 +126,6 @@ averaged to the household (integrated method of weighting, Lemaitre-Dufour 1987)
 so every household member shares one final weight.
 }
 \examples{
-\donttest{
 # Composite (CRE) estimation on the 6-month rotating panel `panel_ine`.
 # `condicion` is the previous-wave labour status (emp / unemp / inact).
 t1 <- subset(panel_ine, ola == 1 & disp == "R")
@@ -147,7 +146,6 @@ fit2 <- weighting_spec(t2, base_weights = w_base) |>
            alpha = 2/3, status_ref = "inact") |>
   prep()
 fit2
-}
 }
 \references{
 Gambino J, Kennedy B, Singh MP (2001). Regression composite estimation for the

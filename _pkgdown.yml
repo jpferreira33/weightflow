@@ -65,12 +65,19 @@ articles:
   navbar: Case study
   contents:
   - articles/ech-case-study
+- title: Panels
+  navbar: Panels
+  contents:
+  - rotating-panels
+  - panel-longitudinal
+  - coordinated-replication
+  - composite-estimation
 - title: Variance and validation
   navbar: Variance and validation
   contents:
   - variance-estimation
   - two-phase-sampling
-  - validation-against-survey
+  - validation
 
 reference:
 - title: Overview
@@ -107,6 +114,10 @@ reference:
   - step_rescale
   - step_assert
   - step_nr_sensitivity
+  - step_cross_sectional
+  - step_panel_overlap
+  - step_attrition
+  - step_cre
 - title: Diagnostics and reporting
   desc: Inspect, summarise and report the cascade.
   contents:
@@ -134,8 +145,32 @@ reference:
   - as_sae_input
   - print.weightflow_boot
   - print.weightflow_jack
+- title: Panels
+  desc: Rotating and pure panels -- structure, net change, chaining and gross flows.
+  contents:
+  - panel_design
+  - panel_merge
+  - panel_pr
+  - wave_bootstrap
+  - wave_jackknife
+  - change_estimate
+  - level_estimate
+  - panel_estimate
+  - wave_step
+  - wave_carry
+  - wave_contrast
+  - transition_matrix
+  - boot_transition
+  - boot_flows
+  - report_panel
+- title: Estimation grammar
+  desc: Declare domains and estimands once, read them off a saved replicate object.
+  contents:
+  - step_domain
+  - collect_estimates
 - title: Example data
   contents:
   - population
   - sample_survey
   - sample_one
+  - panel_datasets

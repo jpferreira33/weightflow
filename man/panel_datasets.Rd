@@ -75,7 +75,6 @@ leaves and \strong{returns} after the 8-month gap.}
 # rotation structure of the 6-month panel
 panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
              rotation_group = "grupo_rotacion", pattern = "6")
-\donttest{
 # coordinated change of the unemployment rate between two waves
 t1 <- subset(panel_ine, ola == 1 & disp == "R")
 t2 <- subset(panel_ine, ola == 2 & disp == "R")
@@ -84,6 +83,5 @@ wb <- wave_bootstrap(
        T2 = weighting_spec(t2, base_weights = w_base)),
   replicates = 100, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
 change_mean(wb, "desocupado")
-}
 }
 \keyword{datasets}

@@ -805,13 +805,11 @@ jack_mean <- function(jack, variable) {
 #'   matching standard errors `se1`, `se2`, `se`, and `prop_phase2` = V2 / V.
 #' @seealso [bootstrap_weights()], [step_subsample()].
 #' @examples
-#' \donttest{
 #' df <- transform(sample_survey,
 #'                 in2 = as.integer(runif(nrow(sample_survey)) < 0.3), p2 = 0.3)
 #' spec <- weighting_spec(df, base_weights = pw) |>
 #'   step_subsample(selected = in2, prob = p2, psu = "household_id")
 #' two_phase_variance(spec, "income", replicates = 100)
-#' }
 #' @export
 two_phase_variance <- function(object, variable, estimator = c("mean", "total"),
                                replicates = 500L, seed = NULL, fpc = NULL) {
@@ -994,7 +992,6 @@ as_svrepdesign <- function(object, ...) {
 #' boot <- bootstrap_weights(spec, replicates = 30, strata = "region",
 #'                           psu = "psu", seed = 1, progress = FALSE)
 #' df <- collect_replicate_weights(boot)   # or a weightflow_jack object
-#' \donttest{
 #' if (requireNamespace("srvyr", quietly = TRUE) &&
 #'     requireNamespace("dplyr", quietly = TRUE)) {
 #'   srvyr::as_survey_rep(df, weights = .weight,
@@ -1002,7 +999,6 @@ as_svrepdesign <- function(object, ...) {
 #'                        type = attr(df, "type"), combined.weights = TRUE,
 #'                        scale = attr(df, "scale"), rscales = attr(df, "rscales"),
 #'                        mse = TRUE)
-#' }
 #' }
 #' @export
 #' @family variance estimation

@@ -15,6 +15,13 @@
 
 .as_estimation <- function(x) {
   if (inherits(x, "weightflow_estimation")) return(x)
+  # A pipeline may also start from the SPEC of a single period, so that the same DSL
+  # declares the estimands of a chained wave_step() run. The spec carries one wave's data,
+  # which is all step_domain()/step_filter() need to validate against.
+  if (inherits(x, "weighting_spec"))
+    return(structure(list(wb = list(data = list(x$data)), spec = x,
+                          domains = character(0), estimands = list(), filters = list()),
+                     class = "weightflow_estimation"))
   if (inherits(x, c("weightflow_wave_boot", "weightflow_wave_jack")))
     return(structure(list(wb = x, domains = character(0), estimands = list(),
                           filters = list()),
@@ -103,7 +110,6 @@
 #' @return a `weightflow_estimation`.
 #' @seealso [collect_estimates()], [change_estimate()], [panel_estimate()], [level_estimate()]
 #' @examples
-#' \donttest{
 #' t1 <- subset(panel_ine, ola == 1 & disp == "R")
 #' t2 <- subset(panel_ine, ola == 2 & disp == "R")
 #' wb <- wave_bootstrap(
@@ -118,7 +124,6 @@
 #' # subpopulation: same change among the working-age population (rows masked, not dropped)
 #' collect_estimates(wb |> step_filter(edad >= 25 & edad <= 54) |>
 #'   step_estimate(mean(desocupado), over = "change"))
-#' }
 #' @export
 step_domain <- function(x, ...) {
   est <- .as_estimation(x)

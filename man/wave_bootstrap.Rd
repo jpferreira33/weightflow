@@ -81,7 +81,6 @@ the recursive estimator. (Assumes each \code{step_cre}'s \code{previous} is the 
 preceding wave in \code{specs}; otherwise that step keeps its fixed point \code{previous}.)
 }
 \examples{
-\donttest{
 t1 <- subset(panel_ine, ola == 1 & disp == "R")
 t2 <- subset(panel_ine, ola == 2 & disp == "R")
 wb <- wave_bootstrap(
@@ -89,7 +88,6 @@ wb <- wave_bootstrap(
        T2 = weighting_spec(t2, base_weights = w_base)),
   replicates = 200, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
 change_estimate(wb, function(w, d) weighted.mean(d$desocupado, w, na.rm = TRUE))
-}
 }
 \seealso{
 \code{\link[=change_estimate]{change_estimate()}}, \code{\link[=bootstrap_weights]{bootstrap_weights()}}, \code{\link[=panel_design]{panel_design()}}

@@ -39,6 +39,7 @@ colours
 compuesta
 computable
 condicion
+Continua
 Cov
 cross-fitting
 cv
@@ -74,14 +75,17 @@ Erciulescu
 erroring
 ESMS
 ESQRS
+ESS
 Estadistica
 Estevao
 estimand
 et
 eta
+Eurostat
 fanless
 favour
 Fay
+Feinberg
 Finalising
 Folsom
 formalises
@@ -109,6 +113,7 @@ Herriot
 Hogares
 Horvitz
 humanises
+IAOS
 ignorable
 INE
 InfoS
@@ -118,6 +123,8 @@ inspectable
 Instituto
 IPF
 IPW
+IRLS
+Istat
 JK
 JKn
 JNK
@@ -163,6 +170,8 @@ misclassify
 misspecified
 mistyped
 modelled
+MR1
+MR2
 multinomial's
 modelling
 Montanari
@@ -183,6 +192,7 @@ nonresponse
 nr
 nrounds
 NSOs
+ONS
 operatorname
 Opsomer
 ORCID
@@ -197,6 +207,7 @@ phi
 pi
 pipeable
 PN
+PNAD
 Poisson
 poisson
 POSIXct
@@ -259,6 +270,7 @@ SRS
 srswor
 srvyr
 stabilises
+Stasny
 Stata
 StatCan
 Statistica
@@ -273,6 +285,8 @@ summarise
 summarises
 Swensson
 Särndal
+T1
+T4
 tfrac
 th
 tidymodels
@@ -293,6 +307,8 @@ unprepped
 unstratified
 untrusted
 unweighted
+V1
+V2
 Valliant
 Vanderhoeft
 Vartivarian
@@ -311,4 +327,5 @@ xr
 YAML
 ybar
 Yue
+Zhat
 Zheng

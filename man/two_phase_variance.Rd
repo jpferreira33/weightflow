@@ -42,13 +42,11 @@ pay off; a small share means a denser (more expensive) subsample would buy
 little, and the first phase is the binding constraint.
 }
 \examples{
-\donttest{
 df <- transform(sample_survey,
                 in2 = as.integer(runif(nrow(sample_survey)) < 0.3), p2 = 0.3)
 spec <- weighting_spec(df, base_weights = pw) |>
   step_subsample(selected = in2, prob = p2, psu = "household_id")
 two_phase_variance(spec, "income", replicates = 100)
-}
 }
 \seealso{
 \code{\link[=bootstrap_weights]{bootstrap_weights()}}, \code{\link[=step_subsample]{step_subsample()}}.

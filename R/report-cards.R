@@ -758,7 +758,7 @@
   }
   lp  <- stats::qlogis(pmin(pmax(p, 1e-6), 1 - 1e-6))
   cox <- tryCatch(suppressWarnings(stats::glm(as.integer(resp) ~ lp,
-           family = stats::binomial(), weights = dw)), error = function(e) NULL)
+           family = stats::binomial(), weights = .wf_model_wts(dw))), error = function(e) NULL)
   slope <- if (!is.null(cox)) unname(stats::coef(cox)[2]) else NA_real_
   intc  <- if (!is.null(cox)) unname(stats::coef(cox)[1]) else NA_real_
   brier <- wm((as.numeric(resp) - p)^2, dw)
@@ -845,7 +845,7 @@
   imp <- NULL; pin <- NULL
   covd <- tryCatch(pr$covars[ok, , drop = FALSE], error = function(e) NULL)
   if (!is.null(pr$formula) && !is.null(covd) && ncol(covd)) {
-    tr <- covd; tr$.y <- as.integer(resp); tr$.wts <- dw
+    tr <- covd; tr$.y <- as.integer(resp); tr$.wts <- .wf_model_wts(dw)  # (NR-PROP-01)
     f2 <- stats::update(pr$formula, .y ~ .)
     tryCatch({
       if (eng == "logit") {

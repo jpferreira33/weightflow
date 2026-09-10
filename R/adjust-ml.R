@@ -126,6 +126,11 @@
                     binomial = stats::binomial(), poisson = stats::poisson(),
                     stop("`family` not recognized (use gaussian/binomial/poisson).") )
            else stats::gaussian()
+    # A binomial glm's IRLS start is built from the prior weights and diverges on natural-scale
+    # design weights; the fit is invariant to a common rescaling, so normalise. Gaussian and
+    # Poisson starts do not use the weights, and there the scale carries the dispersion, so
+    # leave those alone. See .wf_model_wts(). (NR-PROP-01)
+    if (isTRUE(m$family == "binomial")) train$.wts <- .wf_model_wts(train$.wts)
     fit <- stats::glm(f, data = train, family = fam, weights = .wts)
     return(lapply(newdatas, function(nd)
       as.numeric(stats::predict(fit, newdata = nd, type = "response"))))

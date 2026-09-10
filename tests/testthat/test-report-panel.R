@@ -69,3 +69,45 @@ test_that("report_panel valida la clase de cada argumento (no reporte vacio sile
   expect_true(file.exists(
     report_panel(design = pd, file = tempfile(fileext = ".html"), open = FALSE)))
 })
+
+# La tarjeta de estructura mostraba el traslape del patron como UN numero (el adyacente), lo que
+# esconde justo lo que importa en un diseno no contiguo: en "2-(2)-2" el rezago informativo es el
+# 4, no el 1, y en el "1(2)5" de la PNAD el adyacente es cero por construccion. Ahora muestra el
+# perfil completo y, al lado, lo observado -- que es exactamente la comparacion que hacen PN-01
+# y PN-07, de modo que el lector ve que se disparo o que estuvo por dispararse.
+
+test_that("la tarjeta de estructura muestra el perfil por rezago, no un solo numero", {
+  skip_on_cran()
+  pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
+                     rotation_group = "grupo_rotacion", pattern = "6")
+  h <- weightflow:::.panel_design_card(pd, "es")
+  expect_true(grepl("Perfil de traslape por rezago", h, fixed = TRUE))
+  expect_true(grepl("implicado por el esquema", h, fixed = TRUE))
+  expect_true(grepl("observado (unidades)", h, fixed = TRUE))
+  expect_true(grepl("continuidad de cohortes", h, fixed = TRUE))   # hay grupo de rotacion
+  expect_true(grepl("en muestra, ciclo", h, fixed = TRUE))         # n_in y ciclo, ya no ambiguos
+  expect_true(grepl("Rezagos con traslape", h, fixed = TRUE))
+  expect_false(grepl("Traslape por patr", h, fixed = TRUE))        # el numero unico ya no esta
+
+  he <- weightflow:::.panel_design_card(pd, "en")
+  expect_true(grepl("Overlap profile by lag", he, fixed = TRUE))
+  expect_true(grepl("implied by pattern", he, fixed = TRUE))
+})
+
+test_that("sin patron declarado la tarjeta no inventa un perfil", {
+  skip_on_cran()
+  pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola")   # sin `pattern`
+  h <- weightflow:::.panel_design_card(pd, "es")
+  expect_false(grepl("Perfil de traslape", h, fixed = TRUE))
+  expect_true(grepl("Traslape: fracci", h))          # la matriz observada si sigue
+  expect_gt(nchar(h), 500L)
+})
+
+test_that("sin grupo de rotacion el perfil omite la fila de cohortes", {
+  skip_on_cran()
+  pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola", pattern = "6")
+  h <- weightflow:::.panel_design_card(pd, "es")
+  expect_true(grepl("Perfil de traslape por rezago", h, fixed = TRUE))
+  expect_true(grepl("observado (unidades)", h, fixed = TRUE))
+  expect_false(grepl("continuidad de cohortes", h, fixed = TRUE))
+})

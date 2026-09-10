@@ -24,8 +24,7 @@ responded in the wave being adjusted (e.g. \code{disp_T2 == "R"}).}
 \item{method}{attrition estimator: \code{"propensity"} (individual \code{1/phi}, the SLID/ECLAC
 response-propensity weighting; default), \code{"rhg"} (response homogeneity groups: propensity
 stratified into \code{num_classes} classes), \code{"weighting_class"} (design-variable cells), or
-\code{"calibration"} (Sarndal-Lundstrom). (\code{"hazard"} -- multi-wave retention chaining -- and
-the SLID/ECLAC fallback imputations are added next.)}
+\code{"calibration"} (Sarndal-Lundstrom).}
 
 \item{formula}{model formula for \code{"propensity"}/\code{"rhg"}, in covariates observed for
 responders and nonrespondents (from a wave where the unit was seen).}
@@ -58,9 +57,27 @@ Statistics Canada's SLID (Naud 2002; LaRoche 2003) is \strong{response-propensit
 Rosenbaum 1987) -- not an ECLAC invention. \code{method = "rhg"} is the response-homogeneity-group
 variant (propensity stratified into \code{num_classes} groups, then the class-mean rate), which
 stabilises the weights.
+
+Two ECLAC prescriptions are \strong{not} implemented, and the difference matters when they apply.
+The manual (ch. XVI, sec. B.1.b) allows two fallback imputations for units with no auxiliary
+information at all: a nonrespondent whose rotation panel does not overlap (impute the overall
+effective response rate as its \code{phi}), and a newly incorporated nonrespondent (impute the
+adjusted expansion factor of its household). Here a covariate that is \code{NA} for an eligible
+unit is an \strong{error}, not an imputation -- an \code{NA} propensity would let that nonrespondent
+survive the adjustment silently, which is the failure the error exists to prevent, and the
+package will not silently substitute a value of its own for a missing input.
+
+So when the error fires, the fix belongs in the data, and either ECLAC route is available to
+you there: impute the missing covariates before the step (the manual's own fallback is the
+overall effective response rate, i.e. a constant, which is what a model with no covariates
+for those units amounts to), give a newly incorporated nonrespondent its household's adjusted
+factor, or restrict \code{formula} to a covariate set observed for every eligible unit. What the
+package will not do is choose one of those for you and leave no trace in the recipe.
+Multi-wave retention chaining (decomposing Pr(in at T3) into Pr(reach T2) x Pr(T2 to T3)) is
+likewise absent: this step adjusts one transition at a time, which is what ch. XVI specifies
+for two consecutive periods.
 }
 \examples{
-\donttest{
 wide <- panel_merge(
   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
   by = c("id_hogar", "nper"), require = "all")
@@ -70,7 +87,6 @@ weighting_spec(wide, base_weights = w_base_T1) |>
   step_attrition(respondent = disp_T2 == "R", method = "propensity",
                  formula = ~ edad_T1 + sexo_T1 + region_T1) |>
   prep()
-}
 }
 \seealso{
 \code{\link[=step_nonresponse]{step_nonresponse()}}, \code{\link[=step_panel_overlap]{step_panel_overlap()}}, \code{\link[=step_drop_ineligible]{step_drop_ineligible()}}

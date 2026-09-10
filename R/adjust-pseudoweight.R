@@ -54,7 +54,6 @@
 #' Statistical Science 32(2), 249-264.
 #' @seealso [reference_sample()], [step_calibrate()], [step_model_calibration()]
 #' @examples
-#' \donttest{
 #' set.seed(1)
 #' N   <- nrow(population)
 #' # a biased volunteer sample (men over-participate) and a probability reference
@@ -70,7 +69,6 @@
 #' c(naive = mean(vol$income),
 #'   pseudo = weighted.mean(vol$income, fit$final_weight),
 #'   truth = mean(population$income))
-#' }
 #' @export
 #' @family weighting steps
 step_pseudoweight <- function(spec, reference, formula,
@@ -225,6 +223,6 @@ apply_step.step_pseudoweight <- function(step, data, w) {
     num_classes = step$num_classes,
     cal_slope = tryCatch(unname(stats::coef(suppressWarnings(stats::glm(
       as.integer(pooled$.y == 1) ~ stats::qlogis(pmin(pmax(pi_all, 1e-6), 1 - 1e-6)),
-      family = stats::binomial(), weights = pooled$.w)))[2]), error = function(e) NA_real_))
+      family = stats::binomial(), weights = .wf_model_wts(pooled$.w))))[2]), error = function(e) NA_real_))
   list(weights = new_w, diagnostics = diag)
 }

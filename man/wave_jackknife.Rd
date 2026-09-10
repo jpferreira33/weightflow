@@ -47,7 +47,6 @@ the deleted PSU zeroed and its stratum mates reweighted by \eqn{n_h/(n_h-1)}; it
 does not modify \code{\link[=bootstrap_weights]{bootstrap_weights()}} or touch \code{R/variance.R}.
 }
 \examples{
-\donttest{
 t1 <- subset(panel_ine, ola == 1 & disp == "R")
 t2 <- subset(panel_ine, ola == 2 & disp == "R")
 wj <- wave_jackknife(
@@ -55,7 +54,6 @@ wj <- wave_jackknife(
        T2 = weighting_spec(t2, base_weights = w_base)),
   strata = "estrato", psu = "psu", progress = FALSE)
 change_mean(wj, "desocupado")
-}
 }
 \seealso{
 \code{\link[=wave_bootstrap]{wave_bootstrap()}}, \code{\link[=change_estimate]{change_estimate()}}

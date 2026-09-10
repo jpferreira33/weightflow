@@ -287,6 +287,36 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
         zeroed))
   }
 
+  # NR-SUM: 1/phi-hat weighting is approximately design-unbiased for the ELIGIBLE total, so the
+  # nonresponse/attrition adjustment must very nearly preserve the sum of the incoming active
+  # weights. CEPAL's household-survey manual prescribes this check explicitly, twice (ch. XVI,
+  # after the base weights and again after the nonresponse adjustment): "es indispensable
+  # corroborar que la suma de los pesos basicos sea cercana al tamano de la poblacion que se
+  # quiere representar".
+  #
+  # The 5% threshold is measured, not guessed: over 720 runs with a CORRECT propensity model
+  # (n from 500 to 5000, response rates 0.6 to 0.95, design weights ~140), the ratio had
+  # sd between 0.0001 and 0.0056 and never left [0.977, 1.022]. So 5% never fires on a healthy
+  # fit, while a model that collapsed to phi-hat == 1 -- the NR-PROP-01 failure, where the
+  # adjustment silently became a no-op and the total fell by 8% -- fires immediately.
+  # `weighting_class` preserves the sum exactly by construction, so this only ever bites the
+  # modelled paths, which is where it is needed.
+  if (identical(step_class, "step_nonresponse") || identical(step_class, "step_attrition")) {
+    sb <- sum(w_before[.wf_active(w_before)], na.rm = TRUE)
+    sa <- sum(w_after[.wf_active(w_after)], na.rm = TRUE)
+    if (is.finite(sb) && sb > 0 && is.finite(sa) && abs(sa / sb - 1) > 0.05)
+      msgs <- c(msgs, sprintf(
+        paste0("The nonresponse adjustment changed the total of the active weights by %+.1f%% ",
+               "(%s -> %s). Inverse-propensity weighting is approximately unbiased for the ",
+               "eligible total, so it should be nearly preserved; a departure this large means ",
+               "the adjustment is not compensating the nonresponse. Check the fitted ",
+               "propensities (a model that collapses to a constant makes 1/phi a no-op), or ",
+               "whether ineligible units were left in the active set."),
+        100 * (sa / sb - 1),
+        format(round(sb), big.mark = ",", scientific = FALSE),
+        format(round(sa), big.mark = ",", scientific = FALSE)))
+  }
+
   # Very small response propensities blow up the 1/p weights; flag it.
   pm <- attr(diag, "p_min")
   if (!is.null(pm) && is.finite(pm) && pm < 0.01)

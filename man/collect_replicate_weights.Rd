@@ -48,7 +48,6 @@ spec <- weighting_spec(sample_survey, base_weights = pw) |>
 boot <- bootstrap_weights(spec, replicates = 30, strata = "region",
                           psu = "psu", seed = 1, progress = FALSE)
 df <- collect_replicate_weights(boot)   # or a weightflow_jack object
-\donttest{
 if (requireNamespace("srvyr", quietly = TRUE) &&
     requireNamespace("dplyr", quietly = TRUE)) {
   srvyr::as_survey_rep(df, weights = .weight,
@@ -56,7 +55,6 @@ if (requireNamespace("srvyr", quietly = TRUE) &&
                        type = attr(df, "type"), combined.weights = TRUE,
                        scale = attr(df, "scale"), rscales = attr(df, "rscales"),
                        mse = TRUE)
-}
 }
 }
 \seealso{

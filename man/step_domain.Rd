@@ -70,7 +70,6 @@ end over \code{\link[=change_estimate]{change_estimate()}}, \code{\link[=panel_e
 replicates do the variance. Evaluate with \code{\link[=collect_estimates]{collect_estimates()}} (printing does it too).
 }
 \examples{
-\donttest{
 t1 <- subset(panel_ine, ola == 1 & disp == "R")
 t2 <- subset(panel_ine, ola == 2 & disp == "R")
 wb <- wave_bootstrap(
@@ -85,7 +84,6 @@ collect_estimates(wb |> step_domain(region) |>
 # subpopulation: same change among the working-age population (rows masked, not dropped)
 collect_estimates(wb |> step_filter(edad >= 25 & edad <= 54) |>
   step_estimate(mean(desocupado), over = "change"))
-}
 }
 \seealso{
 \code{\link[=collect_estimates]{collect_estimates()}}, \code{\link[=change_estimate]{change_estimate()}}, \code{\link[=panel_estimate]{panel_estimate()}}, \code{\link[=level_estimate]{level_estimate()}}

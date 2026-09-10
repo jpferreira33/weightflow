@@ -55,7 +55,6 @@ analytic covariance formula. Treating the waves as independent (the diagonal of 
 only) understates the variance of an average and overstates that of a change.
 }
 \examples{
-\donttest{
 waves <- lapply(1:3, function(t)
   weighting_spec(subset(panel_ine, ola == t & disp == "R"), base_weights = w_base))
 names(waves) <- c("T1", "T2", "T3")
@@ -64,7 +63,6 @@ wb <- wave_bootstrap(waves, replicates = 100, strata = "estrato", psu = "psu",
 rate <- function(w, d) weighted.mean(d$desocupado, w, na.rm = TRUE)
 panel_estimate(wb, rate)                       # average unemployment level over the waves
 panel_estimate(wb, rate, contrast = c(-1, 0, 1))  # T3 - T1 change
-}
 }
 \seealso{
 \code{\link[=change_estimate]{change_estimate()}}, \code{\link[=wave_bootstrap]{wave_bootstrap()}}, \code{\link[=wave_jackknife]{wave_jackknife()}}

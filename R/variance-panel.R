@@ -190,7 +190,6 @@
 #'   matrices (aligned by replicate index across waves), the per-wave data, and the design.
 #' @seealso [change_estimate()], [bootstrap_weights()], [panel_design()]
 #' @examples
-#' \donttest{
 #' t1 <- subset(panel_ine, ola == 1 & disp == "R")
 #' t2 <- subset(panel_ine, ola == 2 & disp == "R")
 #' wb <- wave_bootstrap(
@@ -198,7 +197,6 @@
 #'        T2 = weighting_spec(t2, base_weights = w_base)),
 #'   replicates = 200, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
 #' change_estimate(wb, function(w, d) weighted.mean(d$desocupado, w, na.rm = TRUE))
-#' }
 #' @export
 wave_bootstrap <- function(specs, replicates = 500L, strata = NULL, psu = NULL,
                            m = NULL, seed = NULL, refit_steps = "all",
@@ -520,7 +518,6 @@ change_mean <- function(wb, variable, waves = NULL, level = 0.95,
 #'   zero jackknife contribution).
 #' @seealso [wave_bootstrap()], [change_estimate()]
 #' @examples
-#' \donttest{
 #' t1 <- subset(panel_ine, ola == 1 & disp == "R")
 #' t2 <- subset(panel_ine, ola == 2 & disp == "R")
 #' wj <- wave_jackknife(
@@ -528,7 +525,6 @@ change_mean <- function(wb, variable, waves = NULL, level = 0.95,
 #'        T2 = weighting_spec(t2, base_weights = w_base)),
 #'   strata = "estrato", psu = "psu", progress = FALSE)
 #' change_mean(wj, "desocupado")
-#' }
 #' @param refit_steps which recipe steps to re-run per replicate; see [wave_bootstrap()].
 #'   `"all"` (default) re-preps the whole recipe; `"calibration"` freezes the prefix and
 #'   re-runs only calibration (StatCan LFS convention).
@@ -885,7 +881,6 @@ print.weightflow_change <- function(x, ...) {
 #'   the per-wave `point` estimates, the `contrast`, and the confidence interval.
 #' @seealso [change_estimate()], [wave_bootstrap()], [wave_jackknife()]
 #' @examples
-#' \donttest{
 #' waves <- lapply(1:3, function(t)
 #'   weighting_spec(subset(panel_ine, ola == t & disp == "R"), base_weights = w_base))
 #' names(waves) <- c("T1", "T2", "T3")
@@ -894,7 +889,6 @@ print.weightflow_change <- function(x, ...) {
 #' rate <- function(w, d) weighted.mean(d$desocupado, w, na.rm = TRUE)
 #' panel_estimate(wb, rate)                       # average unemployment level over the waves
 #' panel_estimate(wb, rate, contrast = c(-1, 0, 1))  # T3 - T1 change
-#' }
 #' @export
 panel_estimate <- function(wb, statistic, contrast = NULL, waves = NULL, level = 0.95,
                            ci_type = c("normal", "t"), df = NULL) {

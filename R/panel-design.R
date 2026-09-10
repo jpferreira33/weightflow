@@ -11,19 +11,82 @@
 # rotation pattern string, for verification only. Accepts CEPAL's "k(0)1", the
 # CPS "in-out-in" form "4-8-4", and a plain integer "6" (k months in sample).
 # Returns NULL when the string cannot be parsed (then no theoretical check runs).
-.wf_pattern_overlap <- function(pattern) {
-  if (is.null(pattern)) return(NULL)
-  if (!is.character(pattern) || length(pattern) != 1L || is.na(pattern)) return(NULL)
-  # CPS in-out-in form "a-b-c" (e.g. "4-8-4"): a+c months in sample simultaneously,
-  # month-to-month overlap (a-1)/a within an in-phase.
-  nums <- suppressWarnings(as.integer(strsplit(pattern, "-", fixed = TRUE)[[1]]))
-  if (length(nums) >= 3L && !anyNA(nums[c(1L, 3L)]) && nums[1L] >= 2L)
-    return(list(k = nums[1L], overlap = (nums[1L] - 1) / nums[1L],
-                n_groups = nums[1L] + nums[3L]))
-  # plain integer "k" or CEPAL "k(0)1": k months in sample.
-  k <- suppressWarnings(as.integer(sub("^\\s*([0-9]+).*$", "\\1", pattern)))
-  if (is.na(k) || k < 2L) return(NULL)
-  list(k = k, overlap = (k - 1) / k, n_groups = k)
+# Rotation calendar from a pattern in the EU-LFS notation `n1-(m1)-n2-(m2)-...`: n_i periods
+# in sample, m_i periods out, until the cycle closes. It subsumes everything else as a special
+# case -- "6" is a contiguous block (Canada LFS, INE Uruguay ECH), "4-(8)-4" is the US CPS,
+# "1-(2)-1-(2)-1-(2)-1-(2)-1" is PNAD Continua's 1-2(5). Returns the 0-indexed periods a cohort
+# is in sample and the length of the full cycle.
+.wf_pattern_calendar <- function(pattern) {
+  if (is.null(pattern) || !is.character(pattern) || length(pattern) != 1L || is.na(pattern))
+    return(NULL)
+  # TWO notations, told apart by the hyphens:
+  #   EU-LFS  "n1-(m1)-n2-(m2)-..."  a list of blocks; a parenthesised block is time OUT.
+  #   CEPAL   "n(m)k"                n in, m out, REPEATED k times (k is a repeat count, not
+  #                                  another in-block). "4(0)1" is four consecutive periods,
+  #                                  not five -- reading the trailing 1 as a block would add a
+  #                                  period that does not exist.
+  # They are the same family: "1(2)5" is "1-(2)-1-(2)-1-(2)-1-(2)-1".
+  tk <- regmatches(pattern, gregexpr("\\(?[0-9]+\\)?", pattern))[[1L]]
+  if (!length(tk)) return(NULL)
+  num <- suppressWarnings(as.integer(gsub("[()]", "", tk)))
+  if (anyNA(num) || any(num < 0L)) return(NULL)
+  out <- grepl("(", tk, fixed = TRUE)
+  # In the hyphenated form the parentheses are notation, not semantics: "4-8-4" and "4-(8)-4"
+  # are the same CPS design. Blocks ALTERNATE in/out starting with in, so when no block is
+  # parenthesised the alternation is what decides. (Reading "2-2-2" as six consecutive periods
+  # would turn a 0.50 overlap into 0.83 and make PN-01 fire on a correctly declared design.)
+  if (length(tk) > 1L && !any(out)) out <- seq_along(tk) %% 2L == 0L
+  per <- integer(0); t <- 0L
+  if (!grepl("-", pattern, fixed = TRUE) && length(tk) == 3L && out[2L] && !out[1L] && !out[3L]) {
+    n <- num[1L]; m <- num[2L]; k <- max(num[3L], 1L)    # CEPAL n(m)k
+    for (i in seq_len(k)) {
+      per <- c(per, t + seq_len(n) - 1L); t <- t + n
+      if (i < k) t <- t + m                              # el ultimo bloque no descansa
+    }
+  } else {
+    for (i in seq_along(tk)) {
+      if (out[i]) t <- t + num[i]
+      else { per <- c(per, t + seq_len(num[i]) - 1L); t <- t + num[i] }
+    }
+  }
+  if (!length(per) || t < 1L) return(NULL)
+  list(periods = per, cycle = t)
+}
+
+# Expected overlap BY LAG, derived from the calendar rather than from the first block.
+#
+# The previous implementation read only the first block and returned (n1 - 1)/n1, which is
+# wrong in three ways that all matter in production:
+#   (a) patterns with parentheses and more than three blocks did not parse at all -- they fell
+#       through to the plain-integer branch, k came out 1, and the function returned NULL, so
+#       alert PN-01 never fired for them. That is exactly where it is most needed: an in-out-in
+#       design can have ZERO theoretical overlap at lag 1, and without the check there is no way
+#       to tell "the design is like that" from "the unit key is broken";
+#   (b) (n_i - 1)/n_i is not the adjacent overlap once there is more than one block. For
+#       "3-(1)-2" the true value is 3/5 = 0.60, not 2/3 = 0.67 -- one has to count consecutive
+#       period PAIRS over the periods in sample, not look at the first block alone;
+#   (c) `n_groups` conflated two different numbers: the groups simultaneously IN SAMPLE
+#       (n1 + n3) and the length of the cycle (n1 + m1 + n2). For "2-(2)-2" those are 4 and 6.
+#       They are now `n_in` and `cycle`, named for what they are.
+#
+# The profile is the fraction of a period's sample also present `lag` periods earlier, obtained
+# by intersecting the calendar with itself shifted. `overlap` is kept as the lag-1 scalar so the
+# existing PN-01 comparison keeps its meaning. (PN-01/parser, 2026-09-09)
+.wf_pattern_overlap <- function(pattern, max_lag = 12L) {
+  cal <- .wf_pattern_calendar(pattern)
+  if (is.null(cal)) return(NULL)
+  per <- cal$periods; G <- cal$cycle
+  # cohorts in sample at time `t`: those whose entry offset puts `t` inside their spell
+  occupies <- function(t) { s <- seq.int(t - G - max(per) - 2L, t); s[(t - s) %in% per] }
+  base <- occupies(1000L)
+  if (!length(base)) return(NULL)
+  prof <- vapply(seq_len(max_lag),
+                 function(L) length(intersect(base, occupies(1000L - L))) / length(base),
+                 numeric(1))
+  names(prof) <- as.character(seq_len(max_lag))
+  list(periods = per, cycle = G, n_in = length(per),
+       profile = prof, overlap = unname(prof[1L]),
+       lags = as.integer(names(prof))[prof > 1e-9])
 }
 
 #' Describe the rotating-panel structure of a survey
@@ -148,6 +211,7 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
   # through unit overlap, not the group label, because labels are recycled when a
   # group rotates out and a new cohort enters under the same label.
   pr_adjacent  <- rep(NA_real_, W - 1L)
+  pr_lag       <- rep(NA_real_, W - 1L)     # continuidad de cohortes por REZAGO
   pr_full      <- NA_real_
   grp_sizes    <- NULL
   cohort_sizes <- NULL
@@ -162,6 +226,15 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
       pr_adjacent[i] <- if (gi > 0L)
         groups_in(present[, i] > 0 & present[, i + 1L] > 0) / gi else NA_real_
     }
+    # Continuidad por rezago: promedio sobre los pares de olas separados por L. Hace falta
+    # para chequear patrones NO contiguos, donde el rezago informativo no es el 1.
+    for (L in seq_len(W - 1L)) {
+      v <- vapply(seq_len(W - L), function(i) {
+        gi <- groups_in(present[, i] > 0)
+        if (gi > 0L) groups_in(present[, i] > 0 & present[, i + L] > 0) / gi else NA_real_
+      }, numeric(1))
+      pr_lag[L] <- if (any(is.finite(v))) mean(v[is.finite(v)]) else NA_real_
+    }
     g1 <- groups_in(present[, 1L] > 0)
     pr_full   <- if (g1 > 0L) groups_in(waves_per_unit == W) / g1 else NA_real_
     cells        <- as.integer(table(g, wv)); grp_sizes <- cells[cells > 0L]  # units per group-wave
@@ -173,24 +246,56 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
   th <- .wf_pattern_overlap(pattern)
   obs_adjacent <- vapply(seq_len(W - 1L),
                          function(i) overlap[i, i + 1L], numeric(1))
+  obs_lag <- vapply(seq_len(W - 1L),
+                    function(L) mean(vapply(seq_len(W - L),
+                                            function(i) overlap[i, i + L], numeric(1))),
+                    numeric(1))
   alerts <- character(0)
   if (!is.null(th)) {
-    # PN-01 targets a *broken linkage key*, not ordinary attrition. When the
-    # rotation group is known, the clean check is group-cohort continuity
-    # (pr_adjacent), which should match the pattern closely if the key is sound;
-    # unit overlap sits below nominal because of attrition, so without groups we
-    # only flag a large shortfall. Only a shortfall (observed below nominal) fires.
-    have_pr <- !all(is.na(pr_adjacent))
-    ref <- if (have_pr) pr_adjacent else obs_adjacent
-    tol <- if (have_pr) 0.05 else 0.15
-    short <- th$overlap - ref
-    if (any(is.finite(short) & short > tol))
+    # PN-01 targets a *broken linkage key*, not ordinary attrition. When the rotation group is
+    # known, the clean check is group-cohort continuity, which should match the pattern closely
+    # if the key is sound; unit overlap sits below nominal because of attrition, so without
+    # groups we only flag a large shortfall.
+    #
+    # The check runs over the WHOLE overlap profile, not only the adjacent lag. In an in-out-in
+    # design the informative lag is not lag 1: "1-(3)-1-(3)-1-(3)-1" has zero theoretical
+    # overlap quarter to quarter and 0.75 at lag 4, so an adjacent-only comparison can say
+    # nothing about it. (PN-01 profile, 2026-09-09)
+    have_pr <- !all(is.na(pr_lag))
+    ref     <- if (have_pr) pr_lag else obs_lag
+    tol     <- if (have_pr) 0.05 else 0.15
+    Lmax    <- min(W - 1L, length(th$profile))
+    Ls      <- seq_len(Lmax)
+    expct   <- unname(th$profile[Ls])
+    short   <- expct - ref[Ls]
+    hit     <- which(is.finite(short) & short > tol & expct > 1e-9)
+    if (length(hit)) {
+      j <- hit[which.max(short[hit])]                 # report the worst lag
       alerts <- c(alerts, sprintf(paste0(
-        "[PN-01] %s (%s) is below the %.2f implied by pattern '%s' by more than %.2f; ",
-        "the linkage key may be unstable across waves%s."),
-        if (have_pr) "Rotation-group continuity" else "Observed adjacent overlap",
-        paste(sprintf("%.2f", ref), collapse = ", "), th$overlap, pattern, tol,
+        "[PN-01] %s at lag %d (%.2f) is below the %.2f implied by pattern '%s' by more than ",
+        "%.2f; the linkage key may be unstable across waves%s."),
+        if (have_pr) "Rotation-group continuity" else "Observed overlap",
+        j, ref[j], expct[j], pattern, tol,
         if (have_pr) "" else " (or attrition is unusually high)"))
+    }
+    # The mirror case: the pattern says these two periods share NO sample, yet they do. That is
+    # not attrition -- attrition can only remove overlap -- so it means the declared pattern and
+    # the data disagree, or the unit key collides across cohorts.
+    # The zero-overlap contradiction can only be asserted once the observation window covers a
+    # full cycle. The profile describes a STEADY STATE; a panel observed for fewer periods than
+    # its own cycle has not had time to reach it, and its cohorts are still staggered by the
+    # start-up. The shipped `panel_cl` is exactly that case -- three waves standing in for a
+    # six-period 2-(2)-2, with the return compressed into lag 2 on purpose (see ?panel_datasets)
+    # -- and flagging it would be an artefact of the window, not a finding about the data.
+    zero  <- if (is.finite(th$cycle) && W >= th$cycle)
+      which(expct < 1e-9 & is.finite(ref[Ls]) & ref[Ls] > max(tol, 0.15)) else integer(0)
+    if (length(zero)) {
+      j <- zero[which.max(ref[zero])]
+      alerts <- c(alerts, sprintf(paste0(
+        "[PN-07] Pattern '%s' implies NO overlap at lag %d, but %.2f of the sample is shared ",
+        "there. The declared pattern and the data disagree, or the `unit` key is reused across ",
+        "rotation cohorts."), pattern, j, ref[j]))
+    }
   }
   if (!is.null(cohort_sizes) && length(cohort_sizes) > 1L) {
     # Measure unequal SELECTION, not attrition/tenure: use the number of units
@@ -221,7 +326,12 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
     n_per_wave = stats::setNames(as.integer(nw), wlev),
     overlap = overlap,
     overlap_theoretical = if (is.null(th)) NA_real_ else th$overlap,
-    pr_adjacent = pr_adjacent, pr_full = pr_full, grp_sizes = grp_sizes,
+    overlap_profile = if (is.null(th)) NULL else th$profile,
+    pattern_lags = if (is.null(th)) NULL else th$lags,
+    pattern_n_in = if (is.null(th)) NA_integer_ else th$n_in,
+    pattern_cycle = if (is.null(th)) NA_integer_ else th$cycle,
+    obs_lag = obs_lag,
+    pr_adjacent = pr_adjacent, pr_lag = pr_lag, pr_full = pr_full, grp_sizes = grp_sizes,
     alerts = alerts)
   class(data) <- unique(c("wf_panel_design", class(data)))
   data
@@ -249,7 +359,18 @@ print.wf_panel_design <- function(x, ...) {
     cat(sprintf("  Pr(panel selection), adjacent : %s%s\n",
                 paste(sprintf("%.3f", p$pr_adjacent), collapse = ", "),
                 if (is.finite(p$pr_full)) sprintf("  (full combination: %.3f)", p$pr_full) else ""))
-  if (!is.na(p$overlap_theoretical))
+  if (!is.null(p$overlap_profile)) {
+    # El perfil completo, no solo el adyacente: en un diseno con hueco el rezago informativo
+    # no es el 1, y mostrar un unico numero esconde justamente lo que hay que mirar.
+    L <- min(length(p$waves) - 1L, 6L, length(p$overlap_profile))
+    cat(sprintf("  overlap implied by pattern    : %s   (lag %s)\n",
+                paste(sprintf("%.2f", p$overlap_profile[seq_len(L)]), collapse = " "),
+                paste(seq_len(L), collapse = " ")))
+    if (!is.na(p$pattern_cycle))
+      cat(sprintf("  pattern                       : %d group(s) in sample, cycle %d, useful lags %s\n",
+                  p$pattern_n_in, p$pattern_cycle,
+                  paste(utils::head(p$pattern_lags, 8L), collapse = ", ")))
+  } else if (!is.na(p$overlap_theoretical))
     cat(sprintf("  overlap implied by pattern    : %.2f\n", p$overlap_theoretical))
   if (length(p$alerts)) {
     cat("  alerts:\n")

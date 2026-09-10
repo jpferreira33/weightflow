@@ -200,10 +200,19 @@ wave_step <- function(spec, previous = NULL, estimands = NULL, by = NULL,
          call. = FALSE)
   R <- as.integer(replicates)
   if (is.na(R) || R < 2L) stop("`replicates` must be >= 2.", call. = FALSE)
-  if (!is.null(estimands) && (!is.list(estimands) || is.null(names(estimands)) ||
-                              any(!nzchar(names(estimands))) ||
-                              !all(vapply(estimands, is.function, logical(1)))))
-    stop("`estimands` must be a NAMED list of functions function(w, data).", call. = FALSE)
+  # `estimands` accepts either an estimation plan built with the package DSL --
+  # spec |> step_filter() |> step_domain() |> step_estimate(mean(y)) -- or a plain named
+  # list of function(w, data). The plan carries its own domains, so it also sets `by`.
+  if (inherits(estimands, "weightflow_estimation")) {
+    plan <- .wf_plan_to_estimands(estimands)
+    estimands <- plan$fns
+    if (is.null(by)) by <- plan$by
+  } else if (!is.null(estimands) &&
+             (!is.list(estimands) || is.null(names(estimands)) ||
+              any(!nzchar(names(estimands))) ||
+              !all(vapply(estimands, is.function, logical(1)))))
+    stop("`estimands` must be an estimation plan (spec |> step_estimate(...)) or a NAMED ",
+         "list of functions function(w, data).", call. = FALSE)
   prev <- .wf_norm_previous(previous)
   seq_i <- .wf_carry_seq(prev) + 1L
   period <- period %||% sprintf("t%d", seq_i)
@@ -351,6 +360,36 @@ wave_step <- function(spec, previous = NULL, estimands = NULL, by = NULL,
             class = "wf_wave_step")
 }
 
+# Translate an estimation pipeline -- spec |> step_filter() |> step_domain() |>
+# step_estimate() -- into the named list of function(w, data) that the chain stores.
+# Filters MASK rows rather than dropping them, so the coordinated replicate structure
+# and the overlap covariance survive; domains expand each estimand over the observed
+# levels. `over`/`contrast` do not apply here: a chained period always reports its own
+# level and the change against every carry supplied.
+.wf_plan_to_estimands <- function(est) {
+  if (!length(est$estimands))
+    stop("The estimation plan declares no estimand. Add step_estimate(...).", call. = FALSE)
+  keep_fn <- if (length(est$filters)) function(d) {
+    k <- rep(TRUE, nrow(d))
+    for (f in est$filters) {
+      v <- eval(f$expr, d, f$env)
+      k <- k & !is.na(v) & v
+    }
+    k
+  } else NULL
+  out <- list()
+  for (e in est$estimands) {
+    f0 <- e$fn
+    fun <- if (is.null(keep_fn)) f0 else local({ ff <- f0
+      function(w, d) { k <- which(keep_fn(d))
+        if (!length(k)) return(NA_real_); ff(w[k], d[k, , drop = FALSE]) } })
+    nm <- e$label
+    if (nm %in% names(out)) nm <- paste0(nm, "_", length(out) + 1L)
+    out[[nm]] <- fun
+  }
+  list(fns = out, by = if (length(est$domains)) est$domains else NULL)
+}
+
 # Expand estimands over domain levels: "name" and "name|col=level".
 .wf_expand_estimands <- function(estimands, by, dat) {
   if (is.null(estimands)) return(list())
@@ -488,4 +527,98 @@ print.wf_wave_step <- function(x, ...) {
     cat("\n  level\n"); print(utils::head(x$level, 12), row.names = FALSE)
   }
   invisible(x)
+}
+
+# Linear combinations over a chain of carries -------------------------------
+
+#' Linear combination of an estimand across a chain of periods
+#'
+#' [wave_step()] reports the level of its own period and the net change against each carry it
+#' was given -- that is, **pairwise** contrasts. Many published series are not pairwise: a
+#' rolling quarter is the average of three consecutive months, a semester-on-semester contrast
+#' is `c(-1/2, -1/2, 1/2, 1/2)`, an annual average is `rep(1/W, W)`. `wave_contrast()` estimates
+#' any such combination \eqn{\psi = a'\theta} directly from the carries the chain already wrote
+#' to disk, with \eqn{V(\psi) = a' \Sigma a}.
+#'
+#' The carries make this possible without keeping the waves in memory: each one stores the `R`
+#' replicate values of every declared estimand, and those replicates are **paired across
+#' periods** because the coordination transferred the PSU multiplicities. Stacking them into an
+#' `R x W` matrix and taking its (uncentred-at-`R`) covariance recovers the full between-period
+#' covariance matrix, from which any linear combination follows. With `contrast = c(-1, 1)` the
+#' result reproduces the `$change` row of [wave_step()] exactly.
+#'
+#' @param carries a list of `wf_wave_carry` objects, one per period entering the combination.
+#'   Order defines the order of `contrast`; they are used as given (not sorted).
+#' @param estimand name of the estimand to combine, as it appears in `carry$point` (a domain
+#'   estimand is named e.g. `"rate|sex=F"`).
+#' @param contrast numeric weights, one per carry. Defaults to the average `rep(1/W, W)`.
+#' @param level confidence level for the interval.
+#' @return a one-row `data.frame` with `estimate`, `se`, `V`, `lo`, `hi`, `R_used`, the periods
+#'   and the contrast used, plus the covariance matrix `Sigma` as an attribute.
+#' @seealso [wave_step()], [wave_carry()]; [panel_estimate()] does the same on a
+#'   [wave_bootstrap()] object, when all waves are held together.
+#' @export
+wave_contrast <- function(carries, estimand, contrast = NULL, level = 0.95) {
+  if (inherits(carries, "wf_wave_carry")) carries <- list(carries)
+  if (!is.list(carries) || !length(carries) ||
+      !all(vapply(carries, inherits, logical(1), "wf_wave_carry")))
+    stop("`carries` must be a list of wave_carry() objects.", call. = FALSE)
+  W <- length(carries)
+  a <- if (is.null(contrast)) rep(1 / W, W) else as.numeric(contrast)
+  if (length(a) != W)
+    stop(sprintf("`contrast` has length %d but %d carries were given.", length(a), W),
+         call. = FALSE)
+  if (!is.character(estimand) || length(estimand) != 1L)
+    stop("`estimand` must be a single name.", call. = FALSE)
+
+  miss <- vapply(carries, function(cy) is.null(cy$theta[[estimand]]), logical(1))
+  if (any(miss))
+    stop(sprintf(paste0("Estimand '%s' is missing from carr%s %s. A linear combination needs ",
+                        "the same estimand declared in every period; available here: %s."),
+                 estimand, if (sum(miss) > 1L) "ies" else "y",
+                 paste(which(miss), collapse = ", "),
+                 paste(names(carries[[1]]$theta), collapse = ", ")), call. = FALSE)
+
+  R <- vapply(carries, function(cy) length(cy$theta[[estimand]]), integer(1))
+  if (length(unique(R)) != 1L)
+    stop(sprintf(paste0("The replicate count must be constant along the chain, but the carries ",
+                        "carry %s. A combination pairs replicate b across periods, so they ",
+                        "have to line up."), paste(R, collapse = ", ")), call. = FALSE)
+  R <- R[1L]
+
+  Th <- vapply(carries, function(cy) as.numeric(cy$theta[[estimand]]), numeric(R))
+  if (!is.matrix(Th)) Th <- matrix(Th, nrow = R)
+  ok <- stats::complete.cases(Th) & apply(is.finite(Th), 1L, all)
+  if (sum(ok) < 2L)
+    stop("Fewer than two replicates are finite in every period; cannot form a covariance.",
+         call. = FALSE)
+  if (sum(ok) < R)
+    warning(R - sum(ok), " replicate(s) dropped (non-finite in at least one period).",
+            call. = FALSE)
+  Th <- Th[ok, , drop = FALSE]
+  theta <- vapply(carries, function(cy) as.numeric(cy$point[[estimand]]), 0)
+  # Centre on the POINT estimate, not on the replicate mean, and divide by R rather than R - 1.
+  # This is what wave_step() itself does (V = mean((theta_b - theta_hat)^2)), so a contrast of
+  # c(-1, 1) reproduces its $change bit for bit. stats::cov() would centre on colMeans(Th) and
+  # use R - 1, which differs from the reported change in the fourth significant digit -- small,
+  # but it would mean the two paths disagree about the same quantity.
+  D <- sweep(Th, 2L, theta, "-")
+  S <- crossprod(D) / nrow(D)
+  dimnames(S) <- list(vapply(carries, function(cy) as.character(cy$period), ""),
+                      vapply(carries, function(cy) as.character(cy$period), ""))
+
+  psi   <- sum(a * theta)
+  V     <- drop(t(a) %*% S %*% a)
+  se    <- sqrt(max(V, 0))
+  crit  <- stats::qnorm(1 - (1 - level) / 2)
+  out <- data.frame(
+    estimand = estimand,
+    periods  = paste(rownames(S), collapse = " + "),
+    contrast = paste(format(a, trim = TRUE), collapse = ", "),
+    estimate = psi, se = se, V = V,
+    lo = psi - crit * se, hi = psi + crit * se,
+    R_used = nrow(Th), stringsAsFactors = FALSE)
+  attr(out, "Sigma") <- S
+  attr(out, "theta") <- stats::setNames(theta, rownames(S))
+  out
 }

@@ -35,6 +35,26 @@ wave (\code{to}) -- e.g. the labour-force status of the same people across two p
 on the \strong{longitudinal} weight. This is the gross flow (CEPAL ch. XVII): who moved between
 which states. \code{\link[=boot_transition]{boot_transition()}} adds a per-cell standard error from the ordinary bootstrap.
 }
+\section{Why there is a single weight, and not two}{
+
+
+Feinberg and Stasny (1983) describe a gross-change table built from the \strong{two cross-sectional
+weights}: when \eqn{w_{k,t-1} \neq w_{k,t}}, the smaller weight goes to the (i, j) cell and
+the difference goes to an "out of population" cell -- (Outside, j) or (i, Outside) depending
+on the sign -- on the assumption that the weights differ only because of natural entries to
+and exits from the target population. ECLAC cites it (ch. XVI, sec. B) as the state of things
+\emph{before} a longitudinal weight is built.
+
+This function takes \strong{one} weight because the package builds that longitudinal weight
+instead, by the sequence the same chapter prescribes: panel base weight, adjustment for
+nonresponse in the first period, an explicit definition of the longitudinal population, the
+attrition adjustment and the final calibration. Once that weight exists the discrepancy
+Feinberg-Stasny reconstructs no longer arises -- who left the population was decided
+explicitly at \code{\link[=step_drop_ineligible]{step_drop_ineligible()}} rather than inferred from a difference between two
+weights. The two-weight construction is the alternative to the longitudinal weight, not a
+complement to it.
+}
+
 \seealso{
 \code{\link[=boot_transition]{boot_transition()}}
 }

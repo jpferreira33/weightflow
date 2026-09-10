@@ -37,7 +37,6 @@ pass it here. Run this on the longitudinal sample (the intersection of the
 combined waves), before the attrition and calibration steps.
 }
 \examples{
-\donttest{
 # wide longitudinal file of the units in sample in both waves
 wide <- panel_merge(
   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
@@ -52,7 +51,6 @@ weighting_spec(wide, base_weights = w_base_T1) |>
 # no rotation group (e.g. Chile ENE) -> pass the probability directly
 weighting_spec(wide, base_weights = w_base_T1) |>
   step_panel_overlap(prob = 5 / 6) |> prep()
-}
 }
 \seealso{
 \code{\link[=panel_pr]{panel_pr()}}, \code{\link[=panel_design]{panel_design()}}, \code{\link[=step_nonresponse]{step_nonresponse()}}, \code{\link[=step_calibrate]{step_calibrate()}}

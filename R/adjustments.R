@@ -23,6 +23,27 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
   cut(p, breaks = brks, include.lowest = TRUE)
 }
 
+# Model weights, rescaled to mean 1. A binomial glm reads `weights` as the NUMBER OF BINOMIAL
+# TRIALS, and binomial()$initialize builds the IRLS starting value from them:
+#   mustart = (w * y + 0.5) / (w + 1).
+# With design weights on their natural scale (w ~ 100) that is 0.997 for a respondent and 0.003
+# for a nonrespondent, i.e. the IRLS starts AT the separation boundary (eta = +-6) and the
+# coefficients run away -- on real survey weights the intercept reaches 1e15, every fitted
+# probability collapses to exactly 0 or 1, and glm reports converged = TRUE with no warning
+# other than "fitted probabilities numerically 0 or 1". The consequence is silent and severe:
+# phi-hat == 1 makes the 1/phi adjustment a no-op (the nonresponse is simply not compensated),
+# and in a bootstrap replicate that lands the other way phi-hat hits the 1e-6 floor and one unit
+# carries a weight of 1e6 times its own, which is what an absurd replicate variance looks like.
+# The estimating equation sum_i w_i (y_i - mu_i) x_i = 0 is invariant to a common positive
+# rescaling of w, so normalising leaves the estimator mathematically untouched and only fixes
+# the numerics. The same applies to the case weights of every other engine. (NR-PROP-01)
+.wf_model_wts <- function(w) {
+  if (!length(w)) return(w)
+  m <- mean(w[is.finite(w) & w > 0])
+  if (!is.finite(m) || m <= 0) return(w)
+  w / m
+}
+
 # Estimate the response propensity P(respond) with the chosen engine.
 # Returns probabilities (bounded away from 0 for 1/p).
 # The engine only changes HOW p is estimated; the class/unit logic is the same.
@@ -45,6 +66,7 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
                         "on a complete covariate set."),
                  paste(miss, collapse = ", ")), call. = FALSE)
   f <- stats::update(formula, .y ~ .)
+  weights <- .wf_model_wts(weights)      # mean 1: see .wf_model_wts() (NR-PROP-01)
   dd$.wts <- weights
 
   # fit on rows `tr`, predict on rows `te`; returns P(respond) for `te`
@@ -311,7 +333,7 @@ apply_step.step_select_within <- function(step, data, w) {
       # household-level NR model)
       cal_slope = tryCatch(unname(stats::coef(suppressWarnings(stats::glm(
         as.integer(resp_h) ~ stats::qlogis(pmin(pmax(p, 1e-6), 1 - 1e-6)),
-        family = stats::binomial(), weights = Wh)))[2]), error = function(e) NA_real_))
+        family = stats::binomial(), weights = .wf_model_wts(Wh))))[2]), error = function(e) NA_real_))
     # Native per-unit detail (broadcast household -> members) for
     # collect_step_detail(); .weight_in/.factor come centrally from `history`.
     ud_det <- data.frame(.propensity = as.numeric(p)[mh],
@@ -551,7 +573,7 @@ apply_step.step_nonresponse <- function(step, data, w) {
     num_classes = step$num_classes,
     cal_slope = tryCatch(unname(stats::coef(suppressWarnings(stats::glm(
       as.integer(resp_el) ~ stats::qlogis(pmin(pmax(p, 1e-6), 1 - 1e-6)),
-      family = stats::binomial(), weights = w[eligible])))[2]), error = function(e) NA_real_))
+      family = stats::binomial(), weights = .wf_model_wts(w[eligible]))))[2]), error = function(e) NA_real_))
   # Native per-unit detail for collect_step_detail() (.weight_in/.factor are
   # supplied centrally by the accessor from `history`, so they are NOT stored here).
   ud_det <- data.frame(.propensity = as.numeric(p),

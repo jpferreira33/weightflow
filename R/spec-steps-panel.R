@@ -28,7 +28,6 @@
 #' @return The input `weighting_spec` with this step appended to its recipe.
 #' @seealso [panel_pr()], [panel_design()], [step_nonresponse()], [step_calibrate()]
 #' @examples
-#' \donttest{
 #' # wide longitudinal file of the units in sample in both waves
 #' wide <- panel_merge(
 #'   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
@@ -43,7 +42,6 @@
 #' # no rotation group (e.g. Chile ENE) -> pass the probability directly
 #' weighting_spec(wide, base_weights = w_base_T1) |>
 #'   step_panel_overlap(prob = 5 / 6) |> prep()
-#' }
 #' @export
 step_panel_overlap <- function(spec, prob, id = NULL) {
   p <- substitute(prob)
@@ -83,19 +81,50 @@ step_panel_overlap <- function(spec, prob, id = NULL) {
 #' (longitudinal) weight, so steps like [step_panel_overlap()] apply and the
 #' calibration targets the reference wave.
 #'
+#' @section ECLAC conventions for the longitudinal weight:
+#'
+#' The three points below are conventions of ECLAC's household-survey manual (ch. XVI). The
+#' package cannot enforce them -- a vector of control totals carries no label saying which
+#' period it belongs to -- so they are the reader's to apply.
+#'
+#' **Who is in the longitudinal population.** It is made up of the units that were in the target
+#' population at the *first* period **and remained in it** through the last. Units that left
+#' (death, migration, institutionalization) are out, and so are units that *entered* after the
+#' first period: a panel adds no elements over time. Drop the first group with
+#' [step_drop_ineligible()] before the attrition step -- leaving the target population is not
+#' nonresponse and must not be compensated by redistributing weight.
+#'
+#' **Calibrate to the FIRST period's totals.** ECLAC is explicit that the auxiliary totals used
+#' in the calibration must represent the population of the *first* period of interest, because a
+#' panel that adds no elements over the measurement periods is representative only of the period
+#' in which it was selected (ch. XVI, sec. B.2.c). In the original:
+#' \preformatted{
+#' "los totales auxiliares utilizados en la calibracion deben representar la
+#'  poblacion del primer periodo de interes, puesto que, al conformar un panel
+#'  que no suma elementos a lo largo de los periodos de medicion, la muestra
+#'  sera representativa unicamente del periodo en el que fue seleccionada"
+#' }
+#' Passing the *later* period's projections is a silent error: the
+#' recipe converges, the totals close, and the weights represent a population the sample never
+#' had a chance to cover.
+#'
+#' **Cross-sectional estimates from a longitudinal file are reference only.** They will not
+#' match the published cross-sectional figures **and should not**: the target population of the
+#' panel combination is not the target population of the cross-section (ch. XVI, sec. C). Use
+#' the longitudinal weight for gross flows, transitions and durations -- what it exists for --
+#' and the cross-sectional weight for levels.
+#'
 #' @param spec a weighting_spec.
 #' @param id optional string identifier for the step.
 #' @return The input `weighting_spec` with the scope declared.
 #' @seealso [panel_design()], [step_panel_overlap()]
 #' @examples
-#' \donttest{
 #' wide <- panel_merge(
 #'   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
 #'   by = c("id_hogar", "nper"), require = "all")
 #' weighting_spec(wide, base_weights = w_base_T1) |>
 #'   step_longitudinal() |>
 #'   step_panel_overlap(prob = 5 / 6) |> prep()
-#' }
 #' @export
 step_cross_sectional <- function(spec, id = NULL) {
   if (!inherits(spec, "weighting_spec"))
@@ -137,14 +166,32 @@ step_longitudinal <- function(spec, id = NULL) {
 #' variant (propensity stratified into `num_classes` groups, then the class-mean rate), which
 #' stabilises the weights.
 #'
+#' Two ECLAC prescriptions are **not** implemented, and the difference matters when they apply.
+#' The manual (ch. XVI, sec. B.1.b) allows two fallback imputations for units with no auxiliary
+#' information at all: a nonrespondent whose rotation panel does not overlap (impute the overall
+#' effective response rate as its `phi`), and a newly incorporated nonrespondent (impute the
+#' adjusted expansion factor of its household). Here a covariate that is `NA` for an eligible
+#' unit is an **error**, not an imputation -- an `NA` propensity would let that nonrespondent
+#' survive the adjustment silently, which is the failure the error exists to prevent, and the
+#' package will not silently substitute a value of its own for a missing input.
+#'
+#' So when the error fires, the fix belongs in the data, and either ECLAC route is available to
+#' you there: impute the missing covariates before the step (the manual's own fallback is the
+#' overall effective response rate, i.e. a constant, which is what a model with no covariates
+#' for those units amounts to), give a newly incorporated nonrespondent its household's adjusted
+#' factor, or restrict `formula` to a covariate set observed for every eligible unit. What the
+#' package will not do is choose one of those for you and leave no trace in the recipe.
+#' Multi-wave retention chaining (decomposing Pr(in at T3) into Pr(reach T2) x Pr(T2 to T3)) is
+#' likewise absent: this step adjusts one transition at a time, which is what ch. XVI specifies
+#' for two consecutive periods.
+#'
 #' @param spec a weighting_spec.
 #' @param respondent an unquoted 0/1 column or logical condition, TRUE for the units that
 #'   responded in the wave being adjusted (e.g. `disp_T2 == "R"`).
 #' @param method attrition estimator: `"propensity"` (individual `1/phi`, the SLID/ECLAC
 #'   response-propensity weighting; default), `"rhg"` (response homogeneity groups: propensity
 #'   stratified into `num_classes` classes), `"weighting_class"` (design-variable cells), or
-#'   `"calibration"` (Sarndal-Lundstrom). (`"hazard"` -- multi-wave retention chaining -- and
-#'   the SLID/ECLAC fallback imputations are added next.)
+#'   `"calibration"` (Sarndal-Lundstrom).
 #' @param formula model formula for `"propensity"`/`"rhg"`, in covariates observed for
 #'   responders and nonrespondents (from a wave where the unit was seen).
 #' @param by adjustment cells for `"weighting_class"`.
@@ -154,7 +201,6 @@ step_longitudinal <- function(spec, id = NULL) {
 #' @return the `weighting_spec` with the attrition step appended.
 #' @seealso [step_nonresponse()], [step_panel_overlap()], [step_drop_ineligible()]
 #' @examples
-#' \donttest{
 #' wide <- panel_merge(
 #'   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
 #'   by = c("id_hogar", "nper"), require = "all")
@@ -164,7 +210,6 @@ step_longitudinal <- function(spec, id = NULL) {
 #'   step_attrition(respondent = disp_T2 == "R", method = "propensity",
 #'                  formula = ~ edad_T1 + sexo_T1 + region_T1) |>
 #'   prep()
-#' }
 #' @export
 step_attrition <- function(spec, respondent,
                            method = c("propensity", "rhg", "weighting_class", "calibration"),

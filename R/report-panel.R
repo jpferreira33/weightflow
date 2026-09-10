@@ -118,6 +118,32 @@
   sprintf("<div class='%s'><h3 class='card-t'>%s</h3>%s%s%s</div>", cls, title, strip, bd, nt)
 }
 
+# Observed-vs-implied overlap BY LAG. The single adjacent number the card used to show hides
+# the thing that matters in a non-contiguous design: in "2-(2)-2" the informative lag is 4, not
+# 1, and in PNAD's "1(2)5" the adjacent overlap is zero by construction. This is also exactly
+# the comparison PN-01 and PN-07 make, so the reader can see what fired -- or what nearly did.
+.overlap_profile_html <- function(p, lang = "en") {
+  prof <- p$overlap_profile
+  if (is.null(prof) || !length(prof)) return("")
+  L <- min(length(p$waves) - 1L, length(prof), 8L)
+  if (L < 1L) return("")
+  ls   <- seq_len(L)
+  have <- !is.null(p$pr_lag) && !all(is.na(p$pr_lag))
+  rows <- list(implied = unname(prof[ls]), observed = unname(p$obs_lag[ls]))
+  nm   <- c(.t("implied by pattern", "implicado por el esquema", lang),
+            .t("observed (units)", "observado (unidades)", lang))
+  if (have) { rows$cohort <- unname(p$pr_lag[ls])
+              nm <- c(nm, .t("cohort continuity", "continuidad de cohortes", lang)) }
+  m <- do.call(rbind, rows)
+  dimnames(m) <- list(nm, paste0("L", ls))
+  paste0("<div class='viz-h'>",
+         .t("Overlap profile by lag: what the rotation pattern implies against what the data shows",
+            "Perfil de traslape por rezago: lo que implica el esquema contra lo que muestran los datos",
+            lang),
+         "</div>",
+         .wf_heat_table(m, digits = 2, rowlab = .t("lag", "rezago", lang)))
+}
+
 # ---- Card 1: structure and rotation (panel_design) ----  table | heat-map, full width
 .panel_design_card <- function(pd, lang = "en") {
   if (is.null(pd)) return("")
@@ -132,13 +158,18 @@
     if (!all(is.na(p$pr_adjacent)))
       .metric(.t("Pr(panel selection)", "Pr(selecci&oacute;n paneles)", lang),
               paste(sprintf("%.3f", p$pr_adjacent), collapse = ", ")) else "",
-    if (!is.na(p$overlap_theoretical))
-      .metric(.t("Overlap by pattern", "Traslape por patr&oacute;n", lang),
-              sprintf("%.2f", p$overlap_theoretical)) else "")
+    if (!is.null(p$pattern_cycle) && !is.na(p$pattern_cycle))
+      .metric(.t("Pattern", "Esquema", lang),
+              sprintf(.t("%d in sample, cycle %d", "%d en muestra, ciclo %d", lang),
+                      p$pattern_n_in, p$pattern_cycle)) else "",
+    if (!is.null(p$pattern_lags) && length(p$pattern_lags))
+      .metric(.t("Lags with overlap", "Rezagos con traslape", lang),
+              paste(utils::head(p$pattern_lags, 8L), collapse = ", ")) else "")
   heat <- paste0("<div class='viz-h'>",
                  .t("Overlap: fraction of the row wave retained in the column wave",
                     "Traslape: fracci&oacute;n de la ola fila retenida en la ola columna", lang),
-                 "</div>", .wf_heat_table(p$overlap, digits = 2, rowlab = .t("wave", "ola", lang)))
+                 "</div>", .wf_heat_table(p$overlap, digits = 2, rowlab = .t("wave", "ola", lang)),
+                 .overlap_profile_html(p, lang))
   .panel_card(.t("Panel structure and rotation", "Estructura y rotaci&oacute;n del panel", lang),
               metrics, heat, .alerts_html(p$alerts), feature = TRUE, wide = TRUE)
 }

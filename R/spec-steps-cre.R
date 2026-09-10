@@ -58,7 +58,7 @@
 #'   are those not found in `previous` by `id_unit`.
 #' @param alpha MR1/MR2 mixing constant between 0 and 1. `alpha = 0` targets the
 #'   level only (MR1), `alpha = 1` the change only (MR2). Default 2/3 (Chen and Liu 2002).
-#' @param overlap the overlap rate used by MR2's carry-backward correction: "auto"
+#' @param overlap the overlap rate used by the MR2 carry-backward correction: "auto"
 #'   (default) estimates it as the `w_nr`-weighted overlap fraction, or a number
 #'   (e.g. 5/6, the nominal LFS/ECH rate).
 #' @param on_missing_prev how to treat non-birth units without a valid `t-1` status
@@ -96,7 +96,6 @@
 #'   de Hogares, seccion 8.4 (calibracion compuesta).
 #' @family weighting steps
 #' @examples
-#' \donttest{
 #' # Composite (CRE) estimation on the 6-month rotating panel `panel_ine`.
 #' # `condicion` is the previous-wave labour status (emp / unemp / inact).
 #' t1 <- subset(panel_ine, ola == 1 & disp == "R")
@@ -117,7 +116,6 @@
 #'            alpha = 2/3, status_ref = "inact") |>
 #'   prep()
 #' fit2
-#' }
 #' @export
 step_cre <- function(spec, previous = NULL, status, composite = list(NULL),
                      id_unit, formula, totals = NULL, count = NULL, birth = NULL,

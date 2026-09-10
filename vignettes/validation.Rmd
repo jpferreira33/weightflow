@@ -1,8 +1,8 @@
 ---
-title: "Validation against the survey package"
+title: "Validation against survey and ReGenesees"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Validation against the survey package}
+  %\VignetteIndexEntry{Validation against survey and ReGenesees}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,12 +16,17 @@ has_ggplot  <- requireNamespace("ggplot2", quietly = TRUE)
 show_plot   <- has_survey && has_ggplot
 ```
 
-weightflow's calibration is meant to reproduce the established results of the
-`survey` package on every method they share, while adding the staged cascade
+weightflow is meant to reproduce the established results of the reference
+implementations on every method they share, while adding the staged cascade
 (eligibility, nonresponse, selection) and a recipe-aware bootstrap on top. This
-vignette checks that agreement directly and visually: on the same starting
-weights and the same control totals, **the two packages return the same
-weights** for
+vignette checks that agreement against two of them: `survey` for the calibration
+core, and **ReGenesees**, the package from Istat, for two things `survey` does not
+do, range-restricted trimming of calibrated weights and the variance of a change
+between two partially overlapping samples.
+
+Most of what follows is the comparison against `survey`, directly and visually:
+on the same starting weights and the same control totals, **the two packages
+return the same weights** for
 
 * post-stratification, raking and linear (GREG) calibration;
 * the three calibration **distance functions** (linear, raking/exponential, logit);
@@ -302,7 +307,13 @@ data.frame(method = names(agree), `max abs weight difference` = unname(agree),
            check.names = FALSE, row.names = NULL)
 ```
 
-## Trimmed calibration matches ReGenesees
+## Beyond `survey`: two checks against ReGenesees
+
+The two checks below leave the ground `survey` covers. ReGenesees is not a
+dependency of weightflow, so neither comparison runs when this vignette is
+built; each one names the script that reproduces it.
+
+### Trimmed calibration matches `trimcal()`
 
 Range-restricted trimming of calibrated weights (`step_trim_calibrated()`) also
 agrees with an established reference: ReGenesees `trimcal()`. Both take absolute
@@ -310,8 +321,7 @@ bounds on the final weight (weightflow `lower`/`upper`, ReGenesees `w.range`),
 trim to that range while preserving the calibration totals, and return the same
 solution. On a calibration to `~ sex + age` trimmed to a fixed interval, the two
 agree to machine precision (maximum absolute weight difference about 1e-8,
-correlation 1), with both preserving the population totals. The comparison is not
-run here because ReGenesees is not a dependency; the script
+correlation 1), with both preserving the population totals. The script
 `trim_calibrated_vs_regenesees.R` reproduces it.
 
 ```{r trimcal-regenesees, eval = FALSE}
@@ -328,6 +338,59 @@ templ <- ReGenesees::fill.template(universe = universo,
            template = ReGenesees::pop.template(des, calmodel = ~ sex + age))
 cal   <- ReGenesees::e.calibrate(des, df.population = templ, calfun = "linear")
 w_rg  <- weights(ReGenesees::trimcal(cal, w.range = c(lo, up)))
+```
+
+### Net change matches the analytic Berger-Priam estimator
+
+The variance of a **change** between two waves needs an oracle of its own, and it
+has to come from outside the replication idea. `wave_bootstrap()` and
+`wave_jackknife()` are two implementations of the same principle -- resample
+coordinately and let the overlap show up as covariance -- so a conceptual error
+in that principle would go unnoticed by comparing one against the other.
+`ReGenesees::svyDelta()` belongs to a different family: the analytic
+linearization of Berger and Priam (2016), the approach used at Eurostat and the
+ONS.
+
+On a stratified two-wave design with 50% PSU overlap, the two agree:
+
+| | change | SE | rho | V1 | V2 |
+|---|---|---|---|---|---|
+| `svyDelta()` (`rho.STRAT = "noJump"`) | 107.3437 | 1228.693 | 0.50015 | 1657245.30104 | 1346953.34882 |
+| `wave_jackknife()` + `change_total()` | 107.3437 | 1241.815 | 0.48930 | 1657245.30104 | 1346953.34882 |
+
+The point estimate is identical to machine precision, as it must be -- same
+weights, same contrast. The **level** variances `V1` and `V2` agree to twelve
+digits: they do not depend on the coordination, so they test the single-wave
+machinery. What the coordination has to produce is the **covariance**, and there
+the two families land within 2%: the standard error of the change differs by
+1.1%, and `rho` by 0.011. Reading the same data with each unit as its own PSU
+instead of clustering gives the same picture (SE 636.79 against 639.01, 0.35%
+apart).
+
+Two practical notes. weightflow pairs PSUs *within* a stratum, so a unit that
+changes stratum between waves loses its coordination; that is exactly
+`rho.STRAT = "noJump"`, which is why that is the comparable convention. And with
+very few PSUs per stratum the *analytic* estimator is the fragile one: at three
+PSUs per stratum its covariance estimator degenerates (it reports `rho` near
+0.97 where the design correlation is about 0.46), while the coordinated
+jackknife stays on target; from five PSUs per stratum upwards the two families
+agree within 2% again.
+
+The reference numbers above are frozen as constants in
+`test-oraculo-berger-priam.R`, so the agreement is checked by the test suite on
+every run; the script `oraculo_cambio_vs_regenesees.R` regenerates them.
+
+```{r svydelta-regenesees, eval = FALSE}
+# weightflow
+wj <- wave_jackknife(list(T1 = weighting_spec(s1, base_weights = w),
+                          T2 = weighting_spec(s2, base_weights = w)),
+                     strata = "strata", psu = "id")
+change_total(wj, "y")
+
+# ReGenesees
+d1 <- ReGenesees::e.svydesign(ids = ~ id, strata = ~ strata, weights = ~ w, data = s1)
+d2 <- ReGenesees::e.svydesign(ids = ~ id, strata = ~ strata, weights = ~ w, data = s2)
+ReGenesees::svyDelta(expression(y.2 - y.1), d1, d2, rho.STRAT = "noJump")
 ```
 
 ## What weightflow adds

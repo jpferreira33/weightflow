@@ -32,15 +32,48 @@ data to be tagged by \code{\link[=panel_design]{panel_design()}} and marks the r
 (longitudinal) weight, so steps like \code{\link[=step_panel_overlap]{step_panel_overlap()}} apply and the
 calibration targets the reference wave.
 }
+\section{ECLAC conventions for the longitudinal weight}{
+
+
+The three points below are conventions of ECLAC's household-survey manual (ch. XVI). The
+package cannot enforce them -- a vector of control totals carries no label saying which
+period it belongs to -- so they are the reader's to apply.
+
+\strong{Who is in the longitudinal population.} It is made up of the units that were in the target
+population at the \emph{first} period \strong{and remained in it} through the last. Units that left
+(death, migration, institutionalization) are out, and so are units that \emph{entered} after the
+first period: a panel adds no elements over time. Drop the first group with
+\code{\link[=step_drop_ineligible]{step_drop_ineligible()}} before the attrition step -- leaving the target population is not
+nonresponse and must not be compensated by redistributing weight.
+
+\strong{Calibrate to the FIRST period's totals.} ECLAC is explicit that the auxiliary totals used
+in the calibration must represent the population of the \emph{first} period of interest, because a
+panel that adds no elements over the measurement periods is representative only of the period
+in which it was selected (ch. XVI, sec. B.2.c). In the original:
+\preformatted{
+"los totales auxiliares utilizados en la calibracion deben representar la
+ poblacion del primer periodo de interes, puesto que, al conformar un panel
+ que no suma elementos a lo largo de los periodos de medicion, la muestra
+ sera representativa unicamente del periodo en el que fue seleccionada"
+}
+Passing the \emph{later} period's projections is a silent error: the
+recipe converges, the totals close, and the weights represent a population the sample never
+had a chance to cover.
+
+\strong{Cross-sectional estimates from a longitudinal file are reference only.} They will not
+match the published cross-sectional figures \strong{and should not}: the target population of the
+panel combination is not the target population of the cross-section (ch. XVI, sec. C). Use
+the longitudinal weight for gross flows, transitions and durations -- what it exists for --
+and the cross-sectional weight for levels.
+}
+
 \examples{
-\donttest{
 wide <- panel_merge(
   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
   by = c("id_hogar", "nper"), require = "all")
 weighting_spec(wide, base_weights = w_base_T1) |>
   step_longitudinal() |>
   step_panel_overlap(prob = 5 / 6) |> prep()
-}
 }
 \seealso{
 \code{\link[=panel_design]{panel_design()}}, \code{\link[=step_panel_overlap]{step_panel_overlap()}}

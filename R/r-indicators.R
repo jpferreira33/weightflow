@@ -53,7 +53,7 @@
   fml <- stats::reformulate(aux, response = ".resp")
   fit <- tryCatch(
     suppressWarnings(stats::glm(fml, data = df, family = stats::binomial(),
-                                weights = df$.d)),
+                                weights = .wf_model_wts(df$.d))),   # mean 1 (NR-PROP-01)
     error = function(e) NULL)
   if (is.null(fit)) return(NULL)
 
