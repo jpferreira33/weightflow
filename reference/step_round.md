@@ -43,7 +43,7 @@ step_round(
 
   for `method = "balanced"` only: a character vector of variables whose
   (crossed) cell totals must be preserved, e.g.
-  `by = c("dam", "estrato")` – the same domains you calibrated to. Every
+  `by = c("dam", "stratum")` – the same domains you calibrated to. Every
   weight is sent to its floor or ceiling by balanced sampling on the
   cell indicators (cube method), so each cell total (and hence each
   margin, and the grand total) is reproduced up to at most one unit's
@@ -72,6 +72,16 @@ It is randomized: call
 [`set.seed()`](https://rdrr.io/r/base/Random.html) before
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 for a reproducible result.
+
+`"preserve_total"` is randomized too, but only where it has to be. Ties
+in the fractional part are the rule rather than the exception – a
+self-weighting design, weights that land on `.5`, calibrated weights on
+a grid – and they are broken at random, so the extra unit is allocated
+without regard to the order of the file. Deciding ties by row order
+instead moves mass systematically towards whatever the file is sorted
+by, usually region, while the grand total (the one thing the method
+promises) stays exactly right and hides it. Weights whose fractional
+parts are distinct are rounded exactly as before.
 
 ## References
 

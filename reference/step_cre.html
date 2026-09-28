@@ -23,7 +23,7 @@ weights, the estimator is recursive."><meta property="og:image" content="https:/
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -111,6 +111,7 @@ weights, the estimator is recursive.</p>
 <span>  birth <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">2</span><span class="op">/</span><span class="fl">3</span>,</span>
 <span>  overlap <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  rescale_previous <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  on_missing_prev <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"carry_backward"</span>, <span class="st">"zero"</span><span class="op">)</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -172,7 +173,13 @@ named list with <code>count</code>).</p></dd>
 <dt id="arg-birth">birth<a class="anchor" aria-label="anchor" href="#arg-birth"></a></dt>
 <dd><p>expression (evaluated in the current data) that is TRUE for the birth
 rotation group (the units with no <code>t-1</code> value to carry). If <code>NULL</code>, birth units
-are those not found in <code>previous</code> by <code>id_unit</code>.</p></dd>
+are those not found in <code>previous</code> by <code>id_unit</code> – which means a key that fails to
+link is indistinguishable from a genuine entrant, and a broken <code>id_unit</code> then looks
+like an enormous rotation while the change correction quietly stops working. The
+step warns when the implied overlap falls below half (or below <code>overlap</code> minus ten
+points, when <code>overlap</code> is given as a number) and errors below 2%, but the only way
+to separate the two properly is to declare <code>birth</code> yourself, or to pass the design's
+nominal <code>overlap</code> so the check has something real to compare against.</p></dd>
 
 
 <dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
@@ -184,6 +191,19 @@ level only (MR1), <code>alpha = 1</code> the change only (MR2). Default 2/3 (Che
 <dd><p>the overlap rate used by the MR2 carry-backward correction: "auto"
 (default) estimates it as the <code>w_nr</code>-weighted overlap fraction, or a number
 (e.g. 5/6, the nominal LFS/ECH rate).</p></dd>
+
+
+<dt id="arg-rescale-previous">rescale_previous<a class="anchor" aria-label="anchor" href="#arg-rescale-previous"></a></dt>
+<dd><p>put the composite block on the current wave's population
+scale: <code>Zhat &lt;- Zhat * N_t / Nhat_{t-1}</code> (equivalently, calibrate the composite
+auxiliaries on proportions). <code>Zhat</code> is a total estimated with the previous wave's
+weights, so it lives on <code>Nhat_{t-1}</code> while <code>totals</code> fixes this wave's <code>N_t</code>; the
+identity that keeps the composite block a smoother rather than a level shift
+assumes the two agree. When they differ, the whole gap is discharged onto the
+status estimate with every constraint met and <code>converged = TRUE</code>. <code>FALSE</code>
+(default) keeps the totals as given and warns when the two scales differ by more
+than 1%; the better fix is to calibrate both waves to the same series of
+population projections.</p></dd>
 
 
 <dt id="arg-on-missing-prev">on_missing_prev<a class="anchor" aria-label="anchor" href="#arg-on-missing-prev"></a></dt>
@@ -278,29 +298,34 @@ de Hogares, seccion 8.4 (calibracion compuesta).</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Composite (CRE) estimation on the 6-month rotating panel `panel_ine`.</span></span></span>
-<span class="r-in"><span><span class="co"># `condicion` is the previous-wave labour status (emp / unemp / inact).</span></span></span>
-<span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">t1</span><span class="op">$</span><span class="va">sexo</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">t1</span><span class="op">$</span><span class="va">sexo</span><span class="op">)</span>; <span class="va">t2</span><span class="op">$</span><span class="va">sexo</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">t2</span><span class="op">$</span><span class="va">sexo</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">Xtot</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">w_base</span> <span class="op">*</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">sexo</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># `lf_status` is the previous-wave labour status (emp / unemp / inact).</span></span></span>
+<span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">t1</span><span class="op">$</span><span class="va">sex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">t1</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span>; <span class="va">t2</span><span class="op">$</span><span class="va">sex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">t2</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># ONE population vector for both waves, as a series of projections would be.</span></span></span>
+<span class="r-in"><span><span class="co"># `Zhat` is a total on the previous wave's scale, so calibrating each wave to its</span></span></span>
+<span class="r-in"><span><span class="co"># own design-weighted total puts two population scales in one system and the</span></span></span>
+<span class="r-in"><span><span class="co"># difference lands on the status estimate (see `rescale_previous`).</span></span></span>
+<span class="r-in"><span><span class="va">Xpop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">t1</span><span class="op">$</span><span class="va">pw</span> <span class="op">*</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">sex</span>, data <span class="op">=</span> <span class="va">t1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># seed wave: no previous month, so step_cre() reduces to a linear calibration to X</span></span></span>
-<span class="r-in"><span><span class="va">seed</span> <span class="op">&lt;-</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu">step_cre</span><span class="op">(</span>previous <span class="op">=</span> <span class="cn">NULL</span>, status <span class="op">=</span> <span class="va">condicion</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sexo</span>,</span></span>
-<span class="r-in"><span>           totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">t1</span><span class="op">)</span>, status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span><span class="va">seed</span> <span class="op">&lt;-</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_cre</span><span class="op">(</span>previous <span class="op">=</span> <span class="cn">NULL</span>, status <span class="op">=</span> <span class="va">lf_status</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span>,</span></span>
+<span class="r-in"><span>           totals <span class="op">=</span> <span class="va">Xpop</span>, status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># composite wave: augment X with the previous-wave status, country-level and by sex</span></span></span>
-<span class="r-in"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu">step_cre</span><span class="op">(</span>previous <span class="op">=</span> <span class="va">seed</span>, status <span class="op">=</span> <span class="va">condicion</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sexo"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>           id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id_hogar"</span>, <span class="st">"nper"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sexo</span>, totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">t2</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_cre</span><span class="op">(</span>previous <span class="op">=</span> <span class="va">seed</span>, status <span class="op">=</span> <span class="va">lf_status</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sex"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>           id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span>, totals <span class="op">=</span> <span class="va">Xpop</span>,</span></span>
 <span class="r-in"><span>           alpha <span class="op">=</span> <span class="fl">2</span><span class="op">/</span><span class="fl">3</span>, status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">fit2</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 1774 cases</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: w_base</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1. composite regression estimator (composite, alpha = 0.67)  [cre_1]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Status  : estimated (prep)</span>
@@ -308,7 +333,7 @@ de Hogares, seccion 8.4 (calibracion compuesta).</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Stage summary:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             stage n_active sum_wts cv_wts deff_kish n_eff</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>              base     1774  254211  0.304     1.092  1624</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  stage_1_step_cre     1774  254211  0.373     1.139  1557</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  stage_1_step_cre     1774  286880  0.310     1.096  1619</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> n_eff = n_active / deff_kish. Both worsen with each adjustment and</span>

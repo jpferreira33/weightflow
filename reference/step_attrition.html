@@ -21,7 +21,7 @@ unknown-eligibility go in step_drop_ineligible() / step_unknown_eligibility())."
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -104,6 +104,18 @@ unknown-eligibility go in <code><a href="step_drop_ineligible.html">step_drop_in
 <span>  by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  engine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"logit"</span>, <span class="st">"tree"</span>, <span class="st">"forest"</span>, <span class="st">"boost"</span><span class="op">)</span>,</span>
 <span>  num_classes <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  weight_model <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  crossfit <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  crossfit_seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  totals <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  count <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  calfun <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linear"</span>, <span class="st">"logit"</span>, <span class="st">"raking"</span><span class="op">)</span>,</span>
+<span>  bounds <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  penalty <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  maxit <span class="op">=</span> <span class="fl">50L</span>,</span>
+<span>  tol <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  id <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -118,7 +130,7 @@ unknown-eligibility go in <code><a href="step_drop_ineligible.html">step_drop_in
 
 <dt id="arg-respondent">respondent<a class="anchor" aria-label="anchor" href="#arg-respondent"></a></dt>
 <dd><p>an unquoted 0/1 column or logical condition, TRUE for the units that
-responded in the wave being adjusted (e.g. <code>disp_T2 == "R"</code>).</p></dd>
+responded in the wave being adjusted (e.g. <code>disposition_T2 == "R"</code>).</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
@@ -143,6 +155,99 @@ responders and nonrespondents (from a wave where the unit was seen).</p></dd>
 
 <dt id="arg-num-classes">num_classes<a class="anchor" aria-label="anchor" href="#arg-num-classes"></a></dt>
 <dd><p>number of propensity classes for <code>"rhg"</code>.</p></dd>
+
+
+<dt id="arg-weight-model">weight_model<a class="anchor" aria-label="anchor" href="#arg-weight-model"></a></dt>
+<dd><p>logical. Only for method = "propensity": whether to fit
+the response-propensity model with the incoming weights (<code>TRUE</code>,
+the default) or unweighted (<code>FALSE</code>). Fitting unweighted can reduce the
+variance of the propensity estimates when the weights are unrelated to
+response given the model covariates, at the cost of possible bias if they
+are (Little &amp; Vartivarian 2003). The 1/p (or class) adjustment always uses
+the design weights; only the model fit is affected.</p></dd>
+
+
+<dt id="arg-cluster">cluster<a class="anchor" aria-label="anchor" href="#arg-cluster"></a></dt>
+<dd><p>character or NULL. If given, the adjustment is done at the
+cluster level for whole-cluster nonresponse: each cluster counts once with
+its (uniform) weight; in "weighting_class" the redistribution is between
+responding and nonresponding clusters within the cells, and in "propensity"
+the model is fitted with one row per cluster (cluster auxiliaries),
+predicting the cluster's response. The resulting factor is assigned to every
+member; nonresponding clusters go to zero. As always, only active units
+(weight &gt; 0) take part, so units already dropped (unknown eligibility,
+ineligible) are excluded automatically. For <code>method = "calibration"</code>,
+<code>cluster</code> is used together with <code>equal_within_cluster = TRUE</code> for
+integrative (one weight per cluster) calibration.</p>
+<p>The cluster need not be a household: it is any grouping whose members share
+a fate and a weight – a dwelling, an area segment, or a whole primary
+sampling unit (an entire PSU inaccessible, then redistributed within its
+stratum). A methodological consequence to keep in mind: a cluster-level
+adjustment preserves the <em>mass of clusters</em> in each cell (the cluster weight
+is the mean of its members, in the sense of Valliant et al. 2018), and the
+factor is uniform within the cell; it does <strong>not</strong>, by construction,
+preserve the mass of the underlying units (persons). That is the job of the
+later calibration, whose margins bring the person totals back exactly.</p></dd>
+
+
+<dt id="arg-crossfit">crossfit<a class="anchor" aria-label="anchor" href="#arg-crossfit"></a></dt>
+<dd><p>integer or NULL. If given (number of folds K &gt;= 2), the
+propensity is estimated by K-fold cross-fitting: for each fold the model is
+trained on the other folds and used to predict the held-out fold, so each
+unit's propensity comes from a model that did not see it. This avoids the
+overfitting that flexible engines (forest, boost) can produce, which would
+otherwise inflate the weights. Folds are formed by <code>cluster</code> when given (so
+correlated units stay together). NULL (default) fits and predicts in-sample.
+For flexible learners it also keeps the design-based variance honest:
+same-sample predictions can understate the variance even under recipe-aware
+replication (Dagdoug, Goga and Haziza 2023), so cross-fitting is recommended
+whenever <code>engine</code> is not "logit".</p></dd>
+
+
+<dt id="arg-crossfit-seed">crossfit_seed<a class="anchor" aria-label="anchor" href="#arg-crossfit-seed"></a></dt>
+<dd><p>integer or NULL. Seed for reproducible fold assignment
+when <code>crossfit</code> is used.</p></dd>
+
+
+<dt id="arg-totals">totals<a class="anchor" aria-label="anchor" href="#arg-totals"></a></dt>
+<dd><p>(method = "calibration") calibration targets. NULL (default)
+calibrates the respondents to the R+NR design-weighted totals of <code>formula</code>
+at that stage (the two-phase / sample-level case; Sarndal &amp; Lundstrom 2005);
+a named vector or a tidy <code>totals</code>/<code>count</code> input (as in <code><a href="step_calibrate.html">step_calibrate()</a></code>)
+calibrates to population totals instead.</p></dd>
+
+
+<dt id="arg-count">count<a class="anchor" aria-label="anchor" href="#arg-count"></a></dt>
+<dd><p>(method = "calibration", tidy <code>totals</code>) string naming the counts
+column of the totals data frame(s).</p></dd>
+
+
+<dt id="arg-calfun">calfun<a class="anchor" aria-label="anchor" href="#arg-calfun"></a></dt>
+<dd><p>(method = "calibration") distance function for the calibration
+factor: "linear", "raking" or "logit", as in <code>step_calibrate(method = "linear")</code>.</p></dd>
+
+
+<dt id="arg-bounds">bounds<a class="anchor" aria-label="anchor" href="#arg-bounds"></a></dt>
+<dd><p>(method = "calibration") numeric c(L, U) with L &lt; 1 &lt; U. Bounds
+on the calibration factor, to keep the nonresponse factors positive.</p></dd>
+
+
+<dt id="arg-penalty">penalty<a class="anchor" aria-label="anchor" href="#arg-penalty"></a></dt>
+<dd><p>(method = "calibration", unbounded) NULL or positive cost(s)
+for ridge (penalized) calibration.</p></dd>
+
+
+<dt id="arg-equal-within-cluster">equal_within_cluster<a class="anchor" aria-label="anchor" href="#arg-equal-within-cluster"></a></dt>
+<dd><p>(method = "calibration") logical. If TRUE,
+integrative (Lemaitre-Dufour) nonresponse calibration: the responding
+members of a household (<code>cluster</code>) share a single calibration factor, so
+the adjustment keeps the weights constant within household. Requires
+<code>cluster</code>. FALSE (default) calibrates each responding unit on its own.</p></dd>
+
+
+<dt id="arg-maxit-tol">maxit, tol<a class="anchor" aria-label="anchor" href="#arg-maxit-tol"></a></dt>
+<dd><p>(method = "calibration") convergence control for the bounded
+or exponential-distance calibration solver.</p></dd>
 
 
 <dt id="arg-id">id<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
@@ -180,6 +285,18 @@ likewise absent: this step adjusts one transition at a time, which is what ch. X
 for two consecutive periods.</p>
     </div>
     <div class="section level2">
+    <h2 id="the-arguments-of-step-nonresponse-">The arguments of step_nonresponse()<a class="anchor" aria-label="anchor" href="#the-arguments-of-step-nonresponse-"></a></h2>
+
+
+
+<p>Attrition <em>is</em> nonresponse over waves, so this step delegates to
+<code><a href="step_nonresponse.html">step_nonresponse()</a></code> and takes its arguments too. That was not true before: the
+twelve remaining ones were missing, including <code>crossfit</code> – which the step's own
+quality alert recommends when a flexible engine overfits the propensity, a remedy
+that could not be applied – and <code>totals</code> / <code>calfun</code> / <code>bounds</code>, i.e. the whole
+Sarndal-Lundstrom calibration route with nothing to configure.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="step_nonresponse.html">step_nonresponse()</a></code>, <code><a href="step_panel_overlap.html">step_panel_overlap()</a></code>, <code><a href="step_drop_ineligible.html">step_drop_ineligible()</a></code></p></div>
     </div>
@@ -187,18 +304,18 @@ for two consecutive periods.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="panel_merge.html">panel_merge</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>, T2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id_hogar"</span>, <span class="st">"nper"</span><span class="op">)</span>, require <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wide</span>, base_weights <span class="op">=</span> <span class="va">w_base_T1</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>, T2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, require <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wide</span>, base_weights <span class="op">=</span> <span class="va">pw_T1</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="step_panel_overlap.html">step_panel_overlap</a></span><span class="op">(</span>prob <span class="op">=</span> <span class="fl">5</span> <span class="op">/</span> <span class="fl">6</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span><span class="va">disp_T2</span> <span class="op">==</span> <span class="st">"OS"</span>, reason <span class="op">=</span> <span class="st">"left the target population"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu">step_attrition</span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">disp_T2</span> <span class="op">==</span> <span class="st">"R"</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span></span>
-<span class="r-in"><span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">edad_T1</span> <span class="op">+</span> <span class="va">sexo_T1</span> <span class="op">+</span> <span class="va">region_T1</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span><span class="va">disposition_T2</span> <span class="op">==</span> <span class="st">"OS"</span>, reason <span class="op">=</span> <span class="st">"left the target population"</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_attrition</span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">disposition_T2</span> <span class="op">==</span> <span class="st">"R"</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span></span>
+<span class="r-in"><span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">age_T1</span> <span class="op">+</span> <span class="va">sex_T1</span> <span class="op">+</span> <span class="va">region_T1</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> == Weighting specification (weightflow) ==</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data    : 1717 cases</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: w_base_T1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Base wts: pw_T1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Steps   :</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1. panel overlap  [panel_overlap_1]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   2. drop ineligible (left the target population)  [drop_ineligible_1]</span>

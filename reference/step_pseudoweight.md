@@ -22,6 +22,7 @@ step_pseudoweight(
   formula,
   engine = c("logit", "tree", "forest", "boost"),
   num_classes = NULL,
+  by = NULL,
   crossfit = NULL,
   crossfit_seed = NULL,
   id = NULL
@@ -63,6 +64,21 @@ step_pseudoweight(
   NULL (default, direct `1/pi`) or an integer: group the fitted
   propensities into that many quantile classes and use the class-average
   pseudo-weight, which is more robust to a misspecified model.
+
+- by:
+
+  NULL (default), or a single column name: fit **one participation model
+  per domain**, on that domain's units of both samples and on nothing
+  else. The `reference` must carry the same domain column, and is split
+  by it, so the pseudo-weights of a domain sum to that domain's
+  reference total rather than to the national one – which is what lets a
+  following domain-partitioned calibration start from a coherent input
+  weight. Use it when the participation mechanism differs across domains
+  (a covariate whose effect changes sign by region is the clear case); a
+  single national model cannot represent that, and the resulting
+  pseudo-weights miss the domain totals in both directions. Each domain
+  needs enough units on **each** side to fit its own model; those that
+  do not are reported by name.
 
 - crossfit, crossfit_seed:
 

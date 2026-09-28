@@ -17,7 +17,7 @@ wave_bootstrap(); it is also a valid variance estimator in its own right."><meta
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -95,6 +95,7 @@ reproducible variance of a net change. Meant as the cheap exact oracle to valida
 <span>  strata <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  psu <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  refit_steps <span class="op">=</span> <span class="st">"all"</span>,</span>
+<span>  lonely_psu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"certainty"</span>, <span class="st">"collapse"</span><span class="op">)</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -116,7 +117,11 @@ whole sample as one stratum; <code>psu = NULL</code> treats each row as its own 
 
 
 <dt id="arg-refit-steps">refit_steps<a class="anchor" aria-label="anchor" href="#arg-refit-steps"></a></dt>
-<dd><p>which recipe steps to re-run per replicate; see <code><a href="wave_bootstrap.html">wave_bootstrap()</a></code>.
+<dd><p>which recipe steps to re-run per replicate; see <code><a href="wave_bootstrap.html">wave_bootstrap()</a></code>.</p></dd>
+
+
+<dt id="arg-lonely-psu">lonely_psu<a class="anchor" aria-label="anchor" href="#arg-lonely-psu"></a></dt>
+<dd><p>see <code><a href="wave_bootstrap.html">wave_bootstrap()</a></code>.
 <code>"all"</code> (default) re-preps the whole recipe; <code>"calibration"</code> freezes the prefix and
 re-runs only calibration (StatCan LFS convention).</p></dd>
 
@@ -145,13 +150,13 @@ does not modify <code><a href="bootstrap_weights.html">bootstrap_weights()</a></
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">wj</span> <span class="op">&lt;-</span> <span class="fu">wave_jackknife</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>       T2 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  strata <span class="op">=</span> <span class="st">"estrato"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="change_estimate.html">change_mean</a></span><span class="op">(</span><span class="va">wj</span>, <span class="st">"desocupado"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>       T2 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="change_estimate.html">change_mean</a></span><span class="op">(</span><span class="va">wj</span>, <span class="st">"unemployed"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;weightflow net change [coordinated jackknife]&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   T1 -&gt; T2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   change     : -0.0149512   SE 0.00869933</span>

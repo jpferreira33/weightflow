@@ -49,12 +49,14 @@ step_transition(x, from, to, format = c("row", "col", "joint", "counts"))
 
   for `step_domain()`, one or more grouping columns (unquoted or as
   strings); they stack, so the disaggregation is their cross (e.g.
-  region x sex).
+  region x sex). A column may not be named after one of the result
+  table's own columns (`estimand`, `over`, `type`, `estimate`, `se`,
+  `ci_lower`, `ci_upper`, `rho`); rename it in the wave data first.
 
 - condition:
 
   for `step_filter()`, a logical expression (unquoted) that selects the
-  subpopulation to estimate over – e.g. `edad >= 25 & edad <= 54`. It is
+  subpopulation to estimate over – e.g. `age >= 25 & age <= 54`. It is
   evaluated in each wave's data; rows are **masked** (not dropped), so
   the coordinated replicate structure and the overlap covariance are
   preserved. Multiple `step_filter()` calls stack (their conditions are
@@ -64,6 +66,14 @@ step_transition(x, from, to, format = c("row", "col", "joint", "counts"))
 
   the estimand, as a DSL call – `mean(var)`, `total(var)`, `prop(cond)`,
   `ratio(num, den)`, `quantile(var, p)` – or a `function(w, data)`.
+  Every argument is evaluated in the wave data and must give one numeric
+  or logical value per unit: `prop()` takes a **condition**
+  (`prop(status == "unemployed")`), not a category, and `p` in
+  [`quantile()`](https://rdrr.io/r/stats/quantile.html) is a probability
+  in `[0, 1]` (`0.5`, not `50`). `ratio()` is taken over the domain
+  where numerator **and** denominator are both observed, as
+  `survey::svyratio(na.rm = TRUE)` is. The weighted quantile is R's type
+  5.
 
 - over:
 
@@ -116,28 +126,28 @@ a `weightflow_estimation`.
 ## Examples
 
 ``` r
-t1 <- subset(panel_ine, ola == 1 & disp == "R")
-t2 <- subset(panel_ine, ola == 2 & disp == "R")
+t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+t2 <- subset(panel_ine, wave == 2 & disposition == "R")
 wb <- wave_bootstrap(
-  list(T1 = weighting_spec(t1, base_weights = w_base),
-       T2 = weighting_spec(t2, base_weights = w_base)),
-  replicates = 100, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
+  list(T1 = weighting_spec(t1, base_weights = pw),
+       T2 = weighting_spec(t2, base_weights = pw)),
+  replicates = 100, strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
 
 # net change of the unemployment rate, by region
 collect_estimates(wb |> step_domain(region) |>
-  step_estimate(mean(desocupado), over = "change"))
+  step_estimate(mean(unemployed), over = "change"))
 #> <weightflow estimates [bootstrap]  T1, T2>
 #>          estimand   over     type     region estimate      se ci_lower ci_upper
-#>  mean(desocupado) change absolute   Interior -0.04337 0.01267 -0.06821 -0.01853
-#>  mean(desocupado) change absolute Montevideo  0.01580 0.01713 -0.01777  0.04937
+#>  mean(unemployed) change absolute   Interior -0.04337 0.01267 -0.06821 -0.01853
+#>  mean(unemployed) change absolute Montevideo  0.01580 0.01713 -0.01777  0.04937
 #>     rho
 #>  0.6845
 #>  0.5741
 
 # subpopulation: same change among the working-age population (rows masked, not dropped)
-collect_estimates(wb |> step_filter(edad >= 25 & edad <= 54) |>
-  step_estimate(mean(desocupado), over = "change"))
+collect_estimates(wb |> step_filter(age >= 25 & age <= 54) |>
+  step_estimate(mean(unemployed), over = "change"))
 #> <weightflow estimates [bootstrap]  T1, T2>
 #>          estimand   over     type estimate      se ci_lower ci_upper    rho
-#>  mean(desocupado) change absolute -0.01542 0.01937 -0.05339  0.02254 0.4246
+#>  mean(unemployed) change absolute -0.01542 0.01937 -0.05339  0.02254 0.4246
 ```

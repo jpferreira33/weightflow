@@ -19,7 +19,7 @@ number of decimals.'><meta property="og:image" content="https://jpferreira33.git
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -125,7 +125,7 @@ household, use <code>"nearest"</code>.</p></dd>
 
 <dt id="arg-by">by<a class="anchor" aria-label="anchor" href="#arg-by"></a></dt>
 <dd><p>for <code>method = "balanced"</code> only: a character vector of variables
-whose (crossed) cell totals must be preserved, e.g. <code>by = c("dam", "estrato")</code> – the same domains you calibrated to. Every weight is sent to
+whose (crossed) cell totals must be preserved, e.g. <code>by = c("dam", "stratum")</code> – the same domains you calibrated to. Every weight is sent to
 its floor or ceiling by balanced sampling on the cell indicators (cube
 method), so each cell total (and hence each margin, and the grand total) is
 reproduced up to at most one unit's worth. Required when
@@ -149,6 +149,14 @@ step is recorded only; it is evaluated when <code><a href="prep.html">prep()</a>
 method (Deville and Tille 2004; ECLAC/CEPAL household-survey methodology,
 chapter 9, section F.2) natively, with no external sampling dependency. It is
 randomized: call <code><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed()</a></code> before <code><a href="prep.html">prep()</a></code> for a reproducible result.</p>
+<p><code>"preserve_total"</code> is randomized too, but only where it has to be. Ties in the
+fractional part are the rule rather than the exception – a self-weighting
+design, weights that land on <code>.5</code>, calibrated weights on a grid – and they are
+broken at random, so the extra unit is allocated without regard to the order of
+the file. Deciding ties by row order instead moves mass systematically towards
+whatever the file is sorted by, usually region, while the grand total (the one
+thing the method promises) stays exactly right and hides it. Weights whose
+fractional parts are distinct are rounded exactly as before.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

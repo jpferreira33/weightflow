@@ -3,13 +3,13 @@
 illustrate the panel tools. They share one structure and differ only in the rotation
 system, so the same code runs on a pure panel and on each rotating design. All are in
 long format: one row per person and per wave the person is in sample. Continuing units
-keep the same id_hogar / id_persona across waves, so they link the panel; the household
-is the natural cluster and c(id_hogar, nper) the person-level key."><meta property="og:description" content="Four small, reproducible household-panel datasets that ship with weightflow to test and
+keep the same household_id / person_id across waves, so they link the panel; the household
+is the natural cluster and c(household_id, person_no) the person-level key."><meta property="og:description" content="Four small, reproducible household-panel datasets that ship with weightflow to test and
 illustrate the panel tools. They share one structure and differ only in the rotation
 system, so the same code runs on a pure panel and on each rotating design. All are in
 long format: one row per person and per wave the person is in sample. Continuing units
-keep the same id_hogar / id_persona across waves, so they link the panel; the household
-is the natural cluster and c(id_hogar, nper) the person-level key."><meta property="og:image" content="https://jpferreira33.github.io/weightflow/logo.png"></head><body>
+keep the same household_id / person_id across waves, so they link the panel; the household
+is the natural cluster and c(household_id, person_no) the person-level key."><meta property="og:image" content="https://jpferreira33.github.io/weightflow/logo.png"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -17,7 +17,7 @@ is the natural cluster and c(id_hogar, nper) the person-level key."><meta proper
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -84,8 +84,8 @@ is the natural cluster and c(id_hogar, nper) the person-level key."><meta proper
 illustrate the panel tools. They share one structure and differ only in the <strong>rotation
 system</strong>, so the same code runs on a pure panel and on each rotating design. All are in
 <strong>long format</strong>: one row per person and per wave the person is in sample. Continuing units
-keep the same <code>id_hogar</code> / <code>id_persona</code> across waves, so they link the panel; the household
-is the natural cluster and <code>c(id_hogar, nper)</code> the person-level key.</p>
+keep the same <code>household_id</code> / <code>person_id</code> across waves, so they link the panel; the household
+is the natural cluster and <code>c(household_id, person_no)</code> the person-level key.</p>
     </div>
 
     <div class="section level2">
@@ -101,53 +101,53 @@ is the natural cluster and <code>c(id_hogar, nper)</code> the person-level key.<
 
     <div class="section level2">
     <h2 id="format">Format<a class="anchor" aria-label="anchor" href="#format"></a></h2>
-    <p>A <code>data.frame</code> with one row per person-wave and the columns:</p><dl><dt>id_hogar</dt>
+    <p>A <code>data.frame</code> with one row per person-wave and the columns:</p><dl><dt>household_id</dt>
 <dd><p>household id, persistent across waves (the panel link / cluster).</p></dd>
 
-<dt>id_persona, nper</dt>
-<dd><p>person id and person-number within household; <code>c(id_hogar, nper)</code>
+<dt>person_id, person_no</dt>
+<dd><p>person id and person-number within household; <code>c(household_id, person_no)</code>
 is the person key.</p></dd>
 
-<dt>estrato, psu</dt>
+<dt>stratum, psu</dt>
 <dd><p>design stratum and primary sampling unit (PSU nested in stratum, at
 least two PSUs per stratum), for the coordinated bootstrap / jackknife.</p></dd>
 
-<dt>region, sexo, edad</dt>
+<dt>region, sex, age</dt>
 <dd><p>covariates usable as estimation domains.</p></dd>
 
-<dt>ola</dt>
+<dt>wave</dt>
 <dd><p>wave (month) index.</p></dd>
 
-<dt>grupo_rotacion, mes_en_muestra</dt>
+<dt>rotation_group, month_in_sample</dt>
 <dd><p>rotation group and order-in-sample.</p></dd>
 
-<dt>w_base</dt>
+<dt>pw</dt>
 <dd><p>design (base) weight.</p></dd>
 
-<dt>disp</dt>
+<dt>disposition</dt>
 <dd><p>between-wave disposition: <code>"R"</code>, <code>"NR"</code>, <code>"OS"</code>, <code>"UNK"</code>.</p></dd>
 
-<dt>condicion</dt>
+<dt>lf_status</dt>
 <dd><p>labour status within the working-age population, a factor with levels
 <code>"emp"</code> / <code>"unemp"</code> / <code>"inact"</code>; <code>NA</code> for non-respondents. This is the <code>status</code>
 argument of <code><a href="step_cre.html">step_cre()</a></code> (the previous-wave composite auxiliary).</p></dd>
 
-<dt>ocupado, desocupado</dt>
+<dt>employed, unemployed</dt>
 <dd><p>employed / unemployed indicators (labour force; <code>NA</code> if not
 <code>"R"</code> or not in the labour force).</p></dd>
 
-<dt>ingreso</dt>
+<dt>income</dt>
 <dd><p>labour income (<code>NA</code> if not <code>"R"</code>).</p></dd>
 
 
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>The between-wave disposition <code>disp</code> follows the four-state taxonomy the longitudinal
+    <p>The between-wave disposition <code>disposition</code> follows the four-state taxonomy the longitudinal
 cascade needs: <code>"R"</code> responded, <code>"NR"</code> eligible nonresponse (reweight), <code>"OS"</code> out of scope
 – left the target population between waves, so the household exits permanently and is not
-reweighted – and <code>"UNK"</code> unknown eligibility. The variables of interest (<code>ocupado</code>,
-<code>desocupado</code>, <code>ingreso</code>) are observed only when <code>disp == "R"</code> (and, for the labour-force
+reweighted – and <code>"UNK"</code> unknown eligibility. The variables of interest (<code>employed</code>,
+<code>unemployed</code>, <code>income</code>) are observed only when <code>disposition == "R"</code> (and, for the labour-force
 items, when the person is in the labour force), otherwise <code>NA</code>; they repeat across waves for
 continuing persons, with within-person persistence, so net change and gross flows are
 meaningful.</p>
@@ -159,7 +159,7 @@ waves; the sample shrinks only through attrition. Style of EU-SILC / SLID pure p
 <dt><code>panel_cl</code></dt>
 <dd><p><strong>Chile ENE, 2-2-2</strong> (in-out-in): 3 waves, consecutive overlap ~1/2,
 and units that <strong>return</strong> (in sample in waves 1 and 3 but not 2). The real ENE has no
-public rotation group; <code>grupo_rotacion</code> is included for teaching, but the panel also
+public rotation group; <code>rotation_group</code> is included for teaching, but the panel also
 links through the persistent ids alone.</p></dd>
 
 <dt><code>panel_ine</code></dt>
@@ -176,12 +176,12 @@ leaves and <strong>returns</strong> after the 8-month gap.</p></dd>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># rotation structure of the 6-month panel</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="panel_design.html">panel_design</a></span><span class="op">(</span><span class="va">panel_ine</span>, unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id_hogar"</span>, <span class="st">"nper"</span><span class="op">)</span>, wave <span class="op">=</span> <span class="st">"ola"</span>,</span></span>
-<span class="r-in"><span>             rotation_group <span class="op">=</span> <span class="st">"grupo_rotacion"</span>, pattern <span class="op">=</span> <span class="st">"6"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="panel_design.html">panel_design</a></span><span class="op">(</span><span class="va">panel_ine</span>, unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, wave <span class="op">=</span> <span class="st">"wave"</span>,</span></span>
+<span class="r-in"><span>             rotation_group <span class="op">=</span> <span class="st">"rotation_group"</span>, pattern <span class="op">=</span> <span class="st">"6"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;weightflow panel design&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   waves      : 3 (1, 2, 3)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   unit       : id_hogar + nper</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   rotation   : grupo_rotacion  pattern: 6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   unit       : household_id + person_no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   rotation   : rotation_group  pattern: 6</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   units      : 2783 (linked in &gt;=2 waves: 2063, 74%)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   overlap (row wave retained in column wave):</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1    2    3   </span>
@@ -192,13 +192,13 @@ leaves and <strong>returns</strong> after the 8-month gap.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   overlap implied by pattern    : 0.83 0.67   (lag 1 2)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   pattern                       : 6 group(s) in sample, cycle 6, useful lags 1, 2, 3, 4, 5</span>
 <span class="r-in"><span><span class="co"># coordinated change of the unemployment rate between two waves</span></span></span>
-<span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">wb</span> <span class="op">&lt;-</span> <span class="fu"><a href="wave_bootstrap.html">wave_bootstrap</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>       T2 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  replicates <span class="op">=</span> <span class="fl">100</span>, strata <span class="op">=</span> <span class="st">"estrato"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="change_estimate.html">change_mean</a></span><span class="op">(</span><span class="va">wb</span>, <span class="st">"desocupado"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>       T2 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  replicates <span class="op">=</span> <span class="fl">100</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="change_estimate.html">change_mean</a></span><span class="op">(</span><span class="va">wb</span>, <span class="st">"unemployed"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;weightflow net change&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   T1 -&gt; T2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   change     : -0.0149512   SE 0.010056</span>

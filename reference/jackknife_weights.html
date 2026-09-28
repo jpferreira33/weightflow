@@ -15,7 +15,7 @@ fixed by the design rather than chosen by the analyst."><meta property="og:image
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -91,6 +91,8 @@ fixed by the design rather than chosen by the analyst.</p>
 <span>  <span class="va">object</span>,</span>
 <span>  strata <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  psu <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lonely_psu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"certainty"</span>, <span class="st">"collapse"</span><span class="op">)</span>,</span>
 <span>  cores <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -112,6 +114,19 @@ Pass the recipe <em>before</em> <code><a href="prep.html">prep()</a></code>: the
 
 <dt id="arg-psu">psu<a class="anchor" aria-label="anchor" href="#arg-psu"></a></dt>
 <dd><p>name of the PSU column, or NULL to delete one unit at a time.</p></dd>
+
+
+<dt id="arg-groups">groups<a class="anchor" aria-label="anchor" href="#arg-groups"></a></dt>
+<dd><p>NULL (default) or the number of random groups <code>G</code> for a
+delete-a-group jackknife on a direct sample. Units are assigned to groups at
+random within each stratum and one group is deleted per replicate, giving <code>G</code>
+replicates instead of one per unit. Requires <code>psu = NULL</code>: the group replaces
+the PSU, it does not nest inside one.</p></dd>
+
+
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>optional integer seed for the random group assignment, so the
+replicates are reproducible. The caller's RNG state is restored on exit.</p></dd>
 
 
 <dt id="arg-lonely-psu">lonely_psu<a class="anchor" aria-label="anchor" href="#arg-lonely-psu"></a></dt>
@@ -146,6 +161,18 @@ replicate per PSU. Strata with a single PSU contribute no variance and are
 skipped. This is the stratified jackknife (JKn); with <code>strata = NULL</code> it is
 the unstratified jackknife (JK1), and with <code>psu = NULL</code> each unit is its own
 PSU (delete-one-unit jackknife).</p>
+<p>With a direct (element) sample the delete-one-unit jackknife is the right
+estimator, but it needs one replicate per unit: the whole recipe is re-prepped
+<code>n</code> times and the replicate matrix is <code>n x n</code>, which is 80 GB at n = 100,000.
+<code>groups</code> gives the standard device for that case, the <strong>delete-a-group</strong>
+jackknife (Kott 2001; Rust and Rao 1996): the sample is partitioned at random
+into <code>G</code> groups within each stratum and one whole group is deleted at a time,
+so there are <code>G</code> replicates instead of <code>n</code>. It is the same estimator the engine
+already computes – the group simply plays the part of the PSU – with
+\((G-1)/G\) in place of \((n_h-1)/n_h\), and <code>df = G - strata</code>, which is the
+honest precision of the variance. <code>G</code> between 30 and 100 is the usual range;
+it is not defaulted, because the choice is the analyst's and the delete-one and
+delete-a-group variances are not the same number (the second is noisier).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

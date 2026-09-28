@@ -68,6 +68,8 @@ df <- transform(sample_survey,
 spec <- weighting_spec(df, base_weights = pw) |>
   step_subsample(selected = in2, prob = p2, psu = "household_id")
 two_phase_variance(spec, "income", replicates = 100)
+#> boot_mean(): with a two-phase design the phase-1 multiplier is uncentred. It self-centres for a ratio only to first order, so this SE is mildly conservative (measured +5-8% in simulation); read it as a slight upper bound.
+#> boot_mean(): with a two-phase design the phase-1 multiplier is uncentred. It self-centres for a ratio only to first order, so this SE is mildly conservative (measured +5-8% in simulation); read it as a slight upper bound.
 #> Two-phase variance of the mean of 'income'  (V = V1 + V2)
 #>   V1  phase-1  = 731721   (SE 855.41)
 #>   V2  phase-2  = 1.34677e+06   (SE 1160.5)

@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,15 +157,22 @@ The two samples are stacked internally – no manual pooling.</p>
 <span></span>
 <span><span class="va">w</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">final_weight</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>pseudoweighted_mean <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">vol</span><span class="op">$</span><span class="va">income</span>, <span class="va">w</span><span class="op">)</span>,</span>
-<span>  sum_of_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span>, N <span class="op">=</span> <span class="va">N</span><span class="op">)</span>     <span class="co"># the (1-p)/p pseudo-weights sum to N</span></span>
+<span>  sum_of_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span>, N <span class="op">=</span> <span class="va">N</span><span class="op">)</span>     <span class="co"># sum(w) ESTIMATES N -- see below</span></span>
 <span><span class="co">#&gt; pseudoweighted_mean      sum_of_weights                   N </span></span>
 <span><span class="co">#&gt;           19752.506            4480.998            4495.000</span></span></code></pre></div>
 <p>The pseudo-weighted mean is closer to the truth than the naive
-volunteer mean, and the weights sum to the population size (a
-<code>1/p</code> mistake would overshoot). Flexible learners
-(<code>engine = "tree" / "forest" / "boost"</code>, optionally
-cross-fitted) are available for the participation model, exactly as for
-response-propensity models.</p>
+volunteer mean, and the weights sum to roughly the population size (a
+<code>1/p</code> mistake would overshoot by a whole extra unit each).
+<em>Roughly</em> is the word: the sum is an unbiased
+<strong>estimator</strong> of the population, not an identity, and it
+moves from sample to sample – with a correctly specified model,
+simulation puts its standard deviation at about 2% of N with a reference
+of 500 units and 1% with 3,000. A large gap points at the participation
+model; a small one is not evidence that the model is right.
+<code><a href="../reference/prep.html">prep()</a></code> reports the ratio in the step’s diagnostics.
+Flexible learners (<code>engine = "tree" / "forest" / "boost"</code>,
+optionally cross-fitted) are available for the participation model,
+exactly as for response-propensity models.</p>
 </div>
 <div class="section level2">
 <h2 id="doubly-robust-add-calibration">Doubly robust: add calibration<a class="anchor" aria-label="anchor" href="#doubly-robust-add-calibration"></a>

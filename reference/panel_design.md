@@ -34,7 +34,7 @@ panel_design(
 
   one or more column names (a character vector) that together identify
   the longitudinal unit, stable across waves. A household is often a
-  single id (`"ID"`); a person needs several (`c("ID", "nper")` =
+  single id (`"ID"`); a person needs several (`c("ID", "person_no")` =
   household id plus person line number). The columns are pasted into the
   tracking key.
 
@@ -52,7 +52,13 @@ panel_design(
 
   optional one or more column names identifying a within-unit cluster
   (e.g. the household `"ID"`) when the tracked unit is a person but the
-  overlap is realised at the household level.
+  overlap is realised at the household level. Given one, the descriptor
+  also carries `overlap_cluster` – the same wave x wave overlap matrix
+  computed over distinct clusters – plus `n_clusters` and
+  `n_linked_clusters`. In a rotating household panel the dwelling stays
+  in sample while its members change, so the cluster overlap is the one
+  the rotation calendar describes and the unit-level one is that figure
+  net of within-household churn; the gap between them is the churn.
 
 - pattern:
 
@@ -104,14 +110,15 @@ Uneven rotation-group sizes, which break the scalar reciprocal of
 
 ``` r
 # person-level tracking: the key is household id + person line number
-pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                   rotation_group = "grupo_rotacion", cluster = "id_hogar",
+pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                   rotation_group = "rotation_group", cluster = "household_id",
                    pattern = "6")
 pd            # overlap matrix, Pr(panel selection), linkage rate, alerts
 #> <weightflow panel design>
 #>   waves      : 3 (1, 2, 3)
-#>   unit       : id_hogar + nper  (cluster: id_hogar)
-#>   rotation   : grupo_rotacion  pattern: 6
+#>   unit       : household_id + person_no  (cluster: household_id)
+#>   cluster overlap (lag 1): 0.817   |   unit overlap (lag 1): 0.821
+#>   rotation   : rotation_group  pattern: 6
 #>   units      : 2783 (linked in >=2 waves: 2063, 74%)
 #>   overlap (row wave retained in column wave):
 #>   1    2    3   

@@ -25,7 +25,7 @@ dropped."><meta property="og:image" content="https://jpferreira33.github.io/weig
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -108,6 +108,7 @@ dropped.</p>
 <span>  <span class="va">formula</span>,</span>
 <span>  engine <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"logit"</span>, <span class="st">"tree"</span>, <span class="st">"forest"</span>, <span class="st">"boost"</span><span class="op">)</span>,</span>
 <span>  num_classes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  crossfit <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  crossfit_seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  id <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -148,6 +149,19 @@ e.g. <code>~ sex + age + region</code>.</p></dd>
 <dd><p>NULL (default, direct <code>1/pi</code>) or an integer: group the
 fitted propensities into that many quantile classes and use the class-average
 pseudo-weight, which is more robust to a misspecified model.</p></dd>
+
+
+<dt id="arg-by">by<a class="anchor" aria-label="anchor" href="#arg-by"></a></dt>
+<dd><p>NULL (default), or a single column name: fit <strong>one participation model per
+domain</strong>, on that domain's units of both samples and on nothing else. The
+<code>reference</code> must carry the same domain column, and is split by it, so the
+pseudo-weights of a domain sum to that domain's reference total rather than to the
+national one – which is what lets a following domain-partitioned calibration start
+from a coherent input weight. Use it when the participation mechanism differs
+across domains (a covariate whose effect changes sign by region is the clear case);
+a single national model cannot represent that, and the resulting pseudo-weights
+miss the domain totals in both directions. Each domain needs enough units on <strong>each</strong>
+side to fit its own model; those that do not are reported by name.</p></dd>
 
 
 <dt id="arg-crossfit-crossfit-seed">crossfit, crossfit_seed<a class="anchor" aria-label="anchor" href="#arg-crossfit-crossfit-seed"></a></dt>

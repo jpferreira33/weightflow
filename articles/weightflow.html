@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -413,17 +413,17 @@ variance inflation:</p>
 <span><span class="co">#&gt; Kish deff: 1.460 -&gt; 1.510   |   n_eff: 216 -&gt; 138</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Step 6: calibration (raking) ---</span></span>
-<span><span class="co">#&gt;  variable category target achieved   n</span></span>
-<span><span class="co">#&gt;    region    North   1570     1570  75</span></span>
-<span><span class="co">#&gt;    region    South   1250     1250  46</span></span>
-<span><span class="co">#&gt;    region     East    927      927  32</span></span>
-<span><span class="co">#&gt;    region     West    748      748  56</span></span>
-<span><span class="co">#&gt;       sex        F   2311     2311 105</span></span>
-<span><span class="co">#&gt;       sex        M   2184     2184 104</span></span>
+<span><span class="co">#&gt;  variable category target achieved prev_total    factor   n</span></span>
+<span><span class="co">#&gt;    region    North   1570     1570  1870.6065 0.8393000  75</span></span>
+<span><span class="co">#&gt;    region    South   1250     1250  1322.4017 0.9452499  46</span></span>
+<span><span class="co">#&gt;    region     East    927      927   606.6127 1.5281580  32</span></span>
+<span><span class="co">#&gt;    region     West    748      748   810.8822 0.9224521  56</span></span>
+<span><span class="co">#&gt;       sex        F   2311     2311  2491.2462 0.9276482 105</span></span>
+<span><span class="co">#&gt;       sex        M   2184     2184  2119.2568 1.0305500 104</span></span>
 <span><span class="co">#&gt; (converged/iterated in 4 iterations)</span></span>
 <span><span class="co">#&gt; Kish deff: 1.510 -&gt; 1.548   |   n_eff: 138 -&gt; 135</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; R-indicator (representativity of response): 0.802  (on region, sex, age_grp)</span></span></code></pre></div>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.887  (on region, sex, age_grp)</span></span></code></pre></div>
 <p>And the effect of trimming on the final design effect:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>no_trim <span class="op">=</span> <span class="fu"><a href="../reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span><span class="op">$</span><span class="va">deff</span>,</span>

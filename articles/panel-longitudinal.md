@@ -17,10 +17,10 @@ each period and the quantity of interest is usually the net change, is
 
 ``` r
 
-waves <- split(panel_puro, panel_puro$ola)
+waves <- split(panel_puro, panel_puro$wave)
 names(waves) <- paste0("T", 1:4)
 
-wide <- panel_merge(waves, by = c("id_hogar", "nper"), require = "all")
+wide <- panel_merge(waves, by = c("household_id", "person_no"), require = "all")
 c(T1_sample = nrow(waves$T1), linked_all_four = nrow(wide))
 #>       T1_sample linked_all_four 
 #>            2314            2142
@@ -35,7 +35,7 @@ defining property of the design and worth checking as you go:
 ``` r
 
 vapply(2:4, function(k)
-  nrow(panel_merge(waves[1:k], by = c("id_hogar", "nper"), require = "all")),
+  nrow(panel_merge(waves[1:k], by = c("household_id", "person_no"), require = "all")),
   integer(1))
 #> [1] 2314 2239 2142
 ```
@@ -47,7 +47,7 @@ single “missing” flag would collapse:
 
 ``` r
 
-table(wave_4 = wide$disp_T4)
+table(wave_4 = wide$disposition_T4)
 #> wave_4
 #>   NR   OS    R  UNK 
 #>  176  100 1804   62
@@ -73,21 +73,21 @@ of those who are certainly in.
 
 ``` r
 
-resp <- vapply(1:4, function(k) wide[[paste0("disp_T", k)]] == "R", logical(nrow(wide)))
+resp <- vapply(1:4, function(k) wide[[paste0("disposition_T", k)]] == "R", logical(nrow(wide)))
 wide$responded_always <- rowSums(resp) == 4
 
-lw <- weighting_spec(wide, base_weights = w_base_T1) |>
-  step_drop_ineligible(disp_T4 == "OS", reason = "left the target population") |>
-  step_unknown_eligibility(disp_T4 == "UNK", by = "region_T1") |>
+lw <- weighting_spec(wide, base_weights = pw_T1) |>
+  step_drop_ineligible(disposition_T4 == "OS", reason = "left the target population") |>
+  step_unknown_eligibility(disposition_T4 == "UNK", by = "region_T1") |>
   step_attrition(respondent = responded_always, method = "propensity",
-                 formula = ~ edad_T1 + sexo_T1 + region_T1) |>
+                 formula = ~ age_T1 + sex_T1 + region_T1) |>
   prep()
 
 lw
 #> 
 #> == Weighting specification (weightflow) ==
 #> Data    : 2142 cases
-#> Base wts: w_base_T1
+#> Base wts: pw_T1
 #> Steps   :
 #>   1. drop ineligible (left the target population)  [drop_ineligible_1]
 #>   2. unknown eligibility  [unknown_eligibility_1]
@@ -150,20 +150,20 @@ auxiliary totals must therefore represent the population of the
 ``` r
 
 t1 <- waves$T1
-sex_tab <- data.frame(sexo_T1   = names(tapply(t1$w_base, t1$sexo, sum)),
-                      Freq      = as.numeric(tapply(t1$w_base, t1$sexo, sum)))
-reg_tab <- data.frame(region_T1 = names(tapply(t1$w_base, t1$region, sum)),
-                      Freq      = as.numeric(tapply(t1$w_base, t1$region, sum)))
+sex_tab <- data.frame(sex_T1   = names(tapply(t1$pw, t1$sex, sum)),
+                      Freq      = as.numeric(tapply(t1$pw, t1$sex, sum)))
+reg_tab <- data.frame(region_T1 = names(tapply(t1$pw, t1$region, sum)),
+                      Freq      = as.numeric(tapply(t1$pw, t1$region, sum)))
 
-lw <- weighting_spec(wide, base_weights = w_base_T1) |>
-  step_drop_ineligible(disp_T4 == "OS", reason = "left the target population") |>
-  step_unknown_eligibility(disp_T4 == "UNK", by = "region_T1") |>
+lw <- weighting_spec(wide, base_weights = pw_T1) |>
+  step_drop_ineligible(disposition_T4 == "OS", reason = "left the target population") |>
+  step_unknown_eligibility(disposition_T4 == "UNK", by = "region_T1") |>
   step_attrition(respondent = responded_always, method = "propensity",
-                 formula = ~ edad_T1 + sexo_T1 + region_T1) |>
+                 formula = ~ age_T1 + sex_T1 + region_T1) |>
   step_calibrate(method = "raking", totals = list(sex_tab, reg_tab), count = "Freq") |>
   prep()
 
-c(calibrated = sum(lw$final_weight), T1_population = sum(t1$w_base))
+c(calibrated = sum(lw$final_weight), T1_population = sum(t1$pw))
 #>    calibrated T1_population 
 #>      333288.2      333288.2
 ```
@@ -187,9 +187,9 @@ longitudinal weight can.
 ``` r
 
 STATES <- c("emp", "unemp", "inact")
-transition_matrix(lw, from = "condicion_T1", to = "condicion_T4",
+transition_matrix(lw, from = "lf_status_T1", to = "lf_status_T4",
                   states = STATES, format = "row")
-#> <weightflow transition: condicion_T1 -> condicion_T4  [row]>
+#> <weightflow transition: lf_status_T1 -> lf_status_T4  [row]>
 #>        to
 #> from       emp  unemp inact
 #>   emp   0.8929 0.1071     0
@@ -204,10 +204,10 @@ resample the whole recipe and read the transitions off the replicates:
 
 ``` r
 
-b <- bootstrap_weights(lw, replicates = 100, strata = "estrato_T1", psu = "psu_T1",
+b <- bootstrap_weights(lw, replicates = 100, strata = "stratum_T1", psu = "psu_T1",
                        seed = 1, progress = FALSE)
-boot_transition(b, "condicion_T1", "condicion_T4", states = STATES, format = "row")
-#> <weightflow transition: condicion_T1 -> condicion_T4  [row]  with bootstrap SE>
+boot_transition(b, "lf_status_T1", "lf_status_T4", states = STATES, format = "row")
+#> <weightflow transition: lf_status_T1 -> lf_status_T4  [row]  with bootstrap SE>
 #> estimate:
 #>        to
 #> from       emp  unemp inact
@@ -234,8 +234,8 @@ state, how many ended in each, how many stayed and how many moved.
 
 ``` r
 
-boot_flows(b, "condicion_T1", "condicion_T4", states = STATES)
-#> <weightflow gross flows (population totals): condicion_T1 -> condicion_T4  with bootstrap SE>
+boot_flows(b, "lf_status_T1", "lf_status_T4", states = STATES)
+#> <weightflow gross flows (population totals): lf_status_T1 -> lf_status_T4  with bootstrap SE>
 #> counts (gross flow):
 #>        to
 #> from         emp   unemp   inact

@@ -17,7 +17,7 @@ without a public rotation-group variable (e.g. the Chilean ENE) cannot use this
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -116,8 +116,8 @@ without a public rotation-group variable (e.g. the Chilean ENE) cannot use this
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pd</span> <span class="op">&lt;-</span> <span class="fu"><a href="panel_design.html">panel_design</a></span><span class="op">(</span><span class="va">panel_ine</span>, unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id_hogar"</span>, <span class="st">"nper"</span><span class="op">)</span>, wave <span class="op">=</span> <span class="st">"ola"</span>,</span></span>
-<span class="r-in"><span>                   rotation_group <span class="op">=</span> <span class="st">"grupo_rotacion"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pd</span> <span class="op">&lt;-</span> <span class="fu"><a href="panel_design.html">panel_design</a></span><span class="op">(</span><span class="va">panel_ine</span>, unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, wave <span class="op">=</span> <span class="st">"wave"</span>,</span></span>
+<span class="r-in"><span>                   rotation_group <span class="op">=</span> <span class="st">"rotation_group"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">panel_pr</span><span class="op">(</span><span class="va">pd</span><span class="op">)</span>                    <span class="co"># over all waves</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.6666667</span>
 <span class="r-in"><span><span class="fu">panel_pr</span><span class="op">(</span><span class="va">pd</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1"</span>, <span class="st">"2"</span><span class="op">)</span><span class="op">)</span>       <span class="co"># combining waves 1 and 2</span></span></span>

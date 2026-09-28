@@ -92,16 +92,16 @@ exists for – and the cross-sectional weight for levels.
 
 ``` r
 wide <- panel_merge(
-  list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-  by = c("id_hogar", "nper"), require = "all")
-weighting_spec(wide, base_weights = w_base_T1) |>
+  list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+  by = c("household_id", "person_no"), require = "all")
+weighting_spec(wide, base_weights = pw_T1) |>
   step_longitudinal() |>
   step_panel_overlap(prob = 5 / 6) |> prep()
 #> Warning: step_longitudinal() without a panel_design() on the data: the reference wave and rotation structure are unknown. Tag the recipe data with panel_design() for the reference wave, Pr(panel selection) and the panel report.
 #> 
 #> == Weighting specification (weightflow) ==
 #> Data    : 1717 cases
-#> Base wts: w_base_T1
+#> Base wts: pw_T1
 #> Steps   :
 #>   1. scope: longitudinal  [longitudinal_1]
 #>   2. panel overlap  [panel_overlap_1]

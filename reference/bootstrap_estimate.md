@@ -17,9 +17,21 @@ bootstrap_estimate(
   df = NULL
 )
 
-boot_total(boot, variable)
+boot_total(
+  boot,
+  variable,
+  level = 0.95,
+  ci_type = c("normal", "t", "percentile"),
+  df = NULL
+)
 
-boot_mean(boot, variable)
+boot_mean(
+  boot,
+  variable,
+  level = 0.95,
+  ci_type = c("normal", "t", "percentile"),
+  df = NULL
+)
 ```
 
 ## Arguments

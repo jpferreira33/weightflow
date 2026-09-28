@@ -61,18 +61,18 @@ calibration steps.
 ``` r
 # wide longitudinal file of the units in sample in both waves
 wide <- panel_merge(
-  list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-  by = c("id_hogar", "nper"), require = "all")
+  list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+  by = c("household_id", "person_no"), require = "all")
 
 # rotation group known -> derive Pr(panel selection) from the panel design
-pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                   rotation_group = "grupo_rotacion")
-weighting_spec(wide, base_weights = w_base_T1) |>
+pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                   rotation_group = "rotation_group")
+weighting_spec(wide, base_weights = pw_T1) |>
   step_panel_overlap(prob = panel_pr(pd, c("1", "2"))) |> prep()
 #> 
 #> == Weighting specification (weightflow) ==
 #> Data    : 1717 cases
-#> Base wts: w_base_T1
+#> Base wts: pw_T1
 #> Steps   :
 #>   1. panel overlap  [panel_overlap_1]
 #> Status  : estimated (prep)
@@ -88,12 +88,12 @@ weighting_spec(wide, base_weights = w_base_T1) |>
 #> 
 
 # no rotation group (e.g. Chile ENE) -> pass the probability directly
-weighting_spec(wide, base_weights = w_base_T1) |>
+weighting_spec(wide, base_weights = pw_T1) |>
   step_panel_overlap(prob = 5 / 6) |> prep()
 #> 
 #> == Weighting specification (weightflow) ==
 #> Data    : 1717 cases
-#> Base wts: w_base_T1
+#> Base wts: pw_T1
 #> Steps   :
 #>   1. panel overlap  [panel_overlap_1]
 #> Status  : estimated (prep)

@@ -26,6 +26,7 @@ step_cre(
   birth = NULL,
   alpha = 2/3,
   overlap = "auto",
+  rescale_previous = FALSE,
   on_missing_prev = c("carry_backward", "zero"),
   cluster = NULL,
   equal_within_cluster = FALSE,
@@ -93,7 +94,15 @@ step_cre(
 
   expression (evaluated in the current data) that is TRUE for the birth
   rotation group (the units with no `t-1` value to carry). If `NULL`,
-  birth units are those not found in `previous` by `id_unit`.
+  birth units are those not found in `previous` by `id_unit` – which
+  means a key that fails to link is indistinguishable from a genuine
+  entrant, and a broken `id_unit` then looks like an enormous rotation
+  while the change correction quietly stops working. The step warns when
+  the implied overlap falls below half (or below `overlap` minus ten
+  points, when `overlap` is given as a number) and errors below 2%, but
+  the only way to separate the two properly is to declare `birth`
+  yourself, or to pass the design's nominal `overlap` so the check has
+  something real to compare against.
 
 - alpha:
 
@@ -106,6 +115,20 @@ step_cre(
   the overlap rate used by the MR2 carry-backward correction: "auto"
   (default) estimates it as the `w_nr`-weighted overlap fraction, or a
   number (e.g. 5/6, the nominal LFS/ECH rate).
+
+- rescale_previous:
+
+  put the composite block on the current wave's population scale:
+  `Zhat <- Zhat * N_t / Nhat_{t-1}` (equivalently, calibrate the
+  composite auxiliaries on proportions). `Zhat` is a total estimated
+  with the previous wave's weights, so it lives on `Nhat_{t-1}` while
+  `totals` fixes this wave's `N_t`; the identity that keeps the
+  composite block a smoother rather than a level shift assumes the two
+  agree. When they differ, the whole gap is discharged onto the status
+  estimate with every constraint met and `converged = TRUE`. `FALSE`
+  (default) keeps the totals as given and warns when the two scales
+  differ by more than 1%; the better fix is to calibrate both waves to
+  the same series of population projections.
 
 - on_missing_prev:
 
@@ -208,29 +231,34 @@ Other weighting steps:
 
 ``` r
 # Composite (CRE) estimation on the 6-month rotating panel `panel_ine`.
-# `condicion` is the previous-wave labour status (emp / unemp / inact).
-t1 <- subset(panel_ine, ola == 1 & disp == "R")
-t2 <- subset(panel_ine, ola == 2 & disp == "R")
-t1$sexo <- factor(t1$sexo); t2$sexo <- factor(t2$sexo)
-Xtot <- function(d) colSums(d$w_base * stats::model.matrix(~ sexo, data = d))
+# `lf_status` is the previous-wave labour status (emp / unemp / inact).
+t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+t2 <- subset(panel_ine, wave == 2 & disposition == "R")
+t1$sex <- factor(t1$sex); t2$sex <- factor(t2$sex)
+
+# ONE population vector for both waves, as a series of projections would be.
+# `Zhat` is a total on the previous wave's scale, so calibrating each wave to its
+# own design-weighted total puts two population scales in one system and the
+# difference lands on the status estimate (see `rescale_previous`).
+Xpop <- colSums(t1$pw * stats::model.matrix(~ sex, data = t1))
 
 # seed wave: no previous month, so step_cre() reduces to a linear calibration to X
-seed <- weighting_spec(t1, base_weights = w_base) |>
-  step_cre(previous = NULL, status = condicion, formula = ~ sexo,
-           totals = Xtot(t1), status_ref = "inact") |>
+seed <- weighting_spec(t1, base_weights = pw) |>
+  step_cre(previous = NULL, status = lf_status, formula = ~ sex,
+           totals = Xpop, status_ref = "inact") |>
   prep()
 
 # composite wave: augment X with the previous-wave status, country-level and by sex
-fit2 <- weighting_spec(t2, base_weights = w_base) |>
-  step_cre(previous = seed, status = condicion, composite = list(NULL, "sexo"),
-           id_unit = c("id_hogar", "nper"), formula = ~ sexo, totals = Xtot(t2),
+fit2 <- weighting_spec(t2, base_weights = pw) |>
+  step_cre(previous = seed, status = lf_status, composite = list(NULL, "sex"),
+           id_unit = c("household_id", "person_no"), formula = ~ sex, totals = Xpop,
            alpha = 2/3, status_ref = "inact") |>
   prep()
 fit2
 #> 
 #> == Weighting specification (weightflow) ==
 #> Data    : 1774 cases
-#> Base wts: w_base
+#> Base wts: pw
 #> Steps   :
 #>   1. composite regression estimator (composite, alpha = 0.67)  [cre_1]
 #> Status  : estimated (prep)
@@ -238,7 +266,7 @@ fit2
 #> Stage summary:
 #>             stage n_active sum_wts cv_wts deff_kish n_eff
 #>              base     1774  254211  0.304     1.092  1624
-#>  stage_1_step_cre     1774  254211  0.373     1.139  1557
+#>  stage_1_step_cre     1774  286880  0.310     1.096  1619
 #> 
 #> deff_kish = 1 + CV^2 (Kish design effect from unequal weighting);
 #> n_eff = n_active / deff_kish. Both worsen with each adjustment and

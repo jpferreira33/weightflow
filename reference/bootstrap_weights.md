@@ -140,4 +140,5 @@ bootstrap_weights(spec_f, replicates = 50, strata = "region", psu = "psu",
 #>   strata     : region
 #>   psu        : psu
 #>   df         : 96  (fpc applied)
+#>   MCSE(SE)   : ~10.0% of any SE from this object (Monte Carlo noise at R = 50)
 ```

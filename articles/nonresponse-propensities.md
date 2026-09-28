@@ -102,7 +102,7 @@ summary(wf)
 #>   West            68            63 1.926471
 #> Kish deff: 1.056 -> 1.021   |   n_eff: 442 -> 265
 #> 
-#> R-indicator (representativity of response): 0.892  (on region)
+#> R-indicator (representativity of response): 0.926  (on region)
 ```
 
 **Validation.** By construction the total weight is preserved *within
@@ -179,7 +179,7 @@ summary(wf)
 #>     (0.643,0.684]  93 0.6600845 1.576271
 #> Kish deff: 1.056 -> 1.024   |   n_eff: 442 -> 264
 #> 
-#> R-indicator (representativity of response): 0.889  (on region, sex, age)
+#> R-indicator (representativity of response): 0.956  (on region, sex, age)
 ```
 
 Because the model is fitted with survey weights, a logistic fit may
@@ -349,7 +349,7 @@ summary(wf)
 #> nonresponse calibration to sample-level totals; g in [1.491, 1.950] 
 #> Kish deff: 1.056 -> 1.021   |   n_eff: 442 -> 264
 #> 
-#> R-indicator (representativity of response): 0.890  (on region, sex)
+#> R-indicator (representativity of response): 0.938  (on region, sex)
 ```
 
 Validation. The respondents, reweighted, reproduce the auxiliary totals

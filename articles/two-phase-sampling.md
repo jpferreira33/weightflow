@@ -98,6 +98,7 @@ switches to the two-phase coupling automatically – no extra arguments:
 
 boot <- bootstrap_weights(spec, replicates = 200, seed = 1, progress = FALSE)
 boot_mean(boot, "income")
+#> boot_mean(): with a two-phase design the phase-1 multiplier is uncentred. It self-centres for a ratio only to first order, so this SE is mildly conservative (measured +5-8% in simulation); read it as a slight upper bound.
 #>   estimate        se ci_lower ci_upper
 #> 1 14.49937 0.2037054 14.10012 14.89863
 ```
@@ -212,10 +213,15 @@ Hansen-Hurwitz (uncentred) multiplier: its variance contribution enters
 through the sum of squares $`\sum d_k (w_k y_k)^2`$, not the
 stratum-centred Rao-Wu form $`\sum \frac{n_h}{n_h-1}\sum (z-\bar z)^2`$.
 For a **mean or ratio** the factor cancels between numerator and
-denominator, so the estimate self-centres and the variance is right. For
-a **total** it does not cancel: the phase-1 component is then
-*materially* conservative and can overestimate the variance
-substantially (not merely “slightly”).
+denominator to first order, so the estimate self-centres and the
+variance is *approximately* right — but the Gamma coupling is skewed and
+the second-order term of the ratio does not cancel, which leaves the SE
+mildly conservative (measured +5–8 % in simulation).
+[`boot_mean()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
+says so in a message; read its SE as a slight upper bound. For a
+**total** it does not cancel: the phase-1 component is then *materially*
+conservative and can overestimate the variance substantially (not merely
+“slightly”).
 [`boot_total()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_estimate.md)
 and `two_phase_variance(estimator = "total")` therefore warn, and their
 SE should be read as an upper bound; use the `"mean"`/ratio path, or an

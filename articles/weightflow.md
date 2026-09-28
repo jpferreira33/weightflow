@@ -321,17 +321,17 @@ summary(fitted)
 #> Kish deff: 1.460 -> 1.510   |   n_eff: 216 -> 138
 #> 
 #> --- Step 6: calibration (raking) ---
-#>  variable category target achieved   n
-#>    region    North   1570     1570  75
-#>    region    South   1250     1250  46
-#>    region     East    927      927  32
-#>    region     West    748      748  56
-#>       sex        F   2311     2311 105
-#>       sex        M   2184     2184 104
+#>  variable category target achieved prev_total    factor   n
+#>    region    North   1570     1570  1870.6065 0.8393000  75
+#>    region    South   1250     1250  1322.4017 0.9452499  46
+#>    region     East    927      927   606.6127 1.5281580  32
+#>    region     West    748      748   810.8822 0.9224521  56
+#>       sex        F   2311     2311  2491.2462 0.9276482 105
+#>       sex        M   2184     2184  2119.2568 1.0305500 104
 #> (converged/iterated in 4 iterations)
 #> Kish deff: 1.510 -> 1.548   |   n_eff: 138 -> 135
 #> 
-#> R-indicator (representativity of response): 0.802  (on region, sex, age_grp)
+#> R-indicator (representativity of response): 0.887  (on region, sex, age_grp)
 ```
 
 And the effect of trimming on the final design effect:

@@ -40,8 +40,8 @@ a single probability in `(0, 1]`.
 ## Examples
 
 ``` r
-pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                   rotation_group = "grupo_rotacion")
+pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                   rotation_group = "rotation_group")
 panel_pr(pd)                    # over all waves
 #> [1] 0.6666667
 panel_pr(pd, c("1", "2"))       # combining waves 1 and 2

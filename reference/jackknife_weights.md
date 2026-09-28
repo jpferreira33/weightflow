@@ -14,6 +14,8 @@ jackknife_weights(
   object,
   strata = NULL,
   psu = NULL,
+  groups = NULL,
+  seed = NULL,
   lonely_psu = c("certainty", "collapse"),
   cores = 1L,
   progress = TRUE
@@ -36,6 +38,20 @@ jackknife_weights(
 - psu:
 
   name of the PSU column, or NULL to delete one unit at a time.
+
+- groups:
+
+  NULL (default) or the number of random groups `G` for a delete-a-group
+  jackknife on a direct sample. Units are assigned to groups at random
+  within each stratum and one group is deleted per replicate, giving `G`
+  replicates instead of one per unit. Requires `psu = NULL`: the group
+  replaces the PSU, it does not nest inside one.
+
+- seed:
+
+  optional integer seed for the random group assignment, so the
+  replicates are reproducible. The caller's RNG state is restored on
+  exit.
 
 - lonely_psu:
 
@@ -72,6 +88,21 @@ one replicate per PSU. Strata with a single PSU contribute no variance
 and are skipped. This is the stratified jackknife (JKn); with
 `strata = NULL` it is the unstratified jackknife (JK1), and with
 `psu = NULL` each unit is its own PSU (delete-one-unit jackknife).
+
+With a direct (element) sample the delete-one-unit jackknife is the
+right estimator, but it needs one replicate per unit: the whole recipe
+is re-prepped `n` times and the replicate matrix is `n x n`, which is 80
+GB at n = 100,000. `groups` gives the standard device for that case, the
+**delete-a-group** jackknife (Kott 2001; Rust and Rao 1996): the sample
+is partitioned at random into `G` groups within each stratum and one
+whole group is deleted at a time, so there are `G` replicates instead of
+`n`. It is the same estimator the engine already computes – the group
+simply plays the part of the PSU – with \\(G-1)/G\\ in place of
+\\(n_h-1)/n_h\\, and `df = G - strata`, which is the honest precision of
+the variance. `G` between 30 and 100 is the usual range; it is not
+defaulted, because the choice is the analyst's and the delete-one and
+delete-a-group variances are not the same number (the second is
+noisier).
 
 ## See also
 

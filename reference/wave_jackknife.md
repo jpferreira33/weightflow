@@ -20,6 +20,7 @@ wave_jackknife(
   strata = NULL,
   psu = NULL,
   refit_steps = "all",
+  lonely_psu = c("certainty", "collapse"),
   progress = TRUE
 )
 ```
@@ -43,6 +44,11 @@ wave_jackknife(
 - refit_steps:
 
   which recipe steps to re-run per replicate; see
+  [`wave_bootstrap()`](https://jpferreira33.github.io/weightflow/reference/wave_bootstrap.md).
+
+- lonely_psu:
+
+  see
   [`wave_bootstrap()`](https://jpferreira33.github.io/weightflow/reference/wave_bootstrap.md).
   `"all"` (default) re-preps the whole recipe; `"calibration"` freezes
   the prefix and re-runs only calibration (StatCan LFS convention).
@@ -76,13 +82,13 @@ or touch `R/variance.R`.
 ## Examples
 
 ``` r
-t1 <- subset(panel_ine, ola == 1 & disp == "R")
-t2 <- subset(panel_ine, ola == 2 & disp == "R")
+t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+t2 <- subset(panel_ine, wave == 2 & disposition == "R")
 wj <- wave_jackknife(
-  list(T1 = weighting_spec(t1, base_weights = w_base),
-       T2 = weighting_spec(t2, base_weights = w_base)),
-  strata = "estrato", psu = "psu", progress = FALSE)
-change_mean(wj, "desocupado")
+  list(T1 = weighting_spec(t1, base_weights = pw),
+       T2 = weighting_spec(t2, base_weights = pw)),
+  strata = "stratum", psu = "psu", progress = FALSE)
+change_mean(wj, "unemployed")
 #> <weightflow net change [coordinated jackknife]>
 #>   T1 -> T2
 #>   change     : -0.0149512   SE 0.00869933

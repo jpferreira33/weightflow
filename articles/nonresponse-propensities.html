@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -206,7 +206,7 @@ define them (here, <code>region</code>):</p>
 <span><span class="co">#&gt;   West            68            63 1.926471</span></span>
 <span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.021   |   n_eff: 442 -&gt; 265</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; R-indicator (representativity of response): 0.892  (on region)</span></span></code></pre></div>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.926  (on region)</span></span></code></pre></div>
 <p><strong>Validation.</strong> By construction the total weight is
 preserved <em>within each cell</em> (the nonrespondents’ weight is moved
 to the respondents, not lost). So the weighted total per region after
@@ -277,7 +277,7 @@ robust to a misspecified model.</p>
 <span><span class="co">#&gt;     (0.643,0.684]  93 0.6600845 1.576271</span></span>
 <span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.024   |   n_eff: 442 -&gt; 264</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; R-indicator (representativity of response): 0.889  (on region, sex, age)</span></span></code></pre></div>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.956  (on region, sex, age)</span></span></code></pre></div>
 <p>Because the model is fitted with survey weights, a logistic fit may
 print a “non-integer #successes” message: that is expected for a
 weighted binomial fit and does not affect the estimated
@@ -439,7 +439,7 @@ calibrate to external population totals instead.</p>
 <span><span class="co">#&gt; nonresponse calibration to sample-level totals; g in [1.491, 1.950] </span></span>
 <span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.021   |   n_eff: 442 -&gt; 264</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; R-indicator (representativity of response): 0.890  (on region, sex)</span></span></code></pre></div>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.938  (on region, sex)</span></span></code></pre></div>
 <p>Validation. The respondents, reweighted, reproduce the auxiliary
 totals of all active units before the step:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">

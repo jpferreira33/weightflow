@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -109,56 +109,214 @@ month’s. The <strong>composite estimator</strong> uses that: it adds the
 previous wave’s labour status to the calibration as an auxiliary
 variable, with control totals taken from the previous wave’s own
 composite estimates. The result is a level series that is smoother and,
-much more to the point, a <strong>change</strong> that is measured far
-more precisely – because the estimator is partly built from the same
-units twice.</p>
+much more to the point, a <strong>change</strong> measured far more
+precisely – because the estimator is partly built from the same units
+twice.</p>
 <p><code><a href="../reference/step_cre.html">step_cre()</a></code> implements the regression composite estimator
 of Fuller and Rao (2001) and Gambino, Kennedy and Singh (2001), in the
-form the Canadian LFS and Uruguay’s ECH use. This article covers what it
-does, what it costs, and the one thing that makes its variance different
-from every other step in the package.</p>
+form specified for the Canadian Labour Force Survey (Statistics Canada,
+cat. 71-526-X, sec. 6.3.1) and used by Uruguay’s ECH (sec. 8.4). This
+article states that form, maps it onto the arguments of
+<code><a href="../reference/step_cre.html">step_cre()</a></code>, measures what it buys, and explains the one
+thing that makes its variance a special case.</p>
+<div class="section level2">
+<h2 id="the-estimator">The estimator<a class="anchor" aria-label="anchor" href="#the-estimator"></a>
+</h2>
+<p>Start from the nonresponse-adjusted weights
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup><annotation encoding="application/x-tex">w_l^{NA}</annotation></semantics></math>
+– whatever the recipe produced up to this step. Composite calibration
+looks for final weights
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>w</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><annotation encoding="application/x-tex">w_l^{CC}</annotation></semantics></math>
+as close as possible to those, in the chi-square distance</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mi mathvariant="normal">min</mi><msup><mi>w</mi><mrow><mi>C</mi><mi>C</mi></mrow></msup></munder><mspace width="0.278em"></mspace><munder><mo>∑</mo><mrow><mi>l</mi><mo>∈</mo><msub><mi>s</mi><mi>r</mi></msub></mrow></munder><mfrac><msup><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>w</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><mo>−</mo><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup></mfrac></mrow><annotation encoding="application/x-tex">\min_{w^{CC}} \; \sum_{l \in s_r} \frac{\left(w_l^{CC} - w_l^{NA}\right)^2}{w_l^{NA}}</annotation></semantics></math></p>
+<p>subject to <strong>two</strong> blocks of constraints rather than the
+usual one:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><mi>l</mi><mo>∈</mo><msub><mi>s</mi><mi>r</mi></msub></mrow></munder><msubsup><mi>w</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mtable><mtr><mtd columnalign="center" style="text-align: center"><msub><mi>𝐱</mi><mi>l</mi></msub></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><msub><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow></msub></mtd></mtr></mtable><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mtable><mtr><mtd columnalign="center" style="text-align: center"><mi>𝐗</mi></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover></mtd></mtr></mtable><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\sum_{l \in s_r} w_l^{CC} \begin{pmatrix} \mathbf{x}_l \\ \mathbf{z}_{\bullet l} \end{pmatrix} = \begin{pmatrix} \mathbf{X} \\ \widehat{\mathbf{Z}} \end{pmatrix}</annotation></semantics></math></p>
+<p>The upper block is ordinary calibration:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_l</annotation></semantics></math>
+are the demographic auxiliaries and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐗</mi><annotation encoding="application/x-tex">\mathbf{X}</annotation></semantics></math>
+their <strong>known</strong> population totals (census projections). The
+lower block is what makes the estimator composite:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow></msub><annotation encoding="application/x-tex">\mathbf{z}_{\bullet l}</annotation></semantics></math>
+are indicators of the <em>previous</em> wave’s labour status and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math>
+are their totals <strong>estimated from the previous wave</strong>. The
+solution is the familiar GREG form,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>w</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><mo>=</mo><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup><msubsup><mi>g</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><mo>,</mo><mspace width="2.0em"></mspace><msubsup><mi>g</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>𝐱</mi><mi>l</mi><mo>′</mo></msubsup><mo>,</mo><msubsup><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow><mo>′</mo></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><msup><mrow><mo stretchy="true" form="prefix">[</mo><munder><mo>∑</mo><mrow><mi>l</mi><mo>∈</mo><msub><mi>s</mi><mi>r</mi></msub></mrow></munder><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup><mrow><mo stretchy="true" form="prefix">(</mo><mtable><mtr><mtd columnalign="center" style="text-align: center"><msub><mi>𝐱</mi><mi>l</mi></msub></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><msub><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow></msub></mtd></mtr></mtable><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>𝐱</mi><mi>l</mi><mo>′</mo></msubsup><mo>,</mo><msubsup><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow><mo>′</mo></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mrow><mi>−</mi><mn>1</mn></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mtable><mtr><mtd columnalign="center" style="text-align: center"><mi>𝐗</mi></mtd></mtr><mtr><mtd columnalign="center" style="text-align: center"><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover></mtd></mtr></mtable><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">w_l^{CC} = w_l^{NA} g_l^{CC}, \qquad g_l^{CC} = \left(\mathbf{x}_l', \mathbf{z}_{\bullet l}'\right) \left[\sum_{l \in s_r} w_l^{NA} \begin{pmatrix} \mathbf{x}_l \\ \mathbf{z}_{\bullet l}\end{pmatrix}\left(\mathbf{x}_l', \mathbf{z}_{\bullet l}'\right)\right]^{-1} \begin{pmatrix} \mathbf{X} \\ \widehat{\mathbf{Z}} \end{pmatrix}</annotation></semantics></math></p>
+<p>with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>g</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><annotation encoding="application/x-tex">g_l^{CC}</annotation></semantics></math>
+near 1 when the sample already reproduces both blocks.</p>
+</div>
+<div class="section level2">
+<h2 id="the-birth-rotation-group-and-why-there-are-two-imputations">The birth rotation group, and why there are two imputations<a class="anchor" aria-label="anchor" href="#the-birth-rotation-group-and-why-there-are-two-imputations"></a>
+</h2>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow></msub><annotation encoding="application/x-tex">\mathbf{z}_{\bullet l}</annotation></semantics></math>
+is not observed for everyone: the units that entered the sample this
+wave – the <strong>birth rotation group</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>s</mi><mi>r</mi><mi>b</mi></msubsup><annotation encoding="application/x-tex">s_r^b</annotation></semantics></math>
+– have no previous month. Their values have to be imputed, and the LFS
+methodology uses <em>two</em> imputations because they are efficient for
+two different things.</p>
+<p><strong>MR1, mean imputation</strong>, is efficient for the
+<strong>level</strong> at month
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><msub><mi>𝐳</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn><mo>,</mo><mi>l</mi></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mi>l</mi><mo>∈</mo><msub><mi>s</mi><mi>r</mi></msub><mo>−</mo><msubsup><mi>s</mi><mi>r</mi><mi>b</mi></msubsup></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><mi>/</mi><msub><mi>N</mi><mrow><mn>15</mn><mo>+</mo></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mi>l</mi><mo>∈</mo><msubsup><mi>s</mi><mi>r</mi><mi>b</mi></msubsup></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">\mathbf{z}_{\bullet l}^{(1)} = \begin{cases} \mathbf{z}_{t-1,l} &amp; l \in s_r - s_r^b \\ \widehat{\mathbf{Z}} / N_{15+} &amp; l \in s_r^b \end{cases}</annotation></semantics></math></p>
+<p><strong>MR2, carry-backward imputation</strong>, is efficient for the
+<strong>difference</strong> between two successive months. The birth
+group carries its current value backwards, and the non-birth groups are
+corrected for the change that this erases:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow><mrow><mo stretchy="false" form="prefix">(</mo><mn>2</mn><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><msub><mi>𝐳</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn><mo>,</mo><mi>l</mi></mrow></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><msubsup><mi>δ</mi><mi>l</mi><mrow><mi>−</mi><mn>1</mn></mrow></msubsup><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>𝐳</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn><mo>,</mo><mi>l</mi></mrow></msub><mo>−</mo><msub><mi>𝐳</mi><mrow><mi>t</mi><mo>,</mo><mi>l</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mtd><mtd columnalign="left" style="text-align: left"><mi>l</mi><mo>∈</mo><msub><mi>s</mi><mi>r</mi></msub><mo>−</mo><msubsup><mi>s</mi><mi>r</mi><mi>b</mi></msubsup></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><msub><mi>𝐳</mi><mrow><mi>t</mi><mo>,</mo><mi>l</mi></mrow></msub></mtd><mtd columnalign="left" style="text-align: left"><mi>l</mi><mo>∈</mo><msubsup><mi>s</mi><mi>r</mi><mi>b</mi></msubsup></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">\mathbf{z}_{\bullet l}^{(2)} = \begin{cases} \mathbf{z}_{t-1,l} + \left(\delta_l^{-1} - 1\right)\left(\mathbf{z}_{t-1,l} - \mathbf{z}_{t,l}\right) &amp; l \in s_r - s_r^b \\ \mathbf{z}_{t,l} &amp; l \in s_r^b \end{cases}</annotation></semantics></math></p>
+<p>Here
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>δ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\delta_l</annotation></semantics></math>
+is the probability of <em>not</em> being in the birth group – the
+overlap rate,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>5</mn><mi>/</mi><mn>6</mn></mrow><annotation encoding="application/x-tex">5/6</annotation></semantics></math>
+in a six-month rotation – estimated from the weights themselves as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>δ</mi><mo accent="true">̂</mo></mover><mo>=</mo><msub><mo>∑</mo><mrow><msub><mi>s</mi><mi>r</mi></msub><mo>−</mo><msubsup><mi>s</mi><mi>r</mi><mi>b</mi></msubsup></mrow></msub><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup><mi minsize="120%" maxsize="120%" stretchy="true">/</mi><msub><mo>∑</mo><msub><mi>s</mi><mi>r</mi></msub></msub><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup></mrow><annotation encoding="application/x-tex">\hat\delta = \sum_{s_r - s_r^b} w_l^{NA} \big/ \sum_{s_r} w_l^{NA}</annotation></semantics></math>.
+The correction factor
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>δ</mi><mrow><mi>−</mi><mn>1</mn></mrow></msup><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\delta^{-1} - 1</annotation></semantics></math>
+is what preserves asymptotic unbiasedness: without it, carry-backward
+would quietly remove one sixth of the month-to-month change.</p>
+<p>Neither is used alone. The composite auxiliaries are the mix</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow></msub><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>α</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"></mspace><msubsup><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo>+</mo><mi>α</mi><mspace width="0.167em"></mspace><msubsup><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow><mrow><mo stretchy="false" form="prefix">(</mo><mn>2</mn><mo stretchy="false" form="postfix">)</mo></mrow></msubsup><mo>,</mo><mspace width="2.0em"></mspace><mi>α</mi><mo>=</mo><mn>2</mn><mi>/</mi><mn>3</mn></mrow><annotation encoding="application/x-tex">\mathbf{z}_{\bullet l} = (1 - \alpha)\,\mathbf{z}_{\bullet l}^{(1)} + \alpha\,\mathbf{z}_{\bullet l}^{(2)}, \qquad \alpha = 2/3</annotation></semantics></math></p>
+<p>with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
+a tuning constant:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\alpha = 0</annotation></semantics></math>
+targets the level alone,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>α</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\alpha = 1</annotation></semantics></math>
+the change alone. Both the LFS and the ECH use
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><mi>/</mi><mn>3</mn></mrow><annotation encoding="application/x-tex">2/3</annotation></semantics></math>,
+following the study of Chen and Liu (2002).</p>
+<div class="section level3">
+<h3 id="where-each-symbol-lives-in-the-call">Where each symbol lives in the call<a class="anchor" aria-label="anchor" href="#where-each-symbol-lives-in-the-call"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>symbol</th>
+<th>argument</th>
+<th></th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>w</mi><mi>l</mi><mrow><mi>N</mi><mi>A</mi></mrow></msubsup><annotation encoding="application/x-tex">w_l^{NA}</annotation></semantics></math></td>
+<td>—</td>
+<td>whatever the recipe produced before this step</td>
+</tr>
+<tr class="even">
+<td>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐱</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mathbf{x}_l</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐗</mi><annotation encoding="application/x-tex">\mathbf{X}</annotation></semantics></math>
+</td>
+<td>
+<code>formula</code>, <code>totals</code>
+</td>
+<td>as in <code>step_calibrate(method = "linear")</code>
+</td>
+</tr>
+<tr class="odd">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow></msub><annotation encoding="application/x-tex">\mathbf{z}_{\bullet l}</annotation></semantics></math></td>
+<td>
+<code>status</code>, <code>composite</code>
+</td>
+<td>status indicators, crossed by the domains in
+<code>composite</code>
+</td>
+</tr>
+<tr class="even">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math></td>
+<td><code>previous</code></td>
+<td>re-estimated from the prepped previous wave</td>
+</tr>
+<tr class="odd">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math></td>
+<td><code>alpha</code></td>
+<td>default <code>2/3</code>
+</td>
+</tr>
+<tr class="even">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>δ</mi><annotation encoding="application/x-tex">\delta</annotation></semantics></math></td>
+<td><code>overlap</code></td>
+<td>
+<code>"auto"</code> estimates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>δ</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\hat\delta</annotation></semantics></math>
+from the weights; or give it (e.g. <code>5/6</code>)</td>
+</tr>
+<tr class="odd">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mi>s</mi><mi>r</mi><mi>b</mi></msubsup><annotation encoding="application/x-tex">s_r^b</annotation></semantics></math></td>
+<td>
+<code>birth</code>, <code>id_unit</code>
+</td>
+<td>the birth group, named or derived by unit key</td>
+</tr>
+<tr class="even">
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mi>/</mi><mi>G</mi></mrow><annotation encoding="application/x-tex">N/G</annotation></semantics></math></td>
+<td><code>rotation_group</code></td>
+<td>equal-representation constraints, see below</td>
+</tr>
+</tbody>
+</table>
+<p><code>composite</code> is the list of domain crossings that define
+the blocks of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math>:
+<code>NULL</code> is the country total, <code>"sex"</code> is status
+crossed by sex, a character vector is status crossed by the interaction.
+The ECH’s own list is <code>list(NULL, "sex", "department")</code>.
+<code>status_ref</code> names the status level left implicit in each
+block – one level must always be dropped, or the block is collinear with
+the intercept of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐱</mi><annotation encoding="application/x-tex">\mathbf{x}</annotation></semantics></math>;
+naming it only decides which.</p>
+<p>Units that are neither birth nor matched – new household members,
+people newly of working age, people out of scope last month – are
+handled by <code>on_missing_prev</code>: <code>"carry_backward"</code>
+sets
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝐳</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>=</mo><msub><mi>𝐳</mi><mi>t</mi></msub></mrow><annotation encoding="application/x-tex">\mathbf{z}_{t-1} = \mathbf{z}_t</annotation></semantics></math>,
+<code>"zero"</code> sets
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>𝐳</mi><mrow><mi>•</mi><mi>l</mi></mrow></msub><mo>=</mo><mn>𝟎</mn></mrow><annotation encoding="application/x-tex">\mathbf{z}_{\bullet l} = \mathbf{0}</annotation></semantics></math>,
+which is what the LFS does for the out-of-scope (Gambino, Kennedy and
+Singh 2001).</p>
+</div>
+</div>
 <div class="section level2">
 <h2 id="the-recursion">The recursion<a class="anchor" aria-label="anchor" href="#the-recursion"></a>
 </h2>
-<p>The estimator is defined by a recursion, so a chain needs a starting
-point. The <strong>seed</strong> wave has no <code>t-1</code>: with
-<code>previous = NULL</code> the composite block is empty and
-<code><a href="../reference/step_cre.html">step_cre()</a></code> reduces to an ordinary linear calibration to the
-demographic totals <code>X</code>. From the second wave on,
-<code>previous</code> is the prepped recipe of the wave before, and the
-calibration targets <code>X</code> <strong>and</strong> the composite
-totals <code>Zhat</code> built from it.</p>
+<p>The estimator is defined recursively, so a chain needs a starting
+point. The <strong>seed</strong> wave has no
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t-1</annotation></semantics></math>:
+with <code>previous = NULL</code> the composite block is empty and
+<code><a href="../reference/step_cre.html">step_cre()</a></code> reduces to an ordinary linear calibration to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐗</mi><annotation encoding="application/x-tex">\mathbf{X}</annotation></semantics></math>.
+From the second wave on, <code>previous</code> is the prepped recipe of
+the wave before.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="kw">function</span><span class="op">(</span><span class="va">k</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="va">k</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span>; <span class="va">d</span><span class="op">$</span><span class="va">sexo</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">sexo</span><span class="op">)</span>; <span class="va">d</span></span>
+<span>  <span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="va">k</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span>; <span class="va">d</span><span class="op">$</span><span class="va">sex</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">sex</span><span class="op">)</span>; <span class="va">d</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="va">Xtot</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">w_base</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">sexo</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># ONE population vector for every wave, as a series of projections would be. `Zhat`</span></span>
+<span><span class="co"># is a total estimated on the PREVIOUS wave's scale, so giving each wave its own</span></span>
+<span><span class="co"># design-weighted total puts two population scales in the same system: the composite</span></span>
+<span><span class="co"># block stops being a smoother and the whole gap lands on the status estimate, with</span></span>
+<span><span class="co"># every constraint met and `converged = TRUE`. On `panel_ine` the design totals drift</span></span>
+<span><span class="co"># 12.9% between waves 1 and 2, which moves the employment rate by 7 points.</span></span>
+<span><span class="va">Xpop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">pw</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">sex</span>, data <span class="op">=</span> <span class="va">wv</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">Xtot</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="va">Xpop</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_cre.html">step_cre</a></span><span class="op">(</span>previous <span class="op">=</span> <span class="cn">NULL</span>, status <span class="op">=</span> <span class="va">condicion</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sexo</span>,</span>
+<code class="sourceCode R"><span><span class="va">seed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_cre.html">step_cre</a></span><span class="op">(</span>previous <span class="op">=</span> <span class="cn">NULL</span>, status <span class="op">=</span> <span class="va">lf_status</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span>,</span>
 <span>           totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>, status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">wave2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="../reference/step_cre.html">step_cre</a></span><span class="op">(</span>previous <span class="op">=</span> <span class="va">seed</span>, status <span class="op">=</span> <span class="va">condicion</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sexo"</span><span class="op">)</span>,</span>
-<span>           id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id_hogar"</span>, <span class="st">"nper"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sexo</span>,</span>
+<span><span class="va">wave2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_cre.html">step_cre</a></span><span class="op">(</span>previous <span class="op">=</span> <span class="va">seed</span>, status <span class="op">=</span> <span class="va">lf_status</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sex"</span><span class="op">)</span>,</span>
+<span>           id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span>,</span>
 <span>           totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">2</span><span class="op">/</span><span class="fl">3</span>, status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span></span></code></pre></div>
-<p><code>composite</code> is the list of domain crossings that define
-the composite blocks: <code>NULL</code> is the country total,
-<code>"sexo"</code> is status crossed by sex, and a character vector is
-status crossed by the interaction. The ECH’s own list is
-<code>list(NULL, "sex", "department")</code>. <code>status_ref</code>
-names the status level left implicit in each block – one level must
-always be dropped, or the block is collinear with the intercept of
-<code>X</code>; naming it only decides which one is implied.
-<code>alpha</code> mixes the MR1 and MR2 variants: 0 targets the level
-alone, 1 the change alone, and 2/3 is the Chen and Liu (2002) compromise
-both agencies use.</p>
-<p><code>id_unit</code> is how a unit finds its own <code>t-1</code>
-status. Units with no previous value – the birth rotation group, new
-household members, people newly of working age – are handled by
-<code>birth</code> and <code>on_missing_prev</code>; by default they
-carry their current status backward.</p>
 </div>
 <div class="section level2">
 <h2 id="what-it-buys">What it buys<a class="anchor" aria-label="anchor" href="#what-it-buys"></a>
@@ -166,21 +324,21 @@ carry their current status backward.</p>
 <p>The comparison worth making is against the same recipe with an
 ordinary calibration, over the same chain, with the same replicates:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">EST</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>unemp_rate <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">w</span>, <span class="va">d</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/stats/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">desocupado</span>, <span class="va">w</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">EST</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>unemp_rate <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">w</span>, <span class="va">d</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/stats/weighted.mean.html" class="external-link">weighted.mean</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">unemployed</span>, <span class="va">w</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">run</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">composite</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">prev</span> <span class="op">&lt;-</span> <span class="cn">NULL</span>; <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">k</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span></span>
+<span>    <span class="va">sp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span></span>
 <span>    <span class="va">sp</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="va">composite</span><span class="op">)</span></span>
 <span>      <span class="fu"><a href="../reference/step_cre.html">step_cre</a></span><span class="op">(</span><span class="va">sp</span>, previous <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="va">k</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="cn">NULL</span> <span class="kw">else</span> <span class="va">out</span><span class="op">[[</span><span class="va">k</span> <span class="op">-</span> <span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">prepped</span>,</span>
-<span>               status <span class="op">=</span> <span class="va">condicion</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sexo"</span><span class="op">)</span>,</span>
-<span>               id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id_hogar"</span>, <span class="st">"nper"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sexo</span>,</span>
+<span>               status <span class="op">=</span> <span class="va">lf_status</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sex"</span><span class="op">)</span>,</span>
+<span>               id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span>,</span>
 <span>               totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">2</span><span class="op">/</span><span class="fl">3</span>, status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span></span>
 <span>    <span class="kw">else</span></span>
-<span>      <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span><span class="va">sp</span>, method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sexo</span>, totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>      <span class="fu"><a href="../reference/step_calibrate.html">step_calibrate</a></span><span class="op">(</span><span class="va">sp</span>, method <span class="op">=</span> <span class="st">"linear"</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span>, totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="va">sp</span>, previous <span class="op">=</span> <span class="va">prev</span>, estimands <span class="op">=</span> <span class="va">EST</span>, replicates <span class="op">=</span> <span class="fl">150</span>,</span>
-<span>                   strata <span class="op">=</span> <span class="st">"estrato"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"T"</span>, <span class="va">k</span><span class="op">)</span>,</span>
+<span>                   strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"T"</span>, <span class="va">k</span><span class="op">)</span>,</span>
 <span>                   seed <span class="op">=</span> <span class="fl">100</span> <span class="op">+</span> <span class="va">k</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span>    <span class="va">out</span><span class="op">[[</span><span class="va">k</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>step <span class="op">=</span> <span class="va">s</span>, carry <span class="op">=</span> <span class="fu"><a href="../reference/wave_carry.html">wave_carry</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span>, prepped <span class="op">=</span> <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span><span class="op">)</span></span>
 <span>    <span class="va">prev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">out</span>, <span class="kw">function</span><span class="op">(</span><span class="va">z</span><span class="op">)</span> <span class="va">z</span><span class="op">$</span><span class="va">carry</span><span class="op">)</span><span class="op">)</span></span>
@@ -198,97 +356,137 @@ ordinary calibration, over the same chain, with the same replicates:</p>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu">tab</span><span class="op">(</span><span class="va">cre</span>, <span class="st">"composite (CRE)"</span><span class="op">)</span>, <span class="fu">tab</span><span class="op">(</span><span class="va">plain</span>, <span class="st">"plain calibration"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;              recipe from      se   rho deff_change</span></span>
-<span><span class="co">#&gt; 1   composite (CRE)   T2 0.00699 0.854       0.150</span></span>
-<span><span class="co">#&gt; 2   composite (CRE)   T1 0.00918 0.708       0.292</span></span>
-<span><span class="co">#&gt; 3 plain calibration   T2 0.01087 0.619       0.381</span></span>
-<span><span class="co">#&gt; 4 plain calibration   T1 0.01257 0.460       0.540</span></span></code></pre></div>
+<span><span class="co">#&gt; 1   composite (CRE)   T2 0.00704 0.851       0.152</span></span>
+<span><span class="co">#&gt; 2   composite (CRE)   T1 0.00922 0.705       0.295</span></span>
+<span><span class="co">#&gt; 3 plain calibration   T2 0.01082 0.627       0.373</span></span>
+<span><span class="co">#&gt; 4 plain calibration   T1 0.01257 0.468       0.532</span></span></code></pre></div>
 <p>Against the previous month the standard error of the change falls by
 about a third, and the correlation between the two periods’ estimates
-rises from roughly 0.6 to roughly 0.84. That is the whole point of the
-method: the composite auxiliaries make consecutive estimates share more
-of their sampling error, and shared error cancels in a difference.</p>
-<p>It is not free. The level of period <em>t</em> now depends on the
-previous wave’s estimates, so an error propagates forward, and the
-series is smoother than the data alone would justify – which is why
-<code>alpha</code> exists and why agencies do not set it to 1.</p>
+rises from roughly 0.6 to roughly 0.85. That is the whole point: the
+composite auxiliaries make consecutive estimates share more of their
+sampling error, and shared error cancels in a difference. Statistics
+Canada reports the same qualitative result – composite estimation
+“significantly reduces the sampling errors” of the LFS (cat. 71-526-X,
+ch. 8).</p>
+<p>It is not free. The level at period
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>
+now depends on the previous wave’s estimates, so an error propagates
+forward and the series is smoother than the data alone would justify.
+That is why
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
+exists and why neither agency sets it to 1.</p>
 </div>
 <div class="section level2">
 <h2 id="the-variance-trap">The variance trap<a class="anchor" aria-label="anchor" href="#the-variance-trap"></a>
 </h2>
-<p>Here is the part that makes <code><a href="../reference/step_cre.html">step_cre()</a></code> different from
-every other step. Its control totals <code>Zhat</code> are <strong>not
-known population figures</strong>. They are <em>estimated</em> from the
-previous wave, with the previous wave’s weights, and they carry that
-wave’s sampling error.</p>
+<p>Here is what makes <code><a href="../reference/step_cre.html">step_cre()</a></code> different from every other
+step. Its control totals
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math>
+are <strong>not known population figures</strong>. They are
+<em>estimated</em> from the previous wave, with the previous wave’s
+weights, and they carry that wave’s sampling error.</p>
 <p>A single-sample bootstrap does not know this. It resamples the
-current wave and re-runs the recipe, but <code>Zhat</code> was computed
-once, from the previous wave’s frozen point weights, so every replicate
-calibrates to the <em>same</em> control totals – as if they were census
-figures. The resulting variance is too small, and it is too small in
-precisely the direction that matters, because the understated part is
-the one the change depends on.</p>
-<p>The package refuses to let this happen quietly:</p>
+current wave and re-runs the recipe, but
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math>
+was computed once, from the previous wave’s frozen point weights, so
+every replicate calibrates to the <em>same</em> control totals – as if
+they were census figures. Writing the change as</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo>−</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mi>V</mi><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mn>2</mn><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo>,</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">V(\hat\theta_t - \hat\theta_{t-1}) = V(\hat\theta_t) + V(\hat\theta_{t-1}) - 2\,\mathrm{Cov}(\hat\theta_t, \hat\theta_{t-1})</annotation></semantics></math></p>
+<p>the single-sample engine gets the first term wrong <em>and</em> has
+no way to produce the third. The result is too small, and too small in
+precisely the direction that matters. The package refuses to let this
+happen quietly:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="fu"><a href="../reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">wave2</span>, replicates <span class="op">=</span> <span class="fl">5</span>, strata <span class="op">=</span> <span class="st">"estrato"</span>,</span>
+<code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="fu"><a href="../reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">wave2</span>, replicates <span class="op">=</span> <span class="fl">5</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>,</span>
 <span>                                psu <span class="op">=</span> <span class="st">"psu"</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
 <span>              warning <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">w</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">b</span></span>
 <span><span class="co">#&gt; [1] "bootstrap_weights(): the recipe contains step_cre() (composite regression). This single-sample bootstrap treats the composite control totals Zhat as FIXED, so it understates the variance. Use wave_bootstrap() for the coordinated, honest variance of the recursive composite estimator."</span></span></code></pre></div>
-<p>The honest version re-estimates <code>Zhat</code> inside every
-replicate: replicate <em>b</em> of period <em>t</em> rebuilds its
-control totals from replicate <em>b</em> of period <em>t-1</em>. That is
-what <code><a href="../reference/wave_step.html">wave_step()</a></code> and <code><a href="../reference/wave_bootstrap.html">wave_bootstrap()</a></code> do, and
-it is the reason a chain that contains <code><a href="../reference/step_cre.html">step_cre()</a></code> needs the
-previous period’s <strong>replicate weights</strong>, not just its
-replicate estimates.</p>
+<p>The honest version re-estimates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math>
+inside every replicate: replicate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+of period
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>
+rebuilds its control totals from replicate
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+of period
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t-1</annotation></semantics></math>.
+That is what <code><a href="../reference/wave_step.html">wave_step()</a></code> and <code><a href="../reference/wave_bootstrap.html">wave_bootstrap()</a></code>
+do, and it is the reason a chain containing <code><a href="../reference/step_cre.html">step_cre()</a></code>
+needs the previous period’s <strong>replicate weights</strong>, not just
+its replicate estimates.</p>
 </div>
 <div class="section level2">
 <h2 id="the-fat-carry">The fat carry<a class="anchor" aria-label="anchor" href="#the-fat-carry"></a>
 </h2>
 <p>Hence the two shapes of the carry. <code>carry = "auto"</code>, the
 default, inspects the recipe: with no <code><a href="../reference/step_cre.html">step_cre()</a></code> it stores
-only the replicate values of the declared estimands, and with one it
-stores the replicate weight matrix as well.</p>
+only the replicate values of the declared estimands; with one, it stores
+the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>×</mo><mi>n</mi></mrow><annotation encoding="application/x-tex">R \times n</annotation></semantics></math>
+matrix of replicate weights as well.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>thin_KB <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/object.size.html" class="external-link">object.size</a></span><span class="op">(</span><span class="va">plain</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">carry</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1024</span>,</span>
 <span>  fat_KB  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/object.size.html" class="external-link">object.size</a></span><span class="op">(</span><span class="va">cre</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">carry</span><span class="op">)</span><span class="op">)</span>   <span class="op">/</span> <span class="fl">1024</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    thin_KB     fat_KB </span></span>
-<span><span class="co">#&gt;   85.88281 2614.17188</span></span></code></pre></div>
-<p>Thirty times larger, and the difference is entirely the
-<code>R * n</code> matrix of replicate weights. For a monthly production
-chain that is a few megabytes per period, which is the price of an
-honest variance for the composite estimator.</p>
+<span><span class="co">#&gt;   85.88281 2614.19531</span></span></code></pre></div>
+<p>Thirty times larger, and the difference is entirely that matrix. For
+a monthly production chain it is a few megabytes per period – the price
+of an honest variance for the composite estimator.</p>
 <p>The injection is audited, so you can confirm it happened rather than
-assuming it:</p>
+assume it:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>injected <span class="op">=</span> <span class="va">cre</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">step</span><span class="op">$</span><span class="va">n_cre_injected</span>, skipped <span class="op">=</span> <span class="va">cre</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">step</span><span class="op">$</span><span class="va">n_cre_skipped</span><span class="op">)</span></span>
 <span><span class="co">#&gt; injected  skipped </span></span>
 <span><span class="co">#&gt;        1        0</span></span></code></pre></div>
 <p><code>n_cre_injected</code> counts the CRE steps that received the
-previous period’s replicate weights; <code>n_cre_skipped</code> counts
-those that did not – because no carry contained them, or because the
-carry was thin. A chain running with <code>skipped &gt; 0</code> is
-producing the anticonservative variance the warning above is about, and
-the number is there so that a production run can assert on it.</p>
+previous period’s replicate weights; <code>n_cre_skipped</code> those
+that did not, because no carry contained them or the carry was thin. A
+chain running with <code>skipped &gt; 0</code> is producing exactly the
+anticonservative variance the warning above is about, and the number is
+there so a production run can assert on it.</p>
 </div>
 <div class="section level2">
 <h2 id="equal-representation-across-rotation-groups">Equal representation across rotation groups<a class="anchor" aria-label="anchor" href="#equal-representation-across-rotation-groups"></a>
 </h2>
 <p>Both methodologies impose one more constraint: each rotation group
-must weight to the same working-age total, <code>N / G</code> (ECH
-sec. 8.4.1; LFS sec. 6.3.1). Passing <code>rotation_group</code> adds
-it, as <code>G - 1</code> extra columns in the demographic block – the
-last group’s total follows from the others and <code>N</code>, so
-constraining it too would be redundant.</p>
+must weight to the same working-age total,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><mi>l</mi><mo>∈</mo><msub><mi>s</mi><mi>g</mi></msub></mrow></munder><msubsup><mi>w</mi><mi>l</mi><mrow><mi>C</mi><mi>C</mi></mrow></msubsup><mo>=</mo><mfrac><msub><mi>N</mi><mrow><mn>15</mn><mo>+</mo></mrow></msub><mi>G</mi></mfrac><mo>,</mo><mspace width="2.0em"></mspace><mi>g</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mi>G</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\sum_{l \in s_g} w_l^{CC} = \frac{N_{15+}}{G}, \qquad g = 1, \dots, G-1</annotation></semantics></math></p>
+<p>(ECH sec. 8.4.1; LFS sec. 6.3.1, “additional control totals are used
+to ensure that the estimated number of people aged 15 and over is the
+same for each rotation group”). Passing <code>rotation_group</code> adds
+it as
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">G-1</annotation></semantics></math>
+extra columns in the demographic block – the last group’s total follows
+from the others and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>N</mi><mrow><mn>15</mn><mo>+</mo></mrow></msub><annotation encoding="application/x-tex">N_{15+}</annotation></semantics></math>,
+so constraining it too would be redundant.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/step_cre.html">step_cre</a></span><span class="op">(</span><span class="va">spec</span>, previous <span class="op">=</span> <span class="va">seed</span>, status <span class="op">=</span> <span class="va">condicion</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sexo"</span><span class="op">)</span>,</span>
-<span>         id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id_hogar"</span>, <span class="st">"nper"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sexo</span>, totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>         rotation_group <span class="op">=</span> <span class="st">"grupo_rotacion"</span>, status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/step_cre.html">step_cre</a></span><span class="op">(</span><span class="va">spec</span>, previous <span class="op">=</span> <span class="va">seed</span>, status <span class="op">=</span> <span class="va">lf_status</span>, composite <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="st">"sex"</span><span class="op">)</span>,</span>
+<span>         id_unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">sex</span>,</span>
+<span>         totals <span class="op">=</span> <span class="fu">Xtot</span><span class="op">(</span><span class="va">wv</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>, rotation_group <span class="op">=</span> <span class="st">"rotation_group"</span>,</span>
+<span>         status_ref <span class="op">=</span> <span class="st">"inact"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<p>Chen, E. J., and Liu, T. P. (2002). Choices of alpha value in
+regression composite estimation for the Canadian Labour Force Survey.
+<em>Proceedings of the Survey Methods Section, SSC</em>.</p>
+<p>Fuller, W. A., and Rao, J. N. K. (2001). A regression composite
+estimator with application to the Canadian Labour Force Survey.
+<em>Survey Methodology</em> 27(1), 45-51.</p>
+<p>Gambino, J., Kennedy, B., and Singh, M. P. (2001). Regression
+composite estimation for the Canadian Labour Force Survey: evaluation
+and implementation. <em>Survey Methodology</em> 27(1), 65-74.</p>
+<p>Statistics Canada (2017). <em>Methodology of the Canadian Labour
+Force Survey</em>, catalogue no. 71-526-X, sec. 6.3.1.</p>
 </div>
 <div class="section level2">
 <h2 id="where-to-look-next">Where to look next<a class="anchor" aria-label="anchor" href="#where-to-look-next"></a>
 </h2>
-<p><code><a href="../reference/step_cre.html">?step_cre</a></code> for the full argument list and the references,
+<p><code><a href="../reference/step_cre.html">?step_cre</a></code> for the full argument list,
 <code><a href="../articles/coordinated-replication.html">vignette("coordinated-replication")</a></code> for the mechanism that
 pairs the replicates across waves,
 <code><a href="../articles/rotating-panels.html">vignette("rotating-panels")</a></code> for the production workflow,

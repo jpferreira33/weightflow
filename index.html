@@ -18,8 +18,8 @@
 <link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Declarative Recipes for Staged Survey Weighting with Recipe-Aware Replicate Variances">
-<meta name="description" content="Builds survey analysis weights by declaring the whole weighting process as an ordered recipe of explicit adjustments, estimated in a single call. Steps cover within-cluster selection, subsampling for two-phase designs, nonresponse by weighting classes or response-propensity models (optionally machine-learning, with cross-fitting), calibration to known totals following Deville and Sarndal (1992) &lt;doi:10.2307/2290268&gt;, optionally model-assisted, non-probability samples by pseudo-weighting, mass imputation and doubly robust estimators, and range-restricted trimming. Rotating and pure panels add panel-selection probabilities, attrition, longitudinal weights, gross flows and composite estimation. Variances come from a recipe-aware bootstrap and jackknife that resample or delete primary sampling units and re-apply the entire cascade on each replicate, following Rao and Wu (1988) &lt;doi:10.1080/01621459.1988.10478591&gt;; panel replicates are coordinated across waves, so the sample overlap enters the variance of a net change as covariance, and two-phase variances split into first- and second-phase components (V = V1 + V2). A self-contained HTML report documents each step, and the weights bridge to the survey and srvyr packages. The methods, and the simulation evidence behind the variance estimators, are described in Ferreira (2026) &lt;doi:10.1177/18747655261484262&gt;.">
-<meta property="og:description" content="Builds survey analysis weights by declaring the whole weighting process as an ordered recipe of explicit adjustments, estimated in a single call. Steps cover within-cluster selection, subsampling for two-phase designs, nonresponse by weighting classes or response-propensity models (optionally machine-learning, with cross-fitting), calibration to known totals following Deville and Sarndal (1992) &lt;doi:10.2307/2290268&gt;, optionally model-assisted, non-probability samples by pseudo-weighting, mass imputation and doubly robust estimators, and range-restricted trimming. Rotating and pure panels add panel-selection probabilities, attrition, longitudinal weights, gross flows and composite estimation. Variances come from a recipe-aware bootstrap and jackknife that resample or delete primary sampling units and re-apply the entire cascade on each replicate, following Rao and Wu (1988) &lt;doi:10.1080/01621459.1988.10478591&gt;; panel replicates are coordinated across waves, so the sample overlap enters the variance of a net change as covariance, and two-phase variances split into first- and second-phase components (V = V1 + V2). A self-contained HTML report documents each step, and the weights bridge to the survey and srvyr packages. The methods, and the simulation evidence behind the variance estimators, are described in Ferreira (2026) &lt;doi:10.1177/18747655261484262&gt;.">
+<meta name="description" content="Builds survey analysis weights by declaring the whole weighting process as an ordered recipe of explicit adjustments, estimated in a single call. Steps cover within-cluster selection, subsampling for two-phase designs, nonresponse by weighting classes or response-propensity models (optionally machine-learning, with cross-fitting), calibration to known totals following Deville and Sarndal (1992) &lt;doi:10.2307/2290268&gt;, optionally model-assisted, non-probability samples by pseudo-weighting, mass imputation and doubly robust estimators, and range-restricted trimming. Rotating and pure panels add panel-selection probabilities, attrition, longitudinal weights, gross flows and composite estimation. Variances come from a recipe-aware bootstrap and jackknife that resample or delete primary sampling units and re-apply the entire cascade on each replicate, following Rao and Wu (1988) &lt;doi:10.1080/01621459.1988.10478591&gt;; panel replicates are coordinated across waves, so the sample overlap enters the variance of a net change as covariance, and two-phase variances split into first- and second-phase components (V = V1 + V2) for an unclustered first phase. A self-contained HTML report documents each step, and the weights bridge to the survey and srvyr packages. The methods, and the simulation evidence behind the variance estimators, are described in Ferreira (2026) &lt;doi:10.1177/18747655261484262&gt;.">
+<meta property="og:description" content="Builds survey analysis weights by declaring the whole weighting process as an ordered recipe of explicit adjustments, estimated in a single call. Steps cover within-cluster selection, subsampling for two-phase designs, nonresponse by weighting classes or response-propensity models (optionally machine-learning, with cross-fitting), calibration to known totals following Deville and Sarndal (1992) &lt;doi:10.2307/2290268&gt;, optionally model-assisted, non-probability samples by pseudo-weighting, mass imputation and doubly robust estimators, and range-restricted trimming. Rotating and pure panels add panel-selection probabilities, attrition, longitudinal weights, gross flows and composite estimation. Variances come from a recipe-aware bootstrap and jackknife that resample or delete primary sampling units and re-apply the entire cascade on each replicate, following Rao and Wu (1988) &lt;doi:10.1080/01621459.1988.10478591&gt;; panel replicates are coordinated across waves, so the sample overlap enters the variance of a net change as covariance, and two-phase variances split into first- and second-phase components (V = V1 + V2) for an unclustered first phase. A self-contained HTML report documents each step, and the weights bridge to the survey and srvyr packages. The methods, and the simulation evidence behind the variance estimators, are described in Ferreira (2026) &lt;doi:10.1177/18747655261484262&gt;.">
 <meta property="og:image" content="https://jpferreira33.github.io/weightflow/logo.png">
 </head>
 <body>
@@ -30,7 +30,7 @@
 
     <a class="navbar-brand me-2" href="index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -104,7 +104,7 @@
 <blockquote>
 <p>Declarative, pipeable survey weighting in base R: from design weights to calibrated, model-assisted, variance-ready weights.</p>
 </blockquote>
-<p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
+<p><strong>weightflow</strong> builds survey weights by chaining hierarchical adjustments with a <code>tidymodels</code>-style API, and estimates their variances with a bootstrap that re-applies the whole recipe on each replicate. For continuous surveys it carries the same idea across time: rotating panels, longitudinal weights, and the variance of a <strong>net change</strong> with the sample overlap entering as covariance. It has <strong>no hard dependencies</strong> (base R, R &gt;= 4.1) and bridges to <code>survey</code>/<code>srvyr</code> for design-based inference.</p>
 <blockquote>
 <p><strong>Get it from CRAN</strong> — <code>install.packages("weightflow")</code> — or read the full documentation at the <a href="https://jpferreira33.github.io/weightflow/">project website</a>. Free and open source (MIT).</p>
 </blockquote>
@@ -132,7 +132,13 @@
 <li>
 <strong>Calibrate to a reference survey, not only a frame.</strong> <code><a href="reference/reference_sample.html">reference_sample()</a></code> targets the design-weighted totals of a larger survey you trust (the official ECH, a labour force survey), and the bootstrap propagates the variance of those estimated totals when you pass its replicate weights.</li>
 <li>
-<strong>Programmatic quality control.</strong> Every step carries a stable <code>id</code>, every quality incident lands in <code><a href="reference/weighting_alerts.html">weighting_alerts()</a></code>, and <code><a href="reference/collect_step_detail.html">collect_step_detail()</a></code>, <code><a href="reference/collect_propensities.html">collect_propensities()</a></code> and <code><a href="reference/domain_summary.html">domain_summary()</a></code> audit the cascade unit by unit and domain by domain, from a script or in the HTML report.</li>
+<strong>Panels, and the variance of a change.</strong> Rotating and pure panels are first-class: the replicates are <strong>coordinated across waves</strong>, so a PSU in both periods is resampled the same way in both and the overlap shows up as covariance, which is what makes a net change more precise than the two levels it is built from. Plus longitudinal weights, attrition, gross flows and composite (CRE) estimation.</li>
+<li>
+<strong>Chained production, one period at a time.</strong> An office publishes month <code>t</code> before month <code>t+1</code> exists. <code><a href="reference/wave_step.html">wave_step()</a></code> runs a single period and hands the next one a small <em>carry</em>; the chain never needs the earlier waves in memory.</li>
+<li>
+<strong>Non-probability samples, and how far to trust them.</strong> Pseudo-weights against a probability reference, Meng’s data-defect index, and a pattern-mixture sensitivity analysis that says how far nonignorable nonresponse could move the answer – instead of assuming it cannot.</li>
+<li>
+<strong>Programmatic quality control.</strong> Every step carries a stable <code>id</code>, every quality incident lands in <code><a href="reference/weighting_alerts.html">weighting_alerts()</a></code>, and <code><a href="reference/collect_step_detail.html">collect_step_detail()</a></code>, <code><a href="reference/collect_propensities.html">collect_propensities()</a></code> and <code><a href="reference/domain_summary.html">domain_summary()</a></code> audit the cascade unit by unit and domain by domain, from a script or in the HTML report. A recipe is also a file: <code><a href="reference/write_recipe.html">write_recipe()</a></code> / <code><a href="reference/read_recipe.html">read_recipe()</a></code> round-trip it as YAML.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -299,10 +305,43 @@
 <p>See the <em>Calibrating to a reference survey</em> article.</p>
 </div>
 <div class="section level3">
+<h3 id="non-probability-samples-pseudo-weights-and-the-data-defect-index">Non-probability samples: pseudo-weights and the data-defect index<a class="anchor" aria-label="anchor" href="#non-probability-samples-pseudo-weights-and-the-data-defect-index"></a>
+</h3>
+<p>A volunteer panel, a web opt-in or an app sample has no design weights. <code><a href="reference/step_pseudoweight.html">step_pseudoweight()</a></code> estimates the participation propensity against a probability <strong>reference</strong> survey (any engine, with cross-fitting) and turns it into a pseudo-weight; <code><a href="reference/data_defect.html">data_defect()</a></code> then reports Meng’s data-defect correlation and the effective sample size it implies, which is the honest answer to “how large is this sample, really”.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">volunteers</span>, base_weights <span class="op">=</span> <span class="cn">NULL</span>, nonprob <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/step_pseudoweight.html">step_pseudoweight</a></span><span class="op">(</span>reference <span class="op">=</span> <span class="fu"><a href="reference/reference_sample.html">reference_sample</a></span><span class="op">(</span><span class="va">ech</span>, <span class="st">"w"</span><span class="op">)</span>,</span>
+<span>                    formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, engine <span class="op">=</span> <span class="st">"forest"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/data_defect.html">data_defect</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<p>See the <em>Non-probability samples</em> article.</p>
+</div>
+<div class="section level3">
+<h3 id="how-far-nonignorable-nonresponse-could-move-the-answer">How far nonignorable nonresponse could move the answer<a class="anchor" aria-label="anchor" href="#how-far-nonignorable-nonresponse-could-move-the-answer"></a>
+</h3>
+<p>Every nonresponse adjustment assumes the mechanism is ignorable given the auxiliaries. <code><a href="reference/step_nr_sensitivity.html">step_nr_sensitivity()</a></code> does not adjust anything: it reduces the auxiliaries to a proxy and reports the proxy pattern-mixture <strong>ignorance interval</strong> (Andridge &amp; Little 2011) over a grid of <code>phi</code>, from ignorable (<code>phi = 0</code>) to response depending on the outcome itself (<code>phi = 1</code>). Read it next to the sampling confidence interval, not instead of it. The same step covers participation in a non-probability sample.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">spec</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/step_nr_sensitivity.html">step_nr_sensitivity</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">income</span>, formula <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/nr_sensitivity.html">nr_sensitivity</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="two-phase-subsampling-with-its-own-variance-component">Two-phase subsampling, with its own variance component<a class="anchor" aria-label="anchor" href="#two-phase-subsampling-with-its-own-variance-component"></a>
+</h3>
+<p>When a subsample is drawn from the respondents for a follow-up module, <code><a href="reference/step_subsample.html">step_subsample()</a></code> records the second phase, the bootstrap switches to the two-phase resampling factor, and <code><a href="reference/two_phase_variance.html">two_phase_variance()</a></code> splits the result into the phase-1 and phase-2 components instead of reporting one opaque number.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spec</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">df</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/step_subsample.html">step_subsample</a></span><span class="op">(</span>selected <span class="op">=</span> <span class="va">in_phase2</span>, prob <span class="op">=</span> <span class="va">p2</span>, psu <span class="op">=</span> <span class="st">"household_id"</span><span class="op">)</span></span>
+<span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">spec</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/two_phase_variance.html">two_phase_variance</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>      <span class="co"># V = V1 (phase 1) + V2 (phase 2)</span></span></code></pre></div>
+<p>See the <em>Two-phase sampling</em> article.</p>
+</div>
+<div class="section level3">
 <h3 id="recipe-aware-bootstrap">Recipe-aware bootstrap<a class="anchor" aria-label="anchor" href="#recipe-aware-bootstrap"></a>
 </h3>
 <p>The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and re-applies the <em>whole</em> recipe on each replicate, so the replicate weights carry both the sampling design and every weighting adjustment at once. Single-PSU (“lonely”) strata are handled explicitly (<code>lonely_psu = "certainty"</code> or <code>"collapse"</code>), and the replicates can run in parallel with <code>cores</code>.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">spec</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
 <span>                          lonely_psu <span class="op">=</span> <span class="st">"collapse"</span>, cores <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>   <span class="co"># collapse + parallel</span></span>
 <span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and 95% CI</span></span></code></pre></div>
@@ -311,7 +350,7 @@
 <h3 id="recipe-aware-jackknife">Recipe-aware jackknife<a class="anchor" aria-label="anchor" href="#recipe-aware-jackknife"></a>
 </h3>
 <p>Alongside the bootstrap, a delete-a-PSU jackknife re-runs the whole recipe on each replicate, so the replicate weights carry every adjustment. Stratified (JKn) or unstratified (JK1), with the same <code>lonely_psu</code> handling and parallel <code>cores</code>, and it bridges to survey/srvyr for any estimand or domain.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">jk</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jackknife_weights.html">jackknife_weights</a></span><span class="op">(</span><span class="va">spec</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
 <span>                        lonely_psu <span class="op">=</span> <span class="st">"collapse"</span>, cores <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/jackknife_estimate.html">jack_total</a></span><span class="op">(</span><span class="va">jk</span>, <span class="st">"employed"</span><span class="op">)</span></span></code></pre></div>
@@ -320,7 +359,7 @@
 <h3 id="finite-population-correction-and-t--percentile-intervals">Finite-population correction and t / percentile intervals<a class="anchor" aria-label="anchor" href="#finite-population-correction-and-t--percentile-intervals"></a>
 </h3>
 <p><code>bootstrap_weights(fpc = )</code> folds the first-stage sampling fraction into the Rao-Wu rescaling, which matters when strata are sampled at a high rate (common in LatAm designs). The estimate functions also carry the design degrees of freedom (<code>df</code>) and offer <code>ci_type = "t"</code> and, for the bootstrap, <code>ci_type = "percentile"</code>.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">spec</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
 <span>                          fpc <span class="op">=</span> <span class="st">"samp_frac"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/bootstrap_estimate.html">bootstrap_estimate</a></span><span class="op">(</span><span class="va">boot</span>, <span class="kw">function</span><span class="op">(</span><span class="va">w</span>, <span class="va">d</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">w</span> <span class="op">*</span> <span class="va">d</span><span class="op">$</span><span class="va">income</span><span class="op">)</span>, ci_type <span class="op">=</span> <span class="st">"t"</span><span class="op">)</span></span></code></pre></div>
@@ -329,17 +368,34 @@
 <h3 id="inspecting-and-auditing-the-cascade">Inspecting and auditing the cascade<a class="anchor" aria-label="anchor" href="#inspecting-and-auditing-the-cascade"></a>
 </h3>
 <p>Every step has a stable id (<code>nonresponse_1</code>, <code>calibrate_1</code>), so the cascade can be audited from a script: <code><a href="reference/weighting_alerts.html">weighting_alerts()</a></code> / <code><a href="reference/weighting_alerts.html">has_alerts()</a></code> as a quality gate, <code>collect_step_detail(fit, "calibrate_1")</code> and <code><a href="reference/collect_propensities.html">collect_propensities()</a></code> unit by unit, and <code><a href="reference/domain_summary.html">domain_summary()</a></code> for per-domain reliability.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="va">recipe</span><span class="op">)</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="reference/weighting_alerts.html">has_alerts</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="reference/weighting_alerts.html">weighting_alerts</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/domain_summary.html">domain_summary</a></span><span class="op">(</span><span class="va">fit</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span></code></pre></div>
 <p>See the <em>Inspecting and auditing the cascade</em> article.</p>
 </div>
 <div class="section level3">
+<h3 id="a-recipe-is-a-file">A recipe is a file<a class="anchor" aria-label="anchor" href="#a-recipe-is-a-file"></a>
+</h3>
+<p><code><a href="reference/write_recipe.html">write_recipe()</a></code> serializes the recipe (never the data, never the weights) to YAML, and <code><a href="reference/read_recipe.html">read_recipe()</a></code> rebuilds it against new data, so the methodology of a production run lives in version control next to the code and can be diffed release to release. Reading is deliberately conservative: captured expressions are reconstructed, arbitrary code is not, unless you ask for it.</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/write_recipe.html">write_recipe</a></span><span class="op">(</span><span class="va">spec</span>, <span class="st">"methodology/ech-2026q1.yml"</span>, timestamp <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">spec_q2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_recipe.html">read_recipe</a></span><span class="op">(</span><span class="st">"methodology/ech-2026q1.yml"</span>, data <span class="op">=</span> <span class="va">ech_q2</span><span class="op">)</span></span></code></pre></div>
+<p>See the <em>weightflow in production</em> article.</p>
+</div>
+<div class="section level3">
+<h3 id="handing-the-weights-on-disclosure-risk-and-small-area-inputs">Handing the weights on: disclosure risk and small-area inputs<a class="anchor" aria-label="anchor" href="#handing-the-weights-on-disclosure-risk-and-small-area-inputs"></a>
+</h3>
+<p><code><a href="reference/disclosure_risk.html">disclosure_risk()</a></code> flags publication cells where one unit carries an outlying share of the weight, which is where re-identification risk concentrates. <code><a href="reference/as_sae_input.html">as_sae_input()</a></code> exports, per domain, the direct estimate, its <strong>recipe-aware</strong> design SE and the effective n, which is exactly what a Fay-Herriot model in <code>emdi</code> / <code>sae</code> / <code>hbsae</code> consumes. weightflow does not fit the small-area model; it hands over the design-based ingredients with a publishability rating attached.</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/disclosure_risk.html">disclosure_risk</a></span><span class="op">(</span><span class="va">fitted</span>, by <span class="op">=</span> <span class="st">"region"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/as_sae_input.html">as_sae_input</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"poor"</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"region"</span>, <span class="st">"sex"</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"mean"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
 <h3 id="r-indicators-of-response-representativity">R-indicators of response representativity<a class="anchor" aria-label="anchor" href="#r-indicators-of-response-representativity"></a>
 </h3>
 <p>After a nonresponse adjustment, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="reference/report_weighting.html">report_weighting()</a></code> automatically report the R-indicator (Schouten, Cobben &amp; Bethlehem) plus the partial R-indicators: how representative the response is, and which variable drives the gap. No new function to call.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># printed by summary() when the recipe adjusts for nonresponse:</span></span>
 <span><span class="co"># R-indicator (representativity of response): 0.890  (on region, sex)</span></span></code></pre></div>
 </div>
@@ -357,7 +413,7 @@
 <li>the <strong>replication design</strong> (<code>replicates =</code>): method, replicates, strata, PSUs, lonely-PSU handling, seed, cores and run time;</li>
 <li>a <strong>per-step impact table</strong> (each step’s change in deff and CV), the weight distribution, per-step visuals, and a <strong>points-of-attention</strong> panel.</li>
 </ul>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/report_weighting.html">report_weighting</a></span><span class="op">(</span><span class="va">fitted</span>, lang <span class="op">=</span> <span class="st">"es"</span>,</span>
 <span>                 domains    <span class="op">=</span> <span class="op">~</span> <span class="va">region</span> <span class="op">+</span> <span class="va">region</span><span class="op">:</span><span class="va">sex</span>,   <span class="co"># per-domain reliability card</span></span>
 <span>                 replicates <span class="op">=</span> <span class="va">boot</span>,                     <span class="co"># the replication-design card</span></span>
@@ -365,6 +421,48 @@
 <span>                                   reference_period <span class="op">=</span> <span class="st">"2024"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>See the <em>Quality report</em> article for a full example.</p>
 </div>
+</div>
+<div class="section level2">
+<h2 id="panels-measuring-change-not-just-levels">Panels: measuring change, not just levels<a class="anchor" aria-label="anchor" href="#panels-measuring-change-not-just-levels"></a>
+</h2>
+<p>A continuous survey measures the same units more than once. The overlap is what makes the <strong>change</strong> between two periods more precise than either level – part of the sampling error cancels – and it is also what makes the change harder to estimate, because the two samples are not independent:</p>
+<pre><code>V(theta_t - theta_{t-1}) = V(theta_t) + V(theta_{t-1}) - 2 Cov(theta_t, theta_{t-1})</code></pre>
+<p>That covariance is not a design constant you can look up. It has to be <em>produced</em>, by drawing the replicates so that a PSU present in both periods is resampled the same way in both. That is what the panel layer does.</p>
+<p><strong>The structure first.</strong> <code><a href="reference/panel_design.html">panel_design()</a></code> reads the unit x wave crossing and describes what is actually there. The declared rotation <code>pattern</code> (<code>"6"</code> for the Canadian LFS or Uruguay’s ECH, <code>"4-8-4"</code> for the US CPS, <code>"2-(2)-2"</code> for Chile’s ENE, <code>"1(2)5"</code> for PNAD Continua) is <strong>verification</strong>, not configuration: when the observed overlap falls short of what the calendar implies, the linkage key is suspect and the alert says so.</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pd</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/panel_design.html">panel_design</a></span><span class="op">(</span><span class="va">panel_ine</span>, unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>,</span>
+<span>                   wave <span class="op">=</span> <span class="st">"wave"</span>, rotation_group <span class="op">=</span> <span class="st">"rotation_group"</span>, pattern <span class="op">=</span> <span class="st">"6"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Net change with an honest variance.</strong> <code><a href="reference/wave_bootstrap.html">wave_bootstrap()</a></code> (or <code><a href="reference/wave_jackknife.html">wave_jackknife()</a></code>) coordinates the replicates across waves; <code><a href="reference/change_estimate.html">change_mean()</a></code> / <code><a href="reference/change_estimate.html">change_total()</a></code> report the change with its standard error, the correlation the overlap induces, and <code>deff_change</code> – the ratio to what an office would publish if it treated the two periods as independent. <code><a href="reference/level_estimate.html">level_mean()</a></code> / <code><a href="reference/level_estimate.html">level_total()</a></code> give the levels, <code><a href="reference/panel_estimate.html">panel_mean()</a></code> / <code><a href="reference/panel_estimate.html">panel_total()</a></code> any linear combination (a rolling quarter, an annual average), and <code><a href="reference/change_estimate.html">change_estimate()</a></code>, <code><a href="reference/level_estimate.html">level_estimate()</a></code> and <code><a href="reference/panel_estimate.html">panel_estimate()</a></code> take an arbitrary statistic.</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wb</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wave_bootstrap.html">wave_bootstrap</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="va">rec1</span>, T2 <span class="op">=</span> <span class="va">rec2</span><span class="op">)</span>, replicates <span class="op">=</span> <span class="fl">500</span>,</span>
+<span>                     strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/change_estimate.html">change_mean</a></span><span class="op">(</span><span class="va">wb</span>, <span class="st">"unemployed"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Chained production.</strong> An office publishes month <code>t</code> weeks before month <code>t+1</code> exists, so <code><a href="reference/wave_bootstrap.html">wave_bootstrap()</a></code>’s “all waves at once” is not how production runs. <code><a href="reference/wave_step.html">wave_step()</a></code> processes <strong>one period</strong> and writes a small <em>carry</em>; the next period reads it and nothing else. <code><a href="reference/wave_contrast.html">wave_contrast()</a></code> estimates any combination straight from the saved carries, without the waves being in memory.</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="va">rec2</span>, previous <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"carry/2026-01.rds"</span><span class="op">)</span>, estimands <span class="op">=</span> <span class="va">EST</span>,</span>
+<span>                strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="st">"2026-02"</span>, seed <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">s2</span><span class="op">$</span><span class="va">weights</span>                                   <span class="co"># cross-sectional weights, untouched</span></span>
+<span><span class="va">s2</span><span class="op">$</span><span class="va">change</span>                                    <span class="co"># the net change against 2026-01</span></span>
+<span><span class="va">s2</span><span class="op">$</span><span class="va">strata</span>                                    <span class="co"># coordination diagnostic, per stratum</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="reference/wave_carry.html">wave_carry</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span>, <span class="st">"carry/2026-02.rds"</span><span class="op">)</span> <span class="co"># all the next period needs</span></span></code></pre></div>
+<p><strong>Composite estimation.</strong> <code><a href="reference/step_cre.html">step_cre()</a></code> implements regression composite estimation (Fuller &amp; Rao 2001; Gambino, Kennedy &amp; Singh 2001; INE Uruguay’s ECH, sec. 8.4): the calibration targets the known demographic totals <em>and</em> composite totals estimated from the previous wave, which is what buys the large variance reduction on changes. Because the second block is estimated, replicate <code>b</code> of period <code>t</code> rebuilds it from replicate <code>b</code> of period <code>t-1</code>.</p>
+<p><strong>Longitudinal weights and gross flows.</strong> A net change cannot tell an immobile population from one where equal numbers enter and leave employment. For that, <code><a href="reference/panel_merge.html">panel_merge()</a></code> builds the wide file, <code><a href="reference/step_attrition.html">step_attrition()</a></code> adjusts for the units lost along the way (propensity or response-homogeneity groups), and <code><a href="reference/step_drop_ineligible.html">step_drop_ineligible()</a></code> removes those who left the universe – leaving the target population is <strong>not</strong> nonresponse. Then <code><a href="reference/transition_matrix.html">transition_matrix()</a></code>, <code><a href="reference/boot_transition.html">boot_transition()</a></code> and <code><a href="reference/boot_flows.html">boot_flows()</a></code> give the flows, with standard errors that include the cost of having estimated the adjustments.</p>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/panel_merge.html">panel_merge</a></span><span class="op">(</span><span class="va">waves</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, require <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span>
+<span><span class="va">lw</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">wide</span>, base_weights <span class="op">=</span> <span class="va">pw_T1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/step_drop_ineligible.html">step_drop_ineligible</a></span><span class="op">(</span><span class="va">disposition_T4</span> <span class="op">==</span> <span class="st">"OS"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/step_unknown_eligibility.html">step_unknown_eligibility</a></span><span class="op">(</span><span class="va">disposition_T4</span> <span class="op">==</span> <span class="st">"UNK"</span>, by <span class="op">=</span> <span class="st">"region_T1"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/step_attrition.html">step_attrition</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">responded_always</span>, method <span class="op">=</span> <span class="st">"propensity"</span>,</span>
+<span>                 formula <span class="op">=</span> <span class="op">~</span> <span class="va">age_T1</span> <span class="op">+</span> <span class="va">sex_T1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/prep.html">prep</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/transition_matrix.html">transition_matrix</a></span><span class="op">(</span><span class="va">lw</span>, from <span class="op">=</span> <span class="st">"lf_status_T1"</span>, to <span class="op">=</span> <span class="st">"lf_status_T4"</span>, format <span class="op">=</span> <span class="st">"row"</span><span class="op">)</span></span></code></pre></div>
+<p><strong>A declarative estimation grammar.</strong> Once a panel object exists, estimates are piped rather than looped: <code><a href="reference/step_domain.html">step_domain()</a></code> splits, <code><a href="reference/step_domain.html">step_filter()</a></code> masks a subpopulation (rows are masked, not dropped, so the design is preserved), <code><a href="reference/step_domain.html">step_estimate()</a></code> names the statistic and whether it is wanted as a level or a change, <code><a href="reference/step_domain.html">step_transition()</a></code> asks for a flow table instead, and <code><a href="reference/collect_estimates.html">collect_estimates()</a></code> evaluates the whole thing into one tidy frame.</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wb</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/step_domain.html">step_domain</a></span><span class="op">(</span><span class="va">region</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/step_domain.html">step_estimate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">unemployed</span><span class="op">)</span>, over <span class="op">=</span> <span class="st">"change"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/collect_estimates.html">collect_estimates</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><strong>A panel quality report.</strong> <code><a href="reference/report_panel.html">report_panel()</a></code> writes the panel analogue of <code><a href="reference/report_weighting.html">report_weighting()</a></code>: the rotation structure and the observed-vs-implied overlap, the attrition cascade, the coordination diagnostic per stratum, the changes with their <code>rho</code> and <code>deff_change</code>, and the flows.</p>
+<p>Four articles cover this layer: <em>Rotating panels</em> (the entry point), <em>Coordinated replication</em> (what travels between waves and how to read the <code>$strata</code> diagnostic), <em>Composite estimation</em> (<code><a href="reference/step_cre.html">step_cre()</a></code> in full, with the equations), and <em>Pure panels</em> (attrition over many waves, the longitudinal weight and gross flows). <em>Validation against survey and ReGenesees</em> checks the change variance against the analytic estimator of Berger &amp; Priam (2016).</p>
 </div>
 <div class="section level2">
 <h2 id="what-it-does">What it does<a class="anchor" aria-label="anchor" href="#what-it-does"></a>
@@ -386,29 +484,40 @@
 </tr>
 <tr>
 <td><code><a href="reference/step_drop_ineligible.html">step_drop_ineligible()</a></code></td>
-<td>Zero out out-of-scope units.</td>
+<td>Zero out out-of-scope units: the weight is discarded, not redistributed. An optional <code>reason</code> is carried into the report.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_select_within.html">step_select_within()</a></code></td>
-<td>Within-household selection (unequal <code>prob</code> or equal <code>n_eligible</code>).</td>
+<td>Within-<strong>cluster</strong> selection: unequal <code>prob</code>, or simple random selection of <code>n_selected</code> (default 1) out of <code>n_eligible</code>. The cluster need not be a household, and in a multi-stage design the step can appear more than once, each occurrence undoing one stage of subsampling.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_subsample.html">step_subsample()</a></code></td>
+<td>Second-phase subsampling (two-phase / double sampling), with its own variance component.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_nonresponse.html">step_nonresponse()</a></code></td>
-<td>Weighting classes, response-propensity (logit / CART / random forest / <strong>xgboost</strong>, optional <strong>k-fold cross-fitting</strong>, weighted or <strong>unweighted</strong> model), or <strong>two-phase calibration</strong>; person- or household-level.</td>
+<td>Weighting classes, response-propensity (logit / CART / random forest / <strong>xgboost</strong>, optional <strong>k-fold cross-fitting</strong>, weighted or <strong>unweighted</strong> model), or <strong>two-phase calibration</strong>; person- or household-level (<code>cluster</code>).</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_pseudoweight.html">step_pseudoweight()</a></code></td>
+<td>
+<strong>Non-probability samples</strong>: participation propensity against a probability <code>reference</code>, turned into a pseudo-weight.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_calibrate.html">step_calibrate()</a></code></td>
-<td>Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (one weight per household), <strong>ridge (penalized)</strong> and <strong>domain (<code>by</code>)</strong> options.</td>
+<td>Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (<code>equal_within_cluster</code>: one weight per household), <strong>ridge (penalized)</strong> and <strong>domain (<code>by</code>)</strong> options. Totals can be a tidy data frame, or the design-weighted totals of a <code><a href="reference/reference_sample.html">reference_sample()</a></code> instead of a frame.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_model_calibration.html">step_model_calibration()</a></code></td>
 <td>Wu-Sitter model calibration with working models for the outcomes (any engine, with cross-fitting).</td>
 </tr>
 <tr>
-<td>
-<code><a href="reference/step_trim.html">step_trim()</a></code>, <code><a href="reference/step_trim_weights.html">step_trim_weights()</a></code>
-</td>
-<td>Manual or automatic trimming (Tukey fence or <strong>Potter MSE-optimal</strong>), with proportional or uniform redistribution, insertable anywhere.</td>
+<td><code><a href="reference/step_trim.html">step_trim()</a></code></td>
+<td>Trim by a <strong>ratio</strong> to the base weight, the median or a fixed value (<code>reference</code>), with a floor as well as a cap, per subgroup (<code>by</code>) and with the trimmed mass redistributed.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_trim_weights.html">step_trim_weights()</a></code></td>
+<td>Trim to an <strong>absolute</strong> band, with the cutoff chosen automatically: Tukey far-out fence or <strong>Potter’s MSE-optimal</strong> threshold; proportional or uniform redistribution.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_trim_calibrated.html">step_trim_calibrated()</a></code></td>
@@ -416,34 +525,78 @@
 <strong>Trimmed (range-restricted) calibration</strong>: bound the weights into <code>[lower, upper]</code> while <strong>preserving the calibration totals</strong> (Folsom-Singh), with per-subgroup bounds and an integrative option.</td>
 </tr>
 <tr>
-<td>
-<code><a href="reference/step_round.html">step_round()</a></code>, <code><a href="reference/step_rescale.html">step_rescale()</a></code>
-</td>
-<td>Integer rounding and rescaling to a size or total.</td>
+<td><code><a href="reference/step_round.html">step_round()</a></code></td>
+<td>Round the weights, including <strong>controlled rounding</strong>: <code>"preserve_total"</code> keeps the sum, <code>"balanced"</code> randomizes so the expectation is preserved; per subgroup with <code>by</code>.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_rescale.html">step_rescale()</a></code></td>
+<td>Rescale to the active sample size or to a given total, overall or within <code>by</code>.</td>
 </tr>
 <tr>
 <td><code><a href="reference/step_assert.html">step_assert()</a></code></td>
-<td>Quality checkpoint on deff, weight ratio or effective n.</td>
+<td>Quality checkpoint on deff, weight ratio or effective n; stops the recipe (<code>on_fail = "error"</code>) or records an alert and continues.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_nr_sensitivity.html">step_nr_sensitivity()</a></code></td>
+<td>Diagnostic (changes no weight): proxy pattern-mixture <strong>ignorance interval</strong> for nonignorable nonresponse or selection.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Panel steps</strong>, for a recipe that weights one wave of a panel or a longitudinal file:</p>
+<table class="table">
+<colgroup>
+<col width="30%">
+<col width="70%">
+</colgroup>
+<thead><tr>
+<th>Step</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/step_panel_overlap.html">step_panel_overlap()</a></code></td>
+<td>Adjust the base weights by the panel-selection probability of the wave combination (ECLAC ch. XVI); <code><a href="reference/panel_pr.html">panel_pr()</a></code> computes it from the design.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_attrition.html">step_attrition()</a></code></td>
+<td>Attrition adjustment over waves: individual propensity (<code>1/phi</code>) or response-homogeneity groups.</td>
+</tr>
+<tr>
+<td><code><a href="reference/step_cre.html">step_cre()</a></code></td>
+<td>
+<strong>Composite regression estimation</strong>: calibrate to the known totals <em>and</em> to composite totals estimated from the previous wave.</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/step_cross_sectional.html">step_cross_sectional()</a></code>, <code><a href="reference/step_cross_sectional.html">step_longitudinal()</a></code>
+</td>
+<td>Declare the scope of the recipe, which is what decides whether the panel-specific guards apply.</td>
 </tr>
 </tbody>
 </table>
 <p>Eligibility and response accept <strong>0/1 dummy columns</strong> or any logical condition.</p>
 <p><strong>Diagnostics and reporting</strong>: <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> show the per-stage cascade with the <strong>Kish design effect</strong> (deff = 1 + CV^2) and effective sample size; <code><a href="reference/weight_factors.html">weight_factors()</a></code> returns the per-unit, per-step factors. For programmatic quality control, <code><a href="reference/weighting_alerts.html">weighting_alerts()</a></code> / <code><a href="reference/weighting_alerts.html">has_alerts()</a></code>, <code><a href="reference/collect_step_detail.html">collect_step_detail()</a></code>, <code><a href="reference/collect_propensities.html">collect_propensities()</a></code> and <code><a href="reference/domain_summary.html">domain_summary()</a></code> read the recipe back step by step and domain by domain (see the <em>Inspecting and auditing the cascade</em> article). And <code><a href="reference/report_weighting.html">report_weighting()</a></code> writes a self-contained, <strong>bilingual (EN/ES)</strong> HTML quality report, aligned to GSBPM 5.6 and the ESS quality concepts, with no graphics device or server required: an auto-generated methodological narrative, a reference-metadata header, <strong>AAPOR fieldwork outcome rates</strong> (RR1/RR3/RR5), <strong>per-domain reliability</strong>, the <strong>replication design</strong>, a <strong>per-step impact table</strong>, weight-distribution diagnostics, per-step visuals and a <strong>points-of-attention</strong> panel.</p>
 <p><strong>Variance estimation</strong> (see the <em>Variance estimation</em> article). Once the weights are built, get design-based standard errors with a bootstrap that re-runs the <strong>whole recipe</strong> on each replicate:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">recipe</span>, replicates <span class="op">=</span> <span class="fl">500</span>, strata <span class="op">=</span> <span class="st">"region"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
 <span>                          lonely_psu <span class="op">=</span> <span class="st">"collapse"</span>, cores <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>   <span class="co"># collapse + parallel</span></span>
-<span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>           <span class="co"># estimate, SE and 95% CI</span></span>
+<span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span>                       <span class="co"># estimate, SE and 95% CI</span></span>
+<span><span class="fu"><a href="reference/bootstrap_estimate.html">boot_total</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"employed"</span><span class="op">)</span>                    <span class="co"># totals; jack_mean() / jack_total()</span></span>
+<span><span class="fu"><a href="reference/bootstrap_estimate.html">bootstrap_estimate</a></span><span class="op">(</span><span class="va">boot</span>, <span class="va">f</span><span class="op">)</span>                     <span class="co"># any statistic; jackknife_estimate()</span></span>
+<span><span class="fu"><a href="reference/design_effect.html">design_effect</a></span><span class="op">(</span><span class="fu"><a href="reference/collect_weights.html">collect_weights</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span><span class="op">$</span><span class="va">.weight</span><span class="op">)</span>  <span class="co"># Kish deff and n_eff</span></span>
 <span></span>
 <span><span class="co"># hand the replicate weights to survey / srvyr for the rest of the analysis</span></span>
 <span><span class="va">rep_design</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_svydesign.html">as_svrepdesign</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span>              <span class="co"># a svyrep.design object</span></span>
+<span><span class="fu"><a href="reference/as_svydesign.html">as_svydesign</a></span><span class="op">(</span><span class="va">fitted</span>, ids <span class="op">=</span> <span class="op">~</span> <span class="va">psu</span>, strata <span class="op">=</span> <span class="op">~</span> <span class="va">region</span><span class="op">)</span>   <span class="co"># or the plain design</span></span>
 <span><span class="fu"><a href="reference/collect_replicate_weights.html">collect_replicate_weights</a></span><span class="op">(</span><span class="va">boot</span><span class="op">)</span>                 <span class="co"># replicate weights as a data.frame</span></span></code></pre></div>
 <p>The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and then re-applies the entire cascade (eligibility, nonresponse, calibration, trimming) on each replicate. So the replicate weights carry <strong>two</strong> sources of variability at once: the sampling design (the resampling of PSUs within strata) and every weighting adjustment (each one is re-estimated on each replicate). Re-running the full recipe per replicate is automatic here, rather than something you re-orchestrate by hand on top of the replicate weights, and the result plugs straight into <code>survey</code>/<code>srvyr</code> through <code><a href="reference/as_svydesign.html">as_svrepdesign()</a></code> for any downstream estimator.</p>
+<p>Across waves, <code><a href="reference/wave_bootstrap.html">wave_bootstrap()</a></code> and <code><a href="reference/wave_jackknife.html">wave_jackknife()</a></code> do the same thing with the replicates <strong>coordinated</strong>, and <code><a href="reference/wave_step.html">wave_step()</a></code> does it one period at a time. <code><a href="reference/two_phase_variance.html">two_phase_variance()</a></code> decomposes a two-phase design into <code>V = V1 + V2</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="example-data">Example data<a class="anchor" aria-label="anchor" href="#example-data"></a>
 </h2>
-<p>Three bundled datasets: <code>population</code> (the frame), <code>sample_survey</code> (take-all roster) and <code>sample_one</code> (multistage select-one design), all with stratum, PSU and design weight, so the full pipeline and the variance methods run natively.</p>
+<p>Three cross-sectional datasets: <code>population</code> (the frame), <code>sample_survey</code> (take-all roster) and <code>sample_one</code> (multistage select-one design), all with stratum, PSU and design weight, so the full pipeline and the variance methods run natively.</p>
+<p>Four panel datasets in long format, sharing one structure and differing only in the rotation system, so the same code runs on each: <code>panel_puro</code> (a pure panel, four waves), <code>panel_ine</code> (6 in-out, Uruguay’s ECH and the Canadian LFS), <code>panel_cl</code> (<code>2-(2)-2</code>, Chile’s ENE) and <code>panel_us</code> (<code>4-8-4</code>, the US CPS). They carry a persistent household and person key, stratum and PSU, the four-state between-wave disposition (<code>R</code> / <code>NR</code> / <code>OS</code> / <code>UNK</code>) and labour-status variables, so attrition, coordinated replication, composite estimation and gross flows all run on package data.</p>
 </div>
 <div class="section level2">
 <h2 id="extending">Extending<a class="anchor" aria-label="anchor" href="#extending"></a>
@@ -464,6 +617,12 @@
 <li>Little, R. J. A. (1986). Survey nonresponse adjustments for estimates of means. <em>International Statistical Review</em>, 54(2), 139–157.</li>
 <li>Breidt, F. J., &amp; Opsomer, J. D. (2017). Model-assisted survey estimation with modern prediction techniques. <em>Statistical Science</em>, 32(2), 190–205.</li>
 <li>Chernozhukov, V., et al. (2018). Double/debiased machine learning for treatment and structural parameters. <em>The Econometrics Journal</em>, 21(1), C1–C68. <em>(cross-fitting)</em>.</li>
+<li>Andridge, R. R., &amp; Little, R. J. A. (2011). Proxy pattern-mixture analysis for survey nonresponse. <em>Journal of Official Statistics</em>, 27(2), 153–180. <em>(sensitivity to nonignorable nonresponse)</em>.</li>
+</ul>
+<p><em>Non-probability samples</em></p>
+<ul>
+<li>Elliott, M. R., &amp; Valliant, R. (2017). Inference for non-probability samples. <em>Statistical Science</em>, 32(2), 249–264. <em>(pseudo-weights)</em>.</li>
+<li>Meng, X.-L. (2018). Statistical paradises and paradoxes in big data (I). <em>Annals of Applied Statistics</em>, 12(2), 685–726. <em>(data-defect index)</em>.</li>
 </ul>
 <p><em>Calibration</em></p>
 <ul>
@@ -488,8 +647,14 @@
 <li>Preston, J. (2009). Rescaled bootstrap for stratified multistage sampling. <em>Survey Methodology</em>, 35(2), 227–234.</li>
 <li>Wolter, K. M. (2007). <em>Introduction to Variance Estimation</em> (2nd ed.). Springer.</li>
 <li>Lumley, T. (2010). <em>Complex Surveys: A Guide to Analysis Using R</em>. Wiley.</li>
+</ul>
+<p><em>Panels, change and composite estimation</em></p>
+<ul>
 <li>Berger, Y. G., &amp; Priam, R. (2016). A simple variance estimator of change for rotating repeated surveys. <em>Journal of the Royal Statistical Society A</em>, 179(1), 251–272.</li>
-<li>Statistics Canada (2008). <em>Methodology of the Canadian Labour Force Survey</em>, cat. 71-526-X, sec. 7.2.2. <em>(coordinated bootstrap for rotating panels)</em>.</li>
+<li>Statistics Canada (2008). <em>Methodology of the Canadian Labour Force Survey</em>, cat. 71-526-X, sec. 7.2.2. <em>(coordinated replication for rotating panels)</em>.</li>
+<li>Fuller, W. A., &amp; Rao, J. N. K. (2001). A regression composite estimator with application to the Canadian Labour Force Survey. <em>Survey Methodology</em>, 27(1), 45–51.</li>
+<li>Gambino, J., Kennedy, B., &amp; Singh, M. P. (2001). Regression composite estimation for the Canadian Labour Force Survey. <em>Survey Methodology</em>, 27(1), 65–74.</li>
+<li>CEPAL / ECLAC (2023). <em>Diseño y análisis estadístico de las encuestas de hogares de América Latina</em>, LC/PUB.2023/14-P, Santiago, ch. XVI–XVII. <em>(longitudinal weights and gross flows)</em>.</li>
 </ul>
 </div>
 <div class="section level2">

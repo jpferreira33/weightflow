@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -191,6 +191,7 @@ automatically – no extra arguments:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">spec</span>, replicates <span class="op">=</span> <span class="fl">200</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; boot_mean(): with a two-phase design the phase-1 multiplier is uncentred. It self-centres for a ratio only to first order, so this SE is mildly conservative (measured +5-8% in simulation); read it as a slight upper bound.</span></span>
 <span><span class="co">#&gt;   estimate        se ci_lower ci_upper</span></span>
 <span><span class="co">#&gt; 1 14.49937 0.2037054 14.10012 14.89863</span></span></code></pre></div>
 <p>The per-unit resampling factor has variance
@@ -302,10 +303,14 @@ contribution enters through the sum of squares
 not the stratum-centred Rao-Wu form
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>∑</mo><mfrac><msub><mi>n</mi><mi>h</mi></msub><mrow><msub><mi>n</mi><mi>h</mi></msub><mo>−</mo><mn>1</mn></mrow></mfrac><mo>∑</mo><mo stretchy="false" form="prefix">(</mo><mi>z</mi><mo>−</mo><mover><mi>z</mi><mo accent="true">‾</mo></mover><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">\sum \frac{n_h}{n_h-1}\sum (z-\bar z)^2</annotation></semantics></math>.
 For a <strong>mean or ratio</strong> the factor cancels between
-numerator and denominator, so the estimate self-centres and the variance
-is right. For a <strong>total</strong> it does not cancel: the phase-1
-component is then <em>materially</em> conservative and can overestimate
-the variance substantially (not merely “slightly”).
+numerator and denominator to first order, so the estimate self-centres
+and the variance is <em>approximately</em> right — but the Gamma
+coupling is skewed and the second-order term of the ratio does not
+cancel, which leaves the SE mildly conservative (measured +5–8 % in
+simulation). <code><a href="../reference/bootstrap_estimate.html">boot_mean()</a></code> says so in a message; read its SE
+as a slight upper bound. For a <strong>total</strong> it does not
+cancel: the phase-1 component is then <em>materially</em> conservative
+and can overestimate the variance substantially (not merely “slightly”).
 <code><a href="../reference/bootstrap_estimate.html">boot_total()</a></code> and
 <code>two_phase_variance(estimator = "total")</code> therefore warn, and
 their SE should be read as an upper bound; use the

@@ -17,7 +17,7 @@ replicates do the variance. Evaluate with collect_estimates() (printing does it 
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -119,12 +119,14 @@ to extend.</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>for <code>step_domain()</code>, one or more grouping columns (unquoted or as strings);
-they stack, so the disaggregation is their cross (e.g. region x sex).</p></dd>
+they stack, so the disaggregation is their cross (e.g. region x sex). A column may not
+be named after one of the result table's own columns (<code>estimand</code>, <code>over</code>, <code>type</code>,
+<code>estimate</code>, <code>se</code>, <code>ci_lower</code>, <code>ci_upper</code>, <code>rho</code>); rename it in the wave data first.</p></dd>
 
 
 <dt id="arg-condition">condition<a class="anchor" aria-label="anchor" href="#arg-condition"></a></dt>
 <dd><p>for <code>step_filter()</code>, a logical expression (unquoted) that selects the
-subpopulation to estimate over – e.g. <code>edad &gt;= 25 &amp; edad &lt;= 54</code>. It is evaluated in
+subpopulation to estimate over – e.g. <code>age &gt;= 25 &amp; age &lt;= 54</code>. It is evaluated in
 each wave's data; rows are <strong>masked</strong> (not dropped), so the coordinated replicate
 structure and the overlap covariance are preserved. Multiple <code>step_filter()</code> calls
 stack (their conditions are ANDed).</p></dd>
@@ -132,7 +134,12 @@ stack (their conditions are ANDed).</p></dd>
 
 <dt id="arg-statistic">statistic<a class="anchor" aria-label="anchor" href="#arg-statistic"></a></dt>
 <dd><p>the estimand, as a DSL call – <code>mean(var)</code>, <code>total(var)</code>, <code>prop(cond)</code>,
-<code>ratio(num, den)</code>, <code>quantile(var, p)</code> – or a <code>function(w, data)</code>.</p></dd>
+<code>ratio(num, den)</code>, <code>quantile(var, p)</code> – or a <code>function(w, data)</code>. Every argument is
+evaluated in the wave data and must give one numeric or logical value per unit:
+<code>prop()</code> takes a <strong>condition</strong> (<code>prop(status == "unemployed")</code>), not a category, and
+<code>p</code> in <code><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile()</a></code> is a probability in <code>[0, 1]</code> (<code>0.5</code>, not <code>50</code>). <code>ratio()</code> is taken
+over the domain where numerator <strong>and</strong> denominator are both observed, as
+<code>survey::svyratio(na.rm = TRUE)</code> is. The weighted quantile is R's type 5.</p></dd>
 
 
 <dt id="arg-over">over<a class="anchor" aria-label="anchor" href="#arg-over"></a></dt>
@@ -180,30 +187,30 @@ has &gt;= 2 waves, else <code>"level"</code>; <code>"contrast"</code> is implied
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">ola</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disp</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">wb</span> <span class="op">&lt;-</span> <span class="fu"><a href="wave_bootstrap.html">wave_bootstrap</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>       T2 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">w_base</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  replicates <span class="op">=</span> <span class="fl">100</span>, strata <span class="op">=</span> <span class="st">"estrato"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t1</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>       T2 <span class="op">=</span> <span class="fu"><a href="weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">t2</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  replicates <span class="op">=</span> <span class="fl">100</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># net change of the unemployment rate, by region</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="collect_estimates.html">collect_estimates</a></span><span class="op">(</span><span class="va">wb</span> <span class="op">|&gt;</span> <span class="fu">step_domain</span><span class="op">(</span><span class="va">region</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu">step_estimate</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">desocupado</span><span class="op">)</span>, over <span class="op">=</span> <span class="st">"change"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_estimate</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">unemployed</span><span class="op">)</span>, over <span class="op">=</span> <span class="st">"change"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;weightflow estimates [bootstrap]  T1, T2&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          estimand   over     type     region estimate      se ci_lower ci_upper</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  mean(desocupado) change absolute   Interior -0.04337 0.01267 -0.06821 -0.01853</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  mean(desocupado) change absolute Montevideo  0.01580 0.01713 -0.01777  0.04937</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  mean(unemployed) change absolute   Interior -0.04337 0.01267 -0.06821 -0.01853</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  mean(unemployed) change absolute Montevideo  0.01580 0.01713 -0.01777  0.04937</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     rho</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.6845</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.5741</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># subpopulation: same change among the working-age population (rows masked, not dropped)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="collect_estimates.html">collect_estimates</a></span><span class="op">(</span><span class="va">wb</span> <span class="op">|&gt;</span> <span class="fu">step_filter</span><span class="op">(</span><span class="va">edad</span> <span class="op">&gt;=</span> <span class="fl">25</span> <span class="op">&amp;</span> <span class="va">edad</span> <span class="op">&lt;=</span> <span class="fl">54</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
-<span class="r-in"><span>  <span class="fu">step_estimate</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">desocupado</span><span class="op">)</span>, over <span class="op">=</span> <span class="st">"change"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="collect_estimates.html">collect_estimates</a></span><span class="op">(</span><span class="va">wb</span> <span class="op">|&gt;</span> <span class="fu">step_filter</span><span class="op">(</span><span class="va">age</span> <span class="op">&gt;=</span> <span class="fl">25</span> <span class="op">&amp;</span> <span class="va">age</span> <span class="op">&lt;=</span> <span class="fl">54</span><span class="op">)</span> <span class="op">|&gt;</span></span></span>
+<span class="r-in"><span>  <span class="fu">step_estimate</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">unemployed</span><span class="op">)</span>, over <span class="op">=</span> <span class="st">"change"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;weightflow estimates [bootstrap]  T1, T2&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>          estimand   over     type estimate      se ci_lower ci_upper    rho</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  mean(desocupado) change absolute -0.01542 0.01937 -0.05339  0.02254 0.4246</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  mean(unemployed) change absolute -0.01542 0.01937 -0.05339  0.02254 0.4246</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

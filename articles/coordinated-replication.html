@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -124,15 +124,26 @@ replicate <em>b</em> of period <em>t-1</em>, a PSU present in both must
 be resampled <strong>the same way</strong> in both. So what travels
 between periods is the multiplicity matrix itself, not the random seed
 and not the uniforms behind it.</p>
-<p>The distinction matters. Re-drawing period <em>t</em> from a stored
-uniform looks equivalent and is not: the exact multinomial draw is a
-joint constraint over the whole stratum (the multiplicities must add up
-to <code>m_h</code>), so re-drawing cannot both keep the stratum total
-right <em>and</em> give every shared PSU exactly the multiplicity it
-had. Transferring the integers does both. This is the Statistics Canada
-LFS procedure (cat. 71-526-X, sec. 7.2.2, after Roberts, Kovacevic,
-Mantel and Phillips 2001), and it is what <code><a href="../reference/wave_step.html">wave_step()</a></code>
-implements.</p>
+<p>Transferring the integers is the Statistics Canada LFS procedure
+(cat. 71-526-X, sec. 7.2.2, after Roberts, Kovacevic, Mantel and
+Phillips 2001), and it is what <code><a href="../reference/wave_step.html">wave_step()</a></code> implements. It
+is the natural thing for a chain: each period needs only the previous
+period’s carry, gaps and returning cohorts are handled by a registry,
+and nothing has to store the uniforms of every period that came
+before.</p>
+<p>How it compares with re-drawing from a stored uniform, measured
+rather than assumed. While a stratum keeps its number of PSUs – the
+rotating-panel case, where rotation replaces PSUs but does not change
+<code>n_h</code> – the two coincide: re-drawing gives every shared PSU
+exactly the multiplicity it had (correlation 1.000 across every rank in
+simulation) and the stratum total stays exactly <code>m_h</code>. When
+<code>n_h</code> itself changes, which is PSU loss rather than rotation,
+neither does: re-drawing loses coordination down the PSU order, and
+transferring has to add or drop draws to close on the new
+<code>m_h</code>. Measured against a design-level oracle the two then
+recover the same between-wave covariance, about 0.85 of the truth. See
+<code><a href="../reference/wave_bootstrap.html">?wave_bootstrap</a></code> for what that costs and why it is a
+limitation of the method rather than of either mechanism.</p>
 </div>
 <div class="section level2">
 <h2 id="the-four-cases">The four cases<a class="anchor" aria-label="anchor" href="#the-four-cases"></a>
@@ -303,9 +314,9 @@ change against each, with the correlation decaying as the overlap
 thins:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">t3</span><span class="op">$</span><span class="va">change</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"from"</span>, <span class="st">"to"</span>, <span class="st">"estimate"</span>, <span class="st">"se"</span>, <span class="st">"rho"</span>, <span class="st">"deff_change"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;   from to    estimate        se       rho deff_change</span></span>
-<span><span class="co">#&gt; 1   T2 T3 -0.03451029 0.9577166 0.4682287   0.5362414</span></span>
-<span><span class="co">#&gt; 2   T1 T3  0.40947474 1.2734017 0.1164931   0.8837216</span></span></code></pre></div>
+<span><span class="co">#&gt;   from to    estimate      se        rho deff_change</span></span>
+<span><span class="co">#&gt; 1   T2 T3 -0.03451029 1.00714 0.44012924   0.5667445</span></span>
+<span><span class="co">#&gt; 2   T1 T3  0.40947474 1.34313 0.05785729   0.9424303</span></span></code></pre></div>
 <p><code>deff_change</code> is <code>V / (V1 + V2)</code>: what the
 overlap saved relative to treating the two periods as independent
 samples. Note that ignoring the overlap is not conservative – it is

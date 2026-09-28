@@ -19,9 +19,23 @@ level_estimate(
   df = NULL
 )
 
-level_mean(wb, variable, wave = NULL, level = 0.95)
+level_mean(
+  wb,
+  variable,
+  wave = NULL,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 
-level_total(wb, variable, wave = NULL, level = 0.95)
+level_total(
+  wb,
+  variable,
+  wave = NULL,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 ```
 
 ## Arguments

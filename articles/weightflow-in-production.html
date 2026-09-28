@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,17 +157,17 @@ review in a pull request, and archive alongside the estimates.</p>
 <span><span class="co">#&gt; Kish deff: 1.056 -&gt; 1.021   |   n_eff: 442 -&gt; 265</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; --- Step 2: calibration (raking) ---</span></span>
-<span><span class="co">#&gt;  variable category target achieved   n</span></span>
-<span><span class="co">#&gt;    region    North   1570     1570  78</span></span>
-<span><span class="co">#&gt;    region    South   1250     1250  72</span></span>
-<span><span class="co">#&gt;    region     East    927      927  52</span></span>
-<span><span class="co">#&gt;    region     West    748      748  68</span></span>
-<span><span class="co">#&gt;       sex        F   2311     2311 130</span></span>
-<span><span class="co">#&gt;       sex        M   2184     2184 140</span></span>
+<span><span class="co">#&gt;  variable category target achieved prev_total    factor   n</span></span>
+<span><span class="co">#&gt;    region    North   1570     1570  1487.5000 1.0554622  78</span></span>
+<span><span class="co">#&gt;    region    South   1250     1250  1210.0000 1.0330579  72</span></span>
+<span><span class="co">#&gt;    region     East    927      927   800.0000 1.1587500  52</span></span>
+<span><span class="co">#&gt;    region     West    748      748   873.3333 0.8564885  68</span></span>
+<span><span class="co">#&gt;       sex        F   2311     2311  2128.8015 1.0855873 130</span></span>
+<span><span class="co">#&gt;       sex        M   2184     2184  2242.0318 0.9741164 140</span></span>
 <span><span class="co">#&gt; (converged/iterated in 5 iterations)</span></span>
 <span><span class="co">#&gt; Kish deff: 1.021 -&gt; 1.045   |   n_eff: 265 -&gt; 258</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; R-indicator (representativity of response): 0.892  (on region)</span></span></code></pre></div>
+<span><span class="co">#&gt; R-indicator (representativity of response): 0.926  (on region)</span></span></code></pre></div>
 <p>Because the definition is separated from the execution, the same
 recipe object is the specification, the documentation and the input to
 the variance machinery. Each step has a stable id (here

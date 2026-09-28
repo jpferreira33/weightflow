@@ -27,20 +27,32 @@ read_recipe(file, data = NULL, references = NULL, allow_code = FALSE)
 
 - references:
 
-  optional named list of
+  optional named list, named by the id of the step that needs each
+  object, restoring what the recipe stores only as a descriptor because
+  it is microdata rather than metadata: a
   [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
-  objects, named by the id of the step that uses each one, to restore
-  the steps that calibrate or pseudo-weight against a reference (whose
-  microdata the recipe does not store).
+  for a step that calibrates or pseudo-weights against a reference, and
+  the `population` data frame of
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
+  /
+  [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md).
 
 - allow_code:
 
-  single logical. A step may store an R **function** as source (a custom
-  distance or statistic). Reconstructing it evaluates that source, which
-  is a code-execution risk for a recipe received from elsewhere. `FALSE`
-  (default) refuses such nodes with an error; set `TRUE` only for a file
-  you trust, exactly as you would
-  [`source()`](https://rdrr.io/r/base/source.html) it.
+  single logical, the gate on **every** executable thing a recipe file
+  can carry: the conditions and formulas it stores as text, and a step
+  that stores an R function as source. With `FALSE` (the default) a
+  stored expression is accepted only if every call in it is on a fixed
+  whitelist of data-manipulation functions (comparisons, arithmetic,
+  [`is.na()`](https://rdrr.io/r/base/NA.html),
+  [`factor()`](https://rdrr.io/r/base/factor.html),
+  [`cut()`](https://rdrr.io/r/base/cut.html), string and `apply`-free
+  helpers), and a function node is refused outright. That matters
+  because a recipe is meant to be exchanged between organizations: an
+  expression like `{ system("...") ; responded }` runs at the first
+  [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md),
+  not at read time. Set `TRUE` only for a file you trust, exactly as you
+  would [`source()`](https://rdrr.io/r/base/source.html) it.
 
 ## Value
 
@@ -70,7 +82,7 @@ spec <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region")
 f <- tempfile(fileext = ".yml"); write_recipe(spec, f)
 read_recipe(f)                       # inspect the manifest
-#> weightflow recipe (written by version 1.3.0, 2026-09-10T17:23:45Z)
+#> weightflow recipe (written by version 1.3.1, 2026-09-28T18:08:21Z)
 #>   base weights: pw
 #>   1 step(s):
 #>     - nonresponse    nonresponse_1

@@ -20,6 +20,7 @@ step_model_calibration(
   population,
   x_totals = NULL,
   count = "Freq",
+  by = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
   calfun = c("linear", "logit", "raking"),
@@ -75,8 +76,34 @@ step_model_calibration(
 
 - count:
 
-  name of the counts column in the tidy `x_totals` data frames. Only
-  used when `x_totals` is given in the tidy (data-frame) format.
+  name of the counts column in the tidy `x_totals` data frames.
+
+- by:
+
+  NULL (default), or a single column name: **partition** the sample by
+  that domain and calibrate each domain on its own units, exactly as
+  `by` does in
+  [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md).
+  For model calibration that carries two consequences at once, which is
+  usually the reason for wanting it: every working model in `models` is
+  fitted on the units of its own domain and never sees the other
+  domains, and the `x_formula` totals are reproduced exactly **within**
+  each domain rather than only nationally. `population` must carry the
+  same domain column, and `x_totals`, if given, must be in the
+  per-domain (tidy) form – a national named vector would be applied to
+  every domain and the population counted once per domain.
+
+  The rank ceiling then binds per domain, and harder: domain \\g\\ must
+  carry its own \\q_A + K\\ constraints on its \\n_g\\ units, and with
+  `crossfit` each of its folds must leave enough rows to fit the model
+  coefficients. A domain too small for that is reported by name before
+  anything is solved, because the symptom of a singular per-domain
+  system is wild weights rather than an error. With linear working
+  models, fitting by domain is the same mechanism as cross-fitting – the
+  prediction columns leave the shared span – so the ceiling moves from
+  \\K \le q - q_A\\ to \\K \le Gq - q_A\\ with \\G\\ domains, and the
+  two compose. Only used when `x_totals` is given in the tidy
+  (data-frame) format.
 
 - cluster:
 

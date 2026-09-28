@@ -369,7 +369,7 @@ summary(fitted)
 #>     West | M | 60+             4             2 1.499946
 #> Kish deff: 1.460 -> 1.510   |   n_eff: 216 -> 138
 #> 
-#> R-indicator (representativity of response): 0.802  (on region, sex, age_grp)
+#> R-indicator (representativity of response): 0.887  (on region, sex, age_grp)
 ```
 
 ### The same recipe with the ready-made indicator columns

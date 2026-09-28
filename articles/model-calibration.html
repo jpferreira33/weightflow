@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -320,10 +320,15 @@ household, and that weight is assigned to all its members.</p>
 <p>The X totals and the model-prediction total are still reproduced; the
 only added requirement is that the incoming weight be uniform within
 each cluster (as it is after the usual design and adjustment steps). The
-model-calibration solve is unbounded linear, so
-<code>calfun</code>/<code>bounds</code> do not apply here, but the
-one-weight-per- household behaviour is identical to that of
-<code><a href="../reference/step_calibrate.html">step_calibrate()</a></code>.</p>
+one-weight-per-household behaviour is identical to that of
+<code><a href="../reference/step_calibrate.html">step_calibrate()</a></code>; <code>by</code> partitions the sample the
+same way too, and a cluster that spans two domains is refused, since
+each domain is solved on its own units and its members would otherwise
+receive different calibration factors.</p>
+<p>The solve defaults to unbounded linear, but <code>calfun</code> and
+<code>bounds</code> are available here as they are in
+<code><a href="../reference/step_calibrate.html">step_calibrate()</a></code> (since 1.3.0): the same truncated linear,
+exponential and logit distances, with the same meaning.</p>
 </div>
 <div class="section level2">
 <h2 id="relationship-to-the-literature">Relationship to the literature<a class="anchor" aria-label="anchor" href="#relationship-to-the-literature"></a>

@@ -21,7 +21,7 @@ precision that calibrating on x alone cannot."><meta property="og:image" content
 
     <a class="navbar-brand me-2" href="../index.html">weightflow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.3.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -103,6 +103,7 @@ precision that calibrating on <code>x</code> alone cannot.</p>
 <span>  <span class="va">population</span>,</span>
 <span>  x_totals <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  count <span class="op">=</span> <span class="st">"Freq"</span>,</span>
+<span>  by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  equal_within_cluster <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  calfun <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"linear"</span>, <span class="st">"logit"</span>, <span class="st">"raking"</span><span class="op">)</span>,</span>
@@ -157,7 +158,28 @@ for the model predictions.</p></dd>
 
 
 <dt id="arg-count">count<a class="anchor" aria-label="anchor" href="#arg-count"></a></dt>
-<dd><p>name of the counts column in the tidy <code>x_totals</code> data frames.
+<dd><p>name of the counts column in the tidy <code>x_totals</code> data frames.</p></dd>
+
+
+<dt id="arg-by">by<a class="anchor" aria-label="anchor" href="#arg-by"></a></dt>
+<dd><p>NULL (default), or a single column name: <strong>partition</strong> the sample by that
+domain and calibrate each domain on its own units, exactly as <code>by</code> does in
+<code><a href="step_calibrate.html">step_calibrate()</a></code>. For model calibration that carries two consequences at once,
+which is usually the reason for wanting it: every working model in <code>models</code> is
+fitted on the units of its own domain and never sees the other domains, and the
+<code>x_formula</code> totals are reproduced exactly <strong>within</strong> each domain rather than only
+nationally. <code>population</code> must carry the same domain column, and <code>x_totals</code>, if
+given, must be in the per-domain (tidy) form – a national named vector would be
+applied to every domain and the population counted once per domain.</p>
+<p>The rank ceiling then binds per domain, and harder: domain \(g\) must carry its
+own \(q_A + K\) constraints on its \(n_g\) units, and with <code>crossfit</code> each of
+its folds must leave enough rows to fit the model coefficients. A domain too small
+for that is reported by name before anything is solved, because the symptom of a
+singular per-domain system is wild weights rather than an error. With linear
+working models, fitting by domain is the same mechanism as cross-fitting – the
+prediction columns leave the shared span – so the ceiling moves from
+\(K \le q - q_A\) to \(K \le Gq - q_A\) with \(G\) domains, and the two
+compose.
 Only used when <code>x_totals</code> is given in the tidy (data-frame) format.</p></dd>
 
 

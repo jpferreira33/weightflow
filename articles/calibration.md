@@ -163,13 +163,13 @@ wf <- weighting_spec(sample_survey, base_weights = pw) |>
                                 sex    = c(table(population$sex)))) |>
   prep()
 wf$steps[[2]]$diagnostics
-#>   variable category target achieved   n
-#> 1   region    North   1570     1570  78
-#> 2   region    South   1250     1250  72
-#> 3   region     East    927      927  52
-#> 4   region     West    748      748  68
-#> 5      sex        F   2311     2311 130
-#> 6      sex        M   2184     2184 140
+#>   variable category target achieved prev_total    factor   n
+#> 1   region    North   1570     1570  1487.5000 1.0554622  78
+#> 2   region    South   1250     1250  1210.0000 1.0330579  72
+#> 3   region     East    927      927   800.0000 1.1587500  52
+#> 4   region     West    748      748   873.3333 0.8564885  68
+#> 5      sex        F   2311     2311  2128.8015 1.0855873 130
+#> 6      sex        M   2184     2184  2242.0318 0.9741164 140
 ```
 
 Raking fits an implicit log-linear model with main effects only: it

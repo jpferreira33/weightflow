@@ -4,8 +4,16 @@ A continuous household survey with a rotating design measures the same
 units more than once. That is what makes the **change** between two
 periods far more precise than the levels themselves – the shared sample
 cancels part of the sampling error – and it is also what makes the
-change **harder** to estimate: the two samples are not independent, so
-`V(change)` is not `V1 + V2`.
+change **harder** to estimate. The two samples are not independent, so
+the variance of the change is not the sum of the two variances:
+
+``` math
+V\!\left(\hat\theta_t - \hat\theta_{t-1}\right) = V\!\left(\hat\theta_t\right) + V\!\left(\hat\theta_{t-1}\right) - 2\,\mathrm{Cov}\!\left(\hat\theta_t, \hat\theta_{t-1}\right)
+```
+
+and that covariance term is the whole problem: it is not a design
+constant you can look up, it has to be *produced* by the way the
+replicates are drawn.
 
 This vignette covers the three things a rotating panel makes possible,
 in the order an office needs them:
@@ -31,13 +39,13 @@ computes nothing about weights.
 
 ``` r
 
-pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                   rotation_group = "grupo_rotacion", pattern = "6")
+pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                   rotation_group = "rotation_group", pattern = "6")
 pd
 #> <weightflow panel design>
 #>   waves      : 3 (1, 2, 3)
-#>   unit       : id_hogar + nper
-#>   rotation   : grupo_rotacion  pattern: 6
+#>   unit       : household_id + person_no
+#>   rotation   : rotation_group  pattern: 6
 #>   units      : 2783 (linked in >=2 waves: 2063, 74%)
 #>   overlap (row wave retained in column wave):
 #>   1    2    3   
@@ -93,14 +101,14 @@ show up as covariance.
 
 ``` r
 
-w1 <- subset(panel_ine, ola == 1 & disp == "R")
-w2 <- subset(panel_ine, ola == 2 & disp == "R")
-rec <- function(d) weighting_spec(d, base_weights = w_base) |>
-  step_nonresponse(respondent = disp == "R", by = "sexo")
+w1 <- subset(panel_ine, wave == 1 & disposition == "R")
+w2 <- subset(panel_ine, wave == 2 & disposition == "R")
+rec <- function(d) weighting_spec(d, base_weights = pw) |>
+  step_nonresponse(respondent = disposition == "R", by = "sex")
 
 wb <- wave_bootstrap(list(T1 = rec(w1), T2 = rec(w2)), replicates = 100,
-                     strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
-change_mean(wb, "desocupado")
+                     strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
+change_mean(wb, "unemployed")
 #> <weightflow net change>
 #>   T1 -> T2
 #>   change     : -0.0149512   SE 0.010056
@@ -109,12 +117,17 @@ change_mean(wb, "desocupado")
 #>   V = 0.0001011  vs  V1+V2 = 0.0002161  (deff_change 0.468: overlap saved 53%)
 ```
 
-`rho` is the correlation the overlap induces and `deff_change` is
-`V / (V1 + V2)`: the ratio between the variance reported here and what
-an office would report if it treated the two periods as independent
-samples. Ignoring the overlap does not give a conservative answer – it
-gives a wrong one, in either direction depending on the sign of the
-covariance.
+`rho` is the correlation $`\rho`$ the overlap induces, and `deff_change`
+is
+
+``` math
+\mathrm{deff}_\Delta = \frac{V\!\left(\hat\theta_t - \hat\theta_{t-1}\right)}{V\!\left(\hat\theta_t\right) + V\!\left(\hat\theta_{t-1}\right)}
+```
+
+the ratio between the variance reported here and what an office would
+report if it treated the two periods as independent samples. Ignoring
+the overlap does not give a conservative answer – it gives a wrong one,
+in either direction depending on the sign of the covariance.
 
 For a combination over more than two waves – a rolling quarter, an
 annual average –
@@ -123,8 +136,8 @@ takes an arbitrary contrast:
 
 ``` r
 
-panel_estimate(wb, mean_of("desocupado"), contrast = c(-1, 1))   # the net change
-panel_estimate(wb, mean_of("desocupado"))                        # the average
+panel_estimate(wb, mean_of("unemployed"), contrast = c(-1, 1))   # the net change
+panel_estimate(wb, mean_of("unemployed"))                        # the average
 ```
 
 ## Chaining: how production actually runs
@@ -141,13 +154,13 @@ the *carry* – that is all it needs.
 
 # period 1: nothing to coordinate with yet
 s1 <- wave_step(rec(w1), estimands = EST, replicates = 500,
-                strata = "estrato", psu = "psu", period = "2026-01", seed = 1)
+                strata = "stratum", psu = "psu", period = "2026-01", seed = 1)
 saveRDS(wave_carry(s1), "carry/2026-01.rds")
 
 # period 2, weeks later, in a fresh session
 prev <- readRDS("carry/2026-01.rds")
 s2 <- wave_step(rec(w2), previous = prev, estimands = EST, replicates = 500,
-                strata = "estrato", psu = "psu", period = "2026-02", seed = 2)
+                strata = "stratum", psu = "psu", period = "2026-02", seed = 2)
 s2$weights   # the cross-sectional weights the office publishes
 s2$change    # the net change against 2026-01, with rho and deff_change
 s2$strata    # the coordination diagnostic, stratum by stratum
@@ -200,15 +213,21 @@ and any contrast follows from it.
 
 When the recipe ends in
 [`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md),
-the level of period `t` depends on control totals **estimated** with the
-previous wave. Treating them as known constants makes the variance
-anticonservative, so replicate *b* of period `t` rebuilds `Zhat*` from
-replicate *b* of period `t-1`. That is why a chain with
+the calibration of period $`t`$ targets two blocks at once: the known
+demographic totals $`\mathbf{X}`$, and composite totals
+$`\widehat{\mathbf{Z}}`$**estimated with the previous wave**. Treating
+the second block as if it were known makes the variance
+anticonservative, so replicate $`b`$ of period $`t`$ rebuilds
+$`\widehat{\mathbf{Z}}`$ from replicate $`b`$ of period $`t-1`$. That is
+why a chain with
 [`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md)
-needs the “fat” carry, which weighs a few hundred KB instead of a few
-dozen: it must carry the previous period’s replicate weights.
-`$n_cre_injected` and `$n_cre_skipped` are the audit that it actually
-happened.
+needs the “fat” carry: it must bring the previous period’s replicate
+weights, not just its replicate estimates. `$n_cre_injected` and
+`$n_cre_skipped` audit that the injection happened.
+
+The estimator, its two imputations for the birth rotation group and the
+tuning constant $`\alpha`$ are in
+[`vignette("composite-estimation")`](https://jpferreira33.github.io/weightflow/articles/composite-estimation.md).
 
 ## Gross flows: who moved
 
@@ -219,18 +238,22 @@ longitudinal weight.
 
 ``` r
 
-wide <- panel_merge(list(T1 = subset(panel_ine, ola == 1),
-                         T2 = subset(panel_ine, ola == 2)),
-                    by = c("id_hogar", "nper"), require = "all")
+wide <- panel_merge(list(T1 = subset(panel_ine, wave == 1),
+                         T2 = subset(panel_ine, wave == 2)),
+                    by = c("household_id", "person_no"), require = "all")
 
-lw <- weighting_spec(wide, base_weights = w_base_T1) |>
-  step_drop_ineligible(disp_T2 == "OS", reason = "left the target population") |>
-  step_attrition(respondent = disp_T2 == "R", method = "propensity",
-                 formula = ~ edad_T1 + sexo_T1) |>
+lw <- weighting_spec(wide, base_weights = pw_T1) |>
+  step_drop_ineligible(disposition_T2 == "OS", reason = "left the target population") |>
+  step_attrition(respondent = disposition_T2 == "R", method = "propensity",
+                 formula = ~ age_T1 + sex_T1) |>
   prep()
 
-transition_matrix(lw, from = "condicion_T1", to = "condicion_T2", format = "row")
-#> <weightflow transition: condicion_T1 -> condicion_T2  [row]>
+transition_matrix(lw, from = "lf_status_T1", to = "lf_status_T2", format = "row")
+#> Warning: The flow table covers 96.2% of the weight: 3.8% with a missing state.
+#> Those units are not in any cell, so the conditional and joint formats
+#> renormalize over the rest. In a panel that share is usually the attrition --
+#> decide it explicitly (an 'out of scope' state, or step_drop_ineligible()).
+#> <weightflow transition: lf_status_T1 -> lf_status_T2  [row]>
 #>        to
 #> from       emp inact  unemp
 #>   emp   0.9547     0 0.0453
@@ -261,31 +284,14 @@ universe but did not answer is attrition, and their weight *is*
 redistributed, among the units that remain. Collapsing the two inflates
 the population.
 
-### Three ECLAC conventions the package cannot enforce
-
-These are decisions the analyst makes; the package has no way to check
-them, so they are stated here (ECLAC, ch. XVI).
-
-**The longitudinal population** is the units that were in the target
-population at the first period **and stayed** through the last. Those
-who left are out; those who *entered* later are out too. A panel adds no
-elements over time.
-
-**Calibrate to the first period’s totals.** The manual is explicit that
-the auxiliary totals must represent the population of the *first*
-period, because a panel that adds no elements is representative only of
-the period in which it was selected. Passing the later period’s
-projections is a silent error: the recipe converges, the totals close,
-and the weights represent a population the sample never had a chance to
-cover. A vector of control totals carries no label saying which period
-it is, so nothing but you can catch this.
-
-**Cross-sectional estimates from a longitudinal file are reference
-only.** They will not match the published cross-sectional figures, and
-they should not: the target population of the panel combination is not
-the target population of the cross-section. Use the longitudinal weight
-for flows, transitions and durations; use the cross-sectional weight for
-levels.
+Three further conventions govern a longitudinal weight – who belongs to
+the longitudinal population, which period’s totals to calibrate to, and
+why cross-sectional estimates from a longitudinal file are reference
+only. They are decisions the analyst makes and the package cannot check,
+and they are set out in
+[`vignette("panel-longitudinal")`](https://jpferreira33.github.io/weightflow/articles/panel-longitudinal.md)
+and in
+[`?step_cross_sectional`](https://jpferreira33.github.io/weightflow/reference/step_cross_sectional.md).
 
 ## Where to look next
 

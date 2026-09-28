@@ -63,6 +63,7 @@ boot
 #>   strata     : region
 #>   psu        : psu
 #>   df         : 44
+#>   MCSE(SE)   : ~5.0% of any SE from this object (Monte Carlo noise at R = 200)
 ```
 
 The multiplier is the **Rao-Wu rescaling bootstrap**. Consider a stratum

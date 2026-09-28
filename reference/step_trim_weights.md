@@ -18,6 +18,7 @@ step_trim_weights(
   redistribute = c("proportional", "uniform"),
   strict = TRUE,
   maxit = 50L,
+  kappa = 1,
   id = NULL
 )
 ```
@@ -43,7 +44,8 @@ step_trim_weights(
   3\*IQR far-out fence) or "potter" (Potter's MSE-optimal cutoff, which
   over a grid of candidate cutoffs minimizes an estimate of bias^2 +
   variance and so balances the bias of trimming against the variance
-  from extreme weights). Ignored when `upper` is supplied.
+  from extreme weights). Ignored when `upper` is supplied. See Details
+  for what the Potter criterion assumes.
 
 - redistribute:
 
@@ -64,6 +66,13 @@ step_trim_weights(
 
   integer. Maximum iterations when strict = TRUE.
 
+- kappa:
+
+  numeric, `method = "potter"` only: the relative price of bias against
+  variance in the criterion minimized, `kappa * bias^2 + variance`. The
+  default 1 is Potter's own weighting; above 1 the cutoff moves up (trim
+  less, keep the bias down), below 1 it moves down (trim more).
+
 - id:
 
   optional string: a stable identifier for this step, shown in the
@@ -77,6 +86,32 @@ The input `weighting_spec` with this step appended to its recipe. The
 step is recorded only; it is evaluated when
 [`prep()`](https://jpferreira33.github.io/weightflow/reference/prep.md)
 is called.
+
+## Details
+
+Two things are worth knowing about `method = "potter"` before reading
+its cutoff as optimal, because both are assumptions rather than results.
+
+The criterion is the mean squared error of a **total**, so its two terms
+are deliberately on different orders: the bias of capping is the trimmed
+mass, which grows like the sample size, and the variance term is the sum
+of squared remaining weights, which also grows like the sample size, so
+bias squared grows like its square. The cutoff therefore **rises with
+the sample size for the same weight distribution** – replicating a
+300-unit sample to 30,000 moved it from 126 to 183 in one test, capping
+a third as many units. That is the correct behaviour for a total (the
+relative bias stays put while the relative variance shrinks, so trimming
+buys less), not a defect, but it does mean the rule is not a property of
+the weight distribution alone. The criterion is invariant to the scale
+of the weights.
+
+The bias it charges is the bias of capping **without** redistribution,
+while this step always redistributes: the weighted total is preserved
+exactly, so the real bias is only the difference between the study
+variable's mean among the capped units and among the units receiving
+their mass. The criterion therefore overstates the bias and, other
+things equal, caps less than the MSE it is named after would. `kappa` is
+the handle: set it below 1 to buy back that conservatism.
 
 ## See also
 

@@ -24,16 +24,29 @@ period *t-1*, a PSU present in both must be resampled **the same way**
 in both. So what travels between periods is the multiplicity matrix
 itself, not the random seed and not the uniforms behind it.
 
-The distinction matters. Re-drawing period *t* from a stored uniform
-looks equivalent and is not: the exact multinomial draw is a joint
-constraint over the whole stratum (the multiplicities must add up to
-`m_h`), so re-drawing cannot both keep the stratum total right *and*
-give every shared PSU exactly the multiplicity it had. Transferring the
-integers does both. This is the Statistics Canada LFS procedure (cat.
+Transferring the integers is the Statistics Canada LFS procedure (cat.
 71-526-X, sec. 7.2.2, after Roberts, Kovacevic, Mantel and Phillips
 2001), and it is what
 [`wave_step()`](https://jpferreira33.github.io/weightflow/reference/wave_step.md)
-implements.
+implements. It is the natural thing for a chain: each period needs only
+the previous period’s carry, gaps and returning cohorts are handled by a
+registry, and nothing has to store the uniforms of every period that
+came before.
+
+How it compares with re-drawing from a stored uniform, measured rather
+than assumed. While a stratum keeps its number of PSUs – the
+rotating-panel case, where rotation replaces PSUs but does not change
+`n_h` – the two coincide: re-drawing gives every shared PSU exactly the
+multiplicity it had (correlation 1.000 across every rank in simulation)
+and the stratum total stays exactly `m_h`. When `n_h` itself changes,
+which is PSU loss rather than rotation, neither does: re-drawing loses
+coordination down the PSU order, and transferring has to add or drop
+draws to close on the new `m_h`. Measured against a design-level oracle
+the two then recover the same between-wave covariance, about 0.85 of the
+truth. See
+[`?wave_bootstrap`](https://jpferreira33.github.io/weightflow/reference/wave_bootstrap.md)
+for what that costs and why it is a limitation of the method rather than
+of either mechanism.
 
 ## The four cases
 
@@ -182,9 +195,9 @@ change against each, with the correlation decaying as the overlap thins:
 ``` r
 
 t3$change[, c("from", "to", "estimate", "se", "rho", "deff_change")]
-#>   from to    estimate        se       rho deff_change
-#> 1   T2 T3 -0.03451029 0.9577166 0.4682287   0.5362414
-#> 2   T1 T3  0.40947474 1.2734017 0.1164931   0.8837216
+#>   from to    estimate      se        rho deff_change
+#> 1   T2 T3 -0.03451029 1.00714 0.44012924   0.5667445
+#> 2   T1 T3  0.40947474 1.34313 0.05785729   0.9424303
 ```
 
 `deff_change` is `V / (V1 + V2)`: what the overlap saved relative to

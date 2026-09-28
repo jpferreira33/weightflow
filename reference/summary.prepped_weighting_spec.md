@@ -61,5 +61,5 @@ summary(fitted)
 #>   West            68            63 1.926471
 #> Kish deff: 1.056 -> 1.021   |   n_eff: 442 -> 265
 #> 
-#> R-indicator (representativity of response): 0.892  (on region)
+#> R-indicator (representativity of response): 0.926  (on region)
 ```
