@@ -54,37 +54,37 @@ test_that("an NA inside the totals vector errors (loudly, though the message cou
 })
 
 test_that("a continuous numeric `by` (raw age) runs, raises the small/dead-cell alerts, and the mass accounting closes", {
-  d <- feo_d(); set.seed(11); d$edad <- sample(18:75, nrow(d), TRUE)
+  d <- feo_d(); set.seed(11); d$age <- sample(18:75, nrow(d), TRUE)
   # deterministic dead cell: an age that exists only among nonrespondents
-  d$edad[which(!d$resp)[1:3]] <- 99L
+  d$age[which(!d$resp)[1:3]] <- 99L
   p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
-    step_nonresponse(respondent = resp, method = "weighting_class", by = "edad")))
+    step_nonresponse(respondent = resp, method = "weighting_class", by = "age")))
   expect_true(any(grepl("no units to adjust to", p$alerts)))
   expect_true(any(grepl("fewer than 30 cases", p$alerts)))
   cw <- collect_weights(p, drop_zero = FALSE)
   # the mass lost is EXACTLY that of the cells with no respondents
-  dead <- names(which(tapply(d$resp, d$edad, sum) == 0))
-  lost <- sum(d$w[as.character(d$edad) %in% dead])
+  dead <- names(which(tapply(d$resp, d$age, sum) == 0))
+  lost <- sum(d$w[as.character(d$age) %in% dead])
   expect_equal(sum(cw$.weight), sum(d$w) - lost, tolerance = 1e-8)
   # and every respondent in live cells keeps a positive weight
-  vivos <- d$resp & !(as.character(d$edad) %in% dead)
+  vivos <- d$resp & !(as.character(d$age) %in% dead)
   expect_true(all(cw$.weight[vivos] > 0))
 })
 
 test_that("a whole stratum with zero responding UPMs: alert raised, surviving strata untouched, lost stratum zeroed", {
   set.seed(3); nn <- 200
   d <- data.frame(id = 1:nn, w = runif(nn, 1, 3),
-                  estrato = rep(c("E1", "E2"), each = 100),
+                  stratum = rep(c("E1", "E2"), each = 100),
                   upm = rep(1:20, each = 10))
-  d$upm_ok <- d$estrato != "E2"        # E2: zona perdida completa
+  d$upm_ok <- d$stratum != "E2"        # E2: zona perdida completa
   p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
     step_nonresponse(respondent = upm_ok, method = "weighting_class",
-                     by = "estrato", cluster = "upm")))
+                     by = "stratum", cluster = "upm")))
   expect_true(any(grepl("no units to adjust to", p$alerts)))
   cw <- collect_weights(p, drop_zero = FALSE)
-  expect_equal(sum(cw$.weight[d$estrato == "E1"]), sum(d$w[d$estrato == "E1"]),
+  expect_equal(sum(cw$.weight[d$stratum == "E1"]), sum(d$w[d$stratum == "E1"]),
                tolerance = 1e-8)
-  expect_true(all(cw$.weight[d$estrato == "E2"] == 0))
+  expect_true(all(cw$.weight[d$stratum == "E2"] == 0))
 })
 
 test_that("inconsistent margin totals: classic margins warn about non-convergence, tidy totals reconcile with a message", {

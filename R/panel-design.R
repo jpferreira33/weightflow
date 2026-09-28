@@ -89,6 +89,24 @@
        lags = as.integer(names(prof))[prof > 1e-9])
 }
 
+# unit -> rotation cohort, as (first wave of appearance, label in that wave).
+# Order-invariant by construction: it reads the wave index, never the file order.
+# Returns a character vector aligned to rownames(present).
+.wf_cohort_map <- function(u, wv, g, present) {
+  uni <- rownames(present)
+  ui  <- match(as.character(u), uni)
+  wi  <- as.integer(wv)
+  # earliest wave index per unit, and the label carried on that wave
+  first <- rep(NA_integer_, length(uni))
+  lab   <- rep(NA_character_, length(uni))
+  ord   <- order(ui, wi)                       # deterministic: by unit, then by wave
+  ui <- ui[ord]; wi <- wi[ord]; gs <- as.character(g)[ord]
+  keep <- !duplicated(ui)                      # first row of each unit = earliest wave
+  first[ui[keep]] <- wi[keep]
+  lab[ui[keep]]   <- gs[keep]
+  stats::setNames(paste(first, lab, sep = "\r"), uni)
+}
+
 #' Describe the rotating-panel structure of a survey
 #'
 #' Tags stacked per-wave survey data with its rotation structure so the panel
@@ -116,7 +134,7 @@
 #' @param data a stacked `data.frame`, one row per unit per wave.
 #' @param unit one or more column names (a character vector) that together
 #'   identify the longitudinal unit, stable across waves. A household is often a
-#'   single id (`"ID"`); a person needs several (`c("ID", "nper")` = household id
+#'   single id (`"ID"`); a person needs several (`c("ID", "person_no")` = household id
 #'   plus person line number). The columns are pasted into the tracking key.
 #' @param wave string: the column holding the wave/period.
 #' @param rotation_group optional string: the column holding the rotation group /
@@ -124,7 +142,13 @@
 #'   is left `NA` and only the unit-level overlap is computed.
 #' @param cluster optional one or more column names identifying a within-unit
 #'   cluster (e.g. the household `"ID"`) when the tracked unit is a person but the
-#'   overlap is realised at the household level.
+#'   overlap is realised at the household level. Given one, the descriptor also
+#'   carries `overlap_cluster` -- the same wave x wave overlap matrix computed over
+#'   distinct clusters -- plus `n_clusters` and `n_linked_clusters`. In a rotating
+#'   household panel the dwelling stays in sample while its members change, so the
+#'   cluster overlap is the one the rotation calendar describes and the unit-level
+#'   one is that figure net of within-household churn; the gap between them is the
+#'   churn.
 #' @param pattern optional string describing the rotation scheme, for verification
 #'   only: CEPAL's `"4(0)1"`, the CPS `"4-8-4"`, or a plain integer like `"6"`.
 #'   Nothing in the computation depends on parsing it.
@@ -138,12 +162,13 @@
 #' @seealso [panel_merge()], [reference_sample()]
 #' @examples
 #' # person-level tracking: the key is household id + person line number
-#' pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-#'                    rotation_group = "grupo_rotacion", cluster = "id_hogar",
+#' pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+#'                    rotation_group = "rotation_group", cluster = "household_id",
 #'                    pattern = "6")
 #' pd            # overlap matrix, Pr(panel selection), linkage rate, alerts
 #' summary(pd)
 #' @export
+
 panel_design <- function(data, unit, wave, rotation_group = NULL,
                          cluster = NULL, pattern = NULL, waves = NULL,
                          reference_wave = NULL) {
@@ -206,6 +231,28 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
   n_units  <- nrow(present)
   n_linked <- sum(waves_per_unit >= 2L)
 
+  # The same overlap at the CLUSTER level (PN-09). In a rotating household panel the
+  # dwelling stays in sample while its members come and go, so the household overlap is
+  # the higher of the two and it is the one the rotation calendar actually describes --
+  # the person-level number is that overlap net of within-household churn. `cluster` was
+  # documented as the way to ask for it and did nothing at all: it was validated, stored,
+  # printed, and read by no computation.
+  overlap_cluster <- NULL; n_clusters <- NA_integer_; n_linked_clusters <- NA_integer_
+  if (!is.null(cluster)) {
+    cu <- if (length(cluster) == 1L) as.character(data[[cluster]])
+          else do.call(paste, c(lapply(cluster, function(k) as.character(data[[k]])), sep = "\r"))
+    if (anyNA(cu))
+      stop(sprintf("`cluster` column(s) %s contain NA; every row belongs to some cluster.",
+                   paste(sprintf("'%s'", cluster), collapse = ", ")), call. = FALSE)
+    ctab <- table(cu, wv)
+    cpres <- matrix(as.integer(ctab > 0L), nrow(ctab), ncol(ctab), dimnames = dimnames(ctab))
+    cnw   <- colSums(cpres)
+    overlap_cluster <- crossprod(cpres) / pmax(cnw, 1L)
+    dimnames(overlap_cluster) <- list(wlev, wlev)
+    n_clusters        <- nrow(cpres)
+    n_linked_clusters <- sum(rowSums(cpres) >= 2L)
+  }
+
   # Panel-selection probability from rotation-group *cohort* continuity. A group
   # is coincident between two waves when its units are present in both -- detected
   # through unit overlap, not the group label, because labels are recycled when a
@@ -217,9 +264,16 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
   cohort_sizes <- NULL
   n_groups     <- NA_integer_
   if (!is.null(rotation_group)) {
-    g  <- as.character(data[[rotation_group]])
-    ug <- tapply(g, u, function(z) z[1L])            # unit -> group (kept across waves)
-    grp_of    <- ug[rownames(present)]               # group per unit, in `present` order
+    g <- as.character(data[[rotation_group]])
+    # Cohort = (first wave the unit appears in, its label in THAT wave). PN-08.
+    # `tapply(g, u, function(z) z[1L])` took whichever row happened to come first in
+    # the file, so a label that legitimately varies by wave -- `month_in_sample` /
+    # CPS `hrmis`, the standard coding -- made the whole cohort map depend on row
+    # order: sorting the same microdata differently moved panel_pr() from 1.000 to
+    # 0.333, i.e. a factor of three on every longitudinal base weight, with no error
+    # and no alert. Anchoring on the first wave is order-invariant, and it is also
+    # what makes the map correct when labels are recycled by a rotating-out group.
+    grp_of <- .wf_cohort_map(u, wv, g, present)
     groups_in <- function(sel) length(unique(grp_of[sel]))
     for (i in seq_len(W - 1L)) {
       gi <- groups_in(present[, i] > 0)
@@ -238,7 +292,7 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
     g1 <- groups_in(present[, 1L] > 0)
     pr_full   <- if (g1 > 0L) groups_in(waves_per_unit == W) / g1 else NA_real_
     cells        <- as.integer(table(g, wv)); grp_sizes <- cells[cells > 0L]  # units per group-wave
-    cohort_sizes <- as.integer(table(ug))            # units SELECTED per rotation-group cohort
+    cohort_sizes <- as.integer(table(grp_of))        # units SELECTED per rotation-group cohort
     n_groups     <- length(unique(g))
   }
 
@@ -319,6 +373,8 @@ panel_design <- function(data, unit, wave, rotation_group = NULL,
 
   attr(data, "wf_panel") <- list(
     unit = unit, wave = wave, rotation_group = rotation_group, cluster = cluster,
+    overlap_cluster = overlap_cluster, n_clusters = n_clusters,
+    n_linked_clusters = n_linked_clusters,
     waves = wlev, reference_wave = ref_wave, pattern = pattern, n_groups = n_groups,
     n_units = n_units, n_linked = n_linked,
     link_rate = n_linked / n_units,
@@ -346,6 +402,10 @@ print.wf_panel_design <- function(x, ...) {
   cat(sprintf("  unit       : %s%s\n", paste(p$unit, collapse = " + "),
               if (is.null(p$cluster)) "" else
                 sprintf("  (cluster: %s)", paste(p$cluster, collapse = " + "))))
+  if (!is.null(p$overlap_cluster))
+    cat(sprintf("  cluster overlap (lag 1): %.3f   |   unit overlap (lag 1): %.3f\n",
+                mean(diag(p$overlap_cluster[-nrow(p$overlap_cluster), -1L, drop = FALSE])),
+                mean(diag(p$overlap[-nrow(p$overlap), -1L, drop = FALSE]))))
   cat(sprintf("  rotation   : %s%s\n",
               if (is.null(p$rotation_group)) "(none)" else p$rotation_group,
               if (is.null(p$pattern)) "" else sprintf("  pattern: %s", p$pattern)))
@@ -423,22 +483,22 @@ print.summary.wf_panel_design <- function(x, ...) {
 #' @param waves a **named** list of per-wave `data.frame`s; the names become the
 #'   wave labels and column suffixes.
 #' @param by one or more column names (a character vector) forming the unit key,
-#'   present in every wave -- e.g. `"ID"` for a household or `c("ID", "nper")` for
+#'   present in every wave -- e.g. `"ID"` for a household or `c("ID", "person_no")` for
 #'   a person.
 #' @param responded optional string: the name of a response indicator present in
 #'   every wave, used to build `.wf_resp_<wave>`.
 #' @param require one of `"any"` (union of units, default) or `"all"`
 #'   (intersection).
 #' @param suffix string inserted before the wave label when renaming columns
-#'   (default `"_"`), e.g. `edad` in wave `T1` becomes `edad_T1`.
+#'   (default `"_"`), e.g. `age` in wave `T1` becomes `age_T1`.
 #' @return a wide `data.frame`, one row per unit, ready for [panel_design()] /
 #'   `weighting_spec()`.
 #' @seealso [panel_design()]
 #' @examples
 #' # reshape two waves of the long panel into one wide, one-row-per-unit file
 #' wide <- panel_merge(
-#'   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-#'   by = c("id_hogar", "nper"), require = "any")
+#'   list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+#'   by = c("household_id", "person_no"), require = "any")
 #' names(wide)                       # per-wave columns are suffixed _T1 / _T2
 #' @export
 panel_merge <- function(waves, by, responded = NULL,
@@ -514,12 +574,13 @@ panel_merge <- function(waves, by, responded = NULL,
   g  <- as.character(data[[p$rotation_group]])
   keep <- wv %in% waves
   u <- u[keep]; wv <- wv[keep]; g <- g[keep]
-  ug      <- tapply(g, u, function(z) z[1L])           # unit -> group
-  present <- table(u, factor(wv, levels = waves)) > 0
+  wf      <- factor(wv, levels = waves)
+  present <- table(u, wf) > 0
   uni     <- rownames(present)
   in_all  <- rowSums(present) == length(waves)
-  gall <- length(unique(ug[uni][in_all]))
-  gw1  <- length(unique(ug[uni][present[, 1L]]))
+  ug      <- .wf_cohort_map(u, wf, g, present)         # unit -> cohort (see PN-08)
+  gall <- length(unique(ug[in_all]))
+  gw1  <- length(unique(ug[present[, 1L]]))
   if (gw1 == 0L) return(NA_real_)
   gall / gw1
 }
@@ -538,8 +599,8 @@ panel_merge <- function(waves, by, responded = NULL,
 #' @return a single probability in `(0, 1]`.
 #' @seealso [panel_design()], [step_panel_overlap()]
 #' @examples
-#' pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-#'                    rotation_group = "grupo_rotacion")
+#' pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+#'                    rotation_group = "rotation_group")
 #' panel_pr(pd)                    # over all waves
 #' panel_pr(pd, c("1", "2"))       # combining waves 1 and 2
 #' @export

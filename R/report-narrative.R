@@ -26,6 +26,10 @@
 # the generators' text stable -- the Spanish translation below matches on it.
 .wf_typo <- function(x) {
   if (is.null(x) || !length(x) || !is.character(x)) return(x)
+  # Declare UTF-8 before substituting anything non-ASCII: an undeclared user string
+  # meeting a UTF-8 replacement in a C locale makes gsub() abort the whole report
+  # with "input string 1 is invalid UTF-8". See .as_utf8().
+  x <- .as_utf8(x)
   x <- gsub(" -- ", " \u2014 ", x, fixed = TRUE)   # spaced em dash
   x <- gsub("--", "\u2014", x, fixed = TRUE)       # tight em dash (es: "--que ... --o")
   x
@@ -78,6 +82,17 @@
         "magnitud era inferior a la mitad de la precisi\u00f3n de redondeo, p. ej. un peso de ",
         "calibraci\u00f3n peque\u00f1o o negativo); ya no figuran en collect_weights(). Conviene ",
         "redondear a m\u00e1s decimales, o resolver esos pesos antes de redondear."), s, fixed = TRUE))
+    # Very small participation propensities -- the pseudo-weight variant (R/prep.R)
+    if (grepl("Very small participation propensities", s, fixed = TRUE)) {
+      s <- sub("Very small participation propensities (min p = ",
+        "Propensiones de participaci\u00f3n muy bajas (m\u00edn. p = ", s, fixed = TRUE)
+      s <- sub(" in the non-probability sample) produce extreme pseudo-weights (the participation odds (1 - p)/p reach ",
+        " en la muestra no probabil\u00edstica) producen pseudo-pesos extremos (las odds de participaci\u00f3n (1 - p)/p llegan a ",
+        s, fixed = TRUE)
+      return(sub("x). Check the propensity model, or trim with step_trim_weights().",
+        "x). Conviene revisar el modelo de propensi\u00f3n, o recortar con step_trim_weights().",
+        s, fixed = TRUE))
+    }
     # Very small response propensities (R/prep.R)
     if (grepl("Very small response propensities", s, fixed = TRUE)) {
       s <- sub("Very small response propensities (min p = ",
@@ -394,9 +409,28 @@
         paste0("); los niveles no coincidentes sesgan el ajuste de propensi\u00f3n y pueden llevar ",
         "los pseudopesos a extremos. Armonice los niveles antes de pseudo-ponderar."), s, fixed = TRUE))
     }
-    # Trimmed / model calibration note (R/adjust-trim.R) -- partial substitutions
+    # The one-line technical note a step attaches to its diagnostics table
+    # (attr(diagnostics, "note")) -- partial substitutions, because the notes are
+    # compositional: a head plus optional "; one weight per ..." / "[calfun = ...]"
+    # fragments. Anything unrecognised passes through, so a new note stays readable
+    # instead of coming out blank.
     s <- sub("^trimmed calibration to ", "calibraci\u00f3n recortada a ", s)
     s <- sub("^g \\(calibration factor\\) in ", "g (factor de calibraci\u00f3n) en ", s)
+    s <- sub("^CRE g-factor in ", "factor g del CRE en ", s)
+    s <- sub("; ([0-9]+) composite aux \\(z\\), alpha = ",
+             "; \\1 auxiliares compuestas (z), alfa = ", s)
+    s <- sub("^nonresponse calibration to population totals; g in ",
+             "calibraci\u00f3n por no respuesta a totales poblacionales; g en ", s)
+    s <- sub("^nonresponse calibration to sample-level totals; g in ",
+             "calibraci\u00f3n por no respuesta a totales del nivel muestral; g en ", s)
+    s <- sub("^calibrated independently within '(.*)' \\(([0-9]+) domains\\)$",
+             "calibrada independientemente dentro de '\\1' (\\2 dominios)", s)
+    s <- sub("base weight divided by Pr(panel selection) (CEPAL ch. XVI)",
+             "peso base dividido por Pr(selecci\u00f3n del panel) (CEPAL cap. XVI)", s,
+             fixed = TRUE)
+    s <- sub("[ridge: constraints relaxed, not exact]",
+             "[ridge: restricciones relajadas, no exactas]", s, fixed = TRUE)
+    s <- sub("calfun = ", "distancia = ", s, fixed = TRUE)
     s <- sub(" weights raised to lower, ", " pesos elevados a la cota inferior, ", s)
     s <- sub(" capped at upper; f \\(adjustment\\) in ", " recortados a la cota superior; f (ajuste) en ", s)
     s <- sub(", bounds ", ", cotas ", s)
@@ -452,7 +486,8 @@
               "estimador de regresi\u00f3n compuesto (CRE)", lang))
   if (!is.null(step$attrition_method))            # step_attrition(): label as attrition, not nonresponse
     return(.t(sprintf("attrition adjustment (%s)", step$attrition_method),
-              sprintf("ajuste por atrici\u00f3n (%s)", step$attrition_method), lang))
+              sprintf("ajuste por atrici\u00f3n (%s)",
+                      .attrition_method_label(step$attrition_method, lang)), lang))
   if (inherits(step, "step_unknown_eligibility"))
     return(.t("unknown-eligibility adjustment", "ajuste por elegibilidad desconocida", lang))
   if (inherits(step, "step_drop_ineligible"))
@@ -506,7 +541,7 @@
       else .t("calibration to population totals", "calibraci\u00f3n a totales poblacionales", lang))
   }
   if (inherits(step, "step_model_calibration"))
-    return(.t("model-assisted calibration", "calibraci\u00f3n asistida por modelo", lang))
+    return(.t("model calibration", "calibraci\u00f3n basada en modelos", lang))
   if (inherits(step, "step_trim_calibrated"))
     return(.t("calibration-preserving weight trimming", "recorte de pesos que preserva la calibraci\u00f3n", lang))
   if (inherits(step, "step_trim_weights"))
@@ -554,7 +589,7 @@
   has_rep <- !is.null(attr(pop, "wf_ref_replicates"))
   vclause <- if (has_rep)
     .t("Because the totals are estimates, their sampling variability can be propagated through the recipe-aware bootstrap, where each replicate re-estimates the totals from the paired reference replicate (Opsomer and Erciulescu 2021); the delete-a-PSU jackknife has no such pairing and treats the totals as fixed.",
-       "Como los totales son estimaciones, su variabilidad muestral puede propagarse por el bootstrap recipe-aware, donde cada r&eacute;plica reestima los totales desde la r&eacute;plica pareada de la referencia (Opsomer y Erciulescu 2021); el jackknife borra-una-UPM no tiene ese pareo y trata los totales como fijos.", lang)
+       "Como los totales son estimaciones, su variabilidad muestral puede propagarse por el bootstrap que recalcula toda la receta, donde cada r&eacute;plica reestima los totales desde la r&eacute;plica pareada de la referencia (Opsomer y Erciulescu 2021); el jackknife borra-una-UPM no tiene ese pareo y trata los totales como fijos.", lang)
   else
     .t("The totals are estimates but were treated as fixed (no reference replicate weights supplied), so the reported variance omits their sampling error and may be understated; pass replicates to reference_sample() to propagate it.",
        "Los totales son estimaciones pero se trataron como fijos (sin pesos r&eacute;plica de la referencia), as&iacute; que la varianza reportada omite su error muestral y puede quedar subestimada; pase r&eacute;plicas a reference_sample() para propagarlo.", lang)
@@ -629,7 +664,7 @@
       }
       txt <- paste0(txt, .t(
         sprintf(" The resulting R-indicator is %.3f (closer to 1 means a more representative response and lower nonresponse-bias risk).%s", ri$R, top),
-        sprintf(" El R-indicator resultante es %.3f (m\u00e1s cerca de 1 indica una respuesta m\u00e1s representativa y menor riesgo de sesgo por no respuesta).%s", ri$R, top),
+        sprintf(" El R-indicador resultante es %.3f (m\u00e1s cerca de 1 indica una respuesta m\u00e1s representativa y menor riesgo de sesgo por no respuesta).%s", ri$R, top),
         lang))
     }
   } else if (inherits(step, "step_calibrate")) {
@@ -655,8 +690,8 @@
       lang), " ", .deff_phrase(de1, de2, lang), .ref_totals_phrase(step, lang))
   } else if (inherits(step, "step_model_calibration")) {
     txt <- paste0(.t(
-      "Model-assisted (Wu-Sitter) calibration was applied: predictions of the outcome model were used as auxiliaries and calibrated to their population totals, borrowing strength from the predictive model.",
-      "Se aplic\u00f3 calibraci\u00f3n asistida por modelo (Wu-Sitter): las predicciones del modelo de resultado se usaron como auxiliares y se calibraron a sus totales poblacionales, aprovechando la fuerza del modelo predictivo.",
+      "Model calibration (Wu-Sitter) was applied: predictions of the outcome model were used as auxiliaries and calibrated to their population totals, borrowing strength from the predictive model.",
+      "Se aplic\u00f3 calibraci\u00f3n basada en modelos (Wu-Sitter): las predicciones del modelo de resultado se usaron como auxiliares y se calibraron a sus totales poblacionales, aprovechando la fuerza del modelo predictivo.",
       lang), " ", .deff_phrase(de1, de2, lang), .ref_totals_phrase(step, lang))
   } else if (inherits(step, "step_trim_calibrated")) {
     # Preserved totals are ONLY the formula's auxiliaries; `by` is the subgroup
@@ -711,12 +746,26 @@
     sb <- suppressWarnings(as.numeric(dg$sum_before)[1])
     sa <- suppressWarnings(as.numeric(dg$sum_after)[1])
     preserved <- is.finite(sb) && is.finite(sa) && abs(sa - sb) <= 1e-6 * max(abs(sb), 1)
-    tail <- if (preserved)
+    # REP-06: `preserved` only says yes/no, and the negative branch was written as
+    # if the total could only FALL. When it rose, 100*(sb-sa)/sb came out negative
+    # and the methodological note read "the weight total fell by -399.5%", while the
+    # Points of attention block of the SAME report said "Trimming increased the
+    # weight total by 399.5%". Name the direction, and use a magnitude.
+    tail <- if (preserved) {
       .t("The trimmed mass was redistributed among the untrimmed units, preserving the weight total.",
          "La masa recortada se redistribuy\u00f3 entre las unidades no recortadas, preservando el total de pesos.", lang)
-    else
-      .t(sprintf("The requested bounds were infeasible, so the trimmed mass could not be fully redistributed and the weight total fell by %.1f%%.", 100 * (sb - sa) / sb),
-         sprintf("Las cotas pedidas eran infactibles, as\u00ed que la masa recortada no pudo redistribuirse del todo y el total de pesos cay\u00f3 %.1f%%.", 100 * (sb - sa) / sb), lang)
+    } else {
+      moved <- sb - sa                                    # > 0 when the total fell
+      pctm  <- if (is.finite(sb) && sb != 0) 100 * abs(moved) / abs(sb) else NA_real_
+      en_v  <- if (moved >= 0) "fell" else "rose"
+      es_v  <- if (moved >= 0) "baj\u00f3" else "subi\u00f3"
+      if (!is.finite(pctm))
+        .t("The requested bounds were infeasible, so the trimmed mass could not be fully redistributed and the weight total changed; the point estimates shift.",
+           "Las cotas pedidas eran infactibles, as\u00ed que la masa recortada no pudo redistribuirse del todo y el total de pesos cambi\u00f3; los estimadores puntuales se corren.", lang)
+      else
+        .t(sprintf("The requested bounds were infeasible, so the trimmed mass could not be fully redistributed and the weight total %s by %.1f%%; the point estimates shift.", en_v, pctm),
+           sprintf("Las cotas pedidas eran infactibles, as\u00ed que la masa recortada no pudo redistribuirse del todo y el total de pesos %s %.1f%%; los estimadores puntuales se corren.", es_v, pctm), lang)
+    }
     intro <- .t(sprintf("Extreme weights were trimmed to the interval %s%s.", rng, rlab),
                 sprintf("Los pesos extremos se recortaron al intervalo %s%s.", rng, rlab), lang)
     txt <- paste0(intro, " ", tail, " ", .deff_phrase(de1, de2, lang))
@@ -739,8 +788,8 @@
          sprintf(" Las propensiones se agruparon en %d clases para estabilizar el pseudo-peso.", step$num_classes), lang)
       else ""
     txt <- .t(
-      sprintf("The non-probability sample was pooled with the probability reference and a participation-propensity model (<strong>%s</strong> algorithm%s) was fitted over %s. Each non-probability unit received the pseudo-weight (1 - p)/p, the participation odds, which inflates it to the population so the weights sum to the reference's estimated population size (Elliott and Valliant 2017); the reference trains the model and is then dropped.%s Common support between the sample and the reference is the central assumption; see the propensity diagnostics below.", step$engine, cf, vp, cls),
-      sprintf("La muestra no probabil\u00edstica se combin\u00f3 con la referencia probabil\u00edstica y se ajust\u00f3 un modelo de propensi\u00f3n de participaci\u00f3n (algoritmo <strong>%s</strong>%s) sobre %s. Cada unidad no probabil\u00edstica recibi\u00f3 el pseudo-peso (1 - p)/p, las probabilidades relativas de participaci\u00f3n, que la expanden a la poblaci\u00f3n de modo que los pesos suman el tama\u00f1o poblacional estimado por la referencia (Elliott y Valliant 2017); la referencia entrena el modelo y luego se descarta.%s El soporte com\u00fan entre la muestra y la referencia es el supuesto central; ver los diagn\u00f3sticos de propensi\u00f3n abajo.", step$engine, cf, vp, cls),
+      sprintf("The non-probability sample was pooled with the probability reference and a participation-propensity model (<strong>%s</strong> algorithm%s) was fitted over %s. Each non-probability unit received the pseudo-weight (1 - p)/p, the participation odds, which inflates it to the population (the adjusted logistic propensity of Wang, Valliant and Li 2021, after Elliott and Valliant 2017). Their sum <em>estimates</em> the population the reference estimates -- unbiased for it, not equal to it, and it moves from sample to sample; the reported ratio is the diagnostic. The reference trains the model and is then dropped.%s Common support between the sample and the reference is the central assumption; see the propensity diagnostics below.", step$engine, cf, vp, cls),
+      sprintf("La muestra no probabil\u00edstica se combin\u00f3 con la referencia probabil\u00edstica y se ajust\u00f3 un modelo de propensi\u00f3n de participaci\u00f3n (algoritmo <strong>%s</strong>%s) sobre %s. Cada unidad no probabil\u00edstica recibi\u00f3 el pseudo-peso (1 - p)/p, las chances (odds) de participaci\u00f3n, que la expanden a la poblaci\u00f3n (propensi\u00f3n log\u00edstica ajustada de Wang, Valliant y Li 2021, sobre Elliott y Valliant 2017). Su suma <em>estima</em> el tama\u00f1o poblacional que estima la referencia: es insesgada, no igual, y se mueve de una muestra a otra; la raz\u00f3n reportada es el diagn\u00f3stico. La referencia entrena el modelo y luego se descarta.%s El soporte com\u00fan entre la muestra y la referencia es el supuesto central; ver los diagn\u00f3sticos de propensi\u00f3n abajo.", step$engine, cf, vp, cls),
       lang)
   } else if (inherits(step, "step_nr_sensitivity")) {
     txt <- .t("A proxy pattern-mixture sensitivity analysis (Andridge and Little 2011) was run. It does not change the weights: it reports how far the study mean could move under nonignorable nonresponse, as an ignorance interval indexed by a single parameter. See the sensitivity block.",

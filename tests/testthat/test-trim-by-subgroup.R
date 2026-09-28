@@ -71,7 +71,7 @@ test_that("report_weighting() renders with per-subgroup bounds", {
   set.seed(4)
   n   <- 200
   dat <- data.frame(
-    estrato = sample(c("A", "B"), n, TRUE),
+    stratum = sample(c("A", "B"), n, TRUE),
     region  = sample(c("N", "S"), n, TRUE),
     bw      = runif(n, 1, 5))
   fit <- weighting_spec(dat, base_weights = bw) |>
@@ -82,7 +82,7 @@ test_that("report_weighting() renders with per-subgroup bounds", {
     step_trim_calibrated(~ region,
                          lower = c(A = 0.5, B = 0.8),
                          upper = c(A = 6.0, B = 7.0),
-                         by = "estrato") |>
+                         by = "stratum") |>
     prep()
   f <- tempfile(fileext = ".html")
   expect_no_error(report_weighting(fit, file = f, open = FALSE, lang = "en"))

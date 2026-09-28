@@ -284,12 +284,21 @@
     for (i in seq_len(nrow(m$cells))) {
       key <- m$cells$.key[i]
       idx <- which(skey == key & active)
+      # `prev_total` / `factor` as in the post-stratification path. IPF multiplies a
+      # cell over several sweeps, so the factor reported is the cumulative one,
+      # achieved / (weight sum on entry). Without this column the `max_factor` alert
+      # in prep() could never fire for raking, and the magnitude was never shown:
+      # a cell with three units taken to 50,000 (factor 1,667) passed in silence,
+      # while post-stratification flagged the very same cell.
+      prev <- sum(w[idx])
       diag[[length(diag) + 1]] <- data.frame(
-        variable = vlab,
-        category = gsub("\r", " x ", key),
-        target   = m$cells$.Freq[i],
-        achieved = sum(new_w[idx]),
-        n        = length(idx),          # active sample units in the cell (min_cell_n alert)
+        variable   = vlab,
+        category   = gsub("\r", " x ", key),
+        target     = m$cells$.Freq[i],
+        achieved   = sum(new_w[idx]),
+        prev_total = prev,
+        factor     = if (isTRUE(prev > 0)) sum(new_w[idx]) / prev else NA_real_,
+        n          = length(idx),        # active sample units in the cell (min_cell_n alert)
         stringsAsFactors = FALSE
       )
     }
@@ -396,6 +405,31 @@
     stop(paste0("At least one categorical target (a data frame) is required to ",
                 "determine the population size N for the intercept."))
   rec <- .reconcile_margin_N(Ns[!is.na(Ns)])
+  # Reconciliation rescales the CATEGORICAL margins to the largest N, but a
+  # continuous total is a single number that carries no N of its own: the package
+  # cannot know which population it was computed over, so it used to be left alone
+  # while everything around it moved. The calibration then closes on an implicit
+  # mean the user never declared (measured: 7.7% off with margins of 1,200 and
+  # 1,300). Rescaling would be a guess, so refuse the mixed case and hand over the
+  # arithmetic. Margins that disagree with NO continuous total keep the documented
+  # rescale-to-largest behaviour.
+  cont <- names(totals)[is.na(Ns)]
+  if (!is.null(rec$note) && length(cont) > 0L) {
+    fj <- sprintf("'%s' (x%.4f)", names(rec$factors), rec$factors)
+    stop(sprintf(paste0(
+      "The categorical margins do not all sum to the same population size, and the ",
+      "continuous total(s) %s cannot be reconciled with them automatically: a single ",
+      "number carries no population size, so there is no way to tell which N it was ",
+      "computed over. Reconciling only the margins would calibrate to an implicit mean ",
+      "you did not declare. Margins as given: %s; to N = %s the factors are %s. Rescale ",
+      "the continuous total(s) yourself by the factor of the margin they agree with, or ",
+      "correct the margins so they all sum to the same N."),
+      paste(sprintf("'%s'", cont), collapse = ", "),
+      paste(sprintf("'%s' = %s", names(Ns)[!is.na(Ns)],
+                    format(round(Ns[!is.na(Ns)]), big.mark = ",")), collapse = "; "),
+      format(round(rec$target), big.mark = ","),
+      paste(fj, collapse = ", ")), call. = FALSE)
+  }
   if (!is.null(rec$note)) message(rec$note)     # informative, never fatal (warn=2)
   N <- rec$target
 

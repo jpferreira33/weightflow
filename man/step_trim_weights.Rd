@@ -12,6 +12,7 @@ step_trim_weights(
   redistribute = c("proportional", "uniform"),
   strict = TRUE,
   maxit = 50L,
+  kappa = 1,
   id = NULL
 )
 }
@@ -27,7 +28,8 @@ automatically by \code{method}.}
 (default, Q3 + 3*IQR far-out fence) or "potter" (Potter's MSE-optimal cutoff,
 which over a grid of candidate cutoffs minimizes an estimate of bias^2 +
 variance and so balances the bias of trimming against the variance from
-extreme weights). Ignored when \code{upper} is supplied.}
+extreme weights). Ignored when \code{upper} is supplied. See Details for what the
+Potter criterion assumes.}
 
 \item{redistribute}{how the trimmed mass is shared among the untrimmed units:
 "proportional" (default; in proportion to their weights, preserving relative
@@ -39,6 +41,11 @@ weight is outside \verb{[lower, upper]} (like survey's strict = TRUE). If FALSE,
 single pass (redistribution may push some weights slightly past the cap).}
 
 \item{maxit}{integer. Maximum iterations when strict = TRUE.}
+
+\item{kappa}{numeric, \code{method = "potter"} only: the relative price of bias
+against variance in the criterion minimized, \code{kappa * bias^2 + variance}.
+The default 1 is Potter's own weighting; above 1 the cutoff moves up (trim
+less, keep the bias down), below 1 it moves down (trim more).}
 
 \item{id}{optional string: a stable identifier for this step, shown in the
 recipe print-out and usable to select it in \code{collect_step_detail()}; defaults
@@ -55,6 +62,30 @@ preserved. This is the step to use when you have \strong{not calibrated yet} (or
 will calibrate afterwards) and you want the cutoff chosen from the data rather
 than argued for: with \code{upper = NULL} it picks one by the Tukey far-out fence or
 by Potter's MSE rule.
+}
+\details{
+Two things are worth knowing about \code{method = "potter"} before reading
+its cutoff as optimal, because both are assumptions rather than results.
+
+The criterion is the mean squared error of a \strong{total}, so its two terms are
+deliberately on different orders: the bias of capping is the trimmed mass,
+which grows like the sample size, and the variance term is the sum of squared
+remaining weights, which also grows like the sample size, so bias squared
+grows like its square. The cutoff therefore \strong{rises with the sample size for
+the same weight distribution} -- replicating a 300-unit sample to 30,000 moved
+it from 126 to 183 in one test, capping a third as many units. That is the
+correct behaviour for a total (the relative bias stays put while the relative
+variance shrinks, so trimming buys less), not a defect, but it does mean the
+rule is not a property of the weight distribution alone. The criterion is
+invariant to the scale of the weights.
+
+The bias it charges is the bias of capping \strong{without} redistribution, while
+this step always redistributes: the weighted total is preserved exactly, so the
+real bias is only the difference between the study variable's mean among the
+capped units and among the units receiving their mass. The criterion therefore
+overstates the bias and, other things equal, caps less than the MSE it is
+named after would. \code{kappa} is the handle: set it below 1 to buy back that
+conservatism.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

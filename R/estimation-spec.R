@@ -48,7 +48,41 @@
   }
 }
 
-# translate the step_estimate() statistic DSL into a function(w, data). Recognised heads:
+# The value an estimand is computed over. `mean(x)`, `total(x)` and `quantile(x, p)`
+# used to take deparse(arg) and look it up as a COLUMN NAME, so anything that was not
+# a bare name -- total(log(income)), mean(a / b) -- became d[["log(income)"]], i.e.
+# NULL, and sum(w * NULL, na.rm = TRUE) is 0: the table reported an estimate of 0 with
+# an SE of 0 and a CI of [0, 0], a wrong number wearing perfect precision. prop() and
+# ratio() always evaluated their arguments, so the asymmetry invited the mistake.
+# Evaluate instead, and refuse anything that is not one value per row. (EST-01)
+#
+# EST-04: prop() and ratio() kept the old raw eval() and so kept every failure mode
+# EST-01 was written to close -- see .estimand_fn() below. They now go through here
+# too. `hint` appends a verb-specific suggestion to the "not numeric" message, because
+# the fix for prop(status) is not the fix for mean(status).
+.estimand_value <- function(expr, env, hint = NULL) {
+  nm <- if (is.symbol(expr)) as.character(expr) else NULL
+  lab <- paste(deparse(expr), collapse = " ")
+  function(d) {
+    v <- if (!is.null(nm) && nm %in% names(d)) d[[nm]]
+         else tryCatch(eval(expr, d, env),
+                       error = function(e)
+                         stop(sprintf("The estimand `%s` could not be evaluated on the wave data: %s",
+                                      lab, conditionMessage(e)), call. = FALSE))
+    if (is.null(v))
+      stop(sprintf("The estimand `%s` is not a column of the wave data.", lab), call. = FALSE)
+    if (!is.numeric(v) && !is.logical(v))
+      stop(sprintf("The estimand `%s` is %s; it has to be numeric or logical.%s",
+                   lab, class(v)[1], if (is.null(hint)) "" else paste0(" ", hint)),
+           call. = FALSE)
+    if (length(v) != nrow(d))
+      stop(sprintf(paste0("The estimand `%s` gave %d value(s) for %d rows. An estimand must ",
+                          "return one value per unit."), lab, length(v), nrow(d)), call. = FALSE)
+    as.numeric(v)
+  }
+}
+
+# Translate the step_estimate() statistic DSL into a function(w, data). Recognised heads:
 # mean(var), total(var), prop(cond), ratio(num, den), quantile(var, p); otherwise the
 # expression must evaluate to a function(w, data).
 .estimand_fn <- function(expr, env) {
@@ -56,26 +90,53 @@
     head <- as.character(expr[[1]])
     args <- as.list(expr)[-1]
     # na.rm = TRUE: in survey outcomes a variable is often structurally missing
-    # (e.g. `desocupado` is NA outside the labour force), so the estimand is over the
-    # non-missing domain -- mean(desocupado) then is the unemployment rate among the LF.
+    # (e.g. `unemployed` is NA outside the labour force), so the estimand is over the
+    # non-missing domain -- mean(unemployed) then is the unemployment rate among the LF.
     if (head == "mean" && length(args) == 1L) {
-      v <- deparse(args[[1]]); return(function(w, d) stats::weighted.mean(d[[v]], w, na.rm = TRUE))
+      val <- .estimand_value(args[[1]], env)
+      return(function(w, d) stats::weighted.mean(val(d), w, na.rm = TRUE))
     }
     if (head == "total" && length(args) == 1L) {
-      v <- deparse(args[[1]]); return(function(w, d) sum(w * d[[v]], na.rm = TRUE))
+      val <- .estimand_value(args[[1]], env)
+      return(function(w, d) sum(w * val(d), na.rm = TRUE))
     }
     if (head == "prop" && length(args) == 1L) {
-      cond <- args[[1]]
-      return(function(w, d) stats::weighted.mean(as.numeric(eval(cond, d, env)), w, na.rm = TRUE))
+      # EST-04: as.numeric() on a factor returns its integer codes, so prop(status)
+      # used to average 1/2/3 and report a "proportion" above 1, with a CI. A factor
+      # is not a condition; say so and name the fix.
+      val <- .estimand_value(args[[1]], env,
+                             hint = paste0("prop() takes a condition, not a category: ",
+                                           "write prop(var == \"level\")."))
+      return(function(w, d) stats::weighted.mean(val(d), w, na.rm = TRUE))
     }
     if (head == "ratio" && length(args) == 2L) {
-      n <- args[[1]]; dn <- args[[2]]
-      return(function(w, d) sum(w * eval(n, d, env), na.rm = TRUE) /
-                            sum(w * eval(dn, d, env), na.rm = TRUE))
+      # EST-04: na.rm = TRUE used to be applied to each sum SEPARATELY, so the
+      # numerator was summed over the rows where `num` is observed and the
+      # denominator over the rows where `den` is -- two different domains, and a
+      # ratio between them is not a ratio of anything. Restrict both to the common
+      # domain, which is what svyratio(na.rm = TRUE) does.
+      vn <- .estimand_value(args[[1]], env); vd <- .estimand_value(args[[2]], env)
+      return(function(w, d) {
+        a <- vn(d); b <- vd(d)
+        ok <- is.finite(a) & is.finite(b) & is.finite(w)
+        if (!any(ok)) return(NA_real_)
+        sum(w[ok] * a[ok]) / sum(w[ok] * b[ok])
+      })
     }
     if (head == "quantile" && length(args) == 2L) {
-      v <- deparse(args[[1]]); p <- eval(args[[2]], env)
-      return(function(w, d) .wf_wtd_quantile(d[[v]], w, p))
+      val <- .estimand_value(args[[1]], env)
+      p   <- tryCatch(eval(args[[2]], env), error = function(e) NULL)
+      # EST-04: .wf_wtd_quantile() interpolates with rule = 2, which SATURATES: an
+      # out-of-range p returns the max (or the min) and the bootstrap dutifully puts
+      # an SE and a CI on it. quantile(income, 50) -- percentile instead of
+      # proportion, the classic slip -- is then the top income, published.
+      if (!is.numeric(p) || length(p) != 1L || !is.finite(p) || p < 0 || p > 1)
+        stop(sprintf(paste0("quantile(%s, p): `p` must be a single probability in [0, 1] ",
+                            "(e.g. 0.5 for the median, not 50); got %s."),
+                     paste(deparse(args[[1]]), collapse = ""),
+                     paste(utils::capture.output(utils::str(p)), collapse = " ")),
+             call. = FALSE)
+      return(function(w, d) .wf_wtd_quantile(val(d), w, p))
     }
   }
   f <- tryCatch(eval(expr, env), error = function(e) NULL)
@@ -84,7 +145,9 @@
        "quantile(var, p), or a function(w, data).", call. = FALSE)
 }
 
-# weighted quantile (Type-7-like, interpolated on the centred cumulative weight)
+# Weighted quantile, interpolated on the CENTRED cumulative weight. With unit weights
+# this is exactly R's type 5 (the piecewise-linear rule with plotting position
+# (i - 0.5)/n), not type 7 -- verified to 1e-15 against stats::quantile(type = 5).
 .wf_wtd_quantile <- function(x, w, p) {
   ok <- is.finite(x) & is.finite(w) & w > 0
   x <- x[ok]; w <- w[ok]
@@ -106,24 +169,26 @@
 #' @param x a `weightflow_wave_boot` / `weightflow_wave_jack`, or a `weightflow_estimation`
 #'   to extend.
 #' @param ... for `step_domain()`, one or more grouping columns (unquoted or as strings);
-#'   they stack, so the disaggregation is their cross (e.g. region x sex).
+#'   they stack, so the disaggregation is their cross (e.g. region x sex). A column may not
+#'   be named after one of the result table's own columns (`estimand`, `over`, `type`,
+#'   `estimate`, `se`, `ci_lower`, `ci_upper`, `rho`); rename it in the wave data first.
 #' @return a `weightflow_estimation`.
 #' @seealso [collect_estimates()], [change_estimate()], [panel_estimate()], [level_estimate()]
 #' @examples
-#' t1 <- subset(panel_ine, ola == 1 & disp == "R")
-#' t2 <- subset(panel_ine, ola == 2 & disp == "R")
+#' t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+#' t2 <- subset(panel_ine, wave == 2 & disposition == "R")
 #' wb <- wave_bootstrap(
-#'   list(T1 = weighting_spec(t1, base_weights = w_base),
-#'        T2 = weighting_spec(t2, base_weights = w_base)),
-#'   replicates = 100, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
+#'   list(T1 = weighting_spec(t1, base_weights = pw),
+#'        T2 = weighting_spec(t2, base_weights = pw)),
+#'   replicates = 100, strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
 #'
 #' # net change of the unemployment rate, by region
 #' collect_estimates(wb |> step_domain(region) |>
-#'   step_estimate(mean(desocupado), over = "change"))
+#'   step_estimate(mean(unemployed), over = "change"))
 #'
 #' # subpopulation: same change among the working-age population (rows masked, not dropped)
-#' collect_estimates(wb |> step_filter(edad >= 25 & edad <= 54) |>
-#'   step_estimate(mean(desocupado), over = "change"))
+#' collect_estimates(wb |> step_filter(age >= 25 & age <= 54) |>
+#'   step_estimate(mean(unemployed), over = "change"))
 #' @export
 step_domain <- function(x, ...) {
   est <- .as_estimation(x)
@@ -142,13 +207,30 @@ step_domain <- function(x, ...) {
     stop(sprintf("step_domain(): column(s) %s not present in EVERY wave's data (common: %s).",
                  paste(miss, collapse = ", "),
                  paste(utils::head(sort(common), 20L), collapse = ", ")), call. = FALSE)
+  # EST-04: the result table is cbind(estimand/over/type, <domains>, estimate/se/
+  # ci_lower/ci_upper/rho). A domain column that shares one of those names produces a
+  # table with two columns of that name, and `$` takes the first -- so a domain called
+  # `estimate` makes res$table$estimate the domain LABELS, and report-estimates.R,
+  # which reads every one of these by name, renders the wrong column. Refuse the
+  # collision here, where the user can still rename, instead of at render time.
+  clash <- intersect(cols, .WF_EST_RESERVED)
+  if (length(clash))
+    stop(sprintf(paste0("step_domain(): column(s) %s cannot be used as a domain -- the ",
+                        "result table already has a column of that name (%s). Rename the ",
+                        "column in the wave data (e.g. %s_dom) and use the new name."),
+                 paste(clash, collapse = ", "), paste(.WF_EST_RESERVED, collapse = ", "),
+                 clash[1]), call. = FALSE)
   est$domains <- unique(c(est$domains, cols))
   est
 }
 
+# Column names collect_estimates() puts in its own table; a domain may not shadow one.
+.WF_EST_RESERVED <- c("estimand", "over", "type",
+                      "estimate", "se", "ci_lower", "ci_upper", "rho")
+
 #' @rdname step_domain
 #' @param condition for `step_filter()`, a logical expression (unquoted) that selects the
-#'   subpopulation to estimate over -- e.g. `edad >= 25 & edad <= 54`. It is evaluated in
+#'   subpopulation to estimate over -- e.g. `age >= 25 & age <= 54`. It is evaluated in
 #'   each wave's data; rows are **masked** (not dropped), so the coordinated replicate
 #'   structure and the overlap covariance are preserved. Multiple `step_filter()` calls
 #'   stack (their conditions are ANDed).
@@ -157,7 +239,7 @@ step_filter <- function(x, condition) {
   est <- .as_estimation(x)
   expr <- substitute(condition)
   if (missing(condition) || is.null(expr))
-    stop("step_filter() needs a condition, e.g. step_filter(edad >= 25 & edad <= 54).",
+    stop("step_filter() needs a condition, e.g. step_filter(age >= 25 & age <= 54).",
          call. = FALSE)
   env <- parent.frame()
   # A bare name that is neither a column of any wave nor visible in the caller's scope is
@@ -175,7 +257,12 @@ step_filter <- function(x, condition) {
 
 #' @rdname step_domain
 #' @param statistic the estimand, as a DSL call -- `mean(var)`, `total(var)`, `prop(cond)`,
-#'   `ratio(num, den)`, `quantile(var, p)` -- or a `function(w, data)`.
+#'   `ratio(num, den)`, `quantile(var, p)` -- or a `function(w, data)`. Every argument is
+#'   evaluated in the wave data and must give one numeric or logical value per unit:
+#'   `prop()` takes a **condition** (`prop(status == "unemployed")`), not a category, and
+#'   `p` in `quantile()` is a probability in `[0, 1]` (`0.5`, not `50`). `ratio()` is taken
+#'   over the domain where numerator **and** denominator are both observed, as
+#'   `survey::svyratio(na.rm = TRUE)` is. The weighted quantile is R's type 5.
 #' @param over what to estimate: `"change"` (between two waves), `"level"` (one wave) or
 #'   `"contrast"` (a linear combination, with `contrast=`). Default: `"change"` if the object
 #'   has >= 2 waves, else `"level"`; `"contrast"` is implied when `contrast=` is given.
@@ -191,6 +278,9 @@ step_estimate <- function(x, statistic, over = NULL, type = c("absolute", "relat
   st  <- substitute(statistic)
   fn  <- .estimand_fn(st, parent.frame())
   type <- match.arg(type)
+  # EST-04: `level = 95` silently produced qnorm(0.975 * 100) = NaN and a CI of
+  # [NaN, NaN]. The package already has the validator with the right message.
+  .wf_level(level)
   if (!is.null(over) && !over %in% c("change", "level", "contrast"))
     stop("`over` must be \"change\", \"level\" or \"contrast\".", call. = FALSE)
   est$estimands <- c(est$estimands, list(list(
@@ -222,7 +312,31 @@ step_transition <- function(x, from, to, format = c("row", "col", "joint", "coun
     unique(d[doms])
   })
   grid <- unique(do.call(rbind, parts[!vapply(parts, is.null, logical(1))]))
-  grid <- grid[stats::complete.cases(grid), , drop = FALSE]
+  # A cell with NA in a domain column has no meaning as a domain, so it is dropped --
+  # but dropping it silently means the published cells no longer add up to the national
+  # figure, with nothing on the page to say why. Say how much is leaving. (EST-02)
+  keep <- stats::complete.cases(grid)
+  if (any(!keep)) {
+    n_units <- 0L; w_lost <- 0; w_tot <- 0
+    for (wv in waves) {
+      d <- wb$data[[wv]]
+      if (!all(doms %in% names(d))) next
+      pw <- wb$point[[wv]]
+      miss <- Reduce(`|`, lapply(doms, function(k) is.na(d[[k]])))
+      n_units <- n_units + sum(miss)
+      if (!is.null(pw) && length(pw) == nrow(d)) {
+        w_lost <- w_lost + sum(pw[miss], na.rm = TRUE); w_tot <- w_tot + sum(pw, na.rm = TRUE)
+      }
+    }
+    share <- if (w_tot > 0) sprintf(", %.1f%% of the weight", 100 * w_lost / w_tot) else ""
+    warning(sprintf(paste0("%d unit(s)%s have a missing value in %s and are in no domain cell. ",
+                           "They are excluded, so the cells will not add up to the overall ",
+                           "figure. Recode the missing level explicitly (e.g. \"(unknown)\") if ",
+                           "it should be a domain of its own."),
+                    n_units, share,
+                    paste(sprintf("`%s`", doms), collapse = " / ")), call. = FALSE)
+  }
+  grid <- grid[keep, , drop = FALSE]
   grid[do.call(order, as.list(grid)), , drop = FALSE]
 }
 

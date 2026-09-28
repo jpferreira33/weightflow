@@ -33,13 +33,22 @@ For replicate *b* of period *t* to be comparable with replicate *b* of period
 travels between periods is the multiplicity matrix itself, not the random seed and
 not the uniforms behind it.
 
-The distinction matters. Re-drawing period *t* from a stored uniform looks
-equivalent and is not: the exact multinomial draw is a joint constraint over the
-whole stratum (the multiplicities must add up to `m_h`), so re-drawing cannot both
-keep the stratum total right *and* give every shared PSU exactly the multiplicity
-it had. Transferring the integers does both. This is the Statistics Canada LFS
-procedure (cat. 71-526-X, sec. 7.2.2, after Roberts, Kovacevic, Mantel and
-Phillips 2001), and it is what `wave_step()` implements.
+Transferring the integers is the Statistics Canada LFS procedure (cat. 71-526-X,
+sec. 7.2.2, after Roberts, Kovacevic, Mantel and Phillips 2001), and it is what
+`wave_step()` implements. It is the natural thing for a chain: each period needs only
+the previous period's carry, gaps and returning cohorts are handled by a registry, and
+nothing has to store the uniforms of every period that came before.
+
+How it compares with re-drawing from a stored uniform, measured rather than assumed.
+While a stratum keeps its number of PSUs -- the rotating-panel case, where rotation
+replaces PSUs but does not change `n_h` -- the two coincide: re-drawing gives every
+shared PSU exactly the multiplicity it had (correlation 1.000 across every rank in
+simulation) and the stratum total stays exactly `m_h`. When `n_h` itself changes, which
+is PSU loss rather than rotation, neither does: re-drawing loses coordination down the
+PSU order, and transferring has to add or drop draws to close on the new `m_h`. Measured
+against a design-level oracle the two then recover the same between-wave covariance,
+about 0.85 of the truth. See `?wave_bootstrap` for what that costs and why it is a
+limitation of the method rather than of either mechanism.
 
 ## The four cases
 

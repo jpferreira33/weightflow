@@ -29,16 +29,23 @@ step_transition(x, from, to, format = c("row", "col", "joint", "counts"))
 to extend.}
 
 \item{...}{for \code{step_domain()}, one or more grouping columns (unquoted or as strings);
-they stack, so the disaggregation is their cross (e.g. region x sex).}
+they stack, so the disaggregation is their cross (e.g. region x sex). A column may not
+be named after one of the result table's own columns (\code{estimand}, \code{over}, \code{type},
+\code{estimate}, \code{se}, \code{ci_lower}, \code{ci_upper}, \code{rho}); rename it in the wave data first.}
 
 \item{condition}{for \code{step_filter()}, a logical expression (unquoted) that selects the
-subpopulation to estimate over -- e.g. \code{edad >= 25 & edad <= 54}. It is evaluated in
+subpopulation to estimate over -- e.g. \code{age >= 25 & age <= 54}. It is evaluated in
 each wave's data; rows are \strong{masked} (not dropped), so the coordinated replicate
 structure and the overlap covariance are preserved. Multiple \code{step_filter()} calls
 stack (their conditions are ANDed).}
 
 \item{statistic}{the estimand, as a DSL call -- \code{mean(var)}, \code{total(var)}, \code{prop(cond)},
-\code{ratio(num, den)}, \code{quantile(var, p)} -- or a \verb{function(w, data)}.}
+\code{ratio(num, den)}, \code{quantile(var, p)} -- or a \verb{function(w, data)}. Every argument is
+evaluated in the wave data and must give one numeric or logical value per unit:
+\code{prop()} takes a \strong{condition} (\code{prop(status == "unemployed")}), not a category, and
+\code{p} in \code{quantile()} is a probability in \verb{[0, 1]} (\code{0.5}, not \code{50}). \code{ratio()} is taken
+over the domain where numerator \strong{and} denominator are both observed, as
+\code{survey::svyratio(na.rm = TRUE)} is. The weighted quantile is R's type 5.}
 
 \item{over}{what to estimate: \code{"change"} (between two waves), \code{"level"} (one wave) or
 \code{"contrast"} (a linear combination, with \verb{contrast=}). Default: \code{"change"} if the object
@@ -70,20 +77,20 @@ end over \code{\link[=change_estimate]{change_estimate()}}, \code{\link[=panel_e
 replicates do the variance. Evaluate with \code{\link[=collect_estimates]{collect_estimates()}} (printing does it too).
 }
 \examples{
-t1 <- subset(panel_ine, ola == 1 & disp == "R")
-t2 <- subset(panel_ine, ola == 2 & disp == "R")
+t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+t2 <- subset(panel_ine, wave == 2 & disposition == "R")
 wb <- wave_bootstrap(
-  list(T1 = weighting_spec(t1, base_weights = w_base),
-       T2 = weighting_spec(t2, base_weights = w_base)),
-  replicates = 100, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
+  list(T1 = weighting_spec(t1, base_weights = pw),
+       T2 = weighting_spec(t2, base_weights = pw)),
+  replicates = 100, strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
 
 # net change of the unemployment rate, by region
 collect_estimates(wb |> step_domain(region) |>
-  step_estimate(mean(desocupado), over = "change"))
+  step_estimate(mean(unemployed), over = "change"))
 
 # subpopulation: same change among the working-age population (rows masked, not dropped)
-collect_estimates(wb |> step_filter(edad >= 25 & edad <= 54) |>
-  step_estimate(mean(desocupado), over = "change"))
+collect_estimates(wb |> step_filter(age >= 25 & age <= 54) |>
+  step_estimate(mean(unemployed), over = "change"))
 }
 \seealso{
 \code{\link[=collect_estimates]{collect_estimates()}}, \code{\link[=change_estimate]{change_estimate()}}, \code{\link[=panel_estimate]{panel_estimate()}}, \code{\link[=level_estimate]{level_estimate()}}

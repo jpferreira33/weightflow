@@ -55,12 +55,28 @@
 #'   named list with `count`).
 #' @param birth expression (evaluated in the current data) that is TRUE for the birth
 #'   rotation group (the units with no `t-1` value to carry). If `NULL`, birth units
-#'   are those not found in `previous` by `id_unit`.
+#'   are those not found in `previous` by `id_unit` -- which means a key that fails to
+#'   link is indistinguishable from a genuine entrant, and a broken `id_unit` then looks
+#'   like an enormous rotation while the change correction quietly stops working. The
+#'   step warns when the implied overlap falls below half (or below `overlap` minus ten
+#'   points, when `overlap` is given as a number) and errors below 2%, but the only way
+#'   to separate the two properly is to declare `birth` yourself, or to pass the design's
+#'   nominal `overlap` so the check has something real to compare against.
 #' @param alpha MR1/MR2 mixing constant between 0 and 1. `alpha = 0` targets the
 #'   level only (MR1), `alpha = 1` the change only (MR2). Default 2/3 (Chen and Liu 2002).
 #' @param overlap the overlap rate used by the MR2 carry-backward correction: "auto"
 #'   (default) estimates it as the `w_nr`-weighted overlap fraction, or a number
 #'   (e.g. 5/6, the nominal LFS/ECH rate).
+#' @param rescale_previous put the composite block on the current wave's population
+#'   scale: `Zhat <- Zhat * N_t / Nhat_{t-1}` (equivalently, calibrate the composite
+#'   auxiliaries on proportions). `Zhat` is a total estimated with the previous wave's
+#'   weights, so it lives on `Nhat_{t-1}` while `totals` fixes this wave's `N_t`; the
+#'   identity that keeps the composite block a smoother rather than a level shift
+#'   assumes the two agree. When they differ, the whole gap is discharged onto the
+#'   status estimate with every constraint met and `converged = TRUE`. `FALSE`
+#'   (default) keeps the totals as given and warns when the two scales differ by more
+#'   than 1%; the better fix is to calibrate both waves to the same series of
+#'   population projections.
 #' @param on_missing_prev how to treat non-birth units without a valid `t-1` status
 #'   (new household members, newly of working age): "carry_backward" (default; set
 #'   `z_{t-1} = z_t`) or "zero" (`z_{t-1} = 0`).
@@ -77,6 +93,17 @@
 #'   the intercept target in `totals` and `G` is the number of groups; the last
 #'   group is left implied (its total follows from the others and `N`), so `G - 1`
 #'   constraints are added to the demographic block. `NULL` (default) omits them.
+#' @param n_groups the number of rotation groups the **design** has, e.g. `6`. Only
+#'   used with `rotation_group`, and worth giving: `G` is a property of the design, not
+#'   of who answered this wave, and the target `N / G` is wrong the moment the two
+#'   differ. If a group has no active units -- fully attrited, or a domain with no
+#'   respondents in it -- and `G` is read off the sample, every remaining group is
+#'   calibrated to `N / (G - 1)`, i.e. a whole group's population shared out among the
+#'   others, while the intercept still targets `N`. The step refuses that rather than
+#'   solving it, because the two constraints cannot both hold. When `n_groups` is not
+#'   given, `G` comes from the column's factor levels (which survive a level going
+#'   empty); a character column carries no such record, so the step warns that it had to
+#'   read `G` off the wave.
 #' @param status_ref the status level held as reference (dropped from each cell block
 #'   to avoid the mechanical collinearity between the full status indicators and the
 #'   demographic block, which pins the same cell totals). The dropped total is implied
@@ -97,33 +124,39 @@
 #' @family weighting steps
 #' @examples
 #' # Composite (CRE) estimation on the 6-month rotating panel `panel_ine`.
-#' # `condicion` is the previous-wave labour status (emp / unemp / inact).
-#' t1 <- subset(panel_ine, ola == 1 & disp == "R")
-#' t2 <- subset(panel_ine, ola == 2 & disp == "R")
-#' t1$sexo <- factor(t1$sexo); t2$sexo <- factor(t2$sexo)
-#' Xtot <- function(d) colSums(d$w_base * stats::model.matrix(~ sexo, data = d))
+#' # `lf_status` is the previous-wave labour status (emp / unemp / inact).
+#' t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+#' t2 <- subset(panel_ine, wave == 2 & disposition == "R")
+#' t1$sex <- factor(t1$sex); t2$sex <- factor(t2$sex)
+#'
+#' # ONE population vector for both waves, as a series of projections would be.
+#' # `Zhat` is a total on the previous wave's scale, so calibrating each wave to its
+#' # own design-weighted total puts two population scales in one system and the
+#' # difference lands on the status estimate (see `rescale_previous`).
+#' Xpop <- colSums(t1$pw * stats::model.matrix(~ sex, data = t1))
 #'
 #' # seed wave: no previous month, so step_cre() reduces to a linear calibration to X
-#' seed <- weighting_spec(t1, base_weights = w_base) |>
-#'   step_cre(previous = NULL, status = condicion, formula = ~ sexo,
-#'            totals = Xtot(t1), status_ref = "inact") |>
+#' seed <- weighting_spec(t1, base_weights = pw) |>
+#'   step_cre(previous = NULL, status = lf_status, formula = ~ sex,
+#'            totals = Xpop, status_ref = "inact") |>
 #'   prep()
 #'
 #' # composite wave: augment X with the previous-wave status, country-level and by sex
-#' fit2 <- weighting_spec(t2, base_weights = w_base) |>
-#'   step_cre(previous = seed, status = condicion, composite = list(NULL, "sexo"),
-#'            id_unit = c("id_hogar", "nper"), formula = ~ sexo, totals = Xtot(t2),
+#' fit2 <- weighting_spec(t2, base_weights = pw) |>
+#'   step_cre(previous = seed, status = lf_status, composite = list(NULL, "sex"),
+#'            id_unit = c("household_id", "person_no"), formula = ~ sex, totals = Xpop,
 #'            alpha = 2/3, status_ref = "inact") |>
 #'   prep()
 #' fit2
 #' @export
 step_cre <- function(spec, previous = NULL, status, composite = list(NULL),
                      id_unit, formula, totals = NULL, count = NULL, birth = NULL,
-                     alpha = 2/3, overlap = "auto",
+                     alpha = 2/3, overlap = "auto", rescale_previous = FALSE,
                      on_missing_prev = c("carry_backward", "zero"),
                      cluster = NULL, equal_within_cluster = FALSE,
                      calfun = c("linear", "logit", "raking"), bounds = NULL,
-                     rotation_group = NULL, status_ref = NULL, id = NULL) {
+                     rotation_group = NULL, n_groups = NULL, status_ref = NULL,
+                     id = NULL) {
   calfun <- match.arg(calfun)
   on_missing_prev <- match.arg(on_missing_prev)
   equal_within_cluster <- .wf_flag(equal_within_cluster, "equal_within_cluster")
@@ -172,6 +205,16 @@ step_cre <- function(spec, previous = NULL, status, composite = list(NULL),
     stop("equal_within_cluster = TRUE requires `cluster`.", call. = FALSE)
   if (!is.null(rotation_group) && (!is.character(rotation_group) || length(rotation_group) != 1L))
     stop("`rotation_group` must be a single string naming the rotation-group column.", call. = FALSE)
+  if (!is.null(n_groups)) {
+    if (is.null(rotation_group))
+      stop("`n_groups` only means anything with `rotation_group`; it declares how many ",
+           "rotation groups the DESIGN has.", call. = FALSE)
+    if (!is.numeric(n_groups) || length(n_groups) != 1L || !is.finite(n_groups) ||
+        n_groups < 2 || n_groups != round(n_groups))
+      stop("`n_groups` must be a single whole number >= 2 (e.g. 6 for a six-group ",
+           "rotation).", call. = FALSE)
+    n_groups <- as.integer(n_groups)
+  }
 
   detail <- if (is.null(previous)) "seed: linear calibration" else
               sprintf("composite, alpha = %.2f", alpha)
@@ -192,12 +235,14 @@ step_cre <- function(spec, previous = NULL, status, composite = list(NULL),
       env         = parent.frame(),   # so a `birth =` expression can see caller vars (CRE-03)
       alpha       = alpha,
       overlap     = overlap,
+      rescale_previous = .wf_flag(rescale_previous, "rescale_previous"),
       on_missing_prev = on_missing_prev,
       cluster     = cluster,
       equal_within_cluster = equal_within_cluster,
       calfun      = calfun,
       bounds      = bounds,
       rotation_group = rotation_group,
+      n_groups       = n_groups,
       status_ref  = status_ref
     ),
     class = c("step_cre", "weighting_step")
@@ -311,7 +356,51 @@ apply_step.step_cre <- function(step, data, w) {
     N_tot <- unname(Xtot[["(Intercept)"]])
     grp   <- as.character(dat_a[[rg]])
     glev  <- sort(unique(grp))
-    G     <- length(glev)
+
+    # CRE-07. G is a property of the DESIGN, not of whoever answered this wave. Taking
+    # it from the active sample makes the target N/G move with the sample: lose one of
+    # six rotation groups -- a wave where a group has fully attrited, or a small domain
+    # where one has no respondents -- and every remaining group is calibrated to N/5
+    # instead of N/6, i.e. 20% too high, with the intercept still at N so the missing
+    # group's population is silently shared out among the others. It converges, the
+    # constraints hold to 1e-6, and nothing is reported.
+    #
+    # There is no safe automatic answer, because the system as posed is contradictory:
+    # with the intercept pinned at N you cannot also ask N/G_design of only G_present
+    # groups. N/G_present is the one feasible reading, which is exactly why it happened
+    # in silence. So establish the design's G -- the factor's levels if the column is a
+    # factor (they survive a level going empty), otherwise the declared `n_groups` --
+    # and refuse when it does not match what is present.
+    G_design <- if (!is.null(step$n_groups)) step$n_groups
+                else if (is.factor(dat_a[[rg]])) nlevels(dat_a[[rg]])
+                else length(glev)
+    # A character column carries no record of a group that answered nobody, so there is
+    # nothing to compare against and the inference below is vacuous. Say so once: this is
+    # the only configuration where the silent N/G_present can still happen.
+    if (is.null(step$n_groups) && !is.factor(dat_a[[rg]]))
+      warning(sprintf(paste0(
+        "Equal representation of rotation groups: `%s` is not a factor and `n_groups` was ",
+        "not given, so the design's number of groups was taken from the wave itself (%d ",
+        "found). If a group has no active units here, that goes unnoticed and every ",
+        "remaining group is calibrated to N/%d instead of its real share. Make the column ",
+        "a factor with all the design's levels, or pass `n_groups = %d` if that is the ",
+        "design."), rg, G_design, G_design, G_design), call. = FALSE)
+    G <- length(glev)
+    if (G_design != G) {
+      miss <- if (is.factor(dat_a[[rg]])) setdiff(levels(dat_a[[rg]]), glev) else character(0)
+      stop(sprintf(paste0(
+        "Equal representation of rotation groups: the design has %d group(s) but only %d ",
+        "are present in this wave%s. Calibrating the %d present groups to N/%d each would ",
+        "give every one of them %.1f%% more than its share and hand out the missing ",
+        "group(s)' population among them, while the intercept still targets the whole N ",
+        "-- the two constraints cannot both hold. Decide which you mean: drop ",
+        "`rotation_group` for this wave, restrict `totals` to the population the present ",
+        "groups represent, or pass `n_groups = %d` together with a `totals` intercept that ",
+        "matches it."),
+        G_design, G,
+        if (length(miss)) sprintf(" (missing: %s)", paste(miss, collapse = ", ")) else "",
+        G, G, 100 * (G_design / G - 1), G), call. = FALSE)
+    }
     if (G >= 2L) {
       keep_g <- glev[-G]                                   # drop last group (implied)
       Xg <- vapply(keep_g, function(g) as.numeric(grp == g), numeric(length(grp)))
@@ -353,10 +442,17 @@ apply_step.step_cre <- function(step, data, w) {
     Zhat  <- colSums(pw[pactv] * Zprev[pactv, , drop = FALSE])
     zcols <- names(Zhat)
 
-    # Link each current active unit to its previous-wave status.
+    # Link each current active unit to its previous-wave status -- against the ACTIVE
+    # previous rows only (CRE-05). Zhat is built from `pactv`, so a unit linked to a
+    # previous row with weight 0 (a nonrespondent: weightflow zeroes the weight, it does
+    # not delete the row) was counted as overlap while contributing nothing to the target
+    # it is supposed to reproduce. In a wave with ordinary nonresponse that is the normal
+    # case, not the corner one: it inflated the linked set from 201 to 400 in a 480-row
+    # wave, and delta with it.
     key_cur  <- do.call(paste, c(lapply(idu, function(v) as.character(dat_a[[v]])), sep = "\r"))
     key_prev <- do.call(paste, c(lapply(idu, function(v) as.character(pdat[[v]])), sep = "\r"))
-    prev_status_by_key <- tapply(as.character(pdat[[st]]), key_prev, function(z) z[1])
+    prev_status_by_key <- tapply(as.character(pdat[[st]])[pactv], key_prev[pactv],
+                                 function(z) z[1])
     prev_status <- unname(prev_status_by_key[key_cur])       # NA if not in previous
 
     linked <- !is.na(prev_status)                            # found in previous by id_unit
@@ -364,15 +460,36 @@ apply_step.step_cre <- function(step, data, w) {
       # No birth expression: every unit without a t-1 link is treated as birth.
       is_birth     <- !linked
       missing_prev <- rep(FALSE, length(d))
+      # CRE-10. This is the DEFAULT branch, and it makes the CRE-06 guard below dead
+      # code: that guard fires on n_missing_prev, which is 0 here by construction. So a
+      # broken `id_unit` key is indistinguishable from an enormous rotation -- every
+      # unlinked unit is reclassified as the incoming rotation group, the one category
+      # that does NOT take part in the change correction. Measured on `panel_ine` with
+      # the key broken: delta 1e-6, 0 linked, 1,774 births out of 1,774, n_missing_prev
+      # 0, converged TRUE, not one warning. The only control left is to compare the
+      # implied link rate against what the design says it should be; flag it so the
+      # check further down can do exactly that.
+      birth_inferred <- TRUE
     } else {
       bf <- eval(step$birth, envir = dat_a, enclos = step$env %||% baseenv())
+      # Length 1 is recycled on purpose; ANY other wrong length used to be recycled too,
+      # silently, by the indexing below -- a `birth` of length 3 on a 1,774-row wave moved
+      # employment by +24% with neither error nor warning. .eval_cond() guards exactly
+      # against this everywhere else in the package. (CRE-07)
       if (length(bf) == 1L) bf <- rep(bf, length(d))
+      if (length(bf) != length(d))
+        stop(sprintf(paste0("`birth` gave %d value(s) for %d active unit(s). It must be a ",
+                            "single TRUE/FALSE or one value per unit."),
+                     length(bf), length(d)), call. = FALSE)
+      if (!is.logical(bf) && !is.numeric(bf))
+        stop("`birth` must evaluate to a logical (or 0/1) vector.", call. = FALSE)
       is_birth <- as.logical(bf); is_birth[is.na(is_birth)] <- FALSE
       # non-birth units without a t-1 link: new members / newly of working age.
       missing_prev <- !is_birth & !linked
       if (identical(step$on_missing_prev, "carry_backward"))
         prev_status[missing_prev] <- as.character(dat_a[[st]])[missing_prev]  # z_{t-1} = z_t
       # (else "zero": leave prev_status NA -> its z_{t-1} row is all zeros below)
+      birth_inferred <- FALSE
     }
 
     # z at t (current status) and z at t-1 (linked previous status), same columns.
@@ -381,15 +498,63 @@ apply_step.step_cre <- function(step, data, w) {
     ps    <- prev_status; ps[is.na(ps)] <- ref                # NA -> reference -> zero row
     z_tm1 <- .wf_cre_zmatrix(ps, dat_a, step$composite, status_levels, ref, cell_levels)
 
-    # overlap rate delta (w_nr-weighted) for the MR2 carry-backward correction.
+    # Overlap rate delta (w_nr-weighted) for the MR2 carry-backward correction.
+    # It must count the units that actually CARRY a t-1 value, i.e. !is_birth AND linked.
+    # A non-birth unit whose link failed lands in `missing_prev`: with the default
+    # carry_backward it gets z_{t-1} = z_t, so it contributes exactly zero to
+    # (z_{t-1} - z_t) -- and counting it in delta made the 1/delta - 1 multiplier too
+    # small, attenuating the estimated change in proportion to the link-failure rate.
+    # Measured: with 30% of the overlap links broken the month-on-month change came out
+    # at 77% of the truth, with 60% broken at 47%, converged = TRUE and not a word said.
+    # That is the most expensive silent failure in an LFS-type survey. (CRE-06)
+    # The MEASURED link rate, always -- with a numeric `overlap` the user's value REPLACES
+    # it below, and then comparing `delta` against that same value would be vacuous.
+    ov_meas <- {
+      ov <- !is_birth & linked
+      s_all <- sum(d); if (s_all > 0) sum(d[ov]) / s_all else NA_real_
+    }
     delta <- if (identical(step$overlap, "auto")) {
-      ov <- !is_birth
-      s_all <- sum(d); if (s_all > 0) sum(d[ov]) / s_all else 5/6
+      if (is.na(ov_meas)) 5/6 else ov_meas
     } else step$overlap
+    # A floor of 1e-6 turned a broken link into a 1/delta - 1 multiplier of 10^6 and
+    # carried on. No rotating design has an overlap anywhere near that: below a few per
+    # cent the composite block is not smoothing anything, it is amplifying noise by two
+    # orders of magnitude. Refuse, and say which of the two causes it is. (CRE-11)
+    if (is.finite(delta) && delta < 0.02) {
+      stop(sprintf(paste0("step_cre(): the overlap rate is %.4g (%s), so the MR2 carry-backward ",
+                          "multiplier 1/delta - 1 would be %.4g. No rotating design overlaps that ",
+                          "little: either `id_unit` (%s) does not link the two waves, or `overlap` ",
+                          "was set by hand to an impossible value. Check the key on a few units ",
+                          "of both waves, or declare `birth =` so an unlinked unit is not counted ",
+                          "as the incoming rotation group."),
+                  delta,
+                  if (identical(step$overlap, "auto")) "estimated from the data" else "as supplied",
+                  1 / max(delta, 1e-12) - 1, paste(idu, collapse = ", ")), call. = FALSE)
+    }
     delta <- min(max(delta, 1e-6), 1)
 
-    # N (estimated PET total) for MR1's Zhat/N proportion imputation of births.
-    N   <- sum(d); Zprop <- if (N > 0) Zhat / N else Zhat * 0
+    # Link quality, recorded so it can be read back and asserted on. Without it, E9/E10
+    # -- a failing link silently attenuating the change -- are invisible from outside:
+    # the step converges, the totals are met, and nothing says what share of the wave
+    # actually carried a t-1 value. (CRE-09)
+    link_diag <- list(
+      delta        = delta,
+      n_active     = length(d),
+      n_birth      = sum(is_birth),
+      n_linked     = sum(!is_birth & linked),
+      n_missing_prev = sum(missing_prev),
+      w_linked     = if (sum(d) > 0) sum(d[!is_birth & linked]) / sum(d) else NA_real_,
+      linked_rate  = ov_meas,            # measured, even when `overlap` was supplied
+      birth_inferred = isTRUE(birth_inferred),
+      on_missing_prev = step$on_missing_prev %||% "carry_backward")
+
+    # N for MR1's Zhat/N proportion imputation of births. Zhat is the PREVIOUS wave's
+    # composite total, so the denominator has to be the previous wave's estimated
+    # population -- sum(d) is the CURRENT wave's incoming weight, which only coincides
+    # when the recipe already arrives calibrated to N. Every test in the suite builds the
+    # totals so that sum(d) == N by construction, which is why this stayed invisible;
+    # at sum(d) = 0.85 N the measured level bias was +18%. (CRE-08)
+    N   <- sum(pw[pactv]); Zprop <- if (N > 0) Zhat / N else Zhat * 0
 
     # MR1 (level): overlap -> z_{t-1}; birth -> Zhat/N.
     z1 <- z_tm1
@@ -400,6 +565,40 @@ apply_step.step_cre <- function(step, data, w) {
 
     a  <- step$alpha
     Z  <- (1 - a) * z1 + a * z2
+
+    # Two population scales in one system (CRE-09). `Zhat` is a TOTAL estimated with the
+    # PREVIOUS wave's weights, so it lives on Nhat_{t-1}; `Xtot` fixes this wave's N_t.
+    # The identity that makes the composite block weakly binding -- and so a smoother
+    # rather than a level shift -- assumes the two agree: with N_t = N_{t-1} the whole
+    # expression collapses to Z_{t-1} for every alpha. When they differ, the MR1 term is
+    # scaled by N_t/N_{t-1} and the entire gap is discharged onto the labour-status
+    # estimate, with every constraint satisfied to 1e-6 and converged = TRUE.
+    # Measured on `panel_ine` with the totals of this function's own @examples
+    # (design-weighted per wave, Nhat_1 = 286,880 against N_2 = 254,211, 11.4% apart):
+    # the employment rate moves +7.0 points against +0.1 with the scales aligned.
+    N_cur <- if ("(Intercept)" %in% names(Xtot)) unname(Xtot[["(Intercept)"]]) else sum(d)
+    drift <- if (is.finite(N_cur) && N_cur > 0) abs(N / N_cur - 1) else 0
+    if (isTRUE(step$rescale_previous)) {
+      if (N > 0 && is.finite(N_cur)) {
+        Zhat  <- Zhat * (N_cur / N)
+        Zprop <- Zhat / N_cur
+        z1    <- z_tm1
+        if (any(is_birth))
+          z1[is_birth, ] <- matrix(Zprop, sum(is_birth), length(Zprop), byrow = TRUE)
+        Z <- (1 - a) * z1 + a * z2
+      }
+    } else if (drift > 0.01) {
+      warning(sprintf(paste0(
+        "step_cre(): the population estimated from `previous` (%s) differs by %.1f%% from the ",
+        "population `totals` fixes for this wave (%s). `Zhat` is a TOTAL on the previous ",
+        "wave's scale while the demographic block fixes this wave's, and the whole difference ",
+        "is discharged onto the status estimate -- with every constraint met and ",
+        "converged = TRUE. Calibrate both waves to the SAME series of projections, or pass ",
+        "rescale_previous = TRUE to put the composite block on proportions."),
+        format(round(N), big.mark = ","), 100 * drift,
+        format(round(N_cur), big.mark = ",")), call. = FALSE)
+    }
+
     A    <- cbind(X, Z)
     Tvec <- c(Xtot, Zhat)
   }
@@ -445,9 +644,56 @@ apply_step.step_cre <- function(step, data, w) {
                      stringsAsFactors = FALSE)
   attr(diag, "converged") <- conv_ok
   g_unit <- as.numeric(new_w[active] / d)
-  attr(diag, "note") <- sprintf("CRE g-factor in [%.3f, %.3f]; %d composite aux (z), alpha = %.2f%s",
+  attr(diag, "cre_link") <- if (exists("link_diag", inherits = FALSE)) link_diag else NULL
+  link_txt <- if (exists("link_diag", inherits = FALSE))
+    sprintf("; delta = %.3f (%d linked, %d births, %d unlinked non-births)",
+            link_diag$delta, link_diag$n_linked, link_diag$n_birth,
+            link_diag$n_missing_prev) else ""
+  attr(diag, "note") <- sprintf("CRE g-factor in [%.3f, %.3f]; %d composite aux (z), alpha = %.2f%s%s",
                                 min(g_unit), max(g_unit), length(zcols),
-                                if (is.null(step$previous)) 0 else step$alpha, note_clust)
+                                if (is.null(step$previous)) 0 else step$alpha, link_txt, note_clust)
+  # A non-birth unit that does not link carries no t-1 value: with carry_backward it
+  # contributes nothing to the change correction, so a large share of them means the
+  # composite is doing much less than delta suggests. Say so rather than let the change
+  # quietly shrink. (CRE-06)
+  # Only outside a replicate: prep() re-runs the recipe once per bootstrap replicate, so
+  # a step-level warning would be repeated R times for one recipe (the same reason
+  # step_assert() is a no-op there). And the threshold is set where a rate stops looking
+  # like ordinary design churn -- a rotating panel legitimately has a few per cent of
+  # non-birth units absent from the previous wave; a broken key gives tens of per cent.
+  if (!isTRUE(attr(data, "wf_replicate")) &&
+      exists("link_diag", inherits = FALSE) && link_diag$n_active > 0 &&
+      link_diag$n_missing_prev / link_diag$n_active > 0.20)
+    warning(sprintf(paste0("step_cre(): %d of %d non-birth unit(s) (%.1f%%) have no t-1 link, so ",
+                           "they carry no previous status and contribute nothing to the composite ",
+                           "change correction. Check `id_unit` and the linkage key; a broken link ",
+                           "attenuates the estimated change."),
+                    link_diag$n_missing_prev, link_diag$n_active,
+                    100 * link_diag$n_missing_prev / link_diag$n_active), call. = FALSE)
+  # CRE-10. The guard above cannot fire in the DEFAULT branch: with `birth = NULL` every
+  # unlinked unit is classified as a birth, so n_missing_prev is 0 by construction and the
+  # one warning written to catch a broken key is dead code. The only signal left is the
+  # implied overlap: compare it against what the design says. A rotating panel overlaps
+  # 5/6, 3/4, 1/2; anything under half, with the births merely inferred, is far more
+  # likely a key that does not link than a real rotation. Measured on `panel_ine`: a
+  # fully broken `person_no` gave delta 1e-6 and 100% births in a design whose nominal
+  # incoming group is 1/6, converged TRUE, silent.
+  if (!isTRUE(attr(data, "wf_replicate")) && exists("link_diag", inherits = FALSE) &&
+      isTRUE(link_diag$birth_inferred) && link_diag$n_active > 0) {
+    nominal <- if (identical(step$overlap, "auto")) NA_real_ else as.numeric(step$overlap)
+    rate    <- link_diag$linked_rate
+    too_low <- is.finite(rate) &&
+      (if (is.na(nominal)) rate < 0.5 else rate < nominal - 0.10)
+    if (isTRUE(too_low))
+      warning(sprintf(paste0("step_cre(): only %.1f%% of the weight links to `previous`, and %d of ",
+                             "%d unit(s) were classified as the incoming rotation group. With no ",
+                             "`birth =` declared, an unlinked unit is INDISTINGUISHABLE from a ",
+                             "genuine entrant, so a broken key looks like an enormous rotation and ",
+                             "the change correction quietly stops working. Check `id_unit` (%s) on ",
+                             "a few units of both waves, or declare `birth =` to separate the two."),
+                      100 * rate, link_diag$n_birth, link_diag$n_active,
+                      paste(idu, collapse = ", ")), call. = FALSE)
+  }
   # Conditioning on the RANK-REDUCED system actually solved: the composite blocks are
   # deliberately redundant (country = sum over sex = sum over region), so kappa on the full
   # augmented matrix always looks ill-conditioned. Drop the dependent columns first (QR), so
@@ -457,7 +703,7 @@ apply_step.step_cre <- function(step, data, w) {
     error = function(e) A)
   attr(diag, "calibrate") <- list(
     g = g_unit, d = as.numeric(d), calfun = step$calfun, bounds = step$bounds,
-    cond = tryCatch(kappa(crossprod(A_cond), exact = FALSE), error = function(e) NA_real_),
+    cond = .wf_calib_cond(A_cond, d),   # scaled and weighted, as in step_calibrate()
     chi2 = sum(d * (g_unit - 1)^2),
     covars = dat_a[, all.vars(step$formula), drop = FALSE],
     formula = step$formula, active_idx = which(active))

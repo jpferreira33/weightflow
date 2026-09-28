@@ -96,6 +96,25 @@
   out
 }
 
+# ML-01. Whether a y_model is a regression or a classification is a property of the
+# STUDY VARIABLE, so it must be decided once, on the whole sample. It used to be
+# re-derived inside every call from the data that call received -- which, under
+# cross-fitting, is a different fold each time. A y value rare enough to be absent
+# from one fold's training set (one unit is enough with 5 folds) flipped that fold,
+# and only that fold, to classification: it returned P(y = last level) in [0, 1]
+# while the other folds returned E[y]. The out-of-fold column then carried MIXED
+# UNITS -- measured: four folds around 527 and one at 0.44 -- and was calibrated
+# against a population total computed on the E[y] scale, so the model-assisted
+# constraint stopped meaning anything. Nothing warned; the diagnostics showed the
+# column as if it were the total of y. An explicit `family` was overridden too: a
+# numeric y with two distinct values became a classification even when the user had
+# asked for family = "gaussian".
+.wf_is_class <- function(yv, family = NULL) {
+  if (!is.null(family)) return(identical(family, "binomial"))
+  is.factor(yv) || is.character(yv) ||
+    (is.numeric(yv) && length(unique(yv[!is.na(yv)])) == 2L)
+}
+
 # Returns E[y|x] (regression) or P(y = last level | x) (classification).
 .model_predict <- function(m, train, w, newdatas) {
   f     <- m$formula
@@ -107,8 +126,9 @@
       "step_model_calibration(): the outcome is only observed for respondents, so ",
       "adjust for nonresponse first so that nonrespondents are dropped."), yname),
       call. = FALSE)
-  is_class <- isTRUE(m$family == "binomial") || is.factor(yv) || is.character(yv) ||
-              (is.numeric(yv) && length(unique(yv[!is.na(yv)])) == 2L)
+  # `m$classify` is set once by the caller over the whole sample (ML-01); the
+  # fallback keeps a hand-built model list working.
+  is_class <- if (!is.null(m$classify)) isTRUE(m$classify) else .wf_is_class(yv, m$family)
   train <- as.data.frame(train)
   train$.wts <- w                       # weights as a column -> avoids glm/rpart scoping
   if (any(train$.wts < 0, na.rm = TRUE))
@@ -131,7 +151,18 @@
     # Poisson starts do not use the weights, and there the scale carries the dispersion, so
     # leave those alone. See .wf_model_wts(). (NR-PROP-01)
     if (isTRUE(m$family == "binomial")) train$.wts <- .wf_model_wts(train$.wts)
-    fit <- stats::glm(f, data = train, family = fam, weights = .wts)
+    # Once those weights are normalised they stop being integers, and a weighted
+    # binomial glm then warns "non-integer #successes in a binomial glm!" on every fit
+    # -- per model and per cross-fitting fold, so a model-calibration step floods the
+    # report with a warning that says nothing. It is a known, benign consequence of
+    # survey weights. Muffle exactly that message and let every other warning
+    # (separation, non-convergence, rank deficiency) through, which is the same guard
+    # .estimate_propensity() already applies to the propensity fit.
+    fit <- withCallingHandlers(
+      stats::glm(f, data = train, family = fam, weights = .wts),
+      warning = function(w) {
+        if (grepl("non-integer", conditionMessage(w))) invokeRestart("muffleWarning")
+      })
     return(lapply(newdatas, function(nd)
       as.numeric(stats::predict(fit, newdata = nd, type = "response"))))
   }

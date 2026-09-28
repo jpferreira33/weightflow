@@ -101,12 +101,19 @@ test_that("NP-04: factor levels that differ between sample and reference warn", 
   set.seed(4)
   vol <- data.frame(g = factor(c(rep("A", 40), rep("B", 10))), income = stats::rnorm(50))
   ref <- data.frame(g = factor(rep("A", 100), levels = "A"), d = 50)
+  # Two warnings, and the second is the point of NP-04: level "B" exists only in the
+  # volunteer sample, so the pooled fit has nothing to contrast it against and its
+  # fitted p goes to the ceiling -- which sends the participation odds (1 - p)/p, and
+  # with them the unit's whole weight, to zero. Assert both, so the link between an
+  # unmatched level and a vanishing unit stays pinned.
   expect_warning(
-    weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
-      step_pseudoweight(reference = reference_sample(ref, "d"),
-                        formula = ~ g, engine = "logit") |>
-      prep(),
-    "factor levels that differ")
+    expect_warning(
+      weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+        step_pseudoweight(reference = reference_sample(ref, "d"),
+                          formula = ~ g, engine = "logit") |>
+        prep(),
+      "factor levels that differ"),
+    "above 1 - 1e-4")
 })
 
 test_that("NP-05: constant propensities collapse num_classes and are flagged", {

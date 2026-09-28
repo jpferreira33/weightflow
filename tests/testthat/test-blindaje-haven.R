@@ -66,7 +66,7 @@ test_that("raking margins named by the labels (not the codes) error, listing obs
   skip_if_not_installed("haven")
   d <- haven_d()
   m_reg <- .tot_by_code(d, "region_lab")
-  names(m_reg) <- c("Norte", "Centro", "Sur")   # how an SPSS user would name them
+  names(m_reg) <- c("North", "Central", "South")   # how an SPSS user would name them
   expect_error(suppressMessages(prep(
     weighting_spec(d, base_weights = w) |>
       step_calibrate(method = "raking", margins = list(region_lab = m_reg)))),

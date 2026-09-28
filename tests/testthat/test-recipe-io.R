@@ -121,14 +121,14 @@ test_that("read_recipe rejects a non-recipe file", {
 
 test_that("write_recipe does not serialize the previous wave's microdata for step_cre (IO-02)", {
   skip_if_not_installed("yaml")
-  d <- data.frame(id = 1:6, sexo = factor(rep(c("F", "M"), 3)),
+  d <- data.frame(id = 1:6, sex = factor(rep(c("F", "M"), 3)),
                   cond = rep(c("emp", "unemp", "inact"), 2), w = 10)
-  Xt <- function(z) colSums(z$w * stats::model.matrix(~ sexo, z))
+  Xt <- function(z) colSums(z$w * stats::model.matrix(~ sex, z))
   seed <- prep(weighting_spec(d, base_weights = w) |>
-                 step_cre(previous = NULL, status = cond, formula = ~ sexo,
+                 step_cre(previous = NULL, status = cond, formula = ~ sex,
                           totals = Xt(d), status_ref = "inact"))
   spec2 <- weighting_spec(d, base_weights = w) |>
-    step_cre(previous = seed, status = cond, id_unit = "id", formula = ~ sexo,
+    step_cre(previous = seed, status = cond, id_unit = "id", formula = ~ sex,
              totals = Xt(d), status_ref = "inact")
   f <- tempfile(fileext = ".yml")
   write_recipe(spec2, f)                          # must not abort, must not dump the wave
@@ -151,4 +151,94 @@ test_that("read_recipe does not execute stored code by default (CRIT-1)", {
                    NULL, "s1", allow_code = TRUE)
   expect_true(is.function(fn))
   expect_equal(fn(1), 2)
+})
+
+# --- IO-03: the whole executable surface is behind allow_code -----------------
+
+test_that("a hand-edited expression node cannot run code through prep()", {
+  f <- tempfile(fileext = ".yml")
+  spec <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded == 1, method = "weighting_class", by = "region")
+  write_recipe(spec, f)
+  y <- readLines(f)
+  i <- grep("value: responded == 1", y, fixed = TRUE)
+  expect_length(i, 1L)
+  y[i] <- sub("value: responded == 1",
+              'value: \'{ system("touch wf_pwned"); responded == 1 }\'', y[i], fixed = TRUE)
+  writeLines(y, f)
+
+  expect_error(read_recipe(f, data = sample_survey, allow_code = FALSE), "system")
+  expect_false(file.exists("wf_pwned"))
+
+  # ... and the same for a formula node
+  f2 <- tempfile(fileext = ".yml")
+  spec2 <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded == 1, method = "propensity", formula = ~ region + sex)
+  write_recipe(spec2, f2)
+  y2 <- readLines(f2)
+  j <- grep("~region + sex", y2, fixed = TRUE)
+  y2[j] <- sub("~region + sex", "~region + I(system('touch wf_pwned2'))", y2[j], fixed = TRUE)
+  writeLines(y2, f2)
+  expect_error(read_recipe(f2, data = sample_survey, allow_code = FALSE), "system")
+  expect_false(file.exists("wf_pwned2"))
+})
+
+test_that("ordinary recipe expressions still round-trip under the whitelist", {
+  f <- tempfile(fileext = ".yml")
+  spec <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_unknown_eligibility(unknown = unknown_elig == 1, by = "region") |>
+    step_nonresponse(respondent = responded == 1 & !is.na(region),
+                     method = "propensity", formula = ~ region + sex + I(age^2))
+  write_recipe(spec, f)
+  rt <- read_recipe(f, data = sample_survey)          # allow_code = FALSE by default
+  expect_s3_class(rt, "weighting_spec")
+  expect_equal(collect_weights(prep(rt))$.weight, collect_weights(prep(spec))$.weight)
+})
+
+# --- IO-04: a population frame is a descriptor, not values --------------------
+
+test_that("write_recipe() stores a population frame as a descriptor", {
+  f <- tempfile(fileext = ".yml")
+  spec <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded == 1, method = "weighting_class", by = "region") |>
+    step_model_calibration(x_formula = ~ region,
+                           models = list(income = y_model(income ~ age, engine = "glm")),
+                           population = population)
+  write_recipe(spec, f)
+  txt <- paste(readLines(f), collapse = "\n")
+  expect_lt(file.size(f), 5000)                       # was 625 KB
+  expect_match(txt, "microdata_frame", fixed = TRUE)
+  # the column NAMES are metadata; no row of the frame may appear
+  expect_false(grepl(format(population$income[1], scientific = FALSE), txt, fixed = TRUE))
+
+  expect_error(read_recipe(f, data = sample_survey), "references")
+  rt <- read_recipe(f, data = sample_survey,
+                    references = list(model_calibration_1 = population))
+  expect_equal(suppressWarnings(collect_weights(prep(rt))$.weight),
+               suppressWarnings(collect_weights(prep(spec))$.weight))
+})
+
+# --- IO-05: the full class vector survives the round-trip --------------------
+
+test_that("a step keeps every class it needs to dispatch", {
+  mk <- list(
+    step_attrition = weighting_spec(sample_survey, base_weights = pw) |>
+      step_attrition(respondent = responded == 1, method = "propensity", formula = ~ region),
+    step_longitudinal = suppressWarnings(
+      weighting_spec(sample_survey, base_weights = pw) |> step_longitudinal()),
+    step_cross_sectional = weighting_spec(sample_survey, base_weights = pw) |> step_cross_sectional())
+  for (nm in names(mk)) {
+    f <- tempfile(fileext = ".yml")
+    write_recipe(mk[[nm]], f)
+    rt <- suppressWarnings(read_recipe(f, data = sample_survey))
+    expect_identical(class(rt$steps[[1]]), class(mk[[nm]]$steps[[1]]), info = nm)
+    expect_no_error(suppressWarnings(prep(rt)))
+  }
+  # the scope declaration must survive, or the panel guard rails go quiet
+  f <- tempfile(fileext = ".yml")
+  write_recipe(mk$step_longitudinal, f)
+  rt <- suppressWarnings(read_recipe(f, data = sample_survey))
+  expect_identical(weightflow:::.wf_purpose(rt), "longitudinal")
+  # (step_longitudinal() warns about the missing panel_design() tag; that warning is
+  # the subject of its own test, not noise this one should emit.)
 })

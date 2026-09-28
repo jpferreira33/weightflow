@@ -8,6 +8,8 @@ jackknife_weights(
   object,
   strata = NULL,
   psu = NULL,
+  groups = NULL,
+  seed = NULL,
   lonely_psu = c("certainty", "collapse"),
   cores = 1L,
   progress = TRUE
@@ -20,6 +22,15 @@ Pass the recipe \emph{before} \code{prep()}: the jackknife preps it once per rep
 \item{strata}{name of the stratum column, or NULL for a single stratum.}
 
 \item{psu}{name of the PSU column, or NULL to delete one unit at a time.}
+
+\item{groups}{NULL (default) or the number of random groups \code{G} for a
+delete-a-group jackknife on a direct sample. Units are assigned to groups at
+random within each stratum and one group is deleted per replicate, giving \code{G}
+replicates instead of one per unit. Requires \code{psu = NULL}: the group replaces
+the PSU, it does not nest inside one.}
+
+\item{seed}{optional integer seed for the random group assignment, so the
+replicates are reproducible. The caller's RNG state is restored on exit.}
 
 \item{lonely_psu}{how to treat strata with a single PSU: "certainty"
 (default) skips them (no variance) and warns; "collapse" merges them into a
@@ -52,6 +63,19 @@ replicate per PSU. Strata with a single PSU contribute no variance and are
 skipped. This is the stratified jackknife (JKn); with \code{strata = NULL} it is
 the unstratified jackknife (JK1), and with \code{psu = NULL} each unit is its own
 PSU (delete-one-unit jackknife).
+
+With a direct (element) sample the delete-one-unit jackknife is the right
+estimator, but it needs one replicate per unit: the whole recipe is re-prepped
+\code{n} times and the replicate matrix is \verb{n x n}, which is 80 GB at n = 100,000.
+\code{groups} gives the standard device for that case, the \strong{delete-a-group}
+jackknife (Kott 2001; Rust and Rao 1996): the sample is partitioned at random
+into \code{G} groups within each stratum and one whole group is deleted at a time,
+so there are \code{G} replicates instead of \code{n}. It is the same estimator the engine
+already computes -- the group simply plays the part of the PSU -- with
+\eqn{(G-1)/G} in place of \eqn{(n_h-1)/n_h}, and \code{df = G - strata}, which is the
+honest precision of the variance. \code{G} between 30 and 100 is the usual range;
+it is not defaulted, because the choice is the analyst's and the delete-one and
+delete-a-group variances are not the same number (the second is noisier).
 }
 \examples{
 spec <- weighting_spec(sample_one, base_weights = pw) |>

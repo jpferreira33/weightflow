@@ -77,3 +77,90 @@ test_that(".wf_translate leaves no quality alert in English (lang = 'es')", {
   # English passthrough is untouched
   expect_identical(weightflow:::.wf_translate(catalogo, "en"), catalogo)
 })
+
+test_that(".wf_translate renders the CRE / nonresponse-calibration / panel notes in Spanish", {
+  cre <- "CRE g-factor in [0.610, 1.386]; 6 composite aux (z), alpha = 0.67"
+  es  <- weightflow:::.wf_translate(cre, "es")
+  expect_match(es, "^factor g del CRE en")
+  expect_match(es, "6 auxiliares compuestas (z), alfa = 0.67", fixed = TRUE)
+  expect_identical(weightflow:::.wf_translate(cre, "en"), cre)
+
+  nr <- "nonresponse calibration to population totals; g in [1.49, 1.95] [calfun = raking]"
+  expect_match(weightflow:::.wf_translate(nr, "es"),
+               "^calibraci.n por no respuesta a totales poblacionales")
+  expect_match(weightflow:::.wf_translate(nr, "es"), "distancia = raking", fixed = TRUE)
+
+  dom <- "calibrated independently within 'region' (4 domains)"
+  expect_identical(weightflow:::.wf_translate(dom, "es"),
+                   "calibrada independientemente dentro de 'region' (4 dominios)")
+
+  po <- "base weight divided by Pr(panel selection) (CEPAL ch. XVI)"
+  expect_match(weightflow:::.wf_translate(po, "es"), "^peso base dividido por Pr")
+})
+
+test_that("the step note reaches the Spanish report already translated", {
+  m_region <- as.data.frame(table(region = population$region))
+  fit <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_calibrate(method = "linear", formula = ~ region,
+                   totals = list(region = m_region), count = "Freq") |>
+    prep()
+  f <- tempfile(fileext = ".html"); on.exit(unlink(f), add = TRUE)
+  report_weighting(fit, file = f, open = FALSE, lang = "es")
+  h <- paste(readLines(f, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  expect_true(grepl("factor de calibraci", h))
+  expect_false(grepl("g (calibration factor) in", h, fixed = TRUE))
+})
+
+test_that("accented user text survives a report written outside a UTF-8 locale", {
+  # .as_utf8(): a `reason =` / metadata string arrives with Encoding() "unknown"
+  # while the package's own Spanish labels are marked UTF-8. Mixing the two in
+  # sprintf() outside a UTF-8 locale used to write "sali<c3><b3>" into the HTML.
+  reason <- "sali\u00f3 de la poblaci\u00f3n objetivo"
+  Encoding(reason) <- "unknown"
+  fit <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_drop_ineligible(ineligible = responded == 0, reason = reason) |>
+    prep()
+  f <- tempfile(fileext = ".html"); on.exit(unlink(f), add = TRUE)
+  report_weighting(fit, file = f, open = FALSE, lang = "es",
+                   metadata = list(survey = "Encuesta de Hogares (a\u00f1o 2026)"))
+  h <- paste(readLines(f, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  want <- reason; Encoding(want) <- "UTF-8"        # compare UTF-8 against UTF-8
+  yr <- "a\u00f1o 2026"; Encoding(yr) <- "UTF-8"
+  expect_true(grepl(want, h, fixed = TRUE))
+  expect_true(grepl(yr, h, fixed = TRUE))
+  expect_false(grepl("<c3>", h, fixed = TRUE))       # raw-byte escapes
+  expect_false(grepl("<U+00", h, fixed = TRUE))      # code-point escapes
+})
+
+test_that("a Spanish chart caption is not double-escaped in the SVG aria-label", {
+  fit <- weighting_spec(sample_survey, base_weights = pw) |>
+    step_nonresponse(respondent = responded, method = "weighting_class", by = "region") |>
+    prep()
+  f <- tempfile(fileext = ".html"); on.exit(unlink(f), add = TRUE)
+  report_weighting(fit, file = f, open = FALSE, lang = "es")
+  h <- paste(readLines(f, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  expect_false(grepl("&amp;oacute;", h, fixed = TRUE))
+  expect_false(grepl("&amp;ntilde;", h, fixed = TRUE))
+})
+
+test_that("step_pseudoweight speaks of participation, not response", {
+  set.seed(1)
+  N   <- nrow(population)
+  vol <- population[rbinom(N, 1, plogis(-2 + 0.9 * (population$sex == "M"))) == 1, ]
+  ref <- population[sample(N, 600), c("region", "sex")]
+  ref$d <- N / 600
+  fit <- weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+    step_pseudoweight(reference = reference_sample(ref, "d"),
+                      formula = ~ region + sex, engine = "logit") |>
+    prep()
+  f <- tempfile(fileext = ".html"); on.exit(unlink(f), add = TRUE)
+  report_weighting(fit, file = f, open = FALSE, lang = "es")
+  h <- paste(readLines(f, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # the pseudo-weight diagnostics table is translated, not left in English
+  expect_true(grepl("unidades no probabil", h))
+  expect_false(grepl("non-prob units", h, fixed = TRUE))
+  expect_false(grepl("pseudo-weight sum", h, fixed = TRUE))
+  # and the propensity card names the event correctly
+  expect_true(grepl("propensiones de participaci", h))
+  expect_false(grepl("propensiones de respuesta", h))
+})

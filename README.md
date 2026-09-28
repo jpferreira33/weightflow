@@ -14,8 +14,11 @@
 
 **weightflow** builds survey weights by chaining hierarchical adjustments with a
 `tidymodels`-style API, and estimates their variances with a bootstrap that
-re-applies the whole recipe on each replicate. It has **no hard dependencies**
-(base R, R >= 4.1) and bridges to `survey`/`srvyr` for design-based inference.
+re-applies the whole recipe on each replicate. For continuous surveys it carries
+the same idea across time: rotating panels, longitudinal weights, and the
+variance of a **net change** with the sample overlap entering as covariance. It
+has **no hard dependencies** (base R, R >= 4.1) and bridges to `survey`/`srvyr`
+for design-based inference.
 
 > **Get it from CRAN** — `install.packages("weightflow")` — or read the full
 > documentation at the [project website](https://jpferreira33.github.io/weightflow/).
@@ -57,10 +60,24 @@ and then hands the result to `survey`/`srvyr` for inference.
   targets the design-weighted totals of a larger survey you trust (the official
   ECH, a labour force survey), and the bootstrap propagates the variance of those
   estimated totals when you pass its replicate weights.
+- **Panels, and the variance of a change.** Rotating and pure panels are
+  first-class: the replicates are **coordinated across waves**, so a PSU in both
+  periods is resampled the same way in both and the overlap shows up as
+  covariance, which is what makes a net change more precise than the two levels
+  it is built from. Plus longitudinal weights, attrition, gross flows and
+  composite (CRE) estimation.
+- **Chained production, one period at a time.** An office publishes month `t`
+  before month `t+1` exists. `wave_step()` runs a single period and hands the
+  next one a small *carry*; the chain never needs the earlier waves in memory.
+- **Non-probability samples, and how far to trust them.** Pseudo-weights against
+  a probability reference, Meng's data-defect index, and a pattern-mixture
+  sensitivity analysis that says how far nonignorable nonresponse could move the
+  answer -- instead of assuming it cannot.
 - **Programmatic quality control.** Every step carries a stable `id`, every
   quality incident lands in `weighting_alerts()`, and `collect_step_detail()`,
   `collect_propensities()` and `domain_summary()` audit the cascade unit by unit
-  and domain by domain, from a script or in the HTML report.
+  and domain by domain, from a script or in the HTML report. A recipe is also a
+  file: `write_recipe()` / `read_recipe()` round-trip it as YAML.
 
 ## How it works
 
@@ -307,6 +324,58 @@ step_calibrate(method = "raking", formula = ~ region + sex,
 
 See the *Calibrating to a reference survey* article.
 
+### Non-probability samples: pseudo-weights and the data-defect index
+
+A volunteer panel, a web opt-in or an app sample has no design weights.
+`step_pseudoweight()` estimates the participation propensity against a
+probability **reference** survey (any engine, with cross-fitting) and turns it
+into a pseudo-weight; `data_defect()` then reports Meng's data-defect
+correlation and the effective sample size it implies, which is the honest answer
+to "how large is this sample, really".
+
+```r
+fit <- weighting_spec(volunteers, base_weights = NULL, nonprob = TRUE) |>
+  step_pseudoweight(reference = reference_sample(ech, "w"),
+                    formula = ~ region + sex + age, engine = "forest") |>
+  prep()
+data_defect(fit)
+```
+
+See the *Non-probability samples* article.
+
+### How far nonignorable nonresponse could move the answer
+
+Every nonresponse adjustment assumes the mechanism is ignorable given the
+auxiliaries. `step_nr_sensitivity()` does not adjust anything: it reduces the
+auxiliaries to a proxy and reports the proxy pattern-mixture **ignorance
+interval** (Andridge & Little 2011) over a grid of `phi`, from ignorable
+(`phi = 0`) to response depending on the outcome itself (`phi = 1`). Read it
+next to the sampling confidence interval, not instead of it. The same step
+covers participation in a non-probability sample.
+
+```r
+fit <- spec |>
+  step_nr_sensitivity(y = income, formula = ~ region + sex + age) |>
+  prep()
+nr_sensitivity(fit)
+```
+
+### Two-phase subsampling, with its own variance component
+
+When a subsample is drawn from the respondents for a follow-up module,
+`step_subsample()` records the second phase, the bootstrap switches to the
+two-phase resampling factor, and `two_phase_variance()` splits the result into
+the phase-1 and phase-2 components instead of reporting one opaque number.
+
+```r
+spec <- weighting_spec(df, base_weights = pw) |>
+  step_subsample(selected = in_phase2, prob = p2, psu = "household_id")
+boot <- bootstrap_weights(spec, replicates = 500, strata = "region", psu = "psu")
+two_phase_variance(boot, "income")      # V = V1 (phase 1) + V2 (phase 2)
+```
+
+See the *Two-phase sampling* article.
+
 ### Recipe-aware bootstrap
 
 The bootstrap resamples PSUs within strata (Rao-Wu rescaling) and re-applies the
@@ -362,6 +431,35 @@ domain_summary(fit, by = "region")
 
 See the *Inspecting and auditing the cascade* article.
 
+### A recipe is a file
+
+`write_recipe()` serializes the recipe (never the data, never the weights) to
+YAML, and `read_recipe()` rebuilds it against new data, so the methodology of a
+production run lives in version control next to the code and can be diffed
+release to release. Reading is deliberately conservative: captured expressions
+are reconstructed, arbitrary code is not, unless you ask for it.
+
+```r
+write_recipe(spec, "methodology/ech-2026q1.yml", timestamp = FALSE)
+spec_q2 <- read_recipe("methodology/ech-2026q1.yml", data = ech_q2)
+```
+
+See the *weightflow in production* article.
+
+### Handing the weights on: disclosure risk and small-area inputs
+
+`disclosure_risk()` flags publication cells where one unit carries an outlying
+share of the weight, which is where re-identification risk concentrates.
+`as_sae_input()` exports, per domain, the direct estimate, its **recipe-aware**
+design SE and the effective n, which is exactly what a Fay-Herriot model in
+`emdi` / `sae` / `hbsae` consumes. weightflow does not fit the small-area model;
+it hands over the design-based ingredients with a publishability rating attached.
+
+```r
+disclosure_risk(fitted, by = "region")
+as_sae_input(boot, "poor", by = c("region", "sex"), type = "mean")
+```
+
 ### R-indicators of response representativity
 
 After a nonresponse adjustment, `summary()` and `report_weighting()` automatically
@@ -405,6 +503,115 @@ report_weighting(fitted, lang = "es",
 
 See the *Quality report* article for a full example.
 
+## Panels: measuring change, not just levels
+
+A continuous survey measures the same units more than once. The overlap is what
+makes the **change** between two periods more precise than either level -- part
+of the sampling error cancels -- and it is also what makes the change harder to
+estimate, because the two samples are not independent:
+
+```
+V(theta_t - theta_{t-1}) = V(theta_t) + V(theta_{t-1}) - 2 Cov(theta_t, theta_{t-1})
+```
+
+That covariance is not a design constant you can look up. It has to be
+*produced*, by drawing the replicates so that a PSU present in both periods is
+resampled the same way in both. That is what the panel layer does.
+
+**The structure first.** `panel_design()` reads the unit x wave crossing and
+describes what is actually there. The declared rotation `pattern` (`"6"` for the
+Canadian LFS or Uruguay's ECH, `"4-8-4"` for the US CPS, `"2-(2)-2"` for Chile's
+ENE, `"1(2)5"` for PNAD Continua) is **verification**, not configuration: when
+the observed overlap falls short of what the calendar implies, the linkage key is
+suspect and the alert says so.
+
+```r
+pd <- panel_design(panel_ine, unit = c("household_id", "person_no"),
+                   wave = "wave", rotation_group = "rotation_group", pattern = "6")
+```
+
+**Net change with an honest variance.** `wave_bootstrap()` (or
+`wave_jackknife()`) coordinates the replicates across waves; `change_mean()` /
+`change_total()` report the change with its standard error, the correlation the
+overlap induces, and `deff_change` -- the ratio to what an office would publish
+if it treated the two periods as independent. `level_mean()` / `level_total()`
+give the levels, `panel_mean()` / `panel_total()` any linear combination (a
+rolling quarter, an annual average), and `change_estimate()`, `level_estimate()`
+and `panel_estimate()` take an arbitrary statistic.
+
+```r
+wb <- wave_bootstrap(list(T1 = rec1, T2 = rec2), replicates = 500,
+                     strata = "stratum", psu = "psu", seed = 1)
+change_mean(wb, "unemployed")
+```
+
+**Chained production.** An office publishes month `t` weeks before month `t+1`
+exists, so `wave_bootstrap()`'s "all waves at once" is not how production runs.
+`wave_step()` processes **one period** and writes a small *carry*; the next
+period reads it and nothing else. `wave_contrast()` estimates any combination
+straight from the saved carries, without the waves being in memory.
+
+```r
+s2 <- wave_step(rec2, previous = readRDS("carry/2026-01.rds"), estimands = EST,
+                strata = "stratum", psu = "psu", period = "2026-02", seed = 2)
+s2$weights                                   # cross-sectional weights, untouched
+s2$change                                    # the net change against 2026-01
+s2$strata                                    # coordination diagnostic, per stratum
+saveRDS(wave_carry(s2), "carry/2026-02.rds") # all the next period needs
+```
+
+**Composite estimation.** `step_cre()` implements regression composite estimation
+(Fuller & Rao 2001; Gambino, Kennedy & Singh 2001; INE Uruguay's ECH, sec. 8.4):
+the calibration targets the known demographic totals *and* composite totals
+estimated from the previous wave, which is what buys the large variance reduction
+on changes. Because the second block is estimated, replicate `b` of period `t`
+rebuilds it from replicate `b` of period `t-1`.
+
+**Longitudinal weights and gross flows.** A net change cannot tell an immobile
+population from one where equal numbers enter and leave employment. For that,
+`panel_merge()` builds the wide file, `step_attrition()` adjusts for the units
+lost along the way (propensity or response-homogeneity groups), and
+`step_drop_ineligible()` removes those who left the universe -- leaving the target
+population is **not** nonresponse. Then `transition_matrix()`,
+`boot_transition()` and `boot_flows()` give the flows, with standard errors that
+include the cost of having estimated the adjustments.
+
+```r
+wide <- panel_merge(waves, by = c("household_id", "person_no"), require = "all")
+lw <- weighting_spec(wide, base_weights = pw_T1) |>
+  step_drop_ineligible(disposition_T4 == "OS") |>
+  step_unknown_eligibility(disposition_T4 == "UNK", by = "region_T1") |>
+  step_attrition(respondent = responded_always, method = "propensity",
+                 formula = ~ age_T1 + sex_T1) |>
+  prep()
+transition_matrix(lw, from = "lf_status_T1", to = "lf_status_T4", format = "row")
+```
+
+**A declarative estimation grammar.** Once a panel object exists, estimates are
+piped rather than looped: `step_domain()` splits, `step_filter()` masks a
+subpopulation (rows are masked, not dropped, so the design is preserved),
+`step_estimate()` names the statistic and whether it is wanted as a level or a
+change, `step_transition()` asks for a flow table instead, and
+`collect_estimates()` evaluates the whole thing into one tidy frame.
+
+```r
+wb |> step_domain(region) |>
+  step_estimate(mean(unemployed), over = "change") |>
+  collect_estimates()
+```
+
+**A panel quality report.** `report_panel()` writes the panel analogue of
+`report_weighting()`: the rotation structure and the observed-vs-implied overlap,
+the attrition cascade, the coordination diagnostic per stratum, the changes with
+their `rho` and `deff_change`, and the flows.
+
+Four articles cover this layer: *Rotating panels* (the entry point),
+*Coordinated replication* (what travels between waves and how to read the
+`$strata` diagnostic), *Composite estimation* (`step_cre()` in full, with the
+equations), and *Pure panels* (attrition over many waves, the longitudinal weight
+and gross flows). *Validation against survey and ReGenesees* checks the change
+variance against the analytic estimator of Berger & Priam (2016).
+
 ## What it does
 
 **Adjustment steps**, applied in the order you pipe them:
@@ -412,15 +619,30 @@ See the *Quality report* article for a full example.
 | Step | What it does |
 |------|--------------|
 | `step_unknown_eligibility()` | Redistribute unknown-eligibility cases among the known ones (person- or household-level via `cluster`). |
-| `step_drop_ineligible()` | Zero out out-of-scope units. |
-| `step_select_within()` | Within-household selection (unequal `prob` or equal `n_eligible`). |
-| `step_nonresponse()` | Weighting classes, response-propensity (logit / CART / random forest / **xgboost**, optional **k-fold cross-fitting**, weighted or **unweighted** model), or **two-phase calibration**; person- or household-level. |
-| `step_calibrate()` | Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (one weight per household), **ridge (penalized)** and **domain (`by`)** options. |
+| `step_drop_ineligible()` | Zero out out-of-scope units: the weight is discarded, not redistributed. An optional `reason` is carried into the report. |
+| `step_select_within()` | Within-**cluster** selection: unequal `prob`, or simple random selection of `n_selected` (default 1) out of `n_eligible`. The cluster need not be a household, and in a multi-stage design the step can appear more than once, each occurrence undoing one stage of subsampling. |
+| `step_subsample()` | Second-phase subsampling (two-phase / double sampling), with its own variance component. |
+| `step_nonresponse()` | Weighting classes, response-propensity (logit / CART / random forest / **xgboost**, optional **k-fold cross-fitting**, weighted or **unweighted** model), or **two-phase calibration**; person- or household-level (`cluster`). |
+| `step_pseudoweight()` | **Non-probability samples**: participation propensity against a probability `reference`, turned into a pseudo-weight. |
+| `step_calibrate()` | Raking, post-stratification, linear/GREG; bounded (Deville-Särndal), integrative (`equal_within_cluster`: one weight per household), **ridge (penalized)** and **domain (`by`)** options. Totals can be a tidy data frame, or the design-weighted totals of a `reference_sample()` instead of a frame. |
 | `step_model_calibration()` | Wu-Sitter model calibration with working models for the outcomes (any engine, with cross-fitting). |
-| `step_trim()`, `step_trim_weights()` | Manual or automatic trimming (Tukey fence or **Potter MSE-optimal**), with proportional or uniform redistribution, insertable anywhere. |
+| `step_trim()` | Trim by a **ratio** to the base weight, the median or a fixed value (`reference`), with a floor as well as a cap, per subgroup (`by`) and with the trimmed mass redistributed. |
+| `step_trim_weights()` | Trim to an **absolute** band, with the cutoff chosen automatically: Tukey far-out fence or **Potter's MSE-optimal** threshold; proportional or uniform redistribution. |
 | `step_trim_calibrated()` | **Trimmed (range-restricted) calibration**: bound the weights into `[lower, upper]` while **preserving the calibration totals** (Folsom-Singh), with per-subgroup bounds and an integrative option. |
-| `step_round()`, `step_rescale()` | Integer rounding and rescaling to a size or total. |
-| `step_assert()` | Quality checkpoint on deff, weight ratio or effective n. |
+| `step_round()` | Round the weights, including **controlled rounding**: `"preserve_total"` keeps the sum, `"balanced"` randomizes so the expectation is preserved; per subgroup with `by`. |
+| `step_rescale()` | Rescale to the active sample size or to a given total, overall or within `by`. |
+| `step_assert()` | Quality checkpoint on deff, weight ratio or effective n; stops the recipe (`on_fail = "error"`) or records an alert and continues. |
+| `step_nr_sensitivity()` | Diagnostic (changes no weight): proxy pattern-mixture **ignorance interval** for nonignorable nonresponse or selection. |
+
+**Panel steps**, for a recipe that weights one wave of a panel or a longitudinal
+file:
+
+| Step | What it does |
+|------|--------------|
+| `step_panel_overlap()` | Adjust the base weights by the panel-selection probability of the wave combination (ECLAC ch. XVI); `panel_pr()` computes it from the design. |
+| `step_attrition()` | Attrition adjustment over waves: individual propensity (`1/phi`) or response-homogeneity groups. |
+| `step_cre()` | **Composite regression estimation**: calibrate to the known totals *and* to composite totals estimated from the previous wave. |
+| `step_cross_sectional()`, `step_longitudinal()` | Declare the scope of the recipe, which is what decides whether the panel-specific guards apply. |
 
 Eligibility and response accept **0/1 dummy columns** or any logical condition.
 
@@ -445,10 +667,14 @@ re-runs the **whole recipe** on each replicate:
 ```r
 boot <- bootstrap_weights(recipe, replicates = 500, strata = "region", psu = "psu",
                           lonely_psu = "collapse", cores = 4)   # collapse + parallel
-boot_mean(boot, "income")           # estimate, SE and 95% CI
+boot_mean(boot, "income")                       # estimate, SE and 95% CI
+boot_total(boot, "employed")                    # totals; jack_mean() / jack_total()
+bootstrap_estimate(boot, f)                     # any statistic; jackknife_estimate()
+design_effect(collect_weights(fitted)$.weight)  # Kish deff and n_eff
 
 # hand the replicate weights to survey / srvyr for the rest of the analysis
 rep_design <- as_svrepdesign(boot)              # a svyrep.design object
+as_svydesign(fitted, ids = ~ psu, strata = ~ region)   # or the plain design
 collect_replicate_weights(boot)                 # replicate weights as a data.frame
 ```
 
@@ -461,11 +687,25 @@ recipe per replicate is automatic here, rather than something you re-orchestrate
 by hand on top of the replicate weights, and the result plugs straight into
 `survey`/`srvyr` through `as_svrepdesign()` for any downstream estimator.
 
+Across waves, `wave_bootstrap()` and `wave_jackknife()` do the same thing with
+the replicates **coordinated**, and `wave_step()` does it one period at a time.
+`two_phase_variance()` decomposes a two-phase design into `V = V1 + V2`.
+
 ## Example data
 
-Three bundled datasets: `population` (the frame), `sample_survey` (take-all
-roster) and `sample_one` (multistage select-one design), all with stratum, PSU
-and design weight, so the full pipeline and the variance methods run natively.
+Three cross-sectional datasets: `population` (the frame), `sample_survey`
+(take-all roster) and `sample_one` (multistage select-one design), all with
+stratum, PSU and design weight, so the full pipeline and the variance methods run
+natively.
+
+Four panel datasets in long format, sharing one structure and differing only in
+the rotation system, so the same code runs on each: `panel_puro` (a pure panel,
+four waves), `panel_ine` (6 in-out, Uruguay's ECH and the Canadian LFS),
+`panel_cl` (`2-(2)-2`, Chile's ENE) and `panel_us` (`4-8-4`, the US CPS). They
+carry a persistent household and person key, stratum and PSU, the four-state
+between-wave disposition (`R` / `NR` / `OS` / `UNK`) and labour-status variables,
+so attrition, coordinated replication, composite estimation and gross flows all
+run on package data.
 
 ## Extending
 
@@ -486,6 +726,12 @@ adjustment, define a `step_*()` constructor (inert) and its
 - Little, R. J. A. (1986). Survey nonresponse adjustments for estimates of means. *International Statistical Review*, 54(2), 139–157.
 - Breidt, F. J., & Opsomer, J. D. (2017). Model-assisted survey estimation with modern prediction techniques. *Statistical Science*, 32(2), 190–205.
 - Chernozhukov, V., et al. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal*, 21(1), C1–C68. *(cross-fitting)*.
+- Andridge, R. R., & Little, R. J. A. (2011). Proxy pattern-mixture analysis for survey nonresponse. *Journal of Official Statistics*, 27(2), 153–180. *(sensitivity to nonignorable nonresponse)*.
+
+*Non-probability samples*
+
+- Elliott, M. R., & Valliant, R. (2017). Inference for non-probability samples. *Statistical Science*, 32(2), 249–264. *(pseudo-weights)*.
+- Meng, X.-L. (2018). Statistical paradises and paradoxes in big data (I). *Annals of Applied Statistics*, 12(2), 685–726. *(data-defect index)*.
 
 *Calibration*
 
@@ -510,8 +756,14 @@ adjustment, define a `step_*()` constructor (inert) and its
 - Preston, J. (2009). Rescaled bootstrap for stratified multistage sampling. *Survey Methodology*, 35(2), 227–234.
 - Wolter, K. M. (2007). *Introduction to Variance Estimation* (2nd ed.). Springer.
 - Lumley, T. (2010). *Complex Surveys: A Guide to Analysis Using R*. Wiley.
+
+*Panels, change and composite estimation*
+
 - Berger, Y. G., & Priam, R. (2016). A simple variance estimator of change for rotating repeated surveys. *Journal of the Royal Statistical Society A*, 179(1), 251–272.
-- Statistics Canada (2008). *Methodology of the Canadian Labour Force Survey*, cat. 71-526-X, sec. 7.2.2. *(coordinated bootstrap for rotating panels)*.
+- Statistics Canada (2008). *Methodology of the Canadian Labour Force Survey*, cat. 71-526-X, sec. 7.2.2. *(coordinated replication for rotating panels)*.
+- Fuller, W. A., & Rao, J. N. K. (2001). A regression composite estimator with application to the Canadian Labour Force Survey. *Survey Methodology*, 27(1), 45–51.
+- Gambino, J., Kennedy, B., & Singh, M. P. (2001). Regression composite estimation for the Canadian Labour Force Survey. *Survey Methodology*, 27(1), 65–74.
+- CEPAL / ECLAC (2023). *Diseño y análisis estadístico de las encuestas de hogares de América Latina*, LC/PUB.2023/14-P, Santiago, ch. XVI–XVII. *(longitudinal weights and gross flows)*.
 
 ## Citation
 

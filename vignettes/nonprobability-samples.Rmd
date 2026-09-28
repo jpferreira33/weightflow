@@ -63,11 +63,17 @@ fit <- prep(spec)
 
 w <- fit$final_weight
 c(pseudoweighted_mean = weighted.mean(vol$income, w),
-  sum_of_weights = sum(w), N = N)     # the (1-p)/p pseudo-weights sum to N
+  sum_of_weights = sum(w), N = N)     # sum(w) ESTIMATES N -- see below
 ```
 
-The pseudo-weighted mean is closer to the truth than the naive volunteer mean,
-and the weights sum to the population size (a `1/p` mistake would overshoot).
+The pseudo-weighted mean is closer to the truth than the naive volunteer mean, and
+the weights sum to roughly the population size (a `1/p` mistake would overshoot by a
+whole extra unit each). *Roughly* is the word: the sum is an unbiased **estimator** of
+the population, not an identity, and it moves from sample to sample -- with a correctly
+specified model, simulation puts its standard deviation at about 2% of N with a
+reference of 500 units and 1% with 3,000. A large gap points at the participation
+model; a small one is not evidence that the model is right. `prep()` reports the ratio
+in the step's diagnostics.
 Flexible learners (`engine = "tree" / "forest" / "boost"`, optionally
 cross-fitted) are available for the participation model, exactly as for
 response-propensity models.

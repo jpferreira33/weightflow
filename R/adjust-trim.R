@@ -17,18 +17,60 @@ apply_step.step_round <- function(step, data, w) {
     target <- round(sum(x))
     k      <- as.integer(round(target - sum(fl)))   # how many to round up
     if (k > 0) {
-      ord <- order(x - fl, decreasing = TRUE)
+      # ROUND-01. Ties in the fractional part are the RULE, not the exception: a
+      # self-weighting design, weights landing on .5, calibrated weights on a grid.
+      # order() is stable, so a plain order(x - fl) gave the extra unit to the first
+      # rows OF THE FILE every time, and a file sorted by region -- the usual layout
+      # -- then moved mass from the last domains to the first. Measured on 100 units
+      # at 12.5: North 650 / South 600 where both should be ~625, i.e. 4% off, in the
+      # method chosen PRECISELY to preserve totals, and with nothing in the
+      # diagnostics to show it (sum_before == sum_after, as promised). Break ties at
+      # random, which makes the allocation unbiased per unit. Weights with distinct
+      # fractional parts are unaffected: the ordering is the same as before.
+      ord <- order(x - fl, stats::runif(length(fl)), decreasing = TRUE)
       fl[ord[seq_len(min(k, length(fl)))]] <- fl[ord[seq_len(min(k, length(fl)))]] + 1
     }
     new_w[active] <- fl / f
   } else {
-    # balanced (cube) rounding: keep the total of each `by` cell -- the calibrated
-    # domains -- not only the grand total. Cell indicators over the ACTIVE units
-    # form the balancing matrix; preserving every cell preserves the margins and
-    # the grand total too. .make_cells() crosses `by` exactly as the other steps.
-    cells <- .make_cells(data, step$by, length(w), active = active)[active]
-    cells <- droplevels(cells)
-    Z     <- stats::model.matrix(~ cells - 1)          # one indicator column per cell
+    # balanced (cube) rounding. Two ways to build the balancing matrix, and they are
+    # not the same problem.
+    #
+    # With `formula` the matrix IS the calibration design, model.matrix(~ x1 + x2).
+    # Preserving X'w preserves exactly the totals the calibration imposed -- no more --
+    # and its columns OVERLAP: a unit loads on several of them at once, so no unit-level
+    # allocation can satisfy them independently. That overlap is the whole reason the
+    # cube method exists.
+    #
+    # With `by` the matrix is one indicator per crossed cell. Every row then has a single
+    # 1, so the problem SEPARATES into one independent "keep this cell total" per cell,
+    # which a per-cell largest remainder already solves; the cube machinery buys nothing
+    # and the landing phase pays for every cell. It is also strictly stronger than the
+    # calibration asked for -- preserving each cell implies preserving the margins -- so
+    # on a design with many sparse cells it spends accuracy on constraints rounding
+    # cannot meet. Kept because it is the right thing after a post-stratification, and
+    # because it is what earlier versions did.
+    if (!is.null(step$formula)) {
+      dd <- data[active, , drop = FALSE]
+      # model.matrix() fails opaquely on a term that is constant among the active units
+      # -- "contrasts can be applied only to factors with 2 or more levels" names neither
+      # the step nor the variable. A domain filtered down to one level is an ordinary way
+      # to get there, so say what happened.
+      Z <- tryCatch(stats::model.matrix(step$formula, data = dd),
+        error = function(e)
+          stop(sprintf(paste0("`formula` could not be turned into a balancing matrix over ",
+                              "the %d active units: %s. A term that is constant among them ",
+                              "carries no constraint -- drop it from `formula`."),
+                       sum(active), conditionMessage(e)), call. = FALSE))
+      if (nrow(Z) != sum(active))
+        stop(sprintf(paste0("`formula` dropped %d of the %d active units: a variable in it ",
+                            "is NA there. Balanced rounding has to place every active unit, ",
+                            "so fill or drop those units before rounding."),
+                     sum(active) - nrow(Z), sum(active)), call. = FALSE)
+    } else {
+      cells <- .make_cells(data, step$by, length(w), active = active)[active]
+      cells <- droplevels(cells)
+      Z     <- stats::model.matrix(~ cells - 1)        # one indicator column per cell
+    }
     new_w[active] <- .wf_balanced_round(w[active], Z, step$digits)
     # honest quality number: worst preserved cell-total deviation (weight scale)
     tot_before <- colSums(w[active] * Z)
@@ -50,6 +92,34 @@ apply_step.step_round <- function(step, data, w) {
 }
 
 # --- Trimming (capping extreme weights) ------------------------------------
+# TRIM-01. A trim loop ends for one of two reasons: every weight is inside the band,
+# or `maxit` ran out. Only the first was ever reported. The second leaves weights
+# outside the band the step was asked to impose, and said nothing: the diagnostics
+# table prints the cap that was REQUESTED, the weights sit above it, and the report
+# certifies the step as applied. The iteration genuinely need not converge -- each
+# redistribution hands the trimmed mass to the units still inside, which can push one
+# of them back over the cap -- so exhausting `maxit` is an ordinary outcome that has to
+# be reported rather than silently accepted. A deliberate non-strict single pass is a
+# different thing and does not come through here.
+.wf_warn_trim_maxit <- function(wv, lo, hi, maxit, fn) {
+  lo <- rep_len(lo, length(wv)); hi <- rep_len(hi, length(wv))
+  over  <- which(is.finite(hi) & wv > hi + 1e-9)
+  under <- which(is.finite(lo) & wv < lo - 1e-9)
+  if (!length(over) && !length(under)) return(invisible(FALSE))
+  ex <- c(if (length(over))  (wv[over]  - hi[over])  / pmax(abs(hi[over]),  1e-12),
+          if (length(under)) (lo[under] - wv[under]) / pmax(abs(lo[under]), 1e-12))
+  warning(sprintf(paste0(
+    "%s stopped at maxit = %d with %d weight(s) still outside the band: %d above the ",
+    "cap, %d below the floor, the worst by %.3g%% of its own bound. Those weights are ",
+    "NOT trimmed, even though the step reports the cap it was asked for. Each pass ",
+    "hands the trimmed mass to the units still inside the band, which can push one of ",
+    "them back out, so the iteration is not guaranteed to converge. Raise `maxit`, ",
+    "widen the band, or trim within `by` groups so the mass has somewhere to go."),
+    fn, maxit, length(over) + length(under), length(over), length(under),
+    100 * max(ex)), call. = FALSE)
+  invisible(TRUE)
+}
+
 apply_step.step_trim <- function(step, data, w) {
   n      <- length(w)
   active <- .wf_active(w)
@@ -107,6 +177,7 @@ apply_step.step_trim <- function(step, data, w) {
   # Iterative cap + redistribution (Potter/NAEP style), group by group
   total_trimmed <- 0L
   it_global     <- 0L
+  maxed         <- FALSE            # a cell ran out of iterations (TRIM-01)
   unredist      <- 0                 # mass that could not be handed back (TRIM-02)
   sum_before    <- sum(new_w[active])
   for (g in levels(cells)) {
@@ -118,7 +189,7 @@ apply_step.step_trim <- function(step, data, w) {
       over        <- gi[new_w[gi] > cap[gi]]
       under_floor <- gi[new_w[gi] < floor_v[gi]]
       if (!length(over) && !length(under_floor)) break
-      if (it > step$maxit) break
+      if (it > step$maxit) { maxed <- TRUE; break }
 
       excess <- 0
       if (length(over)) {
@@ -148,6 +219,10 @@ apply_step.step_trim <- function(step, data, w) {
     }
     it_global <- max(it_global, it)
   }
+
+  if (maxed)
+    .wf_warn_trim_maxit(new_w[active], floor_v[active], cap[active], step$maxit,
+                        "step_trim()")
 
   deff_after <- design_effect(new_w)$deff
   sum_after  <- sum(new_w[active])
@@ -195,7 +270,183 @@ apply_step.step_trim <- function(step, data, w) {
 # totals of each model y prediction (model-assisted efficiency). `population` may
 # be a full frame (unweighted sums) or a weighted reference survey wrapped with
 # reference_sample() (weighted sums = estimated totals).
+# --- Model calibration partitioned by domain (MCAL-BY) ---------------------
+# `by` has the same meaning it has in step_calibrate(): the sample is PARTITIONED
+# and each domain is solved on its own. For model calibration that carries two
+# consequences at once, which is usually why it is wanted: every working model is
+# fitted on the units of its own domain and never sees the other domains, and the X totals
+# are reproduced exactly WITHIN each domain rather than only nationally.
+#
+# The rank ceiling then binds per domain, and harder: domain g must carry its
+# qA + K constraints on its own n_g units, and with cross-fitting each of its
+# folds must leave q usable rows behind. A domain too small for that gives a
+# singular system whose symptom is wild weights rather than an error, so it is
+# checked up front, by name, with the arithmetic shown.
+.wf_ref_subset <- function(pop, i) {
+  wr <- attr(pop, "wf_ref_weights"); rr <- attr(pop, "wf_ref_replicates")
+  cl <- class(pop)
+  out <- as.data.frame(pop)[i, , drop = FALSE]
+  rownames(out) <- NULL
+  if (!is.null(wr)) attr(out, "wf_ref_weights") <- wr[i]
+  if (!is.null(rr)) attr(out, "wf_ref_replicates") <- rr[i, , drop = FALSE]
+  class(out) <- cl
+  out
+}
+
+.mcal_domain_sizes <- function(step, dom, active, qA_hint = NULL) {
+  K <- length(step$models)
+  F <- if (is.null(step$crossfit)) 1L else as.integer(step$crossfit)
+  tab <- table(dom[active])
+  list(K = K, F = F, tab = tab)
+}
+
+# Is [X | mu_1 ... mu_K] full rank? Column-scale first, so the test measures
+# collinearity and not the disparity of units between an intercept, a dummy and a
+# continuous auxiliary. `where` names the domain when called from the `by` path.
+# A warning, not an error: a rank-deficient system still returns usable GREG
+# weights, and the user may knowingly have passed a linear working model.
+.wf_check_mcal_rank <- function(Z, q_A, model_names, where = NULL) {
+  if (is.null(dim(Z)) || nrow(Z) < 2L) return(invisible(TRUE))
+  s  <- apply(Z, 2L, function(cc) { v <- sqrt(mean(cc^2)); if (!is.finite(v) || v == 0) 1 else v })
+  Zs <- sweep(Z, 2L, s, "/")
+  r  <- tryCatch(qr(Zs)$rank, error = function(e) NA_integer_)
+  if (is.na(r) || r >= ncol(Zs)) return(invisible(TRUE))
+  # Which model columns are the redundant ones: regress each on the X block and
+  # report those whose residual is numerically zero.
+  Xs  <- Zs[, seq_len(q_A), drop = FALSE]
+  bad <- character(0)
+  for (k in seq_along(model_names)) {
+    y  <- Zs[, q_A + k]
+    fv <- tryCatch(stats::lm.fit(Xs, y)$residuals, error = function(e) NULL)
+    if (!is.null(fv) && max(abs(fv)) <= 1e-8 * max(1, max(abs(y)))) bad <- c(bad, model_names[k])
+  }
+  warning(sprintf(paste0("The model-calibration system [X | model predictions]%s has rank %d on %d ",
+                         "column(s)%s. A prediction that lies in the span of `x_formula` adds no ",
+                         "constraint: the system is solved by pseudo-inverse, the achieved totals ",
+                         "still match the targets exactly and `converged` is TRUE, but the step has ",
+                         "degraded to a plain GREG on `x_formula`. Use model predictors outside ",
+                         "`x_formula`, a non-linear engine, or `crossfit` to move the predictions ",
+                         "out of that span."),
+                 if (is.null(where)) "" else sprintf(" in domain '%s'", where),
+                 r, ncol(Zs),
+                 if (length(bad)) sprintf(" -- redundant model constraint(s): %s",
+                                          paste(bad, collapse = ", ")) else ""),
+          call. = FALSE)
+  invisible(FALSE)
+}
+
+.model_calibrate_by_domain <- function(step, data, w) {
+  byvar <- step$by
+  if (!is.character(byvar) || length(byvar) != 1L)
+    stop("`by` in step_model_calibration() must be a single column name.", call. = FALSE)
+  if (!byvar %in% names(data))
+    stop(sprintf("Domain column '%s' not found in the data.", byvar), call. = FALSE)
+  pop <- step$population
+  if (!byvar %in% names(pop))
+    stop(sprintf(paste0("Domain column '%s' not found in `population`. With `by`, the ",
+                        "calibration frame (or reference_sample) must carry the same domain ",
+                        "column as the sample, because each domain is calibrated to its own ",
+                        "totals."), byvar), call. = FALSE)
+  active <- .wf_active(w)
+  dom    <- as.character(data[[byvar]])
+  if (any(is.na(dom[active])))
+    stop(sprintf(paste0("Domain column '%s' has missing values (NA) in %d active unit(s). ",
+                        "Every unit must belong to a domain to be calibrated within one."),
+                 byvar, sum(is.na(dom[active]))), call. = FALSE)
+  pdom <- as.character(pop[[byvar]])
+  if (anyNA(pdom))
+    stop(sprintf("Domain column '%s' has missing values (NA) in `population`.", byvar),
+         call. = FALSE)
+  # Same split-cluster hazard as step_calibrate(by=): one solve per domain gives a
+  # straddling cluster two g factors. See .wf_assert_cluster_within_domain().
+  if (isTRUE(step$equal_within_cluster) && !is.null(step$cluster))
+    .wf_assert_cluster_within_domain(dom[active],
+                                     as.character(data[[step$cluster]])[active],
+                                     step$cluster, byvar)
+  # Per-domain totals: a national named vector would be applied to EVERY domain and
+  # the population would be counted once per domain. Same guard as step_calibrate().
+  if (!is.null(step$x_totals) && !is.list(step$x_totals) && !is.data.frame(step$x_totals))
+    stop(sprintf(paste0("`x_totals` given as a national named vector cannot be used with ",
+                        "`by = \"%s\"`: the same totals would be applied to every domain, so the ",
+                        "population would be counted once per domain. Give the per-domain form ",
+                        "(a data frame carrying the '%s' column), or leave `x_totals = NULL` so ",
+                        "the totals are taken from each domain's slice of `population`."),
+                 byvar, byvar), call. = FALSE)
+
+  doms <- unique(dom[active])
+  miss_pop <- setdiff(doms, unique(pdom))
+  if (length(miss_pop))
+    stop(sprintf(paste0("Domain(s) of '%s' present in the sample but absent from `population`: ",
+                        "%s. They have no totals to calibrate to."),
+                 byvar, paste(utils::head(miss_pop, 10L), collapse = ", ")), call. = FALSE)
+  miss_smp <- setdiff(unique(pdom), doms)
+  if (length(miss_smp))
+    warning(sprintf(paste0("`population` covers domain(s) of '%s' with no active unit in the ",
+                           "sample: %s. Their totals are dropped, so the calibrated weights do ",
+                           "not reach the intended population size."),
+                    byvar, paste(utils::head(miss_smp, 10L), collapse = ", ")), call. = FALSE)
+
+  # Rank feasibility, per domain, before anything is solved.
+  q  <- ncol(stats::model.matrix(step$x_formula, data = data[active, , drop = FALSE]))
+  mv <- unique(unlist(lapply(step$models, function(m) all.vars(m$formula[[3L]]))))
+  qm <- length(mv) + 1L                       # model-block predictors + intercept
+  K  <- length(step$models)
+  Fd <- if (is.null(step$crossfit)) 1L else as.integer(step$crossfit)
+  n_d <- table(dom[active])
+  need <- max(q + K, if (Fd > 1L) ceiling(Fd * qm / (Fd - 1)) else qm)
+  bad <- names(n_d)[n_d < need]
+  if (length(bad))
+    stop(sprintf(paste0("With `by = \"%s\"` each domain is calibrated on its own units, so it ",
+                        "must support the whole system by itself: %d constraint(s) (%d margin ",
+                        "column(s) + %d model(s))%s, i.e. at least %d active unit(s). ",
+                        "Domain(s) below that: %s. Collapse the small domains, drop a model, or ",
+                        "calibrate without `by`."),
+                 byvar, q + K, q, K,
+                 if (Fd > 1L) sprintf(", and with crossfit = %d each fold must leave %d rows to fit %d model coefficient(s)",
+                                      Fd, qm, qm) else "",
+                 need,
+                 paste(sprintf("%s (n = %d)", bad, as.integer(n_d[bad])), collapse = ", ")),
+         call. = FALSE)
+
+  new_w <- w
+  diags <- list(); conv <- logical(0); mu_rows <- list(); mu_idx <- integer(0)
+  for (d in doms) {
+    idx_d  <- which(dom == d)
+    step_d <- step
+    step_d$by         <- NULL                       # avoid recursion
+    step_d$.wf_domain <- d                          # so the rank warning names it
+    step_d$population <- .wf_ref_subset(pop, which(pdom == d))
+    if (!is.null(step$x_totals))
+      step_d$x_totals <- .split_totals_by_domain(step$x_totals, byvar, step$count, d)
+    res_d <- apply_step(step_d, data[idx_d, , drop = FALSE], w[idx_d])
+    new_w[idx_d] <- res_d$weights
+    dg <- res_d$diagnostics
+    conv <- c(conv, attr(dg, "converged"))
+    if (!is.null(dg) && nrow(dg) > 0L)
+      diags[[length(diags) + 1L]] <- cbind(domain = d, dg, stringsAsFactors = FALSE)
+    mc <- attr(res_d$weights, "wf_modelcal")
+    if (!is.null(mc)) { mu_rows[[length(mu_rows) + 1L]] <- mc$mu
+                        mu_idx <- c(mu_idx, idx_d[mc$active]) }
+  }
+  diag <- if (length(diags)) do.call(rbind, diags) else NULL
+  if (!is.null(diag)) {
+    rownames(diag) <- NULL
+    attr(diag, "note") <- sprintf(paste0("model-calibrated independently within '%s' (%d domains): ",
+                                         "each working model is fitted on its own domain and the X ",
+                                         "totals hold within it"), byvar, length(doms))
+    if (length(conv)) attr(diag, "converged") <- all(conv)
+  }
+  # The mu block a following step_trim_calibrated() reads, stitched back in row order.
+  if (length(mu_rows)) {
+    mu <- do.call(rbind, mu_rows)
+    o  <- order(mu_idx)
+    attr(new_w, "wf_modelcal") <- list(mu = mu[o, , drop = FALSE], active = sort(mu_idx))
+  }
+  list(weights = new_w, diagnostics = diag)
+}
+
 apply_step.step_model_calibration <- function(step, data, w) {
+  if (!is.null(step$by)) return(.model_calibrate_by_domain(step, data, w))
   active <- .wf_active(w)
   new_w  <- w
   d      <- w[active]
@@ -211,6 +462,20 @@ apply_step.step_model_calibration <- function(step, data, w) {
     ridx    <- attr(data, "wf_replicate_idx")
     if (!is.null(rep_mat) && !is.null(ridx))
       w_ref <- rep_mat[, ((ridx - 1L) %% ncol(rep_mat)) + 1L]
+  }
+
+  # Cluster validation up front: it depends only on the incoming weights, so an
+  # integrative recipe that cannot work should say so before K working models are
+  # fitted -- and before the rank check below, so a run with both problems reports
+  # the fatal one rather than a warning about a solve that is not going to happen.
+  cl <- NULL
+  if (isTRUE(step$equal_within_cluster)) {
+    if (!step$cluster %in% names(data))
+      stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
+    cl <- as.character(data[[step$cluster]])[active]
+    if (anyNA(cl))
+      stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
+    .wf_assert_uniform_within_cluster(d, cl, step$cluster)
   }
 
   # Consistency block: X auxiliaries
@@ -278,7 +543,15 @@ apply_step.step_model_calibration <- function(step, data, w) {
          "reach the model engine (an error, or silent surrogate imputation). Impute or drop ",
          "them first.", call. = FALSE)
 
-  # Model-assisted block: one prediction column per model y
+  # Model-assisted block: one prediction column per model y.
+  # ML-01: fix regression-vs-classification here, ONCE, on the whole sample, so that
+  # every cross-fitting fold predicts on the same scale. Deciding it inside the fold
+  # let a y value missing from one fold's training set flip that fold alone.
+  step$models <- lapply(step$models, function(m) {
+    yv <- sdata[[as.character(m$formula[[2L]])]]
+    m$classify <- .wf_is_class(yv, m$family)
+    m
+  })
   mu_cols <- list(); Tmu <- numeric(0)
   for (k in names(step$models)) {
     m <- step$models[[k]]
@@ -302,6 +575,16 @@ apply_step.step_model_calibration <- function(step, data, w) {
   colnames(Z) <- c(colnames(X), names(step$models))
   Tvec <- c(Tx, Tmu)
 
+  # Rank of [X | mu] BEFORE the solve. Model calibration is the one system built to
+  # be near-singular: a working model linear in a subset of `x_formula` puts mu in
+  # col(X), the model constraint then adds nothing, and .solve_calib() quietly falls
+  # back to the pseudo-inverse. Because the pseudo-inverse still solves the
+  # consistent system exactly, the diagnostics show target == achieved, the weights
+  # look ordinary and `converged` is TRUE -- the calibration silently degrades to a
+  # plain GREG. The only signal today is .solve_calib()'s generic warning, which
+  # blames collinear auxiliaries. Say what actually happened, and which constraint.
+  .wf_check_mcal_rank(Z, ncol(X), names(step$models), step$.wf_domain)
+
   # Calibration solver: closed-form linear GREG when unbounded (the default),
   # bounded Deville-Sarndal iteration when `bounds`/`calfun` are set. Shared with
   # step_calibrate() through .solve_calibration(). The defaults guard specs built
@@ -323,12 +606,7 @@ apply_step.step_model_calibration <- function(step, data, w) {
     # Integrative calibration (Lemaitre-Dufour 1987): household-MEAN replacement,
     # person-level calibration -> one weight per household (matches survey's
     # aggregate.stage / Vanderhoeft 2001; ReGenesees uses a different variant).
-    if (!step$cluster %in% names(data))
-      stop(sprintf("Cluster column '%s' not found in the data.", step$cluster))
-    cl <- as.character(data[[step$cluster]])[active]
-    if (anyNA(cl))
-      stop(sprintf("Cluster column '%s' has missing values (NA).", step$cluster))
-    .wf_assert_uniform_within_cluster(d, cl, step$cluster)
+    # cluster column, NA and within-cluster uniformity were validated up front
     hh   <- unique(cl)
     n_h  <- as.numeric(tapply(d, cl, length)[hh])   # persons per household
     Wsum <- as.numeric(tapply(d, cl, sum)[hh])      # total base weight in household
@@ -429,12 +707,19 @@ apply_step.step_assert <- function(step, data, w) {
 # shifts before redistribution) and variance(t) is proportional to the sum of
 # squared weights that remain after capping at t. The cutoff with the smallest
 # estimated MSE is returned. The grid runs over the upper tail of the weights.
-.potter_threshold <- function(wv, ngrid = 100L) {
+# TRIM-01 documents what this criterion assumes; see the Details section of
+# step_trim_weights(). In short: the two terms sit on different orders of n on
+# purpose (it is the MSE of a TOTAL, so the cutoff rises with the sample size for
+# the same weight distribution), and the bias charged is the bias of capping
+# WITHOUT redistribution while the step always redistributes -- so the criterion
+# overstates the bias and caps less than its own name promises. `kappa` prices bias
+# against variance; 1 is Potter's own weighting and leaves the cutoff unchanged.
+.potter_threshold <- function(wv, ngrid = 100L, kappa = 1) {
   qs    <- stats::quantile(wv, c(0.50, 0.999))
   grid  <- seq(as.numeric(qs[1]), as.numeric(qs[2]), length.out = ngrid)
   bias2 <- vapply(grid, function(t) sum(wv[wv > t] - t)^2, numeric(1))  # bias(t)^2
   varc  <- vapply(grid, function(t) sum(pmin(wv, t)^2),     numeric(1))  # dispersion remaining
-  mse   <- bias2 + varc
+  mse   <- kappa * bias2 + varc
   best  <- grid[which.min(mse)]
   attr(best, "grid")  <- grid;  attr(best, "bias2") <- bias2
   attr(best, "varc")  <- varc;  attr(best, "mse")   <- mse
@@ -452,7 +737,7 @@ apply_step.step_trim_weights <- function(step, data, w) {
   upper <- step$upper
   if (is.null(upper)) {
     if (identical(step$method, "potter")) {
-      upper   <- .potter_threshold(wv)               # MSE-optimal cutoff (Potter)
+      upper   <- .potter_threshold(wv, kappa = step$kappa %||% 1)   # MSE-optimal cutoff (Potter)
       pot_obj <- upper                               # keep grid/mse for the report
       upper   <- as.numeric(upper)
     } else {
@@ -483,7 +768,8 @@ apply_step.step_trim_weights <- function(step, data, w) {
                         "step_trim_weights(); with lower >= upper the trim has no valid ",
                         "interval."), format(lower), format(upper)), call. = FALSE)
 
-  it <- 0L
+  it    <- 0L
+  maxed <- FALSE                    # the loop ran out of iterations (TRIM-01)
   if (identical(step$redistribute, "uniform")) {
     # survey::trimWeights scheme: share the trimmed mass EQUALLY among the
     # untrimmed units, and never reuse a unit that has already been trimmed.
@@ -491,7 +777,8 @@ apply_step.step_trim_weights <- function(step, data, w) {
     repeat {
       it      <- it + 1L
       outside <- wv < lower | wv > upper
-      if (!any(outside) || it > step$maxit) break
+      if (!any(outside)) break
+      if (it > step$maxit) { maxed <- TRUE; break }
       wvnew     <- pmin(pmax(wv, lower), upper)
       trimmings <- wv - wvnew
       can_trim  <- !outside & !has_trimmed
@@ -510,7 +797,7 @@ apply_step.step_trim_weights <- function(step, data, w) {
       over  <- wv > upper
       under <- wv < lower
       if (!any(over) && !any(under)) break
-      if (it > step$maxit) break
+      if (it > step$maxit) { maxed <- TRUE; break }
       # net weight removed by clamping (high trimmed minus low raised)
       net <- sum(wv[over] - upper) - sum(lower - wv[under])
       wv[over]  <- upper
@@ -527,6 +814,8 @@ apply_step.step_trim_weights <- function(step, data, w) {
     }
   }
   new_w[active] <- wv
+
+  if (maxed) .wf_warn_trim_maxit(wv, lower, upper, step$maxit, "step_trim_weights()")
 
   # Mass that could not be handed back (no eligible receiving units) changes the weighted
   # total. The report emits a deferred alert, but prep(warn = FALSE) is the default, so warn

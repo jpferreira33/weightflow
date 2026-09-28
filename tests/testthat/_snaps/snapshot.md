@@ -60,17 +60,17 @@
       Kish deff: 1.056 -> 1.029   |   n_eff: 442 -> 262
       
       --- Step 2: calibration (raking) ---
-       variable category target achieved   n
-         region    North   1570     1570  78
-         region    South   1250     1250  72
-         region     East    927      927  52
-         region     West    748      748  68
-            sex        F   2311     2311 130
-            sex        M   2184     2184 140
+       variable category target achieved prev_total    factor   n
+         region    North   1570     1570  1487.5000 1.0554622  78
+         region    South   1250     1250  1210.0000 1.0330579  72
+         region     East    927      927   800.0000 1.1587500  52
+         region     West    748      748   873.3333 0.8564885  68
+            sex        F   2311     2311  2086.6667 1.1075080 130
+            sex        M   2184     2184  2284.1667 0.9561474 140
       (converged/iterated in 5 iterations)
       Kish deff: 1.029 -> 1.054   |   n_eff: 262 -> 256
       
-      R-indicator (representativity of response): 0.890  (on region, sex)
+      R-indicator (representativity of response): 0.938  (on region, sex)
 
 # design_effect() output is stable
 

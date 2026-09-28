@@ -1,19 +1,19 @@
 # Gross flows: transition_matrix() (point) and boot_transition() (per-cell bootstrap SE) on
 # the longitudinal weight of the wide file. Labour state is derived from the employment items.
 
-estado <- function(oc) ifelse(is.na(oc), "inactivo", ifelse(oc == 1, "ocupado", "desocupado"))
-LEV <- c("ocupado", "desocupado", "inactivo")
+estado <- function(oc) ifelse(is.na(oc), "inactivo", ifelse(oc == 1, "employed", "unemployed"))
+LEV <- c("employed", "unemployed", "inactivo")
 
 long_fit <- function() {
-  wide <- panel_merge(list(T1 = panel_ine[panel_ine$ola == 1, ],
-                           T2 = panel_ine[panel_ine$ola == 2, ]),
-                      by = c("id_hogar", "nper"), require = "all")
-  wide$estado_T1 <- estado(wide$ocupado_T1)
-  wide$estado_T2 <- estado(wide$ocupado_T2)
-  spec <- weighting_spec(wide, base_weights = w_base_T1) |>
+  wide <- panel_merge(list(T1 = panel_ine[panel_ine$wave == 1, ],
+                           T2 = panel_ine[panel_ine$wave == 2, ]),
+                      by = c("household_id", "person_no"), require = "all")
+  wide$estado_T1 <- estado(wide$employed_T1)
+  wide$estado_T2 <- estado(wide$employed_T2)
+  spec <- weighting_spec(wide, base_weights = pw_T1) |>
     step_panel_overlap(prob = 5 / 6) |>
-    step_drop_ineligible(disp_T2 == "OS") |>
-    step_attrition(respondent = disp_T2 == "R", method = "weighting_class", by = "region_T1")
+    step_drop_ineligible(disposition_T2 == "OS") |>
+    step_attrition(respondent = disposition_T2 == "R", method = "weighting_class", by = "region_T1")
   list(spec = spec, fit = prep(spec))
 }
 
@@ -36,9 +36,8 @@ test_that("counts and joint formats are consistent", {
 })
 
 test_that("boot_flows gives gross-flow TOTALS, net flows and margins, all with SE", {
-  skip_on_cran()
   L <- long_fit()
-  boot <- bootstrap_weights(L$spec, replicates = 80, strata = "estrato_T1",
+  boot <- bootstrap_weights(L$spec, replicates = 80, strata = "stratum_T1",
                             psu = "psu_T1", seed = 1, progress = FALSE)
   fl <- boot_flows(boot, "estado_T1", "estado_T2", states = LEV)
   expect_s3_class(fl, "weightflow_flows")
@@ -52,9 +51,8 @@ test_that("boot_flows gives gross-flow TOTALS, net flows and margins, all with S
 })
 
 test_that("boot_transition adds a per-cell standard error from the replicates", {
-  skip_on_cran()
   L <- long_fit()
-  boot <- bootstrap_weights(L$spec, replicates = 60, strata = "estrato_T1",
+  boot <- bootstrap_weights(L$spec, replicates = 60, strata = "stratum_T1",
                             psu = "psu_T1", seed = 1, progress = FALSE)
   bt <- boot_transition(boot, "estado_T1", "estado_T2", states = LEV, format = "row")
   expect_s3_class(bt, "weightflow_transition_boot")

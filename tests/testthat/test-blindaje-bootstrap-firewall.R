@@ -54,24 +54,24 @@ mk_ech <- function(n = 1500L, escala = 115, seed = 3) {
   psu <- rep(seq_len(60L), length.out = n)
   d <- data.frame(
     psu    = psu,
-    estrato = ((psu - 1L) %% 6L) + 1L,
-    sexo   = factor(sample(c("F", "M"), n, TRUE)),
-    edad   = factor(sample(c("18-29", "30-49", "50+"), n, TRUE, c(.3, .42, .28))),
+    stratum = ((psu - 1L) %% 6L) + 1L,
+    sex   = factor(sample(c("F", "M"), n, TRUE)),
+    age   = factor(sample(c("18-29", "30-49", "50+"), n, TRUE, c(.3, .42, .28))),
     pw     = stats::runif(n, 0.5, 2) * escala)          # peso de diseno de escala ECH
   # tasa de respuesta ALTA (~0.92): la clase mayoritaria es la que lleva los pesos grandes,
   # que es la configuracion en la que el arranque del IRLS se va a la frontera.
   d$resp <- stats::rbinom(n, 1, stats::plogis(
-    2.6 + 0.5 * (d$edad == "50+") - 0.4 * (d$sexo == "M")))
+    2.6 + 0.5 * (d$age == "50+") - 0.4 * (d$sex == "M")))
   d
 }
 
 rec_prop <- function(d) weighting_spec(d, base_weights = pw) |>
   step_nonresponse(respondent = resp, method = "propensity", num_classes = NULL,
-                   formula = ~ sexo + edad)
+                   formula = ~ sex + age)
 
 test_that("bootstrap_weights on the PROPENSITY path is frozen bit-for-bit (firewall 2)", {
   skip_on_cran()
-  b <- bootstrap_weights(rec_prop(mk_ech()), replicates = 25, strata = "estrato",
+  b <- bootstrap_weights(rec_prop(mk_ech()), replicates = 25, strata = "stratum",
                          psu = "psu", seed = 20260909, progress = FALSE)
   expect_snapshot_value(
     list(point   = round(b$weights, 8),
@@ -102,9 +102,9 @@ test_that("the engine's output does not depend on the SCALE of the base weights"
                collect_step_detail(f2)$.propensity, tolerance = 1e-6)
   expect_equal(f2$final_weight, 150 * f1$final_weight, tolerance = 1e-6)
 
-  b1 <- bootstrap_weights(rec_prop(d1), replicates = 20, strata = "estrato", psu = "psu",
+  b1 <- bootstrap_weights(rec_prop(d1), replicates = 20, strata = "stratum", psu = "psu",
                           seed = 77, progress = FALSE)
-  b2 <- bootstrap_weights(rec_prop(d2), replicates = 20, strata = "estrato", psu = "psu",
+  b2 <- bootstrap_weights(rec_prop(d2), replicates = 20, strata = "stratum", psu = "psu",
                           seed = 77, progress = FALSE)
   expect_equal(b2$replicates, 150 * b1$replicates, tolerance = 1e-6)
 })
@@ -113,7 +113,7 @@ test_that("no replicate leaves the scale of the point weights", {
   skip_on_cran()
   # El sintoma por el que NR-PROP-01 aparecio: una replica cuyo ajuste diverge se lleva un peso
   # de 1e6 veces el suyo, y eso viaja hasta un SE absurdo tres capas mas arriba.
-  b  <- bootstrap_weights(rec_prop(mk_ech()), replicates = 40, strata = "estrato",
+  b  <- bootstrap_weights(rec_prop(mk_ech()), replicates = 40, strata = "stratum",
                           psu = "psu", seed = 5, progress = FALSE)
   cs <- colSums(b$replicates)
   expect_true(all(cs > 0.6 * sum(b$weights) & cs < 1.6 * sum(b$weights)))

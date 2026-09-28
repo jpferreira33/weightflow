@@ -9,6 +9,7 @@ wave_jackknife(
   strata = NULL,
   psu = NULL,
   refit_steps = "all",
+  lonely_psu = c("certainty", "collapse"),
   progress = TRUE
 )
 }
@@ -21,7 +22,9 @@ data. The PSU id must be \strong{consistent across waves} (the same value = the 
 that consistency is what makes the coordination possible. \code{strata = NULL} treats the
 whole sample as one stratum; \code{psu = NULL} treats each row as its own PSU.}
 
-\item{refit_steps}{which recipe steps to re-run per replicate; see \code{\link[=wave_bootstrap]{wave_bootstrap()}}.
+\item{refit_steps}{which recipe steps to re-run per replicate; see \code{\link[=wave_bootstrap]{wave_bootstrap()}}.}
+
+\item{lonely_psu}{see \code{\link[=wave_bootstrap]{wave_bootstrap()}}.
 \code{"all"} (default) re-preps the whole recipe; \code{"calibration"} freezes the prefix and
 re-runs only calibration (StatCan LFS convention).}
 
@@ -47,13 +50,13 @@ the deleted PSU zeroed and its stratum mates reweighted by \eqn{n_h/(n_h-1)}; it
 does not modify \code{\link[=bootstrap_weights]{bootstrap_weights()}} or touch \code{R/variance.R}.
 }
 \examples{
-t1 <- subset(panel_ine, ola == 1 & disp == "R")
-t2 <- subset(panel_ine, ola == 2 & disp == "R")
+t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+t2 <- subset(panel_ine, wave == 2 & disposition == "R")
 wj <- wave_jackknife(
-  list(T1 = weighting_spec(t1, base_weights = w_base),
-       T2 = weighting_spec(t2, base_weights = w_base)),
-  strata = "estrato", psu = "psu", progress = FALSE)
-change_mean(wj, "desocupado")
+  list(T1 = weighting_spec(t1, base_weights = pw),
+       T2 = weighting_spec(t2, base_weights = pw)),
+  strata = "stratum", psu = "psu", progress = FALSE)
+change_mean(wj, "unemployed")
 }
 \seealso{
 \code{\link[=wave_bootstrap]{wave_bootstrap()}}, \code{\link[=change_estimate]{change_estimate()}}

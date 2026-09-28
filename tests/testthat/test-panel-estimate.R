@@ -13,7 +13,6 @@ strat_data <- function(seed = 1, npsu = 40, per = 6, psu_offset = 0, shift = 0) 
 }
 
 test_that("contrast c(-1, 1) reproduces change_estimate() exactly (bootstrap)", {
-  skip_on_cran()
   d1 <- strat_data(seed = 1)
   d2 <- d1; set.seed(4); d2$y <- d2$y + rnorm(nrow(d2), 0.5, 1)
   wb <- wave_bootstrap(list(T1 = weighting_spec(d1, base_weights = pw),
@@ -40,7 +39,6 @@ test_that("contrast c(-1, 1) reproduces change_estimate() exactly (jackknife)", 
 })
 
 test_that("annual average over overlapping waves has V > V(independent)", {
-  skip_on_cran()
   # four waves sharing the same PSUs, positively correlated levels
   base <- strat_data(seed = 1)
   mk <- function(shift, sd) { d <- base; set.seed(100 + shift * 10)
@@ -74,7 +72,6 @@ test_that("named contrast is matched to wave labels", {
 # total wrappers: point matches the direct weighted sum, SE finite, and the exact-
 # multinomial default keeps a level_total's replicate weights summing to the point total.
 test_that("level_total / change_total / panel_total corren y coinciden con la suma directa", {
-  skip_on_cran()
   d1 <- strat_data(seed = 1)
   d2 <- d1; set.seed(4); d2$y <- d2$y + rnorm(nrow(d2), 0.5, 1)
   wb <- wave_bootstrap(list(T1 = weighting_spec(d1, base_weights = pw),

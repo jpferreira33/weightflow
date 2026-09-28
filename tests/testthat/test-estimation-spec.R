@@ -19,7 +19,6 @@ boot2 <- function(seed1 = 1, seed2 = 2, ...) {
 }
 
 test_that("step_estimate agrees with the engine on the overall change", {
-  skip_on_cran()
   wb  <- boot2()
   res <- collect_estimates(wb |> step_estimate(mean(y), over = "change"))
   eng <- change_mean(wb, "y")
@@ -30,7 +29,6 @@ test_that("step_estimate agrees with the engine on the overall change", {
 })
 
 test_that("step_domain disaggregates by the domain cross", {
-  skip_on_cran()
   wb  <- boot2()
   res <- collect_estimates(wb |> step_domain(region) |> step_estimate(mean(y), over = "change"))
   expect_true(all(c("N", "S") %in% res$table$region))
@@ -43,7 +41,6 @@ test_that("step_domain disaggregates by the domain cross", {
 })
 
 test_that("over = level / relative / contrast all run", {
-  skip_on_cran()
   wb <- boot2()
   lv <- collect_estimates(wb |> step_estimate(mean(y), over = "level"))
   expect_equal(lv$table$estimate, level_mean(wb, "y")$estimate)
@@ -54,7 +51,6 @@ test_that("over = level / relative / contrast all run", {
 })
 
 test_that("the statistic DSL covers mean/total/prop/ratio/quantile", {
-  skip_on_cran()
   wb <- boot2()
   expect_equal(
     collect_estimates(wb |> step_estimate(total(y), over = "level"))$table$estimate,
@@ -68,7 +64,6 @@ test_that("the statistic DSL covers mean/total/prop/ratio/quantile", {
 })
 
 test_that("several estimands stack in one pipeline", {
-  skip_on_cran()
   wb  <- boot2()
   res <- collect_estimates(wb |>
     step_estimate(mean(emp), over = "change", label = "empleo") |>
@@ -82,7 +77,6 @@ test_that("step_transition on a coordinated object points to the longitudinal fl
 })
 
 test_that("step_filter masks a subpopulation and matches the equivalent function(w, d)", {
-  skip_on_cran()
   wb <- boot2()
   res_f <- collect_estimates(wb |> step_filter(region == "N") |>
                                step_estimate(mean(y), over = "change"))
@@ -98,7 +92,6 @@ test_that("step_filter masks a subpopulation and matches the equivalent function
 })
 
 test_that("step_filter stacks (AND) and composes with step_domain", {
-  skip_on_cran()
   wb <- boot2()
   res <- collect_estimates(wb |> step_filter(emp == 1) |> step_domain(region) |>
                              step_estimate(mean(y), over = "level"))
@@ -118,7 +111,6 @@ test_that("step_filter fails fast on a nonexistent column", {
 })
 
 test_that("step_domain requires the column in EVERY wave, not the union (EST-03)", {
-  skip_on_cran()
   d1 <- mkwave(1); d2 <- mkwave(2); d2$region <- NULL     # region only in wave T1
   wb <- wave_bootstrap(list(T1 = weighting_spec(d1, base_weights = pw),
                             T2 = weighting_spec(d2, base_weights = pw)),

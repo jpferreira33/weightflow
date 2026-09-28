@@ -5,20 +5,20 @@
 # styling: the row-aligned `detail` frame, the anchors, and the translation.
 
 mk_ola <- function(t) {
-  d <- panel_ine[panel_ine$ola == t & panel_ine$disp == "R", ]
-  d$sexo <- factor(d$sexo)
+  d <- panel_ine[panel_ine$wave == t & panel_ine$disposition == "R", ]
+  d$sex <- factor(d$sex)
   d
 }
-xtot <- function(d) colSums(d$w_base * stats::model.matrix(~ sexo, data = d))
+xtot <- function(d) colSums(d$pw * stats::model.matrix(~ sex, data = d))
 
 cre_pair <- function() {
   m1 <- mk_ola(1); m2 <- mk_ola(2)
-  s1 <- weighting_spec(m1, base_weights = w_base) |>
-    step_cre(previous = NULL, status = condicion, formula = ~ sexo,
+  s1 <- weighting_spec(m1, base_weights = pw) |>
+    step_cre(previous = NULL, status = lf_status, formula = ~ sex,
              totals = xtot(m1), status_ref = "inact")
-  s2 <- weighting_spec(m2, base_weights = w_base) |>
-    step_cre(previous = prep(s1), status = condicion, composite = list(NULL, "sexo"),
-             id_unit = c("id_hogar", "nper"), formula = ~ sexo, totals = xtot(m2),
+  s2 <- weighting_spec(m2, base_weights = pw) |>
+    step_cre(previous = prep(s1), rescale_previous = TRUE, status = lf_status, composite = list(NULL, "sex"),
+             id_unit = c("household_id", "person_no"), formula = ~ sex, totals = xtot(m2),
              alpha = 2/3, status_ref = "inact")
   list(s1 = s1, s2 = s2)
 }
@@ -26,10 +26,10 @@ cre_pair <- function() {
 test_that("collect_estimates() carries a detail frame aligned with the tidy table", {
   skip_on_cran()
   sp <- cre_pair()
-  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "estrato",
+  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "stratum",
                        psu = "psu", seed = 1, refit_steps = "calibration", progress = FALSE)
   res <- collect_estimates(wb |> step_domain(region) |>
-                             step_estimate(mean(desocupado), over = "change"))
+                             step_estimate(mean(unemployed), over = "change"))
   # the documented tidy shape is unchanged
   expect_true(all(c("estimand", "over", "type", "estimate", "se",
                     "ci_lower", "ci_upper", "rho") %in% names(res$table)))
@@ -45,22 +45,22 @@ test_that("collect_estimates() carries a detail frame aligned with the tidy tabl
 test_that("a step_filter() is recorded on the result so the report can name the subpopulation", {
   skip_on_cran()
   sp <- cre_pair()
-  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "estrato",
+  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "stratum",
                        psu = "psu", seed = 1, refit_steps = "calibration", progress = FALSE)
-  res <- collect_estimates(wb |> step_filter(edad >= 25 & edad <= 54) |>
-                             step_estimate(mean(desocupado), over = "change"))
-  expect_equal(res$filters, "edad >= 25 & edad <= 54")
+  res <- collect_estimates(wb |> step_filter(age >= 25 & age <= 54) |>
+                             step_estimate(mean(unemployed), over = "change"))
+  expect_equal(res$filters, "age >= 25 & age <= 54")
   expect_equal(res$replicates, 20L)
-  plain <- collect_estimates(wb |> step_estimate(mean(desocupado), over = "change"))
+  plain <- collect_estimates(wb |> step_estimate(mean(unemployed), over = "change"))
   expect_length(plain$filters, 0L)
 })
 
 test_that("change_estimate() reports the two wave levels behind the change", {
   skip_on_cran()
   sp <- cre_pair()
-  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "estrato",
+  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "stratum",
                        psu = "psu", seed = 1, refit_steps = "calibration", progress = FALSE)
-  ch <- change_mean(wb, "desocupado")
+  ch <- change_mean(wb, "unemployed")
   expect_length(ch$point, 2L)
   expect_named(ch$point, c("T1", "T2"))
   expect_equal(unname(ch$point[2] - ch$point[1]), ch$estimate)
@@ -69,10 +69,10 @@ test_that("change_estimate() reports the two wave levels behind the change", {
 test_that("report_panel(estimates=) writes the estimates section", {
   skip_on_cran()
   sp <- cre_pair()
-  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "estrato",
+  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "stratum",
                        psu = "psu", seed = 1, refit_steps = "calibration", progress = FALSE)
   res <- collect_estimates(wb |> step_domain(region) |>
-                             step_estimate(mean(desocupado), over = "change",
+                             step_estimate(mean(unemployed), over = "change",
                                            label = "desempleo"))
   f <- tempfile(fileext = ".html")
   report_panel(coordinated = wb, estimates = list("By region" = res),
@@ -90,10 +90,10 @@ test_that("report_panel(estimates=) writes the estimates section", {
 test_that("report_panel() accepts an uncollected pipeline and rejects a wrong class", {
   skip_on_cran()
   sp <- cre_pair()
-  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "estrato",
+  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "stratum",
                        psu = "psu", seed = 1, refit_steps = "calibration", progress = FALSE)
   f <- tempfile(fileext = ".html")
-  expect_silent(report_panel(estimates = wb |> step_estimate(mean(desocupado), over = "change"),
+  expect_silent(report_panel(estimates = wb |> step_estimate(mean(unemployed), over = "change"),
                              file = f, open = FALSE))
   expect_true(file.exists(f))
   # a weighting fit is not an estimation result: fail loudly, do not render an empty card
@@ -121,10 +121,10 @@ test_that("the composite block is parsed into its own card and left out of the f
 test_that("the estimates section is fully translated", {
   skip_on_cran()
   sp <- cre_pair()
-  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "estrato",
+  wb <- wave_bootstrap(list(T1 = sp$s1, T2 = sp$s2), replicates = 20, strata = "stratum",
                        psu = "psu", seed = 1, refit_steps = "calibration", progress = FALSE)
-  res <- collect_estimates(wb |> step_filter(edad >= 25) |> step_domain(region) |>
-                             step_estimate(mean(desocupado), over = "change"))
+  res <- collect_estimates(wb |> step_filter(age >= 25) |> step_domain(region) |>
+                             step_estimate(mean(unemployed), over = "change"))
   f <- tempfile(fileext = ".html")
   report_panel(longitudinal = prep(sp$s2), coordinated = wb, estimates = res,
                file = f, open = FALSE, lang = "es")

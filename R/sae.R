@@ -60,10 +60,24 @@ as_sae_input <- function(object, variable, by, type = c("mean", "total"),
       cv_breaks[1] >= cv_breaks[2] || any(cv_breaks < 0))
     stop("`cv_breaks` must be two increasing non-negative CV cut-points.", call. = FALSE)
 
+  # SAE-01. paste() turns NA into the literal string "NA", so units with a missing
+  # domain used to form a phantom area indistinguishable from a real one -- and it
+  # went straight into a Fay-Herriot model. domain_summary(), on the same data,
+  # calls it "(missing)". Drop those units from the SAE input instead (a domain that
+  # is not a domain has no small area to borrow strength for) and say how many left.
+  dom_na <- Reduce(`|`, lapply(by, function(b) is.na(data[[b]])))
   dom  <- do.call(paste, c(lapply(by, function(b) as.character(data[[b]])), sep = ":"))
   w0   <- object$weights
   x    <- data[[variable]]
-  keep <- is.finite(w0) & w0 != 0 & !is.na(x)
+  keep <- is.finite(w0) & w0 != 0 & !is.na(x) & !dom_na
+  if (any(dom_na & is.finite(w0) & w0 != 0 & !is.na(x))) {
+    lost <- which(dom_na & is.finite(w0) & w0 != 0 & !is.na(x))
+    warning(sprintf(paste0("%d active unit(s) (%.1f%% of the weight) have a missing value in ",
+                           "%s and were excluded: they are not a small area. The domains below ",
+                           "therefore do not add up to the overall figure."),
+                    length(lost), 100 * sum(w0[lost]) / sum(w0[is.finite(w0) & w0 != 0]),
+                    paste(sprintf("`%s`", by), collapse = "/")), call. = FALSE)
+  }
   labs <- sort(unique(dom[keep]))
   if (!length(labs)) stop("No active units with an observed `variable` in any domain.", call. = FALSE)
 
@@ -95,6 +109,14 @@ as_sae_input <- function(object, variable, by, type = c("mean", "total"),
   # so its replicate CV -- and any "publishable" rating derived from it -- is not
   # trustworthy; force such domains to "not publishable" regardless of the CV.
   out$rating[out$n < 2L] <- "not publishable"
+  # SAE-02. The CV gate passes a DEGENERATE domain: se == 0 gives cv == 0, the best
+  # possible score, and a zero-width interval was rated "publishable". That is the
+  # ordinary shape of a rare binary in a small area -- exactly what SAE is for: every
+  # replicate returns the same value because there is no variation to resample, not
+  # because the estimate is precise. The mirror case, estimate == 0, leaves cv NA and
+  # so left `rating` NA, unrated and unremarked. Both are "not publishable".
+  degenerate <- is.finite(out$se) & out$se == 0
+  out$rating[degenerate | is.na(out$rating)] <- "not publishable"
   out <- out[c("domain", "n", "n_eff", "estimate", "se", "cv",
                "ci_lower", "ci_upper", "rating")]
   rownames(out) <- NULL

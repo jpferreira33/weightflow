@@ -23,8 +23,8 @@ without a public rotation-group variable (e.g. the Chilean ENE) cannot use this
 -- derive the probability another way and pass it to \code{step_panel_overlap()}.
 }
 \examples{
-pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                   rotation_group = "grupo_rotacion")
+pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                   rotation_group = "rotation_group")
 panel_pr(pd)                    # over all waves
 panel_pr(pd, c("1", "2"))       # combining waves 1 and 2
 }

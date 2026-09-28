@@ -13,6 +13,7 @@ wave_bootstrap(
   seed = NULL,
   refit_steps = "all",
   resample = c("multinom", "binom"),
+  lonely_psu = c("certainty", "collapse"),
   progress = TRUE
 )
 }
@@ -51,6 +52,14 @@ estimating totals. Both
 share the per-PSU uniforms; the multinomial coordinates across rotating waves exactly
 when the PSU sets match (identical or disjoint waves) and approximately otherwise.}
 
+\item{lonely_psu}{how to treat a stratum with a single PSU in any wave. Such a
+stratum contributes no variance under either engine (the lone PSU cannot be
+resampled away or deleted), so the change SE is understated -- with every
+stratum lonely it is exactly 0. \code{"certainty"} (default) leaves them alone and
+warns; \code{"collapse"} merges them into a pseudo-stratum, giving a conservative
+variance. The collapse map is built over all the waves and applied identically to
+each, so the replicate pairing that carries the overlap covariance is preserved.}
+
 \item{progress}{show a progress message per wave.}
 }
 \value{
@@ -81,13 +90,13 @@ the recursive estimator. (Assumes each \code{step_cre}'s \code{previous} is the 
 preceding wave in \code{specs}; otherwise that step keeps its fixed point \code{previous}.)
 }
 \examples{
-t1 <- subset(panel_ine, ola == 1 & disp == "R")
-t2 <- subset(panel_ine, ola == 2 & disp == "R")
+t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+t2 <- subset(panel_ine, wave == 2 & disposition == "R")
 wb <- wave_bootstrap(
-  list(T1 = weighting_spec(t1, base_weights = w_base),
-       T2 = weighting_spec(t2, base_weights = w_base)),
-  replicates = 200, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
-change_estimate(wb, function(w, d) weighted.mean(d$desocupado, w, na.rm = TRUE))
+  list(T1 = weighting_spec(t1, base_weights = pw),
+       T2 = weighting_spec(t2, base_weights = pw)),
+  replicates = 200, strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
+change_estimate(wb, function(w, d) weighted.mean(d$unemployed, w, na.rm = TRUE))
 }
 \seealso{
 \code{\link[=change_estimate]{change_estimate()}}, \code{\link[=bootstrap_weights]{bootstrap_weights()}}, \code{\link[=panel_design]{panel_design()}}

@@ -171,9 +171,15 @@ max(tapply(w[w > 0], sample_survey$household_id[w > 0],
 
 The X totals and the model-prediction total are still reproduced; the only added
 requirement is that the incoming weight be uniform within each cluster (as it is
-after the usual design and adjustment steps). The model-calibration solve is
-unbounded linear, so `calfun`/`bounds` do not apply here, but the one-weight-per-
-household behaviour is identical to that of `step_calibrate()`.
+after the usual design and adjustment steps). The one-weight-per-household
+behaviour is identical to that of `step_calibrate()`; `by` partitions the sample
+the same way too, and a cluster that spans two domains is refused, since each
+domain is solved on its own units and its members would otherwise receive
+different calibration factors.
+
+The solve defaults to unbounded linear, but `calfun` and `bounds` are available
+here as they are in `step_calibrate()` (since 1.3.0): the same truncated linear,
+exponential and logit distances, with the same meaning.
 
 ## Relationship to the literature
 

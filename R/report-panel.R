@@ -135,7 +135,7 @@
   if (have) { rows$cohort <- unname(p$pr_lag[ls])
               nm <- c(nm, .t("cohort continuity", "continuidad de cohortes", lang)) }
   m <- do.call(rbind, rows)
-  dimnames(m) <- list(nm, paste0("L", ls))
+  dimnames(m) <- list(nm, paste0(.t("L", "R", lang), ls))
   paste0("<div class='viz-h'>",
          .t("Overlap profile by lag: what the rotation pattern implies against what the data shows",
             "Perfil de traslape por rezago: lo que implica el esquema contra lo que muestran los datos",
@@ -156,7 +156,7 @@
     .metric(.t("Rotation group", "Grupo de rotaci&oacute;n", lang),
             if (is.null(p$rotation_group)) .t("(none)", "(ninguno)", lang) else .html_escape(p$rotation_group)),
     if (!all(is.na(p$pr_adjacent)))
-      .metric(.t("Pr(panel selection)", "Pr(selecci&oacute;n paneles)", lang),
+      .metric(.t("Pr(panel selection)", "Pr(selecci&oacute;n del panel)", lang),
               paste(sprintf("%.3f", p$pr_adjacent), collapse = ", ")) else "",
     if (!is.null(p$pattern_cycle) && !is.na(p$pattern_cycle))
       .metric(.t("Pattern", "Esquema", lang),
@@ -257,6 +257,18 @@
              "Estimaci&oacute;n de la varianza por replicaci&oacute;n (coordinada)", lang), body, note)
 }
 
+# The `method =` of step_attrition() as a reader-facing phrase. The argument value
+# itself stays verbatim in the "Requested" table (the report must match the code);
+# this is the narrative card, where a bare "propensity" reads as untranslated.
+.attrition_method_label <- function(m, lang = "en") {
+  if (!identical(lang, "es")) return(m)
+  map <- c(propensity      = "propensi&oacute;n",
+           rhg             = "grupos de homogeneidad de respuesta",
+           weighting_class = "clases de ponderaci&oacute;n",
+           calibration     = "calibraci&oacute;n")
+  ifelse(m %in% names(map), map[m], m)
+}
+
 # ---- Card 3: attrition / retention (a prepped longitudinal spec) ----
 .attrition_card <- function(fit, lang = "en") {
   if (is.null(fit) || !inherits(fit, "prepped_weighting_spec")) return("")
@@ -269,7 +281,7 @@
             sprintf("%s (%.0f%%)", .fmt_num(nret, "count"), 100 * nret / max(n0, 1))),
     if (length(amet))
       .metric(.t("Attrition method", "M&eacute;todo de atrici&oacute;n", lang),
-              paste(amet, collapse = ", ")) else "")
+              paste(.attrition_method_label(amet, lang), collapse = ", ")) else "")
   viz <- .wf_svg_bars2(c(1, nret / max(n0, 1)), c("p-node", "p1"),
                        c(.t("Frame", "Marco", lang), .t("Retained", "Retenidas", lang)),
                        c(.fmt_num(n0, "count"),
@@ -289,8 +301,11 @@
   boot <- inherits(tr, "weightflow_transition_boot")
   m  <- if (boot) tr$estimate else tr$matrix
   se <- if (boot) tr$se else NULL
-  fmt <- switch(tr$format, row = "P(to | from)", col = "P(from | to)",
-                joint = "P(from, to)", counts = .t("weighted counts", "conteos ponderados", lang))
+  fmt <- switch(tr$format,
+                row    = .t("P(to | from)",   "P(destino | origen)", lang),
+                col    = .t("P(from | to)",   "P(origen | destino)", lang),
+                joint  = .t("P(from, to)",    "P(origen, destino)", lang),
+                counts = .t("weighted counts", "conteos ponderados", lang))
   heat   <- .wf_heat_table(m, se = se, digits = 3,
                            rowlab = sprintf("%s \\ %s", .html_escape(tr$from), .html_escape(tr$to)))
   note   <- sprintf("<p class='muted'>%s%s</p>", fmt,
@@ -398,15 +413,22 @@ report_panel <- function(design = NULL, change = NULL, longitudinal = NULL,
                                  .t("Estimates", "Estimaciones", lang)))
     html <- sub("<a href='#pipeline'>", paste0(toc, "<a href='#pipeline'>"),
                 html, fixed = TRUE)
-    # the document is a panel report, not a plain weighting report
-    html <- sub(.t("survey weighting report", "reporte de ponderaci&oacute;n", lang),
-                .t("panel / longitudinal report", "reporte de panel / longitudinal", lang),
-                html, fixed = TRUE)
-    html <- sub(sprintf("<title>weightflow &mdash; %s</title>",
-                        .t("survey weighting report", "reporte de ponderaci&oacute;n", lang)),
-                sprintf("<title>weightflow &mdash; %s</title>",
-                        .t("panel / longitudinal report", "reporte de panel / longitudinal", lang)),
-                html, fixed = TRUE)
+    # The document is a panel report, not a plain weighting report. Both the <title>
+    # and the masthead <h1> carry the phrase, so this has to replace EVERY occurrence
+    # -- the previous pair of sub() calls each replaced the first one, and the first
+    # one is inside <title>: the second sub() then looked for a <title> that no
+    # longer existed, and every panel report went out with an <h1> reading "survey
+    # weighting report". A silent no-op is the failure mode of string surgery, so
+    # count the hits and say so if the page ever stops matching. (RP-01)
+    old <- .t("survey weighting report", "reporte de ponderaci&oacute;n", lang)
+    new <- .t("panel / longitudinal report", "reporte de panel / longitudinal", lang)
+    n_hit <- lengths(regmatches(html, gregexpr(old, html, fixed = TRUE)))
+    if (n_hit < 2L)
+      warning(sprintf(paste0("The panel report could not be retitled (%d occurrence(s) of the ",
+                             "weighting-report title found, expected the <title> and the <h1>). ",
+                             "The page is still valid; its heading may read 'survey weighting ",
+                             "report'."), n_hit), call. = FALSE)
+    html <- gsub(old, new, html, fixed = TRUE)
   } else {
     html <- paste0(
       sprintf("<!DOCTYPE html><html lang='%s'><head><meta charset='utf-8'>", lang),

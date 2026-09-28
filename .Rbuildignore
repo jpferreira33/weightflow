@@ -24,3 +24,11 @@
 ^CRAN-SUBMISSION$
 ^RELEASE-CHECKLIST\.md$
 ^Claude outputs$
+^tests/testthat/test-pseudoweight-methods\.R$
+^AUDITORIA.*\.md$
+^ROADMAP_NONPROB\.md$
+^VALIDACION_CRUZADA_NONPROB\.md$
+^docs_alumno$
+^guia_ponderacion$
+^logs$
+^results$

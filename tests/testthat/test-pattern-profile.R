@@ -75,17 +75,17 @@ test_that("PN-01 se evalua sobre el perfil completo, no solo sobre el rezago 1",
   # este diseno; el perfil completo si.
   W <- 5L
   # enlace sano: las unidades vuelven en el rezago 4 (olas 1 y 5), como manda el patron
-  bien <- rbind(data.frame(id = 1:200, ola = 1L), data.frame(id = 201:400, ola = 2L),
-                data.frame(id = 401:600, ola = 3L), data.frame(id = 601:800, ola = 4L),
-                data.frame(id = 1:200,   ola = 5L))
-  al_ok <- attr(panel_design(bien, unit = "id", wave = "ola",
+  bien <- rbind(data.frame(id = 1:200, wave = 1L), data.frame(id = 201:400, wave = 2L),
+                data.frame(id = 401:600, wave = 3L), data.frame(id = 601:800, wave = 4L),
+                data.frame(id = 1:200,   wave = 5L))
+  al_ok <- attr(panel_design(bien, unit = "id", wave = "wave",
                              pattern = "1-(3)-1-(3)-1-(3)-1"), "wf_panel")$alerts
   expect_false(any(grepl("PN-01", al_ok)))
 
   # clave rota: nadie vuelve en el rezago 4 (ids todos distintos)
   roto <- do.call(rbind, lapply(seq_len(W), function(k)
-    data.frame(id = (k - 1L) * 1000L + 1:200, ola = k)))
-  al_bad <- attr(panel_design(roto, unit = "id", wave = "ola",
+    data.frame(id = (k - 1L) * 1000L + 1:200, wave = k)))
+  al_bad <- attr(panel_design(roto, unit = "id", wave = "wave",
                               pattern = "1-(3)-1-(3)-1-(3)-1"), "wf_panel")$alerts
   expect_true(any(grepl("PN-01", al_bad)))
   expect_true(any(grepl("lag 4", al_bad)))   # reporta el rezago culpable, que no es el 1
@@ -94,26 +94,26 @@ test_that("PN-01 se evalua sobre el perfil completo, no solo sobre el rezago 1",
 test_that("PN-07 marca el solape que el patron prohibe, y solo con un ciclo observado", {
   skip_on_cran()
   # ciclo 6, ventana de 8 olas: la contradiccion es verificable
-  d8 <- do.call(rbind, lapply(1:8, function(k) data.frame(id = 1:200, ola = k, g = rep(1:4, 50))))
-  a8 <- attr(panel_design(d8, unit = "id", wave = "ola", rotation_group = "g",
+  d8 <- do.call(rbind, lapply(1:8, function(k) data.frame(id = 1:200, wave = k, g = rep(1:4, 50))))
+  a8 <- attr(panel_design(d8, unit = "id", wave = "wave", rotation_group = "g",
                           pattern = "2-2-2"), "wf_panel")$alerts
   expect_true(any(grepl("PN-07", a8)))
   expect_true(any(grepl("lag 2", a8)))
   # la misma contradiccion con una ventana MAS CORTA que el ciclo no se puede afirmar: el perfil
   # describe un regimen estacionario al que el panel no llego. panel_cl es ese caso.
-  d3 <- do.call(rbind, lapply(1:3, function(k) data.frame(id = 1:200, ola = k, g = rep(1:4, 50))))
-  a3 <- attr(panel_design(d3, unit = "id", wave = "ola", rotation_group = "g",
+  d3 <- do.call(rbind, lapply(1:3, function(k) data.frame(id = 1:200, wave = k, g = rep(1:4, 50))))
+  a3 <- attr(panel_design(d3, unit = "id", wave = "wave", rotation_group = "g",
                           pattern = "2-2-2"), "wf_panel")$alerts
   expect_false(any(grepl("PN-07", a3)))
   expect_false(any(grepl("PN-07", attr(panel_design(
-    panel_cl, unit = c("id_hogar", "nper"), wave = "ola",
-    rotation_group = "grupo_rotacion", pattern = "2-2-2"), "wf_panel")$alerts)))
+    panel_cl, unit = c("household_id", "person_no"), wave = "wave",
+    rotation_group = "rotation_group", pattern = "2-2-2"), "wf_panel")$alerts)))
 })
 
 test_that("el objeto expone el perfil y los rezagos utiles", {
   skip_on_cran()
-  p <- attr(panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                         rotation_group = "grupo_rotacion", pattern = "6"), "wf_panel")
+  p <- attr(panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                         rotation_group = "rotation_group", pattern = "6"), "wf_panel")
   expect_equal(unname(p$overlap_profile[1:5]), c(5, 4, 3, 2, 1) / 6)
   expect_equal(p$pattern_n_in, 6L)
   expect_equal(p$pattern_cycle, 6L)

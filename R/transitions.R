@@ -5,6 +5,49 @@
 # dependency. bootstrap_estimate() already handles a vector-valued statistic (one entry per
 # from x to cell), so the per-cell SE comes for free.
 
+# --- input guards (TR-01) ---------------------------------------------------
+# A flow table is read as "who moved where", so both ways of getting it silently
+# wrong are expensive: a mistyped column name used to give a matrix of ZEROS with no
+# error (data[["typo"]] is NULL, every cell empty), and rows whose state is NA -- or
+# outside an explicit `states =` -- were dropped without being counted, so `joint`
+# renormalized over the survivors and the loss was invisible. In a panel the NA share
+# IS the attrition, i.e. exactly the number a reader needs to see.
+
+.wf_flow_cols <- function(d, from, to) {
+  for (nm in c(from = from, to = to)) {
+    if (!is.character(nm) || length(nm) != 1L || is.na(nm))
+      stop("`from` and `to` must each be a single column name.", call. = FALSE)
+  }
+  miss <- setdiff(c(from, to), names(d))
+  if (length(miss))
+    stop(sprintf("Column(s) %s are not in the data. Available: %s.",
+                 paste(sprintf("'%s'", miss), collapse = ", "),
+                 paste(utils::head(names(d), 25L), collapse = ", ")), call. = FALSE)
+  invisible(TRUE)
+}
+
+# How much weight the table does NOT cover, and why. Called once at the user-facing
+# entry points, never per replicate.
+.wf_flow_coverage <- function(fr, to_, w, lev) {
+  w <- as.numeric(w); w[!is.finite(w)] <- 0
+  tot <- sum(abs(w))
+  if (!isTRUE(tot > 0)) return(invisible(NULL))
+  na_state  <- is.na(fr) | is.na(to_)
+  off_lev   <- !na_state & (!as.character(fr) %in% lev | !as.character(to_) %in% lev)
+  lost      <- sum(abs(w[na_state | off_lev]))
+  if (lost <= 0) return(invisible(NULL))
+  parts <- c(if (any(na_state)) sprintf("%.1f%% with a missing state",
+                                        100 * sum(abs(w[na_state])) / tot),
+             if (any(off_lev))  sprintf("%.1f%% in a state outside `states`",
+                                        100 * sum(abs(w[off_lev])) / tot))
+  warning(sprintf(paste0("The flow table covers %.1f%% of the weight: %s. Those units are not ",
+                         "in any cell, so the conditional and joint formats renormalize over ",
+                         "the rest. In a panel that share is usually the attrition -- decide ",
+                         "it explicitly (an 'out of scope' state, or step_drop_ineligible())."),
+                  100 * (1 - lost / tot), paste(parts, collapse = " and ")), call. = FALSE)
+  invisible(NULL)
+}
+
 # weighted from x to table, in the requested format, over fixed state levels `lev`.
 .wf_xtab <- function(from, to, w, lev, format) {
   f  <- factor(as.character(from), levels = lev)
@@ -16,12 +59,15 @@
     agg[is.na(agg)] <- 0
     m[rownames(agg), colnames(agg)] <- agg
   }
-  eps <- .Machine$double.eps
+  # A margin that is zero or negative (calibration can produce negative weights) has
+  # no conditional distribution: pmax(., eps) turned a -0.02 row total into a ratio of
+  # 1e16 presented as a probability. Return NA for that row/column instead.
+  safe <- function(x) ifelse(x > 0, x, NA_real_)
   switch(format,
     counts = m,
-    row    = m / pmax(rowSums(m), eps),                 # P(to | from)  (row-conditional)
-    col    = t(t(m) / pmax(colSums(m), eps)),           # P(from | to)
-    joint  = m / max(sum(m), eps))                       # P(from, to)
+    row    = m / safe(rowSums(m)),                       # P(to | from)  (row-conditional)
+    col    = t(t(m) / safe(colSums(m))),                 # P(from | to)
+    joint  = m / safe(sum(m)))                           # P(from, to)
 }
 
 #' Gross-flow transition matrix between two panel waves
@@ -63,12 +109,23 @@ transition_matrix <- function(data, from, to, weights = NULL, states = NULL,
                               format = c("row", "col", "joint", "counts")) {
   format <- match.arg(format)
   if (inherits(data, "prepped_weighting_spec")) { w <- data$final_weight; data <- data$data }
+  else if (!is.data.frame(data))
+    stop("`data` must be a data.frame or a prepped weighting_spec.", call. = FALSE)
   else w <- if (is.null(weights)) rep(1, nrow(data))
-            else if (is.character(weights) && length(weights) == 1L) data[[weights]]
-            else weights
+            else if (is.character(weights) && length(weights) == 1L) {
+              if (!weights %in% names(data))
+                stop(sprintf("Weight column '%s' is not in the data.", weights), call. = FALSE)
+              data[[weights]]
+            } else weights
+  .wf_flow_cols(data, from, to)
+  if (!is.numeric(w) || length(w) != nrow(data))
+    stop(sprintf(paste0("`weights` must be one weight per row (%d), or the name of such a ",
+                        "column; got %d value(s). A shorter vector would be recycled and the ",
+                        "flows would be silently wrong."), nrow(data), length(w)), call. = FALSE)
   fr <- data[[from]]; to_ <- data[[to]]
   lev <- states %||% sort(unique(c(as.character(fr), as.character(to_))))
   lev <- lev[!is.na(lev)]
+  .wf_flow_coverage(fr, to_, w, lev)
   structure(list(matrix = .wf_xtab(fr, to_, w, lev, format),
                  counts = .wf_xtab(fr, to_, w, lev, "counts"),   # absolute flows (for the Sankey)
                  states = lev, from = from, to = to, format = format),
@@ -93,8 +150,10 @@ boot_transition <- function(boot, from, to, states = NULL,
   if (!inherits(boot, "weightflow_boot"))
     stop("`boot` must come from bootstrap_weights() on the longitudinal recipe.", call. = FALSE)
   d   <- boot$data
+  .wf_flow_cols(d, from, to)
   lev <- states %||% { v <- sort(unique(c(as.character(d[[from]]), as.character(d[[to]]))))
                        v[!is.na(v)] }
+  .wf_flow_coverage(d[[from]], d[[to]], boot$weights, lev)
   stat <- function(w, dd) {
     m <- .wf_xtab(dd[[from]], dd[[to]], w, lev, format)
     v <- as.numeric(m)
@@ -130,8 +189,10 @@ boot_flows <- function(boot, from, to, states = NULL) {
   if (!inherits(boot, "weightflow_boot"))
     stop("`boot` must come from bootstrap_weights() on the longitudinal recipe.", call. = FALSE)
   d   <- boot$data
+  .wf_flow_cols(d, from, to)
   lev <- states %||% { v <- sort(unique(c(as.character(d[[from]]), as.character(d[[to]]))))
                        v[!is.na(v)] }
+  .wf_flow_coverage(d[[from]], d[[to]], boot$weights, lev)
   k <- length(lev); k2 <- k * k
   stat <- function(w, dd) {
     m   <- .wf_xtab(dd[[from]], dd[[to]], w, lev, "counts")

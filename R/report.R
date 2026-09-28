@@ -181,7 +181,13 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
 
   # R-indicator, shown inside the LAST nonresponse step (it is computed from that
   # step's auxiliaries), not as a separate top-level section.
-  ri      <- .r_indicator(object)
+  # REP-05: the R-indicator is a diagnostic INSIDE one card; it must not be able to
+  # take the whole report down. prep() accepts a column named "region code" (an
+  # ordinary CSV/SPSS import without check.names), but reformulate() then parsed it
+  # as two symbols and report_weighting() died with "<text>:1:8: unexpected symbol"
+  # -- no file written, and a message naming neither the column nor the report.
+  # .r_indicator() quotes its names now; this keeps any other failure contained.
+  ri      <- tryCatch(.r_indicator(object), error = function(e) NULL)
   is_nr   <- vapply(object$steps, function(s) inherits(s, "step_nonresponse"), logical(1))
   nr_last <- if (any(is_nr)) max(which(is_nr)) else 0L
 
@@ -193,10 +199,13 @@ report_weighting <- function(object, file = NULL, open = TRUE, plots = TRUE,
     prows <- if (length(pp))
       vapply(names(pp), function(p)
         sprintf("<tr><td class='k'>%s</td><td>%s</td></tr>",
-                .html_escape(.wf_relabel(p, lang)), .fmt_val(pp[[p]])), character(1))
+                .html_escape(.wf_relabel(p, lang)), .fmt_val(pp[[p]], lang)), character(1))
       else sprintf("<tr><td class='muted' colspan='2'>%s</td></tr>",
                    .t("defaults only", "solo valores por defecto", lang))
-    note <- attr(s$diagnostics, "note")
+    # The note is built inside apply_step(), where the report language is not
+    # known yet, so -- like the quality alerts on the next line -- it is written
+    # in English once and translated here, at render time.
+    note <- .wf_typo(.wf_translate(attr(s$diagnostics, "note"), lang))
     it   <- attr(s$diagnostics, "iterations")
     cv   <- attr(s$diagnostics, "converged")
     al   <- .wf_typo(.wf_translate(s$alerts, lang))

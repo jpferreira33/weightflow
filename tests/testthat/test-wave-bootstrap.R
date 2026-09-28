@@ -12,7 +12,6 @@ strat_data <- function(seed = 1, npsu = 40, per = 6, psu_offset = 0, shift = 0) 
 }
 
 test_that("wave_bootstrap returns the expected structure", {
-  skip_on_cran()
   d <- strat_data()
   sp <- weighting_spec(d, base_weights = pw)
   wb <- wave_bootstrap(list(T1 = sp, T2 = sp), replicates = 100,
@@ -23,7 +22,6 @@ test_that("wave_bootstrap returns the expected structure", {
 })
 
 test_that("full overlap of identical waves gives zero change variance (rho = 1)", {
-  skip_on_cran()
   d <- strat_data()
   sp <- weighting_spec(d, base_weights = pw)
   wb <- wave_bootstrap(list(T1 = sp, T2 = sp), replicates = 100,
@@ -36,7 +34,6 @@ test_that("full overlap of identical waves gives zero change variance (rho = 1)"
 })
 
 test_that("step_assert is a no-op inside panel replicates (VAR-06)", {
-  skip_on_cran()
   # A tight max_deff passes on the (uniform) point weights but every Rao-Wu replicate has
   # a structurally higher deff. Without the wf_replicate flag the assert errored on all
   # replicates -> every column NA. It must be skipped in replicates, leaving a finite SE.
@@ -50,7 +47,6 @@ test_that("step_assert is a no-op inside panel replicates (VAR-06)", {
 })
 
 test_that("wave_bootstrap restores the caller's RNG state (VAR-10)", {
-  skip_on_cran()
   d <- strat_data()
   sp <- weighting_spec(d, base_weights = pw)
   set.seed(123); r1 <- runif(1)
@@ -62,7 +58,6 @@ test_that("wave_bootstrap restores the caller's RNG state (VAR-10)", {
 })
 
 test_that("PSU ids restarted per stratum do not collapse across strata (VAR-09)", {
-  skip_on_cran()
   set.seed(1)
   str <- rep(1:4, each = 30); psu_loc <- rep(rep(1:5, each = 6), 4)   # ids 1..5 RESTART per stratum
   d1 <- data.frame(str = str, psu = psu_loc, psu_g = paste(str, psu_loc),
@@ -79,7 +74,6 @@ test_that("PSU ids restarted per stratum do not collapse across strata (VAR-09)"
 })
 
 test_that("ci_type = 't' widens the panel interval and uses the design df (VAR-14)", {
-  skip_on_cran()
   d1 <- strat_data(seed = 1); d2 <- strat_data(seed = 2, shift = 0.4)
   wb <- wave_bootstrap(list(T1 = weighting_spec(d1, base_weights = pw),
                             T2 = weighting_spec(d2, base_weights = pw)),
@@ -92,7 +86,6 @@ test_that("ci_type = 't' widens the panel interval and uses the design df (VAR-1
 })
 
 test_that("coordination is invariant to row order (VAR-01, multinom default)", {
-  skip_on_cran()
   d  <- strat_data()
   d2 <- d[sample(nrow(d)), ]                 # SAME wave, rows shuffled
   wb <- wave_bootstrap(list(T1 = weighting_spec(d, base_weights = pw),
@@ -108,7 +101,6 @@ test_that("coordination is invariant to row order (VAR-01, multinom default)", {
 })
 
 test_that("disjoint PSUs give no covariance (rho ~ 0, V ~ V1 + V2)", {
-  skip_on_cran()
   d1 <- strat_data(seed = 1)
   d2 <- strat_data(seed = 2, psu_offset = 1000, shift = 0.5)   # disjoint PSU ids
   wb <- wave_bootstrap(list(T1 = weighting_spec(d1, base_weights = pw),
@@ -121,7 +113,6 @@ test_that("disjoint PSUs give no covariance (rho ~ 0, V ~ V1 + V2)", {
 })
 
 test_that("change_estimate reports the pieces and print works", {
-  skip_on_cran()
   d1 <- strat_data(seed = 1)
   d2 <- d1; d2$y <- d2$y + rnorm(nrow(d2), 0.5, 1)             # same PSUs, correlated change
   wb <- wave_bootstrap(list(T1 = weighting_spec(d1, base_weights = pw),

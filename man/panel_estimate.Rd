@@ -16,9 +16,25 @@ panel_estimate(
   df = NULL
 )
 
-panel_mean(wb, variable, contrast = NULL, waves = NULL, level = 0.95)
+panel_mean(
+  wb,
+  variable,
+  contrast = NULL,
+  waves = NULL,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 
-panel_total(wb, variable, contrast = NULL, waves = NULL, level = 0.95)
+panel_total(
+  wb,
+  variable,
+  contrast = NULL,
+  waves = NULL,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 }
 \arguments{
 \item{wb}{a \code{weightflow_wave_boot} from \code{\link[=wave_bootstrap]{wave_bootstrap()}} or a \code{weightflow_wave_jack}
@@ -56,11 +72,11 @@ only) understates the variance of an average and overstates that of a change.
 }
 \examples{
 waves <- lapply(1:3, function(t)
-  weighting_spec(subset(panel_ine, ola == t & disp == "R"), base_weights = w_base))
+  weighting_spec(subset(panel_ine, wave == t & disposition == "R"), base_weights = pw))
 names(waves) <- c("T1", "T2", "T3")
-wb <- wave_bootstrap(waves, replicates = 100, strata = "estrato", psu = "psu",
+wb <- wave_bootstrap(waves, replicates = 100, strata = "stratum", psu = "psu",
                      seed = 1, progress = FALSE)
-rate <- function(w, d) weighted.mean(d$desocupado, w, na.rm = TRUE)
+rate <- function(w, d) weighted.mean(d$unemployed, w, na.rm = TRUE)
 panel_estimate(wb, rate)                       # average unemployment level over the waves
 panel_estimate(wb, rate, contrast = c(-1, 0, 1))  # T3 - T1 change
 }

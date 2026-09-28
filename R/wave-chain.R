@@ -61,7 +61,13 @@
       stop(sprintf(paste0("carry '%s' has %d replicates and this run asks for %d. The ",
                           "number of replicates must be constant along the chain."),
                    p$period, ncol(p$mult), R), call. = FALSE)
-    take <- intersect(known[is.na(src)], rownames(p$mult))
+    # Only rows that actually CARRY a multiplicity. A PSU that was alone in its stratum in
+    # some period has an all-NA row; taking it would mark the registry slot as filled
+    # (src set), so an older carry holding the real multiplicity could never fill it, the
+    # PSU would fall to the case-iv fallback, and `coordinated = 1` would still be
+    # reported -- a false certificate of health. (WC-01)
+    cand <- intersect(known[is.na(src)], rownames(p$mult))
+    take <- cand[!apply(p$mult[cand, , drop = FALSE], 1L, function(z) all(is.na(z)))]
     if (length(take)) { M[take, ] <- p$mult[take, , drop = FALSE]; src[take] <- p$period }
     fill <- names(p$psu_stratum)[is.na(str[names(p$psu_stratum)])]
     if (length(fill)) str[fill] <- as.character(p$psu_stratum[fill])
@@ -79,8 +85,15 @@
     sb <- s[b]
     while (sb < target) { j <- sample.int(n, 1L); M[j, b] <- M[j, b] + 1L; sb <- sb + 1L }
     while (sb > target) {
+      # Remove a DRAW at random, not a PSU at random: a PSU holding 3 draws should be three
+      # times as likely to lose one as a PSU holding 1. Choosing uniformly among the PSUs
+      # with a positive count hit the low-count ones too hard and compressed the spread --
+      # per-PSU variance 0.641 against a multinomial 0.694 (-8%), and end to end a chained
+      # SE 5.7% ABOVE a fresh bootstrap in case iii (+11.8% in variance). The bias runs
+      # both ways: case iii overstated, case iv (above) understated. (WC-03)
       pos <- which(M[, b] > 0L); if (!length(pos)) break
-      j <- pos[sample.int(length(pos), 1L)]; M[j, b] <- M[j, b] - 1L; sb <- sb - 1L
+      j <- if (length(pos) == 1L) pos else sample(pos, 1L, prob = M[pos, b])
+      M[j, b] <- M[j, b] - 1L; sb <- sb - 1L
     }
   }
   list(mult = M, untouched = untouched)
@@ -114,13 +127,28 @@
     if (k > 0L) { M[rest[seq_len(k)], ] <- Mreg[retired[seq_len(k)], , drop = FALSE]
                   retired <- retired[-seq_len(k)] }
     if (length(rest) > k) {                              # case iv: new PSUs with no partner
+      # The marginal of a Rao-Wu count is Binomial(m_h, 1/n_h) with the CURRENT period's
+      # m_h and n_h -- that is the multinomial's marginal, and the legacy per-PSU binomial
+      # draws the same law. The previous period's PSU count was used instead, so a stratum
+      # that GREW drew its fresh PSUs from too narrow a law: at n_h 3 -> 5 with m_h = 4 the
+      # per-PSU variance came out 0.445 against a correct 0.640, and end to end the chained
+      # SE was 8.1% below a fresh bootstrap (-15.6% in variance), anticonservative, exactly
+      # where the sample is growing. (WC-02)
       ex <- rest[(k + 1L):length(rest)]
-      np <- max(2L, length(have) + k)                     # previous-period PSU count
-      M[ex, ] <- matrix(as.integer(stats::rbinom(length(ex) * R, np - 1L, 1 / np)),
+      M[ex, ] <- matrix(as.integer(stats::rbinom(length(ex) * R, mh, 1 / max(nh, 1L))),
                         nrow = length(ex))
     }
   }
   cl <- .wf_close_mult(M, mh)
+  # Residual, and inherent to the transfer rather than a defect of it: in case iv the
+  # inherited block arrives with the PREVIOUS period's total (m_h of the old stratum),
+  # so closing on the current m_h spreads the difference over the fresh PSUs and leaves
+  # the inherited ones slightly under- and the fresh ones slightly over-represented
+  # (0.77 against 0.85 where both should be 0.80, at n_h 3 -> 5). That is the price of
+  # inheriting multiplicities at all; end to end it is not measurable (chained SE within
+  # 0.8% of a fresh bootstrap, p = 0.7), while getting the draw law wrong was (+6.8% in
+  # case iii, -3.3% in case iv). `untouched` reports how many columns closed by
+  # themselves, which is the honest quality signal.
   list(mult = cl$mult, untouched = cl$untouched,
        n_inherited = length(have), n_fresh = length(fresh))
 }
@@ -239,6 +267,9 @@ wave_step <- function(spec, previous = NULL, estimands = NULL, by = NULL,
     stop(sprintf("`strata` column '%s' not in the data.", strata), call. = FALSE)
   if (!is.null(psu) && !psu %in% names(dat))
     stop(sprintf("`psu` column '%s' not in the data.", psu), call. = FALSE)
+  # NA or blank in `strata` / `psu` collapses those rows into one pseudo-PSU that is
+  # resampled as a unit, which understates the variance (~7%). See VAR-15.
+  .assert_design_complete(dat, strata, psu)
   if (is.null(psu))
     warning("wave_step: `psu = NULL` makes each ROW its own PSU; pass a `psu` column ",
             "consistent across periods for the overlap covariance to be real.", call. = FALSE)
@@ -585,6 +616,41 @@ wave_contrast <- function(carries, estimand, contrast = NULL, level = 0.95) {
                         "carry %s. A combination pairs replicate b across periods, so they ",
                         "have to line up."), paste(R, collapse = ", ")), call. = FALSE)
   R <- R[1L]
+
+  # The carries have to be ONE coordinated chain, and nothing here used to check it.
+  # Replicate b is assumed paired across periods; if the periods were run independently
+  # (each with previous = NULL) the pairing is noise and the covariance collapses -- a
+  # rolling average then publishes an SE ~28% below the real one, with no sign of it. Two
+  # separate chains that happen to share period labels are worse: the Sigma comes out with
+  # duplicated dimnames and the "change" is between two unrelated runs. (WC-04)
+  periods <- vapply(carries, function(cy) as.character(cy$period %||% NA), "")
+  if (anyDuplicated(periods))
+    stop(sprintf(paste0("The carries repeat the period label(s) %s. A linear combination is ",
+                        "over DISTINCT periods of one chain; two runs sharing a label are ",
+                        "almost always two different chains."),
+                 paste(sprintf("'%s'", unique(periods[duplicated(periods)])), collapse = ", ")),
+         call. = FALSE)
+  sq <- vapply(carries, function(cy) as.integer(cy$seq %||% NA_integer_), integer(1))
+  if (!anyNA(sq) && sum(sq == 1L) > 1L)
+    warning(sprintf(paste0("%d of the %d carries are the FIRST period of a chain (seq = 1), so ",
+                           "they were not coordinated with each other: each was run with ",
+                           "previous = NULL. Replicate b is not paired across them and the ",
+                           "between-period covariance is noise, which understates the standard ",
+                           "error of any contrast. Re-run each period passing the earlier ",
+                           "carries as `previous`."), sum(sq == 1L), length(sq)), call. = FALSE)
+  # Same engine on every period: V = V1 + V2 - 2cov is only one quantity if the pieces
+  # come from one design.
+  meta_same <- function(field) {
+    v <- lapply(carries, function(cy) cy$meta[[field]])
+    length(unique(vapply(v, function(z) paste(as.character(z), collapse = "\r"), ""))) == 1L
+  }
+  for (f in c("resample", "strata", "psu", "m", "refit_steps")) {
+    if (!meta_same(f))
+      warning(sprintf(paste0("The carries disagree on `%s`. They were produced by different ",
+                             "replicate designs, so combining them mixes two variance ",
+                             "estimators in one number."), f), call. = FALSE)
+  }
+
 
   Th <- vapply(carries, function(cy) as.numeric(cy$theta[[estimand]]), numeric(R))
   if (!is.matrix(Th)) Th <- matrix(Th, nrow = R)

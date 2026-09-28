@@ -73,36 +73,36 @@
 #' illustrate the panel tools. They share one structure and differ only in the **rotation
 #' system**, so the same code runs on a pure panel and on each rotating design. All are in
 #' **long format**: one row per person and per wave the person is in sample. Continuing units
-#' keep the same `id_hogar` / `id_persona` across waves, so they link the panel; the household
-#' is the natural cluster and `c(id_hogar, nper)` the person-level key.
+#' keep the same `household_id` / `person_id` across waves, so they link the panel; the household
+#' is the natural cluster and `c(household_id, person_no)` the person-level key.
 #'
-#' The between-wave disposition `disp` follows the four-state taxonomy the longitudinal
+#' The between-wave disposition `disposition` follows the four-state taxonomy the longitudinal
 #' cascade needs: `"R"` responded, `"NR"` eligible nonresponse (reweight), `"OS"` out of scope
 #' -- left the target population between waves, so the household exits permanently and is not
-#' reweighted -- and `"UNK"` unknown eligibility. The variables of interest (`ocupado`,
-#' `desocupado`, `ingreso`) are observed only when `disp == "R"` (and, for the labour-force
+#' reweighted -- and `"UNK"` unknown eligibility. The variables of interest (`employed`,
+#' `unemployed`, `income`) are observed only when `disposition == "R"` (and, for the labour-force
 #' items, when the person is in the labour force), otherwise `NA`; they repeat across waves for
 #' continuing persons, with within-person persistence, so net change and gross flows are
 #' meaningful.
 #'
 #' @format A `data.frame` with one row per person-wave and the columns:
 #' \describe{
-#'   \item{id_hogar}{household id, persistent across waves (the panel link / cluster).}
-#'   \item{id_persona, nper}{person id and person-number within household; `c(id_hogar, nper)`
+#'   \item{household_id}{household id, persistent across waves (the panel link / cluster).}
+#'   \item{person_id, person_no}{person id and person-number within household; `c(household_id, person_no)`
 #'     is the person key.}
-#'   \item{estrato, psu}{design stratum and primary sampling unit (PSU nested in stratum, at
+#'   \item{stratum, psu}{design stratum and primary sampling unit (PSU nested in stratum, at
 #'     least two PSUs per stratum), for the coordinated bootstrap / jackknife.}
-#'   \item{region, sexo, edad}{covariates usable as estimation domains.}
-#'   \item{ola}{wave (month) index.}
-#'   \item{grupo_rotacion, mes_en_muestra}{rotation group and order-in-sample.}
-#'   \item{w_base}{design (base) weight.}
-#'   \item{disp}{between-wave disposition: `"R"`, `"NR"`, `"OS"`, `"UNK"`.}
-#'   \item{condicion}{labour status within the working-age population, a factor with levels
+#'   \item{region, sex, age}{covariates usable as estimation domains.}
+#'   \item{wave}{wave (month) index.}
+#'   \item{rotation_group, month_in_sample}{rotation group and order-in-sample.}
+#'   \item{pw}{design (base) weight.}
+#'   \item{disposition}{between-wave disposition: `"R"`, `"NR"`, `"OS"`, `"UNK"`.}
+#'   \item{lf_status}{labour status within the working-age population, a factor with levels
 #'     `"emp"` / `"unemp"` / `"inact"`; `NA` for non-respondents. This is the `status`
 #'     argument of [step_cre()] (the previous-wave composite auxiliary).}
-#'   \item{ocupado, desocupado}{employed / unemployed indicators (labour force; `NA` if not
+#'   \item{employed, unemployed}{employed / unemployed indicators (labour force; `NA` if not
 #'     `"R"` or not in the labour force).}
-#'   \item{ingreso}{labour income (`NA` if not `"R"`).}
+#'   \item{income}{labour income (`NA` if not `"R"`).}
 #' }
 #'
 #' @details
@@ -113,7 +113,7 @@
 #'     waves; the sample shrinks only through attrition. Style of EU-SILC / SLID pure panels.}
 #'   \item{`panel_cl`}{**Chile ENE, 2-2-2** (in-out-in): 3 waves, consecutive overlap ~1/2,
 #'     and units that **return** (in sample in waves 1 and 3 but not 2). The real ENE has no
-#'     public rotation group; `grupo_rotacion` is included for teaching, but the panel also
+#'     public rotation group; `rotation_group` is included for teaching, but the panel also
 #'     links through the persistent ids alone.}
 #'   \item{`panel_ine`}{**INE Uruguay ECH / StatCan LFS, 6-month rotation**: 6 groups in
 #'     sample each wave, one sixth rotating out per wave, so consecutive overlap ~5/6.}
@@ -123,16 +123,16 @@
 #'
 #' @examples
 #' # rotation structure of the 6-month panel
-#' panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-#'              rotation_group = "grupo_rotacion", pattern = "6")
+#' panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+#'              rotation_group = "rotation_group", pattern = "6")
 #' # coordinated change of the unemployment rate between two waves
-#' t1 <- subset(panel_ine, ola == 1 & disp == "R")
-#' t2 <- subset(panel_ine, ola == 2 & disp == "R")
+#' t1 <- subset(panel_ine, wave == 1 & disposition == "R")
+#' t2 <- subset(panel_ine, wave == 2 & disposition == "R")
 #' wb <- wave_bootstrap(
-#'   list(T1 = weighting_spec(t1, base_weights = w_base),
-#'        T2 = weighting_spec(t2, base_weights = w_base)),
-#'   replicates = 100, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
-#' change_mean(wb, "desocupado")
+#'   list(T1 = weighting_spec(t1, base_weights = pw),
+#'        T2 = weighting_spec(t2, base_weights = pw)),
+#'   replicates = 100, strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
+#' change_mean(wb, "unemployed")
 #' @name panel_datasets
 "panel_puro"
 

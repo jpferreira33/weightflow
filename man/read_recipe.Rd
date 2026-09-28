@@ -13,15 +13,21 @@ read_recipe(file, data = NULL, references = NULL, allow_code = FALSE)
 \code{weighting_spec} on this data. The columns the steps reference (weights,
 auxiliaries, disposition flags) must exist in \code{data}.}
 
-\item{references}{optional named list of \code{reference_sample()} objects, named by
-the id of the step that uses each one, to restore the steps that calibrate or
-pseudo-weight against a reference (whose microdata the recipe does not store).}
+\item{references}{optional named list, named by the id of the step that needs
+each object, restoring what the recipe stores only as a descriptor because it is
+microdata rather than metadata: a \code{reference_sample()} for a step that calibrates
+or pseudo-weights against a reference, and the \code{population} data frame of
+\code{\link[=step_calibrate]{step_calibrate()}} / \code{\link[=step_model_calibration]{step_model_calibration()}}.}
 
-\item{allow_code}{single logical. A step may store an R \strong{function} as source
-(a custom distance or statistic). Reconstructing it evaluates that source, which
-is a code-execution risk for a recipe received from elsewhere. \code{FALSE} (default)
-refuses such nodes with an error; set \code{TRUE} only for a file you trust, exactly
-as you would \code{source()} it.}
+\item{allow_code}{single logical, the gate on \strong{every} executable thing a recipe
+file can carry: the conditions and formulas it stores as text, and a step that
+stores an R function as source. With \code{FALSE} (the default) a stored expression is
+accepted only if every call in it is on a fixed whitelist of data-manipulation
+functions (comparisons, arithmetic, \code{is.na()}, \code{factor()}, \code{cut()}, string and
+\code{apply}-free helpers), and a function node is refused outright. That matters
+because a recipe is meant to be exchanged between organizations: an expression
+like \code{{ system("...") ; responded }} runs at the first \code{\link[=prep]{prep()}}, not at read
+time. Set \code{TRUE} only for a file you trust, exactly as you would \code{source()} it.}
 }
 \value{
 With \code{data = NULL}, a \code{weightflow_recipe} manifest (a list with a print

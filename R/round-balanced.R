@@ -76,7 +76,7 @@
 }
 
 # Round `w` to `digits` decimals so that, on the rounding grid, the totals of the
-# balancing variables `Z` (n x q, e.g. model.matrix(~ dam + estrato)) are
+# balancing variables `Z` (n x q, e.g. model.matrix(~ dam + stratum)) are
 # preserved as closely as the integer grid allows. Every weight lands on its
 # floor or its ceiling. Randomized (set a seed upstream for reproducibility).
 .wf_balanced_round <- function(w, Z, digits = 0L) {

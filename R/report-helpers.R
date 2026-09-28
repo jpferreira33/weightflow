@@ -7,8 +7,23 @@
 # summary, and per-step diagnostics.
 # ---------------------------------------------------------------------------
 
+# Declare UTF-8 on a string whose encoding R never recorded. The report is written
+# as UTF-8 whatever the session locale is, but a user-supplied string (a column
+# value, `metadata$survey`, a `reason =`) arrives with Encoding() "unknown" while
+# the package's own Spanish labels are marked UTF-8 -- and sprintf()/gsub() mixing
+# the two outside a UTF-8 locale renders BOTH as escapes, so an accented report
+# came out full of "acentuaci<c3><b3>n". Only "unknown" is touched: a string
+# already declared latin1 or UTF-8 is left exactly as it is.
+.as_utf8 <- function(x) {
+  if (!is.character(x) || !length(x)) return(x)
+  hit <- Encoding(x) == "unknown" & !is.na(x) & validUTF8(x)
+  if (any(hit)) Encoding(x)[hit] <- "UTF-8"
+  x
+}
+
 # Escape HTML special characters
 .html_escape <- function(x) {
+  x <- .as_utf8(x)
   x <- gsub("&", "&amp;", x, fixed = TRUE)
   x <- gsub("<", "&lt;",  x, fixed = TRUE)
   x <- gsub(">", "&gt;", x, fixed = TRUE)
@@ -16,8 +31,22 @@
   gsub("'", "&#39;", x, fixed = TRUE)
 }
 
+# Escape for an ATTRIBUTE value a string that may already carry HTML entities
+# (the Spanish report strings write accents as &oacute; and friends). Running
+# .html_escape() over one of those turns "&oacute;" into "&amp;oacute;", which a
+# screen reader then announces literally -- so escape a bare "&" only, and leave
+# a well-formed entity alone.
+.attr_escape <- function(x) {
+  x <- .as_utf8(x)
+  x <- gsub("&(?![A-Za-z][A-Za-z0-9]{1,7};|#[0-9]{1,6};|#[xX][0-9A-Fa-f]{1,5};)",
+            "&amp;", x, perl = TRUE)
+  x <- gsub("<", "&lt;", x, fixed = TRUE)
+  x <- gsub(">", "&gt;", x, fixed = TRUE)
+  gsub("\"", "&quot;", x, fixed = TRUE)
+}
+
 # Format a step parameter value into a readable string
-.fmt_val <- function(v) {
+.fmt_val <- function(v, lang = "en") {
   if (is.null(v)) return("&mdash;")
   if (inherits(v, "formula") || is.call(v) || is.symbol(v) || is.language(v))
     return(.html_escape(paste(deparse(v), collapse = " ")))
@@ -26,14 +55,17 @@
   # tunable scalar; summarise it in one line instead of dumping its weight
   # vectors (history/final_weight, one number per case) into the report.
   if (inherits(v, c("prepped_weighting_spec", "weighting_spec"))) {
-    lab <- if (length(v$steps)) v$steps[[length(v$steps)]]$label else "empty recipe"
+    # .step_short() rather than step$label: the label is the internal English one,
+    # and this line is read by the same person reading the rest of the report.
+    lab <- if (length(v$steps)) .step_short(v$steps[[length(v$steps)]], lang)
+           else .t("empty recipe", "receta vac\u00eda", lang)
     n   <- if (!is.null(v$data)) nrow(v$data) else length(v$final_weight)
-    return(.html_escape(sprintf("fit: %s (%s cases)", lab,
-                                format(n, big.mark = ",", trim = TRUE))))
+    return(sprintf(.t("fit: %s (%s cases)", "ajuste: %s (%s casos)", lang),
+                   lab, format(n, big.mark = ",", trim = TRUE)))
   }
   if (is.list(v)) {
     parts <- vapply(seq_along(v), function(i)
-      sprintf("<i>%s</i>: %s", .html_escape(names(v)[i] %||% i), .fmt_val(v[[i]])),
+      sprintf("<i>%s</i>: %s", .html_escape(names(v)[i] %||% i), .fmt_val(v[[i]], lang)),
       character(1))
     return(paste(parts, collapse = "<br>"))
   }
@@ -41,6 +73,7 @@
   cap <- 10L
   if (length(v) > cap) {
     head_v <- if (is.numeric(v)) format(v[seq_len(cap)], big.mark = ",", trim = TRUE)
+              else if (is.character(v)) v[seq_len(cap)]
               else format(v[seq_len(cap)], trim = TRUE)
     # \u2026 as an escape, not a literal: R CMD check requires ASCII-only R code
     return(.html_escape(sprintf("%s, \u2026 (%s values)", paste(head_v, collapse = ", "),
@@ -49,9 +82,17 @@
   if (is.numeric(v) && !is.null(names(v)))
     return(.html_escape(paste(sprintf("%s=%s", names(v),
            format(v, big.mark = ",", trim = TRUE)), collapse = ", ")))
+  # A character value goes in as it is: format() mangles a non-ASCII string when R
+  # runs outside a UTF-8 locale (an accented word prints as "sali<c3><b3>"), which
+  # turned every accented `reason =` / metadata string in a Spanish report to bytes.
+  if (is.character(v)) return(.html_escape(paste(v, collapse = ", ")))
   .html_escape(paste(format(v, trim = TRUE), collapse = ", "))
 }
-`%||%` <- function(a, b) if (is.null(a) || (length(a) == 1 && is.na(a))) b else a
+# NB: is.atomic() first. `step$env %||% baseenv()` passes an ENVIRONMENT, for which
+# length() is 1 and is.na() warns "applied to non-(list or vector)"; the warning was
+# harmless but it leaked into user-visible output from every step_cre() call.
+`%||%` <- function(a, b)
+  if (is.null(a) || (is.atomic(a) && length(a) == 1L && is.na(a))) b else a
 
 # Central number formatting: one place decides decimals per quantity type, so the
 # same kind of value reads the same everywhere (weights as integers, no ".000"
@@ -136,19 +177,36 @@
   prev_total = "total_previo", deff_before = "deff_antes", deff_after = "deff_despu\u00e9s",
   variable = "variable", threshold = "umbral", importance = "importancia",
   predicted = "predicho", observed = "observado",
+  quantity = "cantidad", value = "valor",
+  n_remaining = "n_restantes", weight_dropped = "peso_descartado",
+  attrition_method = "m\u00e9todo_atrici\u00f3n",
   # step-parameter keys (Requested table)
   digits = "d\u00edgitos", by = "por", respondent = "respondente", formula = "f\u00f3rmula",
   engine = "motor", weight_model = "modela_peso", num_classes = "num_clases",
   lower = "inferior", upper = "superior", margins = "m\u00e1rgenes", totals = "totales",
   count = "conteo", bounds = "cotas", penalty = "penalizaci\u00f3n", calfun = "distancia",
-  cluster = "conglomerado", population = "poblaci\u00f3n", unknown = "desconocido")
+  cluster = "conglomerado", population = "poblaci\u00f3n", unknown = "desconocido",
+  ineligible = "inelegible", reason = "motivo", selected = "seleccionadas",
+  prob = "prob", n_eligible = "n_elegibles", y = "y", phi = "phi",
+  # panel / CRE step arguments
+  previous = "ola_previa", status = "estado", status_ref = "estado_ref",
+  composite = "compuesto", link_key = "clave_enlace", id_unit = "id_unidad",
+  overlap = "traslape", on_missing_prev = "si_falta_previa", alpha = "alfa",
+  rotation_group = "grupo_rotaci\u00f3n", require = "requiere")
 # Values the package writes itself into a diagnostics table (as opposed to the
 # arguments the user typed, which stay verbatim so the report matches the code).
 # Keyed by column, so a genuine data value that happens to read "household" in
 # some other table is never rewritten.
 .wf_es_values <- list(
   level  = c(person = "persona", household = "hogar", unit = "unidad"),
-  method = c(`1/p per household` = "1/p por hogar", `1/p per unit` = "1/p por unidad"))
+  method = c(`1/p per household` = "1/p por hogar", `1/p per unit` = "1/p por unidad"),
+  quantity = c(`non-prob units`      = "unidades no probabil\u00edsticas",
+               `reference units`     = "unidades de referencia",
+               `min propensity`      = "propensi\u00f3n m\u00ednima",
+               `pseudo-weight sum`   = "suma de pseudo-pesos",
+               `reference population` = "poblaci\u00f3n de la referencia",
+               `sum / reference`     = "suma / referencia",
+               `mean pseudo-weight`  = "pseudo-peso medio"))
 
 .wf_revalue <- function(df, lang) {
   if (!identical(lang, "es") || is.null(df) || !is.data.frame(df)) return(df)
@@ -290,7 +348,7 @@
   # N-20: skip the plot if any deff is non-finite (Inf overflow / NaN from
   # all-zero base weights); range()/diff()/any()/min() would otherwise error.
   n <- length(y); if (n < 2L || !all(is.finite(y))) return("")
-  disp <- ifelse(seq_len(n) == 1L, "base", as.character(seq_len(n) - 1L))  # base,1,2,...
+  disposition <- ifelse(seq_len(n) == 1L, "base", as.character(seq_len(n) - 1L))  # base,1,2,...
   ml <- 56; mr <- 22; mt <- 16; mb <- 40; pw <- w - ml - mr; ph <- h - mt - mb
   # A single spiking stage (a 1/p nonresponse step can push deff_K from 1.1 to 55)
   # flattens every other stage onto the baseline on a linear axis, which is
@@ -318,7 +376,7 @@
   dots <- paste(sprintf('<circle class="wf-mark" cx="%.1f" cy="%.1f" r="3"/>',
                         sx(seq_len(n)), sy(ty)), collapse = "")
   xtk  <- paste(sprintf('<text class="wf-tk" x="%.1f" y="%.1f" text-anchor="middle">%s</text>',
-                        sx(seq_len(n)), mt + ph + 16, .html_escape(disp)), collapse = "")
+                        sx(seq_len(n)), mt + ph + 16, .html_escape(disposition)), collapse = "")
   dd <- diff(y); ann <- ""
   if (length(dd) && any(dd > 0)) {
     ii  <- which.max(dd) + 1L
@@ -468,7 +526,7 @@
            sprintf('<text class="wf-tk" x="%.1f" y="%.1f">%s</text>',
                    sx(refline) + 4, mt + 9, .t("factor = 1", "factor = 1", lang))) else ""
   svg <- .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, xr, yr, xlab, ylab, sx, sy),
-                    bars, vl), w, h, .html_escape(gsub("<[^>]+>", "", title %||% xlab)), lang)
+                    bars, vl), w, h, .attr_escape(gsub("<[^>]+>", "", title %||% xlab)), lang)
   if (clipped > 0L)
     svg <- paste0(svg, sprintf("<div class='muted'>%s</div>", .t(
       sprintf("Axis clipped to the central 99%%; %s value(s) outside the range are not drawn.",
@@ -640,7 +698,8 @@
 # Overlap (common-support) plot for ML nonresponse: two weighted histograms of
 # the estimated propensity phi-hat, respondents vs nonrespondents. Poor overlap
 # (little common support) is the visual warning about the MAR assumption.
-.svg_overlap <- function(p, resp, dw, lang = "en", w = 348, h = 182, title = NULL) {
+.svg_overlap <- function(p, resp, dw, lang = "en", w = 348, h = 182, title = NULL,
+                         labs = NULL) {
   ok <- is.finite(p) & is.finite(dw); p <- p[ok]; resp <- as.logical(resp[ok]); dw <- dw[ok]
   if (length(p) < 20L || length(unique(resp)) < 2L) return("")
   ml <- 46; mr <- 16; mt <- 12; mb <- 34; pw <- w - ml - mr; ph <- h - mt - mb
@@ -659,9 +718,13 @@
     '<rect class="%s" x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill-opacity="0.45"/>',
     cls, sx(br[i]), sy(v[i]), max(sx(br[i + 1]) - sx(br[i]) - 0.5, 0.5),
     max(sy(0) - sy(v[i]), 0)), character(1)), collapse = "")
+  # `labs`: who the two groups are. Defaults to respondents / nonrespondents; a
+  # pseudo-weighting step passes participants / reference instead.
+  if (is.null(labs) || length(labs) != 2L)
+    labs <- c(.t("respondents", "respondentes", lang),
+              .t("nonrespondents", "no respondentes", lang))
   leg <- sprintf('<text class="wf-resp" x="%.1f" y="%.1f" font-size="10">%s</text><text class="wf-nonresp" x="%.1f" y="%.1f" font-size="10">%s</text>',
-    ml + 6, mt + 10, .t("respondents", "respondentes", lang),
-    ml + 6, mt + 22, .t("nonrespondents", "no respondentes", lang))
+    ml + 6, mt + 10, labs[1], ml + 6, mt + 22, labs[2])
   svg <- .svg_frame(paste0(.svg_axes(ml, mt, pw, ph, rng, c(0, ymax), "&phi;&#770;",
              .t("share", "proporci\u00f3n", lang), sx, sy),
              bar(hn, "wf-nonresp"), bar(hr, "wf-resp"), leg), w, h,

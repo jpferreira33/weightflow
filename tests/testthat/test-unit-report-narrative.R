@@ -71,7 +71,7 @@ test_that(".step_short names the simple steps in both languages", {
     step_unknown_eligibility = c("unknown-eligibility", "elegibilidad desconocida"),
     step_drop_ineligible     = c("ineligible units",    "no elegibles"),
     step_select_within       = c("within-cluster",      "dentro del conglomerado"),
-    step_model_calibration   = c("model-assisted",      "asistida por modelo"),
+    step_model_calibration   = c("model calibration",   "basada en modelos"),
     step_trim_calibrated     = c("calibration-preserving", "preserva la calibraci"),
     step_trim_weights        = c("weight trimming",     "recorte de pesos"),
     step_round               = c("rounding",            "redondeo"),

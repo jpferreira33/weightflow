@@ -50,7 +50,8 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
 # `crossfit` (K) and `cluster_id`/`seed` enable K-fold out-of-sample prediction
 # to avoid overfitting; when NULL, the model is fitted and predicted in-sample.
 .estimate_propensity <- function(engine, formula, dd, weights,
-                                 crossfit = NULL, cluster_id = NULL, seed = NULL) {
+                                 crossfit = NULL, cluster_id = NULL, seed = NULL,
+                                 raw_inverse = FALSE, odds = FALSE, quiet = FALSE) {
   # NA in a model covariate makes predict() return NA for those rows: the fitted
   # propensity is NA, the unit falls into no adjustment class, and (for
   # nonrespondents) never gets set to weight 0 -- it survives the cascade
@@ -73,6 +74,19 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
   fit_pred <- function(tr, te) {
     dtr <- dd[tr, , drop = FALSE]; dte <- dd[te, , drop = FALSE]
     wtr <- weights[tr]
+    # ML-02: a fold whose training set has only respondents (or only nonrespondents)
+    # cannot estimate a propensity at all. glm returns fitted values at the 0/1
+    # boundary; rpart and ranger abort with messages that name neither the step nor
+    # the fold ("number of rows of matrices must match", "subscript out of bounds").
+    if (length(unique(dtr$.y[!is.na(dtr$.y)])) < 2L)
+      stop(sprintf(paste0("A response-propensity model could not be fitted: its training ",
+                          "set contains only %s. %sCollapse the model's categories, reduce ",
+                          "the number of folds, or use crossfit = NULL."),
+                   if (all(dtr$.y == 1, na.rm = TRUE)) "respondents" else "nonrespondents",
+                   if (!is.null(crossfit))
+                     sprintf("This is one cross-fitting fold (crossfit = %d), not the whole sample. ",
+                             crossfit) else ""),
+           call. = FALSE)
     if (engine == "logit") {
       # weighted binomial glm warns about non-integer successes; this is a
       # known, benign consequence of survey weights, so suppress just that one.
@@ -111,7 +125,75 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
                            fit_predict = function(tr, te_list)
                              lapply(te_list, function(te) fit_pred(tr, te)))
   }
-  pmax(as.numeric(p), 1e-6)             # avoids division by zero in 1/p
+  # ML-02. The 1e-6 floor below keeps 1/p finite, but it also hides WHY p was zero.
+  # The frequent cause is not a division by zero: it is a (quasi-)separated fit --
+  # typically a rare category that a cross-fitting fold's training set does not
+  # identify, so its units are predicted at the 0/1 boundary. The floor then turns a
+  # respondent's weight into 1e6 times its base weight, and with `num_classes` left
+  # at NULL (raw 1/p, no quantile binning to absorb it) the weighted total moved by a
+  # factor of 2,500 in a 400-unit test. Say it, and refuse it where it would actually
+  # multiply a respondent's weight.
+  p <- as.numeric(p)
+  if (any(!is.finite(p)))
+    stop(sprintf(paste0("%d fitted response propensit%s not finite. The propensity model ",
+                        "did not produce a usable fit%s; 1/p is undefined. Check the model ",
+                        "formula, or collapse categories the model cannot identify."),
+                 sum(!is.finite(p)), if (sum(!is.finite(p)) == 1L) "y is" else "ies are",
+                 if (!is.null(crossfit))
+                   sprintf(" in at least one cross-fitting fold (crossfit = %d)", crossfit)
+                 else ""),
+         call. = FALSE)
+  # NP-01 / ML-02. Which end of [0, 1] is dangerous depends on how p becomes a weight.
+  # With a raw inverse (the nonresponse path) only the floor bites: 1/p at the 1e-6
+  # floor multiplies a respondent's weight by up to 1e6. With the participation ODDS
+  # (1 - p)/p (the pseudo-weight path) BOTH ends bite -- the floor in the same way,
+  # and the ceiling in mirror. So name the end that actually fired and what it does to
+  # the weight in THIS step, instead of describing an inverse the step never applies.
+  kind     <- if (odds) "participation" else "response"
+  who      <- if (odds) "the non-probability sample" else "respondents"
+  wt_long  <- if (odds) "the participation odds (1 - p)/p" else "a raw 1/p"
+  wt_short <- if (odds) "the odds" else "1/p"
+  cf_txt   <- if (!is.null(crossfit)) sprintf(" (crossfit = %d)", crossfit) else ""
+  on_floor <- which(p < 1e-4)
+  if (length(on_floor) && !quiet) {
+    resp_hit <- sum(dd$.y[on_floor] == 1, na.rm = TRUE)
+    warning(sprintf(paste0(
+      "%d fitted %s propensit%s below 1e-4, i.e. at the 0/1 boundary%s. This is ",
+      "either an honestly extreme propensity or a (quasi-)separated fit -- typically a ",
+      "rare category a cross-fitting fold's training set does not identify. %d of them ",
+      "belong to %s, and %s. Collapse the rare category, reduce the number of ",
+      "folds, use crossfit = NULL, or set `num_classes` (which bins by propensity ",
+      "quantiles, using only their ranking, and is robust to this)."),
+      length(on_floor), kind, if (length(on_floor) == 1L) "y is" else "ies are",
+      cf_txt, resp_hit, who,
+      if (raw_inverse) sprintf("this step applies %s, so their weights are multiplied by up to 1e6", wt_long)
+      else sprintf("`num_classes` binning keeps %s from being applied to them directly", wt_short)),
+      call. = FALSE)
+  }
+  # The mirror end, and only where it means something. With the odds there is no floor
+  # to rescue the unit: (1 - p)/p at p = 1 - 1e-6 is 1e-6, so the unit keeps
+  # essentially none of its weight and leaves every total without ever being reported
+  # as dropped -- the silent counterpart of the 1e6 explosion above. A pure leaf in a
+  # tree or a forest gives p == 1 exactly, which is why this fires there and hardly
+  # ever with a logit.
+  if (odds && !quiet) {
+    on_ceil <- which(p > 1 - 1e-4)
+    if (length(on_ceil)) {
+      np_hit <- sum(dd$.y[on_ceil] == 1, na.rm = TRUE)
+      warning(sprintf(paste0(
+        "%d fitted participation propensit%s above 1 - 1e-4, i.e. at the 0/1 boundary%s; ",
+        "%d of them belong to the non-probability sample. The pseudo-weight is the ",
+        "participation odds (1 - p)/p, so those units keep essentially none of their ",
+        "weight (a factor below 1e-4) and drop out of every total without being reported ",
+        "as dropped. A pure leaf in engine = \"tree\" or \"forest\" gives p == 1 exactly. ",
+        "Check the covariate overlap between the sample and the reference, reduce the ",
+        "number of folds, or use engine = \"logit\"."),
+        length(on_ceil), if (length(on_ceil) == 1L) "y is" else "ies are",
+        cf_txt, np_hit),
+        call. = FALSE)
+    }
+  }
+  pmax(p, 1e-6)                         # avoids division by zero in 1/p
 }
 
 # --- Unknown eligibility ---------------------------------------------------
@@ -290,7 +372,9 @@ apply_step.step_select_within <- function(step, data, w) {
     mw     <- if (is.null(step$weight_model) || isTRUE(step$weight_model)) Wh
               else rep(1, length(Wh))
     p      <- .estimate_propensity(step$engine, step$formula, ddh, mw,
-                                   crossfit = step$crossfit, seed = step$crossfit_seed)
+                                   crossfit = step$crossfit, seed = step$crossfit_seed,
+                                   raw_inverse = is.null(step$num_classes),
+                                   quiet = isTRUE(attr(data, "wf_replicate")))
     if (is.null(step$num_classes)) {
       factor_h <- ifelse(resp_h, 1 / p, 0)
       diag <- data.frame(engine = step$engine, level = "household",
@@ -380,7 +464,13 @@ apply_step.step_drop_ineligible <- function(step, data, w) {
 .nonresponse_calibrate <- function(step, data, w, respondent, eligible) {
   new_w    <- w
   elig_idx <- which(eligible)
-  dd       <- data[eligible, , drop = FALSE]
+  # droplevels(): model.matrix() makes a column per DEFINED factor level, so a level
+  # with no eligible unit adds a column of zeros whose name is not in `totals` (which
+  # .prep_linear_totals() builds after dropping empty levels). The setequal() check
+  # below then failed naming a phantom column, with no hint that the cause was an
+  # empty level; supplying a zero target instead made the system singular. Same fix
+  # as the calibration path (CAL-4).
+  dd       <- droplevels(data[eligible, , drop = FALSE])
   Xall     <- stats::model.matrix(step$formula, data = dd)
   if (nrow(Xall) != length(elig_idx) || anyNA(Xall))
     stop("Auxiliaries in `formula` have missing values in the eligible sample. ",
@@ -527,7 +617,9 @@ apply_step.step_nonresponse <- function(step, data, w) {
              else rep(1, sum(eligible))
   p       <- .estimate_propensity(step$engine, step$formula, dd, mw,
                                   crossfit = step$crossfit, cluster_id = cl_cf,
-                                  seed = step$crossfit_seed)
+                                  seed = step$crossfit_seed,
+                                  raw_inverse = is.null(step$num_classes),
+                                  quiet = isTRUE(attr(data, "wf_replicate")))
   idx_el  <- which(eligible)
   resp_el <- respondent[eligible]
 

@@ -48,21 +48,53 @@ disclosure_risk <- function(object, by, ratio = 10) {
   act  <- .wf_active(w)
   cell <- if (length(by) == 1L) as.character(object$data[[by]])
           else as.character(interaction(object$data[by], drop = FALSE, sep = ":"))
+  # SDC-01. A confidentiality screen must not fail OPEN, and this one did, twice and
+  # in silence. (i) An NA in a cell column left `cell` as NA, `cell == NA` is NA, so
+  # `which()` selected nothing, the cell was empty, median(numeric(0)) is NA, and the
+  # `!is.finite(med)` guard below skipped it -- every unit with a missing cell value
+  # went unscreened, however dominant its weight. (ii) A cell whose median is <= 0
+  # (calibration can leave negative weights, which this package keeps active on
+  # purpose) was skipped by the same guard. Name the missing cell, as
+  # domain_summary() does, and screen a non-positive-median cell on the median of its
+  # positive weights instead of dropping it -- the risk here is a large POSITIVE
+  # weight dominating a cell. If even that is impossible, say so out loud.
+  cell[is.na(cell)] <- "(missing)"
 
-  flagged <- list()
+  flagged <- list(); unscreened <- character(0); fallback <- character(0)
   for (g in unique(cell[act])) {
     idx <- which(act & cell == g)
     ws  <- w[idx]
     med <- stats::median(ws)
     tot <- sum(ws)
-    if (!is.finite(med) || med <= 0) next
+    if (!is.finite(med) || med <= 0) {
+      pos <- ws[ws > 0]
+      if (!length(pos)) { unscreened <- c(unscreened, g); next }
+      med <- stats::median(pos)
+      fallback <- c(fallback, g)
+    }
     hit <- which(ws > ratio * med)
     for (h in hit)
       flagged[[length(flagged) + 1L]] <- data.frame(
         .row = idx[h], cell = g, weight = ws[h],
         cell_median = med, cell_n = length(idx),
-        cell_share = ws[h] / tot, stringsAsFactors = FALSE)
+        # a share of a non-positive total is not a share; mixed-sign cells could
+        # otherwise report 1000%
+        cell_share = if (tot > 0) ws[h] / tot else NA_real_,
+        stringsAsFactors = FALSE)
   }
+  if (length(fallback))
+    warning(sprintf(paste0("%d publication cell(s) have a non-positive median weight ",
+                           "(negative weights from an unbounded calibration); they were ",
+                           "screened against the median of their POSITIVE weights ",
+                           "instead: %s."),
+                    length(fallback), paste(utils::head(fallback, 10L), collapse = ", ")),
+            call. = FALSE)
+  if (length(unscreened))
+    warning(sprintf(paste0("%d publication cell(s) have no positive weight and could NOT ",
+                           "be screened for weight dominance: %s. Review them by hand ",
+                           "before publishing."),
+                    length(unscreened), paste(utils::head(unscreened, 10L), collapse = ", ")),
+            call. = FALSE)
   out <- if (length(flagged)) do.call(rbind, flagged) else
     data.frame(.row = integer(0), cell = character(0), weight = numeric(0),
                cell_median = numeric(0), cell_n = integer(0),

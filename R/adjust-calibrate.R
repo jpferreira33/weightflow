@@ -38,6 +38,10 @@
   active <- .wf_active(w)
   if (any(is.na(dom[active])))
     stop(sprintf("Domain column '%s' has missing values (NA) among active units.", byvar))
+  if (isTRUE(step$equal_within_cluster) && !is.null(step$cluster))
+    .wf_assert_cluster_within_domain(dom[active],
+                                     as.character(data[[step$cluster]])[active],
+                                     step$cluster, byvar)
 
   new_w <- w
   diags <- list(); domsum <- list()
@@ -221,6 +225,30 @@
   invisible(TRUE)
 }
 
+# `by` solves one calibration system per domain, so a cluster whose members fall
+# in two domains is split across two solves and picks up two different g factors:
+# the one-weight-per-cluster promise breaks, and .wf_assert_uniform_within_cluster()
+# cannot see it because it only ever gets one domain's slice, where the INCOMING
+# weights are still uniform. A cluster belongs to exactly one domain by definition,
+# so data where it does not is wrong data -- refuse it here instead of returning
+# weights that differ within the household. Bites hardest with a non-geographic
+# `by` (age band, labour status, education), where a household crosses domains by
+# construction and the recipe still looks reasonable.
+.wf_assert_cluster_within_domain <- function(dom, cl, cluster_name, byvar) {
+  ndom <- tapply(dom, cl, function(z) length(unique(z)))
+  bad  <- names(ndom)[!is.na(ndom) & ndom > 1L]
+  if (length(bad) == 0L) return(invisible(TRUE))
+  stop(sprintf(paste0("`equal_within_cluster = TRUE` promises one weight per '%s', but `by = \"%s\"` ",
+                      "calibrates each domain on its own units and %d of %d cluster(s) span more ",
+                      "than one domain: %s. Their members would be solved in different systems and ",
+                      "receive different calibration factors, so the cluster would end up with ",
+                      "several weights. A cluster belongs to one domain: check the domain variable ",
+                      "(a non-geographic `by` such as an age band splits households by construction), ",
+                      "nest the cluster inside the domain, or drop `equal_within_cluster`."),
+               cluster_name, byvar, length(bad), length(ndom),
+               paste(utils::head(bad, 10L), collapse = ", ")), call. = FALSE)
+}
+
 apply_step.step_calibrate <- function(step, data, w) {
   active <- .wf_active(w)
   new_w  <- w
@@ -361,7 +389,11 @@ apply_step.step_calibrate <- function(step, data, w) {
     # the tolerance is loosened and the DS convergence flag is folded in; but a
     # gross miss (e.g. the old integrative-mean bug) is no longer hidden just
     # because `bounds` were supplied.
-    conv_ok <- if (truncated) ds_converged else TRUE
+    # The solver's own flag applies whenever the solver ran, not only when the
+    # distance is truncated: with calfun = "raking" and no bounds `truncated` is
+    # FALSE, so a Newton that stalled used to be reported as converged unless the
+    # rel_dev check below happened to catch it in its own (different) metric.
+    conv_ok <- if (use_ds) ds_converged else TRUE
     if (is.null(step$penalty)) {
       rel_dev <- abs(achieved - Tvec) / (abs(Tvec) + 1)
       tol_dev <- if (truncated) 1e-3 else 1e-6
@@ -399,7 +431,7 @@ apply_step.step_calibrate <- function(step, data, w) {
     g_unit <- as.numeric(new_w[active] / d)
     attr(diag, "calibrate") <- list(
       g = g_unit, d = as.numeric(d), calfun = step$calfun, bounds = step$bounds,
-      cond = tryCatch(kappa(crossprod(X), exact = FALSE), error = function(e) NA_real_),
+      cond = .wf_calib_cond(X, d),
       chi2 = sum(d * (g_unit - 1)^2),
       covars = data[active, all.vars(step$formula), drop = FALSE],
       formula = step$formula, active_idx = which(active))
@@ -449,10 +481,13 @@ apply_step.step_calibrate <- function(step, data, w) {
     target <- step$margins[[v]]
     f      <- as.character(data[[v]])
     for (lev in names(target)) {
-      idx <- which(f == lev & active)
+      idx  <- which(f == lev & active)
+      prev <- sum(w[idx])                 # weight sum on entry: cumulative IPF factor
       diag[[length(diag) + 1]] <- data.frame(
         variable = v, category = lev, target = target[[lev]],
-        achieved = sum(new_w[idx]), n = length(idx), stringsAsFactors = FALSE
+        achieved = sum(new_w[idx]), prev_total = prev,
+        factor = if (isTRUE(prev > 0)) sum(new_w[idx]) / prev else NA_real_,
+        n = length(idx), stringsAsFactors = FALSE
       )
     }
   }

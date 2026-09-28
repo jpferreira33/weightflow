@@ -15,9 +15,23 @@ level_estimate(
   df = NULL
 )
 
-level_mean(wb, variable, wave = NULL, level = 0.95)
+level_mean(
+  wb,
+  variable,
+  wave = NULL,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 
-level_total(wb, variable, wave = NULL, level = 0.95)
+level_total(
+  wb,
+  variable,
+  wave = NULL,
+  level = 0.95,
+  ci_type = c("normal", "t"),
+  df = NULL
+)
 }
 \arguments{
 \item{wb}{a \code{weightflow_wave_boot} or \code{weightflow_wave_jack}.}

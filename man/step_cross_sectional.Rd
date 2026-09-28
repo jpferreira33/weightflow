@@ -69,9 +69,9 @@ and the cross-sectional weight for levels.
 
 \examples{
 wide <- panel_merge(
-  list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-  by = c("id_hogar", "nper"), require = "all")
-weighting_spec(wide, base_weights = w_base_T1) |>
+  list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+  by = c("household_id", "person_no"), require = "all")
+weighting_spec(wide, base_weights = pw_T1) |>
   step_longitudinal() |>
   step_panel_overlap(prob = 5 / 6) |> prep()
 }

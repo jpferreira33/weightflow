@@ -36,31 +36,31 @@ test_that("C2: clean propensity nonresponse still drops nonrespondents", {
 
 test_that("C3: non-uniform within-cluster base weights are a hard error", {
   set.seed(21); n <- 300
-  sexo <- sample(c("H", "M"), n, TRUE)
-  d <- data.frame(id = 1:n, sexo = factor(sexo), hogar = rep(1:(n / 2), each = 2),
-                  pw = ifelse(sexo == "M", 18, 6) * runif(n, .9, 1.1))   # weight ~ sex
-  X  <- stats::model.matrix(~sexo, d); tt <- colSums(X * d$pw) * 1.05
+  sex <- sample(c("H", "M"), n, TRUE)
+  d <- data.frame(id = 1:n, sex = factor(sex), hogar = rep(1:(n / 2), each = 2),
+                  pw = ifelse(sex == "M", 18, 6) * runif(n, .9, 1.1))   # weight ~ sex
+  X  <- stats::model.matrix(~sex, d); tt <- colSums(X * d$pw) * 1.05
   expect_error(suppressMessages(
     prep(step_calibrate(weighting_spec(d, base_weights = pw), method = "linear",
-                        formula = ~sexo, totals = tt, cluster = "hogar",
+                        formula = ~sex, totals = tt, cluster = "hogar",
                         equal_within_cluster = TRUE))),
     "constant within|one weight per cluster")
   # also errors under bounds (the old silently-converged path)
   expect_error(suppressMessages(
     prep(step_calibrate(weighting_spec(d, base_weights = pw), method = "linear",
-                        formula = ~sexo, totals = tt, cluster = "hogar",
+                        formula = ~sex, totals = tt, cluster = "hogar",
                         equal_within_cluster = TRUE, bounds = c(.2, 5)))),
     "constant within|one weight per cluster")
 })
 
 test_that("C3: uniform weights close exactly UNDER bounds (check no longer skipped)", {
   set.seed(22); n <- 300
-  sexo <- sample(c("H", "M"), n, TRUE)
-  d <- data.frame(id = 1:n, sexo = factor(sexo), hogar = rep(1:(n / 2), each = 2),
+  sex <- sample(c("H", "M"), n, TRUE)
+  d <- data.frame(id = 1:n, sex = factor(sex), hogar = rep(1:(n / 2), each = 2),
                   pw = rep(10, n))
-  X  <- stats::model.matrix(~sexo, d); tt <- colSums(X * d$pw) * 1.05
+  X  <- stats::model.matrix(~sex, d); tt <- colSums(X * d$pw) * 1.05
   fit <- suppressWarnings(prep(step_calibrate(weighting_spec(d, base_weights = pw),
-                        method = "linear", formula = ~sexo, totals = tt, cluster = "hogar",
+                        method = "linear", formula = ~sex, totals = tt, cluster = "hogar",
                         equal_within_cluster = TRUE, bounds = c(.2, 5))))
   w <- fit$final_weight; ach <- colSums(w * X)
   expect_lt(max(abs(ach - tt) / abs(tt)), 1e-3)             # closes within the bounded tol
@@ -69,12 +69,12 @@ test_that("C3: uniform weights close exactly UNDER bounds (check no longer skipp
 
 test_that("C3: uniform weights: totals exact, one weight per hh (no regression, survey match)", {
   set.seed(23); n <- 300
-  sexo <- sample(c("H", "M"), n, TRUE)
-  d <- data.frame(id = 1:n, sexo = factor(sexo), hogar = rep(1:(n / 2), each = 2),
+  sex <- sample(c("H", "M"), n, TRUE)
+  d <- data.frame(id = 1:n, sex = factor(sex), hogar = rep(1:(n / 2), each = 2),
                   pw = rep(10, n))
-  X  <- stats::model.matrix(~sexo, d); tt <- colSums(X * d$pw) * 1.05
+  X  <- stats::model.matrix(~sex, d); tt <- colSums(X * d$pw) * 1.05
   fit <- prep(step_calibrate(weighting_spec(d, base_weights = pw), method = "linear",
-                             formula = ~sexo, totals = tt, cluster = "hogar",
+                             formula = ~sex, totals = tt, cluster = "hogar",
                              equal_within_cluster = TRUE))
   w   <- fit$final_weight; ach <- colSums(w * X)
   expect_lt(max(abs(ach - tt) / abs(tt)), 1e-6)             # closes exactly

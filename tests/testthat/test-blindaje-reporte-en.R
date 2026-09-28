@@ -66,11 +66,11 @@ test_that("every prep alert appears in the EN report (comparing HTML-unescaped t
 
 test_that("a single-covariate logit propensity does not crash the report", {
   d <- ren_d(seed = 9)
-  d$edad <- rnorm(nrow(d), 45, 12)
-  d$resp2 <- rbinom(nrow(d), 1, stats::plogis(-2 + 0.05 * d$edad)) == 1
+  d$age <- rnorm(nrow(d), 45, 12)
+  d$resp2 <- rbinom(nrow(d), 1, stats::plogis(-2 + 0.05 * d$age)) == 1
   p <- suppressMessages(prep(weighting_spec(d, base_weights = w) |>
     step_nonresponse(respondent = resp2, method = "propensity",
-                     formula = ~edad, engine = "logit", num_classes = 5)))
+                     formula = ~age, engine = "logit", num_classes = 5)))
   h <- rep_en(p)
   expect_true(grepl("propensity", h, ignore.case = TRUE))
 })

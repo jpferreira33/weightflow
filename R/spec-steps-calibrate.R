@@ -489,7 +489,9 @@ design_effect <- function(w) {
 #' (`"nearest"`), with the largest-remainder method (`"preserve_total"`), which
 #' keeps the weighted total exactly, or with the cube method (`"balanced"`), which
 #' keeps the calibrated totals -- by domain, not only the grand total -- as close
-#' as the integer grid allows. Typically the last step of a recipe, after
+#' as the integer grid allows. For `"balanced"`, `formula` balances on the
+#' calibration design and `by` on crossed cells; they are different problems, and
+#' the difference is spelled out under those arguments. Typically the last step of a recipe, after
 #' calibration, when the weights have to be delivered as integers or with a fixed
 #' number of decimals.
 #'
@@ -501,17 +503,39 @@ design_effect <- function(w) {
 #'   allows). Note: `"preserve_total"` and `"balanced"` can break equality of
 #'   weights within a cluster; if you need integer and equal weights per
 #'   household, use `"nearest"`.
-#' @param by for `method = "balanced"` only: a character vector of variables
-#'   whose (crossed) cell totals must be preserved, e.g. `by = c("dam",
-#'   "estrato")` -- the same domains you calibrated to. Every weight is sent to
-#'   its floor or ceiling by balanced sampling on the cell indicators (cube
-#'   method), so each cell total (and hence each margin, and the grand total) is
-#'   reproduced up to at most one unit's worth. Required when
-#'   `method = "balanced"`.
+#' @param formula for `method = "balanced"` only: a one-sided formula, e.g.
+#'   `~ dam + stratum`. The balancing matrix is `model.matrix(formula, data)` over
+#'   the active units, so the rounding reproduces **exactly the totals a
+#'   calibration on that same formula reproduces**, and nothing else. This is the
+#'   argument to use after `step_calibrate(formula = )`: pass the same formula, or
+#'   pass neither `formula` nor `by` and the step takes it from the last
+#'   calibration step in the recipe.
+#' @param by for `method = "balanced"` only, and an alternative to `formula`: a
+#'   character vector of variables whose **crossed** cell totals must be
+#'   preserved, e.g. `by = c("dam", "stratum")`. The balancing matrix is then one
+#'   indicator per non-empty cell, so every cell total -- and hence every margin,
+#'   and the grand total -- is reproduced up to about one unit's worth. This is
+#'   the right choice after a post-stratification, where the cells *are* the
+#'   calibration. It is **stricter** than `formula`, not equivalent: preserving
+#'   every cell implies preserving the margins, but it also imposes constraints
+#'   the calibration never asked for, and with many sparse cells the rounding
+#'   cannot meet them all. Note too that with cell indicators each unit loads on a
+#'   single column, so the problem separates into one independent cell total at a
+#'   time and the cube method has no overlap to exploit; the overlap of
+#'   `model.matrix()` columns is what the method is for.
 #' @details The `"balanced"` method implements balanced rounding by the cube
 #'   method (Deville and Tille 2004; ECLAC/CEPAL household-survey methodology,
 #'   chapter 9, section F.2) natively, with no external sampling dependency. It is
 #'   randomized: call [set.seed()] before [prep()] for a reproducible result.
+#'
+#'   `"preserve_total"` is randomized too, but only where it has to be. Ties in the
+#'   fractional part are the rule rather than the exception -- a self-weighting
+#'   design, weights that land on `.5`, calibrated weights on a grid -- and they are
+#'   broken at random, so the extra unit is allocated without regard to the order of
+#'   the file. Deciding ties by row order instead moves mass systematically towards
+#'   whatever the file is sorted by, usually region, while the grand total (the one
+#'   thing the method promises) stays exactly right and hides it. Weights whose
+#'   fractional parts are distinct are rounded exactly as before.
 #' @references
 #' Deville J-C, Tille Y (2004). Efficient balanced sampling: the cube method.
 #'   \emph{Biometrika} 91(4):893-912.
@@ -526,27 +550,58 @@ design_effect <- function(w) {
 #' @family weighting steps
 step_round <- function(spec, digits = 0L,
                        method = c("nearest", "preserve_total", "balanced"),
-                       by = NULL, id = NULL) {
+                       by = NULL, formula = NULL, id = NULL) {
   method <- match.arg(method)
   if (!is.numeric(digits) || length(digits) != 1L || !is.finite(digits) ||
       digits < 0 || digits != round(digits))
     stop("`digits` must be a single non-negative whole number (e.g. 0 for integers).",
          call. = FALSE)
   digits <- as.integer(digits)
+  basis <- NULL
   if (identical(method, "balanced")) {
-    if (is.null(by) || !is.character(by) || !length(by))
-      stop("step_round(method = \"balanced\") needs `by`, a character vector of the ",
-           "domain variables whose totals must be preserved, e.g. by = c(\"dam\", \"estrato\").",
+    if (!is.null(by) && !is.null(formula))
+      stop("step_round(method = \"balanced\") takes `formula` OR `by`, not both. ",
+           "`formula` builds the balancing matrix with model.matrix(), which reproduces ",
+           "exactly the totals a calibration on that same formula reproduces; `by` crosses ",
+           "the variables into cells and preserves every cell total, which is stricter.",
            call. = FALSE)
-  } else if (!is.null(by)) {
-    warning("`by` is ignored unless method = \"balanced\".", call. = FALSE)
+    if (!is.null(formula)) {
+      if (!inherits(formula, "formula") || length(formula) != 2L)
+        stop("`formula` must be a one-sided formula, e.g. formula = ~ region + sex.",
+             call. = FALSE)
+      basis <- "formula"
+    } else if (is.null(by)) {
+      # Nothing given: inherit the calibration design, which is what this step is for --
+      # keeping the totals the recipe just calibrated to. The spec already carries the
+      # earlier steps, so this resolves at construction time and the recipe print-out and
+      # write_recipe() both show the formula that will actually be used.
+      cal <- Filter(function(s) inherits(s, "step_calibrate") && !is.null(s$formula),
+                    spec$steps)
+      if (!length(cal))
+        stop("step_round(method = \"balanced\") needs `formula` -- the calibration design ",
+             "whose totals must be preserved, e.g. formula = ~ dam + stratum -- or `by`, a ",
+             "character vector of variables whose crossed cell totals must be preserved. ",
+             "Neither was given, and there is no earlier step_calibrate(formula = ) to ",
+             "inherit the design from.", call. = FALSE)
+      formula <- cal[[length(cal)]]$formula
+      basis   <- "inherited"
+    } else {
+      if (!is.character(by) || !length(by))
+        stop("`by` must be a character vector of variable names, e.g. ",
+             "by = c(\"dam\", \"stratum\").", call. = FALSE)
+      basis <- "cells"
+    }
+  } else if (!is.null(by) || !is.null(formula)) {
+    warning("`by` and `formula` are ignored unless method = \"balanced\".", call. = FALSE)
   }
   step <- structure(
     list(
       label  = sprintf("rounding (%s, %d decimals)", method, digits),
       digits = digits,
       method = method,
-      by     = if (identical(method, "balanced")) by else NULL
+      by      = if (identical(method, "balanced")) by else NULL,
+      formula = if (identical(method, "balanced")) formula else NULL,
+      basis   = basis          # NULL unless method = "balanced"
     ),
     class = c("step_round", "weighting_step")
   )

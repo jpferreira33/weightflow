@@ -137,6 +137,15 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   # internal prediction-columns attribute on the weights; strip it so it does not
   # leak into the user-facing final weight.
   attr(w, "wf_modelcal") <- NULL
+  # N3: a recipe is an ordered list, and some steps undo what an earlier one did. Each
+  # step's diagnostics only ever describe the moment that step ran, so a calibration
+  # that met its totals exactly still prints target == achieved in the report after a
+  # later step has thrown those totals away. Check the promise against the FINAL weight.
+  inv_alerts <- .wf_check_calib_invariant(steps, w)
+  if (length(inv_alerts)) {
+    all_alerts <- c(all_alerts, inv_alerts)
+    if (isTRUE(warn)) for (a in inv_alerts) warning(a, call. = FALSE)
+  }
   structure(
     list(
       data         = data,
@@ -317,10 +326,20 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
         format(round(sa), big.mark = ",", scientific = FALSE)))
   }
 
-  # Very small response propensities blow up the 1/p weights; flag it.
-  pm <- attr(diag, "p_min")
+  # Very small propensities blow up the weight; flag it. Which weight, and among whom,
+  # depends on the step: the nonresponse steps apply 1/p to respondents, while
+  # step_pseudoweight() applies the participation odds (1 - p)/p to the non-probability
+  # sample. Naming the inverse in a step that never takes one sends the user looking for
+  # the wrong thing, so the step marks its own diagnostics and the alert follows.
+  pm   <- attr(diag, "p_min")
+  odds <- isTRUE(attr(diag, "odds"))
   if (!is.null(pm) && is.finite(pm) && pm < 0.01)
-    msgs <- c(msgs, sprintf(
+    msgs <- c(msgs, if (odds) sprintf(
+      paste0("Very small participation propensities (min p = %.4f in the non-probability ",
+             "sample) produce extreme pseudo-weights (the participation odds (1 - p)/p ",
+             "reach %sx). Check the propensity model, or trim with step_trim_weights()."),
+      pm, format(round((1 - pm) / pm), big.mark = ",", scientific = FALSE))
+    else sprintf(
       paste0("Very small response propensities (min p = %.4f among respondents) ",
              "produce extreme 1/p weights (up to %sx). Check the propensity model, ",
              "or trim with step_trim_weights()."),
@@ -544,5 +563,69 @@ collect_weights <- function(object, drop_zero = TRUE,
   # zeros (the "dropped" marker); negative weights are active and are kept, so the
   # data.frame total matches sum(final_weight).
   if (drop_zero) out <- out[which(.wf_active(object$final_weight)), , drop = FALSE]
+  out
+}
+
+# --- N3: does the final weight still keep the totals a step fixed? ------------
+# Every calibration-like step records `target` and `achieved` in its diagnostics, and
+# those are true of the weight AT THAT MOMENT. Nothing re-reads them at the end, so a
+# step that rescales, rounds or trims afterwards can throw the constraints away while
+# the report keeps showing the calibration in green. Measured: calibrating to N = 1,570
+# and then adding step_rescale() leaves the weights summing to 400 (the sample size),
+# with the calibration's own table still reading target 1570 / achieved 1570 and not one
+# alert raised.
+#
+# The check is deliberately narrow: the population size each calibration fixed, against
+# the sum of the final weights. That is the one constraint every calibration flavour
+# declares (the intercept for linear/GREG and model calibration, the sum of any margin's
+# targets for raking and post-stratification), it needs no design matrix to recompute,
+# and it catches the whole family of order mistakes. A step that legitimately preserves
+# the total (step_round(method = "preserve_total"), trimmed calibration) stays silent.
+.wf_target_N <- function(step) {
+  dg <- step$diagnostics
+  if (!is.data.frame(dg) || !nrow(dg) || !"target" %in% names(dg)) return(NA_real_)
+  # Skip only a step that already reported it could not meet its targets (that is its
+  # own alert). Post-stratification is exact by construction and carries no flag at
+  # all, so a missing attribute must not be read as a failure.
+  if (identical(attr(dg, "converged"), FALSE)) return(NA_real_)
+  key <- if ("variable" %in% names(dg)) "variable" else if ("constraint" %in% names(dg)) "constraint" else NULL
+  if (is.null(key)) return(NA_real_)
+  k <- as.character(dg[[key]])
+  # linear / GREG / model calibration / CRE: the intercept IS the population size
+  ic <- which(k == "(Intercept)")
+  if (length(ic)) return(sum(as.numeric(dg$target[ic])))  # summed over `by` domains
+  # raking / post-stratification: one row per category, so a single margin sums to N
+  if (!"category" %in% names(dg)) return(NA_real_)
+  first <- k[1]
+  rows  <- if ("domain" %in% names(dg)) k == first else k == first
+  N <- sum(as.numeric(dg$target[rows]), na.rm = TRUE)
+  if (is.finite(N) && N > 0) N else NA_real_
+}
+
+.wf_check_calib_invariant <- function(steps, w_final) {
+  out <- character(0)
+  if (!length(steps)) return(out)
+  tot <- tryCatch(sum(w_final[is.finite(w_final)]), error = function(e) NA_real_)
+  if (!is.finite(tot)) return(out)
+  for (i in seq_along(steps)) {
+    st <- steps[[i]]
+    if (!inherits(st, c("step_calibrate", "step_model_calibration", "step_cre",
+                        "step_trim_calibrated"))) next
+    if (i == length(steps)) next                       # nothing ran after it
+    N <- tryCatch(.wf_target_N(st), error = function(e) NA_real_)
+    if (!is.finite(N) || N <= 0) next
+    dev <- abs(tot / N - 1)
+    if (dev <= 1e-6) next
+    later <- vapply(steps[(i + 1L):length(steps)], function(s) class(s)[1], character(1))
+    out <- c(out, sprintf(paste0(
+      "[%s] this step calibrated the weights to a population of %s, but the FINAL weights ",
+      "sum to %s (%+.1f%%): the step(s) that ran after it (%s) did not preserve the totals ",
+      "it fixed. The step's own diagnostics still read target == achieved, because they ",
+      "describe the weight at the moment it ran -- they are not re-checked at the end. ",
+      "Move the later step before the calibration, use a totals-preserving variant, or ",
+      "drop it."),
+      class(st)[1], format(round(N), big.mark = ","), format(round(tot), big.mark = ","),
+      100 * (tot / N - 1), paste(unique(later), collapse = ", ")))
+  }
   out
 }

@@ -6,14 +6,14 @@
 afr_d <- function(n_cl = 40, seed = 301) {
   set.seed(seed)
   cl <- data.frame(cluster = 1:n_cl,
-                   region  = factor(rep(c("Norte", "Centro", "Sur", "Este"),
+                   region  = factor(rep(c("North", "Central", "South", "Este"),
                                         each = n_cl / 4)),
                    w_cl    = runif(n_cl, 15, 45))
   d <- do.call(rbind, lapply(seq_len(n_cl), function(i) {
     k <- sample(18:26, 1)                       # ~22 hogares por conglomerado (DHS)
     data.frame(cl[i, ], hogar = paste(i, 1:k, sep = "_"),
-               sexo = factor(sample(c("H", "M"), k, TRUE)),
-               edad = factor(sample(c("15-29", "30-49", "50+"), k, TRUE)),
+               sex = factor(sample(c("H", "M"), k, TRUE)),
+               age = factor(sample(c("15-29", "30-49", "50+"), k, TRUE)),
                y = rnorm(k, 55, 9), row.names = NULL)
   }))
   d$id   <- seq_len(nrow(d))
@@ -49,14 +49,14 @@ test_that("Stats-SA/QLFS-style: two-stage NR then BOUNDED calibration to provinc
   d <- afr_d(seed = 311)
   names(d)[names(d) == "region"] <- "prov"
   d$resp_h <- rbinom(nrow(d), 1, 0.9) == 1        # segunda fase (individuo)
-  X  <- stats::model.matrix(~ prov + sexo, d)
+  X  <- stats::model.matrix(~ prov + sex, d)
   tt <- colSums(X * d$w_cl) * 1.04
   p <- suppressMessages(prep(
     weighting_spec(d, base_weights = w_cl) |>
       step_nonresponse(respondent = resp, method = "weighting_class", by = "prov") |>
       step_nonresponse(respondent = resp_h, method = "weighting_class",
-                       by = c("prov", "sexo")) |>
-      step_calibrate(method = "linear", formula = ~ prov + sexo, totals = tt,
+                       by = c("prov", "sex")) |>
+      step_calibrate(method = "linear", formula = ~ prov + sex, totals = tt,
                      calfun = "logit", bounds = c(0.6, 1.9))))
   cw <- collect_weights(p)
   hw <- collect_weights(p, keep_intermediate = TRUE)
@@ -74,14 +74,14 @@ test_that("Mikrozensus-style: integrative AND bounded at once -- one weight per 
   per <- do.call(rbind, lapply(seq_len(nrow(d)), function(i) {
     k <- sample(1:4, 1)
     data.frame(d[i, c("hogar", "region", "w_cl")],
-               sexo = factor(sample(c("H", "M"), k, TRUE)), row.names = NULL)
+               sex = factor(sample(c("H", "M"), k, TRUE)), row.names = NULL)
   }))
   per$id <- seq_len(nrow(per))
-  X  <- stats::model.matrix(~ region + sexo, per)
+  X  <- stats::model.matrix(~ region + sex, per)
   tt <- colSums(X * per$w_cl) * 1.05
   p <- suppressMessages(prep(
     weighting_spec(per, base_weights = w_cl) |>
-      step_calibrate(method = "linear", formula = ~ region + sexo, totals = tt,
+      step_calibrate(method = "linear", formula = ~ region + sex, totals = tt,
                      cluster = "hogar", equal_within_cluster = TRUE,
                      calfun = "logit", bounds = c(0.5, 2))))
   cw <- collect_weights(p)
@@ -102,13 +102,13 @@ test_that("person-varying base weights with equal_within_cluster now ERROR (2026
   # when the incoming base weights already differ within a cluster -> hard error
   # pointing at the upstream step, instead of silently per-member-varying weights.
   set.seed(331); n <- 400
-  d <- data.frame(id = 1:n, sexo = factor(sample(c("H", "M"), n, TRUE)),
+  d <- data.frame(id = 1:n, sex = factor(sample(c("H", "M"), n, TRUE)),
                   hogar = rep(1:(n / 2), each = 2), w = runif(n, 5, 20))
-  X  <- stats::model.matrix(~sexo, d)
+  X  <- stats::model.matrix(~sex, d)
   tt <- colSums(X * d$w) * 1.04
   expect_error(suppressMessages(prep(
     weighting_spec(d, base_weights = w) |>
-      step_calibrate(method = "linear", formula = ~sexo, totals = tt,
+      step_calibrate(method = "linear", formula = ~sex, totals = tt,
                      cluster = "hogar", equal_within_cluster = TRUE))),
     "constant within|one weight per cluster")
 })

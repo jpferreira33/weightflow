@@ -25,7 +25,7 @@
     lang)
   s4 <- if (!is.null(ri))
     .t(sprintf(" The response R-indicator is %.3f.", ri$R),
-       sprintf(" El R-indicator de respuesta es %.3f.", ri$R), lang) else ""
+       sprintf(" El R-indicador de respuesta es %.3f.", ri$R), lang) else ""
   body <- paste0(s1, " ", s2, " ", s3, s4)
   sprintf("<div class='exec feature-soft'><h3 class='card-t'>%s</h3><p>%s</p></div>",
           .t("Executive summary", "Resumen ejecutivo", lang), body)
@@ -168,7 +168,13 @@
                          function(s) !is.null(attr(s$diagnostics, "converged")), logical(1)))
   nalert  <- sum(vapply(object$steps, function(s)
     !is.null(s$alerts) && length(s$alerts) > 0L, logical(1)))
-  pos <- fin[fin > 0]; med <- if (length(pos)) stats::median(pos) else NA_real_
+  # REP-04: the same "extreme = 4x median" rule as .weight_distribution_html(), and
+  # over the same vector -- the ACTIVE weights. Taking the median of the positives
+  # alone raised the threshold and undercounted the extremes, in the one item of the
+  # checklist that is supposed to catch them.
+  act <- fin[is.finite(fin) & fin != 0]
+  med <- if (length(act)) stats::median(act) else NA_real_
+  pos <- if (is.finite(med) && med > 0) act else numeric(0)   # the rule needs a positive median
   n_ext <- if (length(pos)) sum(pos > 4 * med) else 0L
   has_rep <- !is.null(replicates) &&
              inherits(replicates, c("weightflow_boot", "weightflow_jack"))
@@ -254,6 +260,16 @@
 
 # Optional card: replication design for variance (from a weightflow_boot /
 # weightflow_jack object passed via `replicates`). Reads only stored metadata.
+# `lonely_psu =` as a reader-facing phrase. The literal is the argument value, so
+# the Spanish keeps it in parentheses: the report has to stay greppable against
+# the code that produced it.
+.lonely_psu_label <- function(x, lang = "en") {
+  if (!identical(lang, "es")) return(x)
+  map <- c(certainty = "UPM de inclusi&oacute;n forzosa (certainty)",
+           collapse  = "estratos colapsados (collapse)")
+  if (length(x) == 1L && x %in% names(map)) unname(map[x]) else x
+}
+
 .replication_card <- function(rep, lang, object = NULL) {
   if (is.null(rep) || !inherits(rep, c("weightflow_boot", "weightflow_jack")))
     return("")
@@ -307,8 +323,9 @@
        else .t("None (with-replacement bootstrap)", "ninguna (bootstrap con reemplazo)", lang)),
     # Lonely-PSU handling is a single-phase resampling concept; omit it in two-phase.
     if (tp) "" else
-      kv(.t("Lonely-PSU handling", "Manejo de UPM solitaria", lang), na(rep$lonely_psu)),
-    kv(.t("Recipe-aware replication", "Replicaci\u00f3n recipe-aware", lang),
+      kv(.t("Lonely-PSU handling", "Manejo de UPM solitaria", lang),
+         .lonely_psu_label(na(rep$lonely_psu), lang)),
+    kv(.t("Recipe-aware replication", "Replicaci\u00f3n con la receta completa", lang),
        if (nrep > 0L && nfail >= nrep)
          .t("not applicable (all replicates failed)", "no aplica (todas las r\u00e9plicas fallaron)", lang)
        else .t("Full weighting procedure re-run for each replicate",
@@ -447,7 +464,7 @@
   sprintf("<div class='meta feature'><h3 class='card-t'>%s</h3><table class='params'><tbody>%s</tbody></table><p class='note'>%s</p></div>",
     .t("Second-phase design", "Dise&ntilde;o de la segunda fase", lang), rows,
     .t("The second phase subsamples the first-phase units; the recipe-aware bootstrap couples the two phases as V = V1 + V2.",
-       "La segunda fase submuestrea las unidades de la primera; el bootstrap recipe-aware acopla las dos fases como V = V1 + V2.", lang))
+       "La segunda fase submuestrea las unidades de la primera; el bootstrap con la receta completa acopla las dos fases como V = V1 + V2.", lang))
 }
 
 
@@ -725,6 +742,15 @@
 # weighting, not classification), propensity floor/overlap, and covariate
 # balance after 1/p weighting. Reads attr(diag, "propensity"); "" otherwise.
 .propensity_diagnostics <- function(step, lang) {
+  # step_pseudoweight() fits the SAME model on a different event: participation in a
+  # non-probability sample, not response to a survey. The diagnostics are identical,
+  # so the card is shared, but calling the volunteers "respondents" is simply wrong
+  # -- pick the noun from the step.
+  np   <- inherits(step, "step_pseudoweight")
+  n_ev <- if (np) .t("participation", "participaci&oacute;n", lang)
+          else .t("response", "respuesta", lang)
+  n_in <- if (np) .t("Participants", "Participantes", lang)
+          else .t("Respondents", "Respondentes", lang)
   pr <- attr(step$diagnostics, "propensity")
   if (is.null(pr) || is.null(pr$p) || !length(pr$p)) return("")
   p <- as.numeric(pr$p); resp <- as.logical(pr$resp); dw <- as.numeric(pr$dw)
@@ -772,10 +798,10 @@
   pr_r <- p[resp]; dw_r <- dw[resp]
   flo  <- function(t) 100 * wm(as.numeric(pr_r < t), dw_r)
   floor_note <- .t(
-    sprintf("Respondents with &phi;&#770; below 0.10: %s; below 0.05: %s (min %s). Small propensities become large 1/&phi;&#770; weights; a very sharp model can hide extreme weights in a few units.",
-            pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))),
-    sprintf("Respondentes con &phi;&#770; bajo 0.10: %s; bajo 0.05: %s (m\u00ednimo %s). Las propensiones bajas se vuelven pesos 1/&phi;&#770; grandes; un modelo demasiado ajustado puede esconder pesos extremos en pocas unidades.",
-            pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))), lang)
+    sprintf("%s with &phi;&#770; below 0.10: %s; below 0.05: %s (min %s). Small propensities become large 1/&phi;&#770; weights; a very sharp model can hide extreme weights in a few units.",
+            n_in, pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))),
+    sprintf("%s con &phi;&#770; bajo 0.10: %s; bajo 0.05: %s (m\u00ednimo %s). Las propensiones bajas se vuelven pesos 1/&phi;&#770; grandes; un modelo demasiado ajustado puede esconder pesos extremos en pocas unidades.",
+            n_in, pc1(flo(0.10)), pc1(flo(0.05)), d3(min(pr_r))), lang)
 
   # (c) covariate balance: weighted respondents (before dw, after dw/p) vs the
   # full eligible sample (target, weighted by dw); standardized differences.
@@ -804,8 +830,8 @@
           if (is.finite(bal$after[i]) && abs(bal$after[i]) > 0.1) "cell-warn" else "cell-ok",
           bal$after[i]), character(1))
         bal_html <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
-          .t("Standardized differences of the model covariates: weighted respondents vs the full eligible sample (target). |diff| &gt; 0.1 is flagged.",
-             "Diferencias estandarizadas de las covariables del modelo: respondentes ponderados vs la muestra elegible completa (objetivo). Se marca |dif| &gt; 0.1.", lang),
+          .t(sprintf("Standardized differences of the model covariates: weighted %s vs the full eligible sample (target). |diff| &gt; 0.1 is flagged.", tolower(n_in)),
+             sprintf("Diferencias estandarizadas de las covariables del modelo: %s ponderados vs la muestra elegible completa (objetivo). Se marca |dif| &gt; 0.1.", tolower(n_in)), lang),
           hd, paste(brows, collapse = ""))
       }
     }
@@ -890,8 +916,8 @@
       irows <- vapply(seq_along(top), function(i)
         sprintf("<tr><td>%s</td><td>%.1f%%</td></tr>", .html_escape(names(top)[i]), rel[i]), character(1))
       imp_html <- sprintf("<p class='muted'>%s</p><table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
-        .t(sprintf("Top predictors of response (%s importance, relative).", eng),
-           sprintf("Principales predictores de la respuesta (importancia de %s, relativa).", eng), lang),
+        .t(sprintf("Top predictors of %s (%s importance, relative).", n_ev, eng),
+           sprintf("Principales predictores de la %s (importancia de %s, relativa).", n_ev, eng), lang),
         hd, paste(irows, collapse = ""))
     }
   }
@@ -906,8 +932,10 @@
   }
 
   ov <- tryCatch(.svg_overlap(p, resp, dw, lang,
-                   title = .t("Common support of estimated response propensities",
-                              "Soporte com&uacute;n de las propensiones de respuesta estimadas", lang)),
+                   title = .t(sprintf("Common support of estimated %s propensities", n_ev),
+                              sprintf("Soporte com&uacute;n de las propensiones de %s estimadas", n_ev), lang),
+                   labs = c(n_in, if (np) .t("Reference", "Referencia", lang)
+                                  else .t("Nonrespondents", "No respondentes", lang))),
                  error = function(e) "")
   if (nzchar(ov)) ov <- sprintf("<div class='wdhist'>%s</div>", ov)
   sprintf("<div class='ri'><h3 class='card-t'>%s</h3>%s%s%s<p class='note'>%s</p><p class='muted'>%s</p>%s<p class='muted'>%s</p>%s%s</div>",
@@ -1153,7 +1181,7 @@
   if (!length(shared)) return("")
   sprintf("<p class='note'>%s</p>", .t(
     sprintf("These margins cover variables also used by the earlier nonresponse adjustment (%s); the calibration partially re-absorbs that adjustment. Its variability is still captured if you estimate variance with the recipe-aware bootstrap/jackknife.", .html_escape(paste(shared, collapse = ", "))),
-    sprintf("Estos m\u00e1rgenes cubren variables tambi\u00e9n usadas por el ajuste por no respuesta previo (%s); la calibraci\u00f3n re-absorbe parcialmente ese ajuste. Su variabilidad igual se captura si estim\u00e1s varianza con el bootstrap/jackknife recipe-aware.", .html_escape(paste(shared, collapse = ", "))), lang))
+    sprintf("Estos m\u00e1rgenes cubren variables tambi\u00e9n usadas por el ajuste por no respuesta previo (%s); la calibraci\u00f3n re-absorbe parcialmente ese ajuste. Su variabilidad igual se captura si estim\u00e1s varianza con el bootstrap/jackknife que recalcula toda la receta.", .html_escape(paste(shared, collapse = ", "))), lang))
 }
 
 # Trimming diagnostics: what the trim bought (bias-variance trade-off), not just
@@ -1193,7 +1221,7 @@
     brow(.t("below floor", "bajo cota inf.", lang), b_lo),
     brow(.t("within band", "dentro", lang), b_in),
     brow(.t("above cap", "sobre cota sup.", lang), b_hi))
-  disp <- if (identical(rec$redistribute, "calibration"))
+  disposition <- if (identical(rec$redistribute, "calibration"))
     .t("The trimmed mass was re-absorbed by the bounded re-calibration, which preserves the calibration totals by construction.",
        "La masa recortada fue reabsorbida por la re-calibraci\u00f3n acotada, que preserva los totales de calibraci\u00f3n por construcci\u00f3n.", lang)
   else if (identical(rec$redistribute, "none") || !preserved)
@@ -1214,7 +1242,7 @@
   sec1 <- sprintf("<p class='muted'>%s</p>%s<p class='note'>%s</p>",
     .t("What the trim did: units below the floor / within band / above the cap, with the weight sum before and after and the net mass moved.",
        "Qu\u00e9 hizo el recorte: unidades bajo la cota inferior / dentro / sobre la cota superior, con la suma de pesos antes y despu\u00e9s y la masa neta movida.", lang),
-    acct, disp)
+    acct, disposition)
 
   # --- (2) bias cost with y, else concentration proxy ---
   bias <- ""

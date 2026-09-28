@@ -20,7 +20,7 @@ panel_design(
 
 \item{unit}{one or more column names (a character vector) that together
 identify the longitudinal unit, stable across waves. A household is often a
-single id (\code{"ID"}); a person needs several (\code{c("ID", "nper")} = household id
+single id (\code{"ID"}); a person needs several (\code{c("ID", "person_no")} = household id
 plus person line number). The columns are pasted into the tracking key.}
 
 \item{wave}{string: the column holding the wave/period.}
@@ -31,7 +31,13 @@ is left \code{NA} and only the unit-level overlap is computed.}
 
 \item{cluster}{optional one or more column names identifying a within-unit
 cluster (e.g. the household \code{"ID"}) when the tracked unit is a person but the
-overlap is realised at the household level.}
+overlap is realised at the household level. Given one, the descriptor also
+carries \code{overlap_cluster} -- the same wave x wave overlap matrix computed over
+distinct clusters -- plus \code{n_clusters} and \code{n_linked_clusters}. In a rotating
+household panel the dwelling stays in sample while its members change, so the
+cluster overlap is the one the rotation calendar describes and the unit-level
+one is that figure net of within-household churn; the gap between them is the
+churn.}
 
 \item{pattern}{optional string describing the rotation scheme, for verification
 only: CEPAL's \code{"4(0)1"}, the CPS \code{"4-8-4"}, or a plain integer like \code{"6"}.
@@ -74,8 +80,8 @@ sizes, which break the scalar reciprocal of \verb{Pr(panel selection)}, raise
 }
 \examples{
 # person-level tracking: the key is household id + person line number
-pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                   rotation_group = "grupo_rotacion", cluster = "id_hogar",
+pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                   rotation_group = "rotation_group", cluster = "household_id",
                    pattern = "6")
 pd            # overlap matrix, Pr(panel selection), linkage rate, alerts
 summary(pd)

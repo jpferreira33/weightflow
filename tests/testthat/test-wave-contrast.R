@@ -10,16 +10,16 @@ mkc <- function(npsu = 24, per = 10, offset = 0, drift = 0, seed = 1) {
   set.seed(seed)
   psu <- rep(seq_len(npsu) + offset, each = per)
   # El estrato es funcion del ID de UPM, no de su posicion: una UPM que rota tiene que
-  # conservar su estrato entre periodos, o la transferencia de multiplicidades -- que opera
+  # conservar su stratum entre periodos, o la transferencia de multiplicidades -- que opera
   # dentro de estrato -- no la puede emparejar y la coordinacion se pierde en silencio.
   data.frame(psu = psu, str = ((psu - 1L) %% 4L) + 1L, pw = 12,
-             sexo = factor(sample(c("M", "F"), npsu * per, TRUE)),
+             sex = factor(sample(c("M", "F"), npsu * per, TRUE)),
              desoc = stats::rbinom(npsu * per, 1,
                                    stats::plogis(-2.2 + 0.8 * eff[as.character(psu)] + drift)),
              resp = 1)
 }
 spc2 <- function(d) weighting_spec(d, base_weights = pw) |>
-  step_nonresponse(respondent = resp, by = "sexo")
+  step_nonresponse(respondent = resp, by = "sex")
 EST2 <- list(desoc = function(w, d) stats::weighted.mean(d$desoc, w, na.rm = TRUE))
 
 chain3 <- function(R = 200L) {
@@ -35,7 +35,6 @@ chain3 <- function(R = 200L) {
 }
 
 test_that("contrast c(-1, 1) reproduces wave_step()'s own net change exactly", {
-  skip_on_cran()
   ch <- chain3()
   cy <- lapply(ch, `[[`, "carry")
   got <- wave_contrast(list(cy[[1]], cy[[2]]), "desoc", contrast = c(-1, 1))
@@ -47,7 +46,6 @@ test_that("contrast c(-1, 1) reproduces wave_step()'s own net change exactly", {
 })
 
 test_that("the covariance matrix is symmetric, PSD, and decays with the lag", {
-  skip_on_cran()
   cy <- lapply(chain3(), `[[`, "carry")
   r <- wave_contrast(cy, "desoc")
   S <- attr(r, "Sigma")
@@ -63,7 +61,6 @@ test_that("the covariance matrix is symmetric, PSD, and decays with the lag", {
 })
 
 test_that("the rolling average beats the typical period, and never the impossible", {
-  skip_on_cran()
   cy <- lapply(chain3(), `[[`, "carry")
   avg <- wave_contrast(cy, "desoc")                        # default rep(1/3, 3)
   S   <- attr(avg, "Sigma")
@@ -78,7 +75,6 @@ test_that("the rolling average beats the typical period, and never the impossibl
 })
 
 test_that("a contrast that cancels the level has smaller variance than the sum", {
-  skip_on_cran()
   cy <- lapply(chain3(), `[[`, "carry")
   dif <- wave_contrast(cy, "desoc", contrast = c(-1, 0, 1))
   sum3 <- wave_contrast(cy, "desoc", contrast = c(1, 0, 1))
@@ -87,7 +83,6 @@ test_that("a contrast that cancels the level has smaller variance than the sum",
 })
 
 test_that("it refuses mismatched inputs instead of returning something plausible", {
-  skip_on_cran()
   cy <- lapply(chain3(), `[[`, "carry")
   expect_error(wave_contrast(cy, "desoc", contrast = c(1, -1)), "length 2 but 3 carries")
   expect_error(wave_contrast(cy, "no_existe"), "missing from carr")
@@ -96,10 +91,16 @@ test_that("it refuses mismatched inputs instead of returning something plausible
                      psu = "psu", period = "otro", seed = 7, progress = FALSE)
   expect_error(wave_contrast(list(cy[[1]], wave_carry(short)), "desoc"),
                "replicate count must be constant")
+  # and a set of carries that are each the first period of their own chain is not a
+  # chain at all: replicate b is not paired across them (WC-04)
+  solo <- lapply(1:2, function(k)
+    wave_carry(wave_step(spc2(mkc(seed = 40 + k)), estimands = EST2, replicates = 50,
+                         strata = "str", psu = "psu", period = paste0("s", k),
+                         seed = 7 + k, progress = FALSE)))
+  expect_warning(wave_contrast(solo, "desoc"), "FIRST period of a chain")
 })
 
 test_that("a single carry with contrast 1 returns that period's level", {
-  skip_on_cran()
   ch <- chain3()
   r <- wave_contrast(ch[[1]]$carry, "desoc", contrast = 1)
   lv <- ch[[1]]$step$level

@@ -25,7 +25,7 @@ weights within a cluster; if you need integer and equal weights per
 household, use \code{"nearest"}.}
 
 \item{by}{for \code{method = "balanced"} only: a character vector of variables
-whose (crossed) cell totals must be preserved, e.g. \code{by = c("dam", "estrato")} -- the same domains you calibrated to. Every weight is sent to
+whose (crossed) cell totals must be preserved, e.g. \code{by = c("dam", "stratum")} -- the same domains you calibrated to. Every weight is sent to
 its floor or ceiling by balanced sampling on the cell indicators (cube
 method), so each cell total (and hence each margin, and the grand total) is
 reproduced up to at most one unit's worth. Required when
@@ -53,6 +53,15 @@ The \code{"balanced"} method implements balanced rounding by the cube
 method (Deville and Tille 2004; ECLAC/CEPAL household-survey methodology,
 chapter 9, section F.2) natively, with no external sampling dependency. It is
 randomized: call \code{\link[=set.seed]{set.seed()}} before \code{\link[=prep]{prep()}} for a reproducible result.
+
+\code{"preserve_total"} is randomized too, but only where it has to be. Ties in the
+fractional part are the rule rather than the exception -- a self-weighting
+design, weights that land on \code{.5}, calibrated weights on a grid -- and they are
+broken at random, so the extra unit is allocated without regard to the order of
+the file. Deciding ties by row order instead moves mass systematically towards
+whatever the file is sorted by, usually region, while the grand total (the one
+thing the method promises) stays exactly right and hides it. Weights whose
+fractional parts are distinct are rounded exactly as before.
 }
 \examples{
 weighting_spec(sample_survey, base_weights = pw) |>

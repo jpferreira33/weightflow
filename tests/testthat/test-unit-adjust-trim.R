@@ -95,10 +95,26 @@ test_that("step_trim stops when there is nowhere to redistribute", {
   expect_equal(attr(res$diagnostics, "iterations"), 1L)
 })
 
-test_that("step_trim gives up after maxit iterations", {
-  res <- apply_step.step_trim(trim_step(max_ratio = 5, maxit = 1L),
-                              data.frame(i = 1:4), c(1, 2, 3, 10))
+test_that("step_trim gives up after maxit iterations, and says so (TRIM-01)", {
+  # Giving up is legitimate -- redistributing the trimmed mass can push a unit that
+  # was inside back over the cap, so the iteration need not converge. What was wrong
+  # is that it gave up in silence, while the diagnostics kept reporting the requested
+  # cap and the report certified the step as applied.
+  expect_warning(
+    res <- apply_step.step_trim(trim_step(max_ratio = 5, maxit = 1L),
+                                data.frame(i = 1:4), c(1, 2, 3, 10)),
+    "stopped at maxit = 1 with 1 weight")
   expect_equal(attr(res$diagnostics, "iterations"), 2L)
+  # and the warning is not decorative: letting the loop run changes the answer, so
+  # the maxit = 1 weights really are the untrimmed ones.
+  ok <- apply_step.step_trim(trim_step(max_ratio = 5, maxit = 50L),
+                             data.frame(i = 1:4), c(1, 2, 3, 10))
+  expect_false(isTRUE(all.equal(res$weights, ok$weights)))
+})
+
+test_that("step_trim stays quiet when the band is actually met", {
+  expect_silent(apply_step.step_trim(trim_step(max_ratio = 5, maxit = 50L),
+                                     data.frame(i = 1:4), c(1, 2, 3, 10)))
 })
 
 test_that("step_trim with reference = 'median' uses each `by` group's median", {
@@ -272,10 +288,20 @@ test_that("step_trim_weights with strict = FALSE does a single pass", {
   expect_true(max(res$diagnostics$upper) == 3)
 })
 
-test_that("step_trim_weights stops at maxit", {
-  res <- apply_step.step_trim_weights(tw_step(maxit = 1L),
-                                      data.frame(i = 1:3), c(2, 2, 10))
+test_that("step_trim_weights stops at maxit, and says so (TRIM-01)", {
+  expect_warning(
+    res <- apply_step.step_trim_weights(tw_step(maxit = 1L),
+                                        data.frame(i = 1:3), c(2, 2, 10)),
+    "stopped at maxit = 1 with 2 weight")
   expect_equal(attr(res$diagnostics, "iterations"), 2L)
+  expect_true(any(res$weights > res$diagnostics$upper + 1e-9))   # really uncapped
+})
+
+test_that("a deliberate single pass (strict = FALSE) is not reported as giving up", {
+  # strict = FALSE is one pass by design, not an exhausted loop; warning there would
+  # fire on every ordinary use of it.
+  expect_silent(apply_step.step_trim_weights(tw_step(strict = FALSE),
+                                             data.frame(i = 1:5), c(2, 2, 2, 2, 20)))
 })
 
 test_that("step_trim_weights raises weights below the lower bound", {

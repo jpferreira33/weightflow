@@ -11,17 +11,16 @@ mkp <- function(npsu = 24, per = 10, offset = 0, drift = 0, seed = 1) {
   psu <- rep(seq_len(npsu) + offset, each = per)
   str <- rep(rep(1:4, length.out = npsu), each = per)
   data.frame(psu = psu, str = str, pw = 10,
-             sexo = factor(sample(c("M", "F"), npsu * per, TRUE)),
+             sex = factor(sample(c("M", "F"), npsu * per, TRUE)),
              desoc = stats::rbinom(npsu * per, 1,
                                    stats::plogis(-2.4 + 0.9 * eff[as.character(psu)] + drift)),
              resp = 1)
 }
 spc <- function(d) weighting_spec(d, base_weights = pw) |>
-  step_nonresponse(respondent = resp, by = "sexo")
+  step_nonresponse(respondent = resp, by = "sex")
 EST <- list(desoc = function(w, d) stats::weighted.mean(d$desoc, w, na.rm = TRUE))
 
 test_that("the cross-sectional weights are exactly prep()'s", {
-  skip_on_cran()
   d <- mkp(seed = 1)
   s <- wave_step(spc(d), estimands = EST, replicates = 60, strata = "str", psu = "psu",
                  period = "p1", seed = 1, progress = FALSE)
@@ -30,7 +29,6 @@ test_that("the cross-sectional weights are exactly prep()'s", {
 })
 
 test_that("two identical periods give zero change and zero change variance", {
-  skip_on_cran()
   d <- mkp(seed = 1)
   a <- wave_step(spc(d), estimands = EST, replicates = 150, strata = "str", psu = "psu",
                  period = "p1", seed = 7, progress = FALSE)
@@ -43,7 +41,6 @@ test_that("two identical periods give zero change and zero change variance", {
 })
 
 test_that("rotation with n_h unchanged is a permutation: no replicate is adjusted", {
-  skip_on_cran()
   a <- wave_step(spc(mkp(seed = 1)), estimands = EST, replicates = 200, strata = "str",
                  psu = "psu", period = "q1", seed = 3, progress = FALSE)
   b <- wave_step(spc(mkp(seed = 2, offset = 4, drift = 0.15)), previous = wave_carry(a),
@@ -56,7 +53,6 @@ test_that("rotation with n_h unchanged is a permutation: no replicate is adjuste
 })
 
 test_that("a stratum that loses a PSU is case iii and coordinates only partly", {
-  skip_on_cran()
   a <- wave_step(spc(mkp(seed = 1)), estimands = EST, replicates = 200, strata = "str",
                  psu = "psu", period = "q1", seed = 3, progress = FALSE)
   d <- subset(mkp(seed = 2, offset = 4, drift = 0.1), psu != 5)
@@ -68,7 +64,6 @@ test_that("a stratum that loses a PSU is case iii and coordinates only partly", 
 })
 
 test_that("a returning cohort inherits from the carry that holds it, not the latest one", {
-  skip_on_cran()
   g1 <- wave_step(spc(mkp(seed = 1)), estimands = EST, replicates = 150, strata = "str",
                   psu = "psu", period = "m1", seed = 5, progress = FALSE)
   g2 <- wave_step(spc(mkp(seed = 9, offset = 100)), previous = wave_carry(g1),
@@ -86,7 +81,6 @@ test_that("a returning cohort inherits from the carry that holds it, not the lat
 })
 
 test_that("carry size: thin without CRE, and the replicate count must not drift", {
-  skip_on_cran()
   a <- wave_step(spc(mkp(seed = 1)), estimands = EST, replicates = 60, strata = "str",
                  psu = "psu", period = "p1", seed = 1, progress = FALSE)
   cy <- wave_carry(a)
@@ -100,14 +94,13 @@ test_that("carry size: thin without CRE, and the replicate count must not drift"
 })
 
 test_that("domains expand and an estimand added mid-chain is flagged, not dropped silently", {
-  skip_on_cran()
-  a <- wave_step(spc(mkp(seed = 1)), estimands = EST, by = "sexo", replicates = 150,
+  a <- wave_step(spc(mkp(seed = 1)), estimands = EST, by = "sex", replicates = 150,
                  strata = "str", psu = "psu", period = "q1", seed = 3, progress = FALSE)
   b <- wave_step(spc(mkp(seed = 2, offset = 4, drift = 0.15)), previous = wave_carry(a),
-                 estimands = EST, by = "sexo", replicates = 150, strata = "str",
+                 estimands = EST, by = "sex", replicates = 150, strata = "str",
                  psu = "psu", period = "q2", seed = 4, progress = FALSE)
   expect_equal(nrow(b$change), 3L)                      # total + two domains
-  expect_true(all(c("desoc", "desoc|sexo=F", "desoc|sexo=M") %in% b$change$estimand))
+  expect_true(all(c("desoc", "desoc|sex=F", "desoc|sex=M") %in% b$change$estimand))
   expect_warning(
     wave_step(spc(mkp(seed = 2, offset = 4)), previous = wave_carry(a),
               estimands = c(EST, list(ocup = function(w, d) stats::weighted.mean(1 - d$desoc, w))),
@@ -116,41 +109,39 @@ test_that("domains expand and an estimand added mid-chain is flagged, not droppe
 })
 
 test_that("a CRE chain injects Zhat* per replicate and needs a fat carry", {
-  skip_on_cran()
   w <- lapply(1:2, function(k) {
-    d <- subset(panel_ine, ola == k & disp == "R"); d$sexo <- factor(d$sexo); d })
-  Xtot <- function(d) colSums(d$w_base * stats::model.matrix(~ sexo, data = d))
-  E <- list(desoc = function(w, d) stats::weighted.mean(d$desocupado, w, na.rm = TRUE))
-  sp1 <- weighting_spec(w[[1]], base_weights = w_base) |>
-    step_cre(previous = NULL, status = condicion, formula = ~ sexo,
+    d <- subset(panel_ine, wave == k & disposition == "R"); d$sex <- factor(d$sex); d })
+  Xtot <- function(d) colSums(d$pw * stats::model.matrix(~ sex, data = d))
+  E <- list(desoc = function(w, d) stats::weighted.mean(d$unemployed, w, na.rm = TRUE))
+  sp1 <- weighting_spec(w[[1]], base_weights = pw) |>
+    step_cre(previous = NULL, status = lf_status, formula = ~ sex,
              totals = Xtot(w[[1]]), status_ref = "inact")
-  s1 <- wave_step(sp1, estimands = E, replicates = 40, strata = "estrato", psu = "psu",
+  s1 <- wave_step(sp1, estimands = E, replicates = 40, strata = "stratum", psu = "psu",
                   period = "ola1", seed = 1, progress = FALSE)
   expect_true(s1$carry$meta$fat)                        # CRE forces the fat carry
   expect_false(is.null(s1$carry$reps))
   expect_equal(s1$n_cre_skipped, 0L)                    # a seed wave must not warn
 
-  sp2 <- weighting_spec(w[[2]], base_weights = w_base) |>
-    step_cre(previous = prep(sp1), status = condicion, composite = list(NULL, "sexo"),
-             id_unit = c("id_hogar", "nper"), formula = ~ sexo, totals = Xtot(w[[2]]),
+  sp2 <- weighting_spec(w[[2]], base_weights = pw) |>
+    step_cre(previous = prep(sp1), rescale_previous = TRUE, status = lf_status, composite = list(NULL, "sex"),
+             id_unit = c("household_id", "person_no"), formula = ~ sex, totals = Xtot(w[[2]]),
              alpha = 2/3, status_ref = "inact")
   s2 <- wave_step(sp2, previous = wave_carry(s1), estimands = E, replicates = 40,
-                  strata = "estrato", psu = "psu", period = "ola2", seed = 2, progress = FALSE)
+                  strata = "stratum", psu = "psu", period = "ola2", seed = 2, progress = FALSE)
   expect_gte(s2$n_cre_injected, 1L)
   expect_equal(s2$n_cre_skipped, 0L)
   expect_true(is.finite(s2$change$se))
   expect_equal(s2$weights, prep(sp2)$final_weight)
 
   expect_error(wave_step(sp2, previous = wave_carry(s1), estimands = E, replicates = 40,
-                         strata = "estrato", psu = "psu", carry = "thin", progress = FALSE),
+                         strata = "stratum", psu = "psu", carry = "thin", progress = FALSE),
                "thin")
   expect_warning(wave_step(sp2, previous = NULL, estimands = E, replicates = 10,
-                           strata = "estrato", psu = "psu", progress = FALSE),
+                           strata = "stratum", psu = "psu", progress = FALSE),
                  "FIXED")
 })
 
 test_that("wave_step restores the caller's RNG state", {
-  skip_on_cran()
   d <- mkp(seed = 1)
   set.seed(99); s0 <- .Random.seed
   invisible(wave_step(spc(d), estimands = EST, replicates = 40, strata = "str",

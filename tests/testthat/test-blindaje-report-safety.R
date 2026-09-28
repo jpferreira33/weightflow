@@ -72,3 +72,31 @@ test_that("the Spanish report has no signed-zero or stage_N_step internals", {
   expect_false(grepl("stage_[0-9]_step_", h))
   expect_false(grepl(">[+-]0\\.00%<", h))
 })
+
+# SEC-01. The header tiles were the one hole left: .metric() interpolated its value
+# straight into the page, and report_panel() feeds it the `wave` column, so an
+# ordinary data value reached the HTML as markup. report_panel(open = TRUE) is the
+# default, so the file opens by itself.
+
+test_that(".metric() escapes its value and passes the label through", {
+  m <- weightflow:::.metric("<span class='gk'>&alpha;</span>", "<script>alert(1)</script>")
+  expect_false(grepl("<script>", m, fixed = TRUE))
+  expect_true(grepl("&lt;script&gt;", m, fixed = TRUE))
+  expect_true(grepl("<span class='gk'>&alpha;</span>", m, fixed = TRUE))  # label untouched
+  # a call site that really builds markup for the value has to say so
+  expect_true(grepl("<em>x</em>", weightflow:::.metric("l", "<em>x</em>", raw = TRUE),
+                    fixed = TRUE))
+})
+
+test_that("a hostile value of the wave column cannot reach the panel report as markup", {
+  skip_on_cran()
+  d <- panel_ine
+  d$wave <- ifelse(d$wave == 1, "1", paste0(d$wave, "<script>alert(1)</script>"))
+  pd <- panel_design(d, unit = c("household_id", "person_no"), wave = "wave",
+                     rotation_group = "rotation_group", pattern = "6")
+  f <- report_panel(design = pd, file = tempfile(fileext = ".html"), open = FALSE,
+                    lang = "en")
+  h <- paste(readLines(f, warn = FALSE), collapse = "\n")
+  expect_false(grepl("<script>alert(1)</script>", h, fixed = TRUE))
+  expect_true(grepl("&lt;script&gt;", h, fixed = TRUE))   # it is there, as text
+})

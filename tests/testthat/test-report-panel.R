@@ -3,26 +3,26 @@
 
 test_that("report_panel writes an HTML file with the supplied cards", {
   skip_on_cran()
-  pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                     rotation_group = "grupo_rotacion", pattern = "6")
+  pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                     rotation_group = "rotation_group", pattern = "6")
   wb <- wave_bootstrap(
-    list(T1 = weighting_spec(subset(panel_ine, ola == 1 & disp == "R"), base_weights = w_base),
-         T2 = weighting_spec(subset(panel_ine, ola == 2 & disp == "R"), base_weights = w_base)),
-    replicates = 60, strata = "estrato", psu = "psu", seed = 1, progress = FALSE)
-  ch <- change_mean(wb, "desocupado")
+    list(T1 = weighting_spec(subset(panel_ine, wave == 1 & disposition == "R"), base_weights = pw),
+         T2 = weighting_spec(subset(panel_ine, wave == 2 & disposition == "R"), base_weights = pw)),
+    replicates = 60, strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
+  ch <- change_mean(wb, "unemployed")
 
-  wide <- panel_merge(list(T1 = panel_ine[panel_ine$ola == 1, ], T2 = panel_ine[panel_ine$ola == 2, ]),
-                      by = c("id_hogar", "nper"), require = "all")
-  wide$e1 <- ifelse(is.na(wide$ocupado_T1), "inact", ifelse(wide$ocupado_T1 == 1, "ocup", "desoc"))
-  wide$e2 <- ifelse(is.na(wide$ocupado_T2), "inact", ifelse(wide$ocupado_T2 == 1, "ocup", "desoc"))
-  fit <- prep(weighting_spec(wide, base_weights = w_base_T1) |>
-                step_drop_ineligible(disp_T2 == "OS") |>
-                step_attrition(respondent = disp_T2 == "R", method = "weighting_class", by = "region_T1"))
+  wide <- panel_merge(list(T1 = panel_ine[panel_ine$wave == 1, ], T2 = panel_ine[panel_ine$wave == 2, ]),
+                      by = c("household_id", "person_no"), require = "all")
+  wide$e1 <- ifelse(is.na(wide$employed_T1), "inact", ifelse(wide$employed_T1 == 1, "ocup", "desoc"))
+  wide$e2 <- ifelse(is.na(wide$employed_T2), "inact", ifelse(wide$employed_T2 == 1, "ocup", "desoc"))
+  fit <- prep(weighting_spec(wide, base_weights = pw_T1) |>
+                step_drop_ineligible(disposition_T2 == "OS") |>
+                step_attrition(respondent = disposition_T2 == "R", method = "weighting_class", by = "region_T1"))
   tr <- transition_matrix(fit, "e1", "e2", format = "row")   # plain (no bootstrap) -> no SE shown
-  blong <- bootstrap_weights(weighting_spec(wide, base_weights = w_base_T1) |>
-                               step_drop_ineligible(disp_T2 == "OS") |>
-                               step_attrition(respondent = disp_T2 == "R", method = "weighting_class", by = "region_T1"),
-                             replicates = 40, strata = "estrato_T1", psu = "psu_T1", seed = 1, progress = FALSE)
+  blong <- bootstrap_weights(weighting_spec(wide, base_weights = pw_T1) |>
+                               step_drop_ineligible(disposition_T2 == "OS") |>
+                               step_attrition(respondent = disposition_T2 == "R", method = "weighting_class", by = "region_T1"),
+                             replicates = 40, strata = "stratum_T1", psu = "psu_T1", seed = 1, progress = FALSE)
 
   f <- report_panel(design = pd, change = ch, longitudinal = fit, transition = tr,
                     variance = blong, file = tempfile(fileext = ".html"), open = FALSE, lang = "en")
@@ -42,8 +42,8 @@ test_that("report_panel writes an HTML file with the supplied cards", {
 })
 
 test_that("report_panel adapts to whichever objects are given (and needs at least one)", {
-  pd <- panel_design(panel_cl, unit = c("id_hogar", "nper"), wave = "ola",
-                     rotation_group = "grupo_rotacion")
+  pd <- panel_design(panel_cl, unit = c("household_id", "person_no"), wave = "wave",
+                     rotation_group = "rotation_group")
   f <- report_panel(design = pd, file = tempfile(fileext = ".html"), open = FALSE)
   html <- paste(readLines(f, warn = FALSE), collapse = "\n")
   expect_match(html, "Panel structure")
@@ -52,8 +52,8 @@ test_that("report_panel adapts to whichever objects are given (and needs at leas
 })
 
 test_that("report_panel valida la clase de cada argumento (no reporte vacio silencioso, auditoria A5)", {
-  pd <- panel_design(panel_cl, unit = c("id_hogar", "nper"), wave = "ola",
-                     rotation_group = "grupo_rotacion")
+  pd <- panel_design(panel_cl, unit = c("household_id", "person_no"), wave = "wave",
+                     rotation_group = "rotation_group")
   # el bug historico: pasar un objeto de clase equivocada como `design` -> tarjeta "" ->
   # HTML vacio pero "valido". Ahora falla fuerte, sin escribir nada.
   expect_error(report_panel(design = data.frame(x = 1), file = tempfile(fileext = ".html"),
@@ -78,8 +78,8 @@ test_that("report_panel valida la clase de cada argumento (no reporte vacio sile
 
 test_that("la tarjeta de estructura muestra el perfil por rezago, no un solo numero", {
   skip_on_cran()
-  pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-                     rotation_group = "grupo_rotacion", pattern = "6")
+  pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                     rotation_group = "rotation_group", pattern = "6")
   h <- weightflow:::.panel_design_card(pd, "es")
   expect_true(grepl("Perfil de traslape por rezago", h, fixed = TRUE))
   expect_true(grepl("implicado por el esquema", h, fixed = TRUE))
@@ -96,7 +96,7 @@ test_that("la tarjeta de estructura muestra el perfil por rezago, no un solo num
 
 test_that("sin patron declarado la tarjeta no inventa un perfil", {
   skip_on_cran()
-  pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola")   # sin `pattern`
+  pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave")   # sin `pattern`
   h <- weightflow:::.panel_design_card(pd, "es")
   expect_false(grepl("Perfil de traslape", h, fixed = TRUE))
   expect_true(grepl("Traslape: fracci", h))          # la matriz observada si sigue
@@ -105,9 +105,24 @@ test_that("sin patron declarado la tarjeta no inventa un perfil", {
 
 test_that("sin grupo de rotacion el perfil omite la fila de cohortes", {
   skip_on_cran()
-  pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola", pattern = "6")
+  pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave", pattern = "6")
   h <- weightflow:::.panel_design_card(pd, "es")
   expect_true(grepl("Perfil de traslape por rezago", h, fixed = TRUE))
   expect_true(grepl("observado (unidades)", h, fixed = TRUE))
   expect_false(grepl("continuidad de cohortes", h, fixed = TRUE))
+})
+
+test_that("a panel report is titled as one in the <title> AND the masthead", {
+  pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                     rotation_group = "rotation_group", pattern = "6")
+  lw <- prep(weighting_spec(subset(panel_ine, wave == 1), base_weights = pw))
+  for (lg in c("en", "es")) {
+    f <- tempfile(fileext = ".html")
+    report_panel(design = pd, longitudinal = lw, file = f, open = FALSE, lang = lg)
+    h <- paste(readLines(f, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    old <- if (lg == "en") "survey weighting report" else "reporte de ponderaci&oacute;n"
+    expect_false(grepl(old, h, fixed = TRUE), info = lg)
+    h1 <- regmatches(h, regexpr("<h1>.*?</h1>", h))
+    expect_match(h1, if (lg == "en") "panel / longitudinal" else "panel / longitudinal")
+  }
 })

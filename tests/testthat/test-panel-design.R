@@ -64,11 +64,11 @@ test_that("panel_design derives Pr(panel selection) from rotation groups", {
 })
 
 test_that("panel_design accepts a composite unit key (household id + person line)", {
-  # same household id reused across two persons; the person is ID + nper
+  # same household id reused across two persons; the person is ID + person_no
   d <- rbind(
-    data.frame(ID = c(10, 10, 11), nper = c(1, 2, 1), mes = "T1"),
-    data.frame(ID = c(10, 11),     nper = c(1, 1),     mes = "T2"))   # person 10-2 drops out
-  pd <- panel_design(d, unit = c("ID", "nper"), wave = "mes", cluster = "ID")
+    data.frame(ID = c(10, 10, 11), person_no = c(1, 2, 1), mes = "T1"),
+    data.frame(ID = c(10, 11),     person_no = c(1, 1),     mes = "T2"))   # person 10-2 drops out
+  pd <- panel_design(d, unit = c("ID", "person_no"), wave = "mes", cluster = "ID")
   p <- attr(pd, "wf_panel")
   expect_equal(p$n_units, 3L)                 # persons 10-1, 10-2, 11-1
   expect_equal(p$n_linked, 2L)                # 10-1 and 11-1 in both waves
@@ -80,12 +80,12 @@ test_that("panel_design accepts a composite unit key (household id + person line
 })
 
 test_that("panel_merge builds the wide file with presence indicators", {
-  t1 <- data.frame(id = c(1, 2, 3), edad = c(20, 30, 40), respondio = c(1, 1, 0))
-  t2 <- data.frame(id = c(2, 3, 4), edad = c(31, 41, 25), respondio = c(1, 1, 1))
+  t1 <- data.frame(id = c(1, 2, 3), age = c(20, 30, 40), respondio = c(1, 1, 0))
+  t2 <- data.frame(id = c(2, 3, 4), age = c(31, 41, 25), respondio = c(1, 1, 1))
   wide <- panel_merge(list(T1 = t1, T2 = t2), by = "id",
                       responded = "respondio", require = "any")
   expect_equal(nrow(wide), 4L)                          # union of {1,2,3,4}
-  expect_true(all(c("edad_T1", "edad_T2", ".wf_in_T1", ".wf_in_T2") %in% names(wide)))
+  expect_true(all(c("age_T1", "age_T2", ".wf_in_T1", ".wf_in_T2") %in% names(wide)))
   # unit 1 only in T1, unit 4 only in T2
   r1 <- wide[wide$id == 1, ]; r4 <- wide[wide$id == 4, ]
   expect_equal(r1$.wf_in_T1, 1L); expect_equal(r1$.wf_in_T2, 0L)
@@ -96,9 +96,37 @@ test_that("panel_merge builds the wide file with presence indicators", {
 })
 
 test_that("panel_merge joins on a composite key", {
-  t1 <- data.frame(ID = c(1, 1, 2), nper = c(1, 2, 1), edad = c(40, 12, 33))
-  t2 <- data.frame(ID = c(1, 2),    nper = c(1, 1),     edad = c(41, 34))
-  wide <- panel_merge(list(T1 = t1, T2 = t2), by = c("ID", "nper"), require = "all")
+  t1 <- data.frame(ID = c(1, 1, 2), person_no = c(1, 2, 1), age = c(40, 12, 33))
+  t2 <- data.frame(ID = c(1, 2),    person_no = c(1, 1),     age = c(41, 34))
+  wide <- panel_merge(list(T1 = t1, T2 = t2), by = c("ID", "person_no"), require = "all")
   expect_equal(nrow(wide), 2L)                       # persons 1-1 and 2-1
-  expect_true(all(c("ID", "nper", "edad_T1", "edad_T2") %in% names(wide)))
+  expect_true(all(c("ID", "person_no", "age_T1", "age_T2") %in% names(wide)))
+})
+
+# --- PN-08: the cohort map must not depend on the order of the rows ----------
+
+test_that("panel_pr() and Pr(panel selection) are invariant to row order", {
+  for (rg in c("rotation_group", "month_in_sample")) {
+    P <- function(d) panel_design(d, unit = c("household_id", "person_no"), wave = "wave",
+                                  rotation_group = rg, pattern = "6")
+    p1 <- P(panel_ine)
+    p2 <- P(panel_ine[rev(seq_len(nrow(panel_ine))), ])
+    set.seed(11)
+    p3 <- P(panel_ine[sample(nrow(panel_ine)), ])
+    expect_equal(attr(p2, "wf_panel")$pr_adjacent, attr(p1, "wf_panel")$pr_adjacent, info = rg)
+    expect_equal(attr(p3, "wf_panel")$pr_adjacent, attr(p1, "wf_panel")$pr_adjacent, info = rg)
+    expect_equal(panel_pr(p2), panel_pr(p1), info = rg)
+    expect_equal(panel_pr(p3), panel_pr(p1), info = rg)
+  }
+})
+
+test_that("a rotation label that varies by wave still yields one cohort per unit", {
+  # month_in_sample / CPS hrmis: the label changes every wave BY DESIGN. Anchoring
+  # the cohort on the first wave a unit appears in is what makes that work; reading
+  # "whichever row came first" made the answer depend on the file's sort order.
+  pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+                     rotation_group = "month_in_sample")
+  p <- attr(pd, "wf_panel")
+  expect_true(all(is.finite(p$pr_adjacent)))
+  expect_true(all(p$pr_adjacent > 0 & p$pr_adjacent <= 1))
 })

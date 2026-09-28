@@ -17,7 +17,7 @@ panel_merge(
 wave labels and column suffixes.}
 
 \item{by}{one or more column names (a character vector) forming the unit key,
-present in every wave -- e.g. \code{"ID"} for a household or \code{c("ID", "nper")} for
+present in every wave -- e.g. \code{"ID"} for a household or \code{c("ID", "person_no")} for
 a person.}
 
 \item{responded}{optional string: the name of a response indicator present in
@@ -27,7 +27,7 @@ every wave, used to build \verb{.wf_resp_<wave>}.}
 (intersection).}
 
 \item{suffix}{string inserted before the wave label when renaming columns
-(default \code{"_"}), e.g. \code{edad} in wave \code{T1} becomes \code{edad_T1}.}
+(default \code{"_"}), e.g. \code{age} in wave \code{T1} becomes \code{age_T1}.}
 }
 \value{
 a wide \code{data.frame}, one row per unit, ready for \code{\link[=panel_design]{panel_design()}} /
@@ -51,8 +51,8 @@ estimating, not by dropping units before the model can see them.
 \examples{
 # reshape two waves of the long panel into one wide, one-row-per-unit file
 wide <- panel_merge(
-  list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-  by = c("id_hogar", "nper"), require = "any")
+  list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+  by = c("household_id", "person_no"), require = "any")
 names(wide)                       # per-wave columns are suffixed _T1 / _T2
 }
 \seealso{

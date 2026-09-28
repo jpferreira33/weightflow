@@ -22,6 +22,8 @@ change_mean(
   variable,
   waves = NULL,
   level = 0.95,
+  ci_type = c("normal", "t", "percentile"),
+  df = NULL,
   type = c("absolute", "relative"),
   by = NULL
 )
@@ -31,6 +33,8 @@ change_total(
   variable,
   waves = NULL,
   level = 0.95,
+  ci_type = c("normal", "t", "percentile"),
+  df = NULL,
   type = c("absolute", "relative"),
   by = NULL
 )

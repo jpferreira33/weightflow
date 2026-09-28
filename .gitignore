@@ -31,3 +31,9 @@ reportes/
 # FUSE mount / testthat scratch
 .fuse_hidden*
 tests/testthat/_problems/
+
+# scratch y salidas que no son del paquete
+.wf_*.tgz
+Claude outputs/
+logs/
+results/

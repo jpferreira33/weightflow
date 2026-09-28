@@ -14,9 +14,9 @@ jackknife_estimate(
   df = NULL
 )
 
-jack_total(jack, variable)
+jack_total(jack, variable, level = 0.95, ci_type = c("normal", "t"), df = NULL)
 
-jack_mean(jack, variable)
+jack_mean(jack, variable, level = 0.95, ci_type = c("normal", "t"), df = NULL)
 }
 \arguments{
 \item{jack}{a \code{weightflow_jack} object.}

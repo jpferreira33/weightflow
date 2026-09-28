@@ -30,17 +30,17 @@
 #' @examples
 #' # wide longitudinal file of the units in sample in both waves
 #' wide <- panel_merge(
-#'   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-#'   by = c("id_hogar", "nper"), require = "all")
+#'   list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+#'   by = c("household_id", "person_no"), require = "all")
 #'
 #' # rotation group known -> derive Pr(panel selection) from the panel design
-#' pd <- panel_design(panel_ine, unit = c("id_hogar", "nper"), wave = "ola",
-#'                    rotation_group = "grupo_rotacion")
-#' weighting_spec(wide, base_weights = w_base_T1) |>
+#' pd <- panel_design(panel_ine, unit = c("household_id", "person_no"), wave = "wave",
+#'                    rotation_group = "rotation_group")
+#' weighting_spec(wide, base_weights = pw_T1) |>
 #'   step_panel_overlap(prob = panel_pr(pd, c("1", "2"))) |> prep()
 #'
 #' # no rotation group (e.g. Chile ENE) -> pass the probability directly
-#' weighting_spec(wide, base_weights = w_base_T1) |>
+#' weighting_spec(wide, base_weights = pw_T1) |>
 #'   step_panel_overlap(prob = 5 / 6) |> prep()
 #' @export
 step_panel_overlap <- function(spec, prob, id = NULL) {
@@ -120,9 +120,9 @@ step_panel_overlap <- function(spec, prob, id = NULL) {
 #' @seealso [panel_design()], [step_panel_overlap()]
 #' @examples
 #' wide <- panel_merge(
-#'   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-#'   by = c("id_hogar", "nper"), require = "all")
-#' weighting_spec(wide, base_weights = w_base_T1) |>
+#'   list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+#'   by = c("household_id", "person_no"), require = "all")
+#' weighting_spec(wide, base_weights = pw_T1) |>
 #'   step_longitudinal() |>
 #'   step_panel_overlap(prob = 5 / 6) |> prep()
 #' @export
@@ -187,7 +187,7 @@ step_longitudinal <- function(spec, id = NULL) {
 #'
 #' @param spec a weighting_spec.
 #' @param respondent an unquoted 0/1 column or logical condition, TRUE for the units that
-#'   responded in the wave being adjusted (e.g. `disp_T2 == "R"`).
+#'   responded in the wave being adjusted (e.g. `disposition_T2 == "R"`).
 #' @param method attrition estimator: `"propensity"` (individual `1/phi`, the SLID/ECLAC
 #'   response-propensity weighting; default), `"rhg"` (response homogeneity groups: propensity
 #'   stratified into `num_classes` classes), `"weighting_class"` (design-variable cells), or
@@ -197,26 +197,42 @@ step_longitudinal <- function(spec, id = NULL) {
 #' @param by adjustment cells for `"weighting_class"`.
 #' @param engine propensity engine (`"logit"`/`"tree"`/`"forest"`/`"boost"`).
 #' @param num_classes number of propensity classes for `"rhg"`.
+#' @inheritParams step_nonresponse
 #' @param id optional stable step id.
+#' @section The arguments of step_nonresponse():
+#'
+#' Attrition *is* nonresponse over waves, so this step delegates to
+#' [step_nonresponse()] and takes its arguments too. That was not true before: the
+#' twelve remaining ones were missing, including `crossfit` -- which the step's own
+#' quality alert recommends when a flexible engine overfits the propensity, a remedy
+#' that could not be applied -- and `totals` / `calfun` / `bounds`, i.e. the whole
+#' Sarndal-Lundstrom calibration route with nothing to configure.
+#'
 #' @return the `weighting_spec` with the attrition step appended.
 #' @seealso [step_nonresponse()], [step_panel_overlap()], [step_drop_ineligible()]
 #' @examples
 #' wide <- panel_merge(
-#'   list(T1 = subset(panel_ine, ola == 1), T2 = subset(panel_ine, ola == 2)),
-#'   by = c("id_hogar", "nper"), require = "all")
-#' weighting_spec(wide, base_weights = w_base_T1) |>
+#'   list(T1 = subset(panel_ine, wave == 1), T2 = subset(panel_ine, wave == 2)),
+#'   by = c("household_id", "person_no"), require = "all")
+#' weighting_spec(wide, base_weights = pw_T1) |>
 #'   step_panel_overlap(prob = 5 / 6) |>
-#'   step_drop_ineligible(disp_T2 == "OS", reason = "left the target population") |>
-#'   step_attrition(respondent = disp_T2 == "R", method = "propensity",
-#'                  formula = ~ edad_T1 + sexo_T1 + region_T1) |>
+#'   step_drop_ineligible(disposition_T2 == "OS", reason = "left the target population") |>
+#'   step_attrition(respondent = disposition_T2 == "R", method = "propensity",
+#'                  formula = ~ age_T1 + sex_T1 + region_T1) |>
 #'   prep()
 #' @export
 step_attrition <- function(spec, respondent,
                            method = c("propensity", "rhg", "weighting_class", "calibration"),
                            formula = NULL, by = NULL,
                            engine = c("logit", "tree", "forest", "boost"),
-                           num_classes = 5L, id = NULL) {
+                           num_classes = 5L, weight_model = TRUE, cluster = NULL,
+                           crossfit = NULL, crossfit_seed = NULL,
+                           totals = NULL, count = NULL,
+                           calfun = c("linear", "logit", "raking"), bounds = NULL,
+                           penalty = NULL, equal_within_cluster = FALSE,
+                           maxit = 50L, tol = 1e-6, id = NULL) {
   method <- match.arg(method)
+  calfun <- match.arg(calfun)
   if (!inherits(spec, "weighting_spec"))
     stop("The first argument must be a weighting_spec (piped with |>).", call. = FALSE)
   # Delegate to step_nonresponse via the call, preserving the NSE `respondent` expression and

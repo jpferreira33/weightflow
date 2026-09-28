@@ -11,6 +11,7 @@ step_model_calibration(
   population,
   x_totals = NULL,
   count = "Freq",
+  by = NULL,
   cluster = NULL,
   equal_within_cluster = FALSE,
   calfun = c("linear", "logit", "raking"),
@@ -50,7 +51,27 @@ plus treatment contrasts). When NULL (default) the X totals are taken from
 to exist in \code{population} (only in the sample), and \code{population} is used only
 for the model predictions.}
 
-\item{count}{name of the counts column in the tidy \code{x_totals} data frames.
+\item{count}{name of the counts column in the tidy \code{x_totals} data frames.}
+
+\item{by}{NULL (default), or a single column name: \strong{partition} the sample by that
+domain and calibrate each domain on its own units, exactly as \code{by} does in
+\code{\link[=step_calibrate]{step_calibrate()}}. For model calibration that carries two consequences at once,
+which is usually the reason for wanting it: every working model in \code{models} is
+fitted on the units of its own domain and never sees the other domains, and the
+\code{x_formula} totals are reproduced exactly \strong{within} each domain rather than only
+nationally. \code{population} must carry the same domain column, and \code{x_totals}, if
+given, must be in the per-domain (tidy) form -- a national named vector would be
+applied to every domain and the population counted once per domain.
+
+The rank ceiling then binds per domain, and harder: domain \eqn{g} must carry its
+own \eqn{q_A + K} constraints on its \eqn{n_g} units, and with \code{crossfit} each of
+its folds must leave enough rows to fit the model coefficients. A domain too small
+for that is reported by name before anything is solved, because the symptom of a
+singular per-domain system is wild weights rather than an error. With linear
+working models, fitting by domain is the same mechanism as cross-fitting -- the
+prediction columns leave the shared span -- so the ceiling moves from
+\eqn{K \le q - q_A} to \eqn{K \le Gq - q_A} with \eqn{G} domains, and the two
+compose.
 Only used when \code{x_totals} is given in the tidy (data-frame) format.}
 
 \item{cluster}{name of the cluster id column (e.g. "household"), for equal
