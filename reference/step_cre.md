@@ -33,6 +33,7 @@ step_cre(
   calfun = c("linear", "logit", "raking"),
   bounds = NULL,
   rotation_group = NULL,
+  n_groups = NULL,
   status_ref = NULL,
   id = NULL
 )
@@ -159,6 +160,21 @@ step_cre(
   groups; the last group is left implied (its total follows from the
   others and `N`), so `G - 1` constraints are added to the demographic
   block. `NULL` (default) omits them.
+
+- n_groups:
+
+  the number of rotation groups the **design** has, e.g. `6`. Only used
+  with `rotation_group`, and worth giving: `G` is a property of the
+  design, not of who answered this wave, and the target `N / G` is wrong
+  the moment the two differ. If a group has no active units – fully
+  attrited, or a domain with no respondents in it – and `G` is read off
+  the sample, every remaining group is calibrated to `N / (G - 1)`, i.e.
+  a whole group's population shared out among the others, while the
+  intercept still targets `N`. The step refuses that rather than solving
+  it, because the two constraints cannot both hold. When `n_groups` is
+  not given, `G` comes from the column's factor levels (which survive a
+  level going empty); a character column carries no such record, so the
+  step warns that it had to read `G` off the wave.
 
 - status_ref:
 

@@ -1037,7 +1037,7 @@ The staged adjustments, applied in the order you pipe them.
 - [`step_calibrate()`](https://jpferreira33.github.io/weightflow/reference/step_calibrate.md)
   : Calibration to population totals
 - [`step_model_calibration()`](https://jpferreira33.github.io/weightflow/reference/step_model_calibration.md)
-  : Model-assisted calibration (Wu and Sitter 2001)
+  : Model calibration (Wu and Sitter 2001)
 - [`step_trim()`](https://jpferreira33.github.io/weightflow/reference/step_trim.md)
   : Trim extreme weights against a ratio
 - [`step_trim_weights()`](https://jpferreira33.github.io/weightflow/reference/step_trim_weights.md)

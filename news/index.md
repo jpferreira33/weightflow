@@ -71,9 +71,9 @@
   inflation of `V(change)` is therefore a limitation of the rescaling
   bootstrap for this contrast, not a defect of the draw, and it is now
   documented as one. The vignette also no longer claims that re-drawing
-  from a stored uniform cannot reproduce a shared PSU’s multiplicity:
-  while `n_h` is preserved – the rotating-panel case the method is built
-  for – it reproduces it exactly, correlation 1.000 at every rank.
+  from a stored uniform cannot reproduce a shared the multiplicity of a
+  PSU: while `n_h` is preserved – the rotating-panel case the method is
+  built for – it reproduces it exactly, correlation 1.000 at every rank.
 
 - **`step_cre(rotation_group = )` took the number of rotation groups
   from whoever answered the wave.** The equal-representation constraints
@@ -118,9 +118,9 @@
   genuinely builds markup for a value has to ask for it. Tile *labels*
   are literals written in the package (some carry entities such as
   `&alpha;`) and are unchanged. Every other route data takes into the
-  report – tables, chips, axis labels, the JS string literals – already
-  escaped, and that was re-checked by probing the rendered HTML for
-  factor levels, column names, wave and rotation-group values, gross
+  report – tables, chips, axis labels, the JavaScript string literals –
+  already escaped, and that was re-checked by probing the rendered HTML
+  for factor levels, column names, wave and rotation-group values, gross
   flow states, step ids and metadata, in both languages.
 
 - **[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md)

@@ -3,8 +3,10 @@
 design weights, step_pseudoweight() estimates each unit's participation
 propensity \(\hat p\) against a probability reference_sample() and assigns
 the pseudo-weight \((1 - \hat{p})/\hat{p}\) (the participation odds;
-Elliott and Valliant 2017), which inflates each unit to the population so the
-weights sum to the reference's estimated population size. It stacks the non-probability sample and the
+the adjusted logistic propensity of Wang, Valliant and Li 2021, after Elliott and
+Valliant 2017), which inflates each unit to the population. Their sum estimates
+the reference's estimated population size – it is unbiased for it, not equal to
+it, and varies from sample to sample like any other estimator. It stacks the non-probability sample and the
 reference internally (the participation indicator and the two samples' weights
 are built for you), fits the propensity, and returns the pseudo-weight on the
 non-probability units only; the reference is used to train the model and then
@@ -12,8 +14,10 @@ dropped."><meta property="og:description" content="For a non-probability sample 
 design weights, step_pseudoweight() estimates each unit's participation
 propensity \(\hat p\) against a probability reference_sample() and assigns
 the pseudo-weight \((1 - \hat{p})/\hat{p}\) (the participation odds;
-Elliott and Valliant 2017), which inflates each unit to the population so the
-weights sum to the reference's estimated population size. It stacks the non-probability sample and the
+the adjusted logistic propensity of Wang, Valliant and Li 2021, after Elliott and
+Valliant 2017), which inflates each unit to the population. Their sum estimates
+the reference's estimated population size – it is unbiased for it, not equal to
+it, and varies from sample to sample like any other estimator. It stacks the non-probability sample and the
 reference internally (the participation indicator and the two samples' weights
 are built for you), fits the propensity, and returns the pseudo-weight on the
 non-probability units only; the reference is used to train the model and then
@@ -92,8 +96,10 @@ dropped."><meta property="og:image" content="https://jpferreira33.github.io/weig
 design weights, <code>step_pseudoweight()</code> estimates each unit's <em>participation
 propensity</em> \(\hat p\) against a probability <code><a href="reference_sample.html">reference_sample()</a></code> and assigns
 the pseudo-weight \((1 - \hat{p})/\hat{p}\) (the participation odds;
-Elliott and Valliant 2017), which inflates each unit to the population so the
-weights sum to the reference's estimated population size. It stacks the non-probability sample and the
+the adjusted logistic propensity of Wang, Valliant and Li 2021, after Elliott and
+Valliant 2017), which inflates each unit to the population. Their sum <em>estimates</em>
+the reference's estimated population size – it is unbiased for it, not equal to
+it, and varies from sample to sample like any other estimator. It stacks the non-probability sample and the
 reference internally (the participation indicator and the two samples' weights
 are built for you), fits the propensity, and returns the pseudo-weight on the
 non-probability units only; the reference is used to train the model and then
@@ -186,7 +192,10 @@ gives the doubly robust estimator.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
-    <p>Elliott, M. R. and Valliant, R. (2017). Inference for non-probability samples.
+    <p>Wang, L., Valliant, R. and Li, Y. (2021). Adjusted logistic propensity weighting
+methods for population inference using nonprobability volunteer-based epidemiologic
+cohorts. Statistics in Medicine 40(24), 5237-5250. <a href="https://doi.org/10.1002/sim.9122" class="external-link">doi:10.1002/sim.9122</a></p>
+<p>Elliott, M. R. and Valliant, R. (2017). Inference for non-probability samples.
 Statistical Science 32(2), 249-264.</p>
     </div>
     <div class="section level2">

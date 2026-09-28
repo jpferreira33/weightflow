@@ -1,4 +1,4 @@
-# Model-assisted calibration (Wu and Sitter 2001)
+# Model calibration (Wu and Sitter 2001)
 
 Fits a working model for each study variable, predicts it over the whole
 population, and calibrates the weights so that the sample total of every
@@ -76,7 +76,8 @@ step_model_calibration(
 
 - count:
 
-  name of the counts column in the tidy `x_totals` data frames.
+  name of the counts column in the tidy `x_totals` data frames. Only
+  used when `x_totals` is given in the tidy (data-frame) format.
 
 - by:
 
@@ -102,8 +103,7 @@ step_model_calibration(
   models, fitting by domain is the same mechanism as cross-fitting – the
   prediction columns leave the shared span – so the ceiling moves from
   \\K \le q - q_A\\ to \\K \le Gq - q_A\\ with \\G\\ domains, and the
-  two compose. Only used when `x_totals` is given in the tidy
-  (data-frame) format.
+  two compose.
 
 - cluster:
 

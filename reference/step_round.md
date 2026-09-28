@@ -4,9 +4,12 @@ Rounds the weights to a given number of decimals, either unit by unit
 (`"nearest"`), with the largest-remainder method (`"preserve_total"`),
 which keeps the weighted total exactly, or with the cube method
 (`"balanced"`), which keeps the calibrated totals – by domain, not only
-the grand total – as close as the integer grid allows. Typically the
-last step of a recipe, after calibration, when the weights have to be
-delivered as integers or with a fixed number of decimals.
+the grand total – as close as the integer grid allows. For `"balanced"`,
+`formula` balances on the calibration design and `by` on crossed cells;
+they are different problems, and the difference is spelled out under
+those arguments. Typically the last step of a recipe, after calibration,
+when the weights have to be delivered as integers or with a fixed number
+of decimals.
 
 ## Usage
 
@@ -16,6 +19,7 @@ step_round(
   digits = 0L,
   method = c("nearest", "preserve_total", "balanced"),
   by = NULL,
+  formula = NULL,
   id = NULL
 )
 ```
@@ -41,13 +45,32 @@ step_round(
 
 - by:
 
-  for `method = "balanced"` only: a character vector of variables whose
-  (crossed) cell totals must be preserved, e.g.
-  `by = c("dam", "stratum")` – the same domains you calibrated to. Every
-  weight is sent to its floor or ceiling by balanced sampling on the
-  cell indicators (cube method), so each cell total (and hence each
-  margin, and the grand total) is reproduced up to at most one unit's
-  worth. Required when `method = "balanced"`.
+  for `method = "balanced"` only, and an alternative to `formula`: a
+  character vector of variables whose **crossed** cell totals must be
+  preserved, e.g. `by = c("dam", "stratum")`. The balancing matrix is
+  then one indicator per non-empty cell, so every cell total – and hence
+  every margin, and the grand total – is reproduced up to about one
+  unit's worth. This is the right choice after a post-stratification,
+  where the cells *are* the calibration. It is **stricter** than
+  `formula`, not equivalent: preserving every cell implies preserving
+  the margins, but it also imposes constraints the calibration never
+  asked for, and with many sparse cells the rounding cannot meet them
+  all. Note too that with cell indicators each unit loads on a single
+  column, so the problem separates into one independent cell total at a
+  time and the cube method has no overlap to exploit; the overlap of
+  [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) columns
+  is what the method is for.
+
+- formula:
+
+  for `method = "balanced"` only: a one-sided formula, e.g.
+  `~ dam + stratum`. The balancing matrix is
+  `model.matrix(formula, data)` over the active units, so the rounding
+  reproduces **exactly the totals a calibration on that same formula
+  reproduces**, and nothing else. This is the argument to use after
+  `step_calibrate(formula = )`: pass the same formula, or pass neither
+  `formula` nor `by` and the step takes it from the last calibration
+  step in the recipe.
 
 - id:
 
