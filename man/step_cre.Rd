@@ -23,6 +23,7 @@ step_cre(
   calfun = c("linear", "logit", "raking"),
   bounds = NULL,
   rotation_group = NULL,
+  n_groups = NULL,
   status_ref = NULL,
   id = NULL
 )
@@ -104,6 +105,18 @@ sec. 8.4.1, \verb{sum_\{i in s_g\} w_i = N_PET / 6}; LFS sec. 6.3.1). \code{N} i
 the intercept target in \code{totals} and \code{G} is the number of groups; the last
 group is left implied (its total follows from the others and \code{N}), so \code{G - 1}
 constraints are added to the demographic block. \code{NULL} (default) omits them.}
+
+\item{n_groups}{the number of rotation groups the \strong{design} has, e.g. \code{6}. Only
+used with \code{rotation_group}, and worth giving: \code{G} is a property of the design, not
+of who answered this wave, and the target \code{N / G} is wrong the moment the two
+differ. If a group has no active units -- fully attrited, or a domain with no
+respondents in it -- and \code{G} is read off the sample, every remaining group is
+calibrated to \code{N / (G - 1)}, i.e. a whole group's population shared out among the
+others, while the intercept still targets \code{N}. The step refuses that rather than
+solving it, because the two constraints cannot both hold. When \code{n_groups} is not
+given, \code{G} comes from the column's factor levels (which survive a level going
+empty); a character column carries no such record, so the step warns that it had to
+read \code{G} off the wave.}
 
 \item{status_ref}{the status level held as reference (dropped from each cell block
 to avoid the mechanical collinearity between the full status indicators and the

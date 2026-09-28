@@ -2,7 +2,7 @@
 % Please edit documentation in R/spec-steps-final.R
 \name{step_model_calibration}
 \alias{step_model_calibration}
-\title{Model-assisted calibration (Wu and Sitter 2001)}
+\title{Model calibration (Wu and Sitter 2001)}
 \usage{
 step_model_calibration(
   spec,
@@ -51,7 +51,8 @@ plus treatment contrasts). When NULL (default) the X totals are taken from
 to exist in \code{population} (only in the sample), and \code{population} is used only
 for the model predictions.}
 
-\item{count}{name of the counts column in the tidy \code{x_totals} data frames.}
+\item{count}{name of the counts column in the tidy \code{x_totals} data frames.
+Only used when \code{x_totals} is given in the tidy (data-frame) format.}
 
 \item{by}{NULL (default), or a single column name: \strong{partition} the sample by that
 domain and calibrate each domain on its own units, exactly as \code{by} does in
@@ -71,8 +72,7 @@ singular per-domain system is wild weights rather than an error. With linear
 working models, fitting by domain is the same mechanism as cross-fitting -- the
 prediction columns leave the shared span -- so the ceiling moves from
 \eqn{K \le q - q_A} to \eqn{K \le Gq - q_A} with \eqn{G} domains, and the two
-compose.
-Only used when \code{x_totals} is given in the tidy (data-frame) format.}
+compose.}
 
 \item{cluster}{name of the cluster id column (e.g. "household"), for equal
 weights within the cluster.}

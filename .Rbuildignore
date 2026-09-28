@@ -32,3 +32,4 @@
 ^guia_ponderacion$
 ^logs$
 ^results$
+^\.wf_.*\.tgz$
