@@ -1,5 +1,16 @@
 # step_pseudoweight(method = ): the four pseudo-weighting estimators.
 #
+# This file is a SPECIFICATION written ahead of the implementation: `method=`, the
+# kernel-weighting internals and the estimating-equation solver do not exist yet, so every
+# test here fails. It is kept because it is the spec to build against. `.Rbuildignore` keeps
+# it out of the tarball, so R CMD check never sees it -- but covr::package_coverage() runs
+# the tests straight from the source tree and does not read `.Rbuildignore`, which is what
+# was failing the coverage job. Skip the file until the code exists; the guard removes
+# itself the moment `.wf_kw_weights()` is defined.
+skip_if_not(exists(".wf_kw_weights", envir = asNamespace("weightflow"), inherits = FALSE),
+            "step_pseudoweight(method = ) is not implemented yet")
+
+#
 #   "alp"        adjusted logistic propensity (Wang, Valliant and Li 2021)
 #   "clw"        Chen, Li and Wu (2020) pseudo-maximum-likelihood
 #   "calibrated" moment-balancing estimating equation
