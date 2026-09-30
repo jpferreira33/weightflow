@@ -23,8 +23,7 @@ Description: Builds survey analysis weights by declaring the whole weighting
     following Rao and Wu (1988) <doi:10.1080/01621459.1988.10478591>;
     panel replicates are coordinated across waves, so the sample overlap
     enters the variance of a net change as covariance, and two-phase
-    variances split into first- and second-phase components (V = V1 + V2)
-    for an unclustered first phase.
+    variances split into first- and second-phase components (V = V1 + V2).
     A self-contained HTML report documents each step, and the weights
     bridge to the 'survey' and 'srvyr' packages. The methods, and the
     simulation evidence behind the variance estimators, are described in
