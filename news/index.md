@@ -28,6 +28,11 @@
 
 ### Bug fixes
 
+- A
+  [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
+  whose rows were reordered or subset afterwards kept its weights in the
+  old order, silently. They now travel with the rows.
+
 - Diagnostics and warnings across the pseudo-weighting, trimming,
   calibration and panel steps now fire in cases where they were silent,
   and several no longer claim more than the method delivers. Data values
