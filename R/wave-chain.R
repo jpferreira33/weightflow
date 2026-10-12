@@ -332,9 +332,10 @@ wave_step <- function(spec, previous = NULL, estimands = NULL, by = NULL,
   fr <- .wf_freeze_split(spec, refit_steps)
   pw <- fr$point; w_pre <- fr$w_pre
   ridx <- match(ps, upsu)
-  prev_reps <- if (length(prev)) prev[[1L]]$reps else NULL
+  pc        <- .wf_cre_prev_carry(fr$spec, prev)
+  prev_reps <- pc$reps; prev_fp <- pc$fp
   inj <- if (is.null(prev_reps)) list(injected = 0L, skipped = 0L)
-         else .wf_cre_inject_status(fr$spec, nrow(prev_reps))
+         else .wf_cre_inject_status(fr$spec, nrow(prev_reps), prev_fp)
   # A seed wave declares step_cre(previous = NULL) on purpose: there is no Zhat to vary, so
   # only warn when a step_cre actually points at an earlier wave and we could not reach it.
   needs_prev <- sum(vapply(spec$steps, function(s)
@@ -350,7 +351,7 @@ wave_step <- function(spec, previous = NULL, estimands = NULL, by = NULL,
     spb <- fr$spec; spb$data[[fr$base]] <- w_pre * Lam[ridx, b]
     attr(spb$data, "wf_replicate") <- TRUE
     attr(spb$data, "wf_replicate_idx") <- b
-    spb <- .wf_cre_inject_prev(spb, if (is.null(prev_reps)) NULL else prev_reps[, b])
+    spb <- .wf_cre_inject_prev(spb, if (is.null(prev_reps)) NULL else prev_reps[, b], prev_fp)
     tryCatch(prep(spb)$final_weight, error = function(e) rep(NA_real_, n))
   }, numeric(n))
   n_failed <- sum(apply(reps, 2L, anyNA))
@@ -377,6 +378,10 @@ wave_step <- function(spec, previous = NULL, estimands = NULL, by = NULL,
     mult = Mreg[upsu, , drop = FALSE],
     nh = table(psu_str), psu_stratum = stats::setNames(psu_str, upsu),
     theta = th, point = pt,
+    # Content fingerprint of THIS period's data, so the next period can tell which carry
+    # its step_cre's `previous` refers to without relying on the row count (VAR-20). It is
+    # stored even for a thin carry, where `data` is dropped.
+    data_fp = .wf_data_fp(dat),
     reps = if (fat) reps else NULL, data = if (fat) dat else NULL, weights = if (fat) pw else NULL,
     meta = list(R = R, resample = resample, refit_steps = refit_steps, m = m,
                 strata = strata, psu = psu, by = by, fat = fat,

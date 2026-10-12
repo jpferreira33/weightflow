@@ -216,6 +216,19 @@ step_pseudoweight <- function(spec, reference, formula,
     attr(diag, "p_min") <- pmin_all
     attr(diag, "p_max") <- pmax_all
     attr(diag, "odds")  <- TRUE   # weight is (1 - p)/p, not 1/p
+    # NP-08. One figure for the recipe, not one per domain: the dispersion that matters is
+    # the one carried by the weights that leave this step, across all of them. Read off
+    # the applied factor itself (new_w / w on the active units), which is what the
+    # per-domain models jointly produced.
+    act <- which(active & is.finite(w) & w != 0)
+    if (length(act)) {
+      fac_all <- new_w[act] / w[act]
+      attr(diag, "psw_deff")  <- design_effect(fac_all)$deff
+      attr(diag, "psw_ratio") <- if (stats::median(fac_all) > 0)
+        max(fac_all) / stats::median(fac_all) else NA_real_
+      attr(diag, "psw_f")     <- length(act) / (length(act) + nrow(ref))
+      attr(diag, "n_np")      <- length(act)
+    }
     attr(diag, "note")  <- sprintf(paste0("one participation model per domain of '%s' (%d ",
                                           "domains); each is fitted on its own domain in both ",
                                           "samples"), byvar, length(doms))
@@ -365,8 +378,24 @@ apply_step.step_pseudoweight <- function(step, data, w) {
               round(N_ref), round(sum_ratio, 3), round(mean(psw), 2)),
     stringsAsFactors = FALSE)
   attr(diag, "sum_ratio") <- sum_ratio   # NP-06
-  attr(diag, "p_min") <- min(pi_np)      # reuse the tiny-propensity alert
+  attr(diag, "p_min") <- min(pi_np)      # reported; NOT the alert trigger (NP-08)
   attr(diag, "p_max") <- max(pi_np)      # NP-01 mirror: participation ~ 1 -> pseudo-weight ~ 0
+  # NP-08. What the pseudo-weighting step costs, on a scale that does not move with the
+  # size of the sample relative to the pool. The fitted p estimates n(x)/(n(x)+N(x)), so
+  # its LEVEL is the participation fraction: with a sample 6% of the pool every p is near
+  # 0.06 by construction and (1 - p)/p ~ 15 for everyone -- the correct inflation to the
+  # population, not an extreme weight. The absolute p < 0.01 rule inherited from the
+  # nonresponse path therefore fired on the level and not on the dispersion: in simulation
+  # over a correctly specified logit it fired on 9 of 20 fits, including ones where every
+  # unit got the same factor (deff 1.00), and stayed silent where the factor alone cost
+  # nearly half the effective sample size (deff 1.86). These three are what the alert
+  # reads instead: the design effect of the applied factor, how far the most extreme unit
+  # is from the typical one, and the participation fraction that sets the level.
+  attr(diag, "psw_deff")  <- design_effect(factor)$deff
+  attr(diag, "psw_ratio") <- if (stats::median(factor) > 0)
+    max(factor) / stats::median(factor) else NA_real_
+  attr(diag, "psw_f")     <- n_np / (n_np + nrow(rf))
+  attr(diag, "n_np")      <- n_np
   attr(diag, "odds")  <- TRUE            # weight is (1 - p)/p, not 1/p
   if (collapsed) attr(diag, "classes_collapsed") <- TRUE   # NP-05
   # NP-02: expose the pooled propensity so the report renders the common-support /

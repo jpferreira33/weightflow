@@ -333,13 +333,34 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
   # the wrong thing, so the step marks its own diagnostics and the alert follows.
   pm   <- attr(diag, "p_min")
   odds <- isTRUE(attr(diag, "odds"))
-  if (!is.null(pm) && is.finite(pm) && pm < 0.01)
-    msgs <- c(msgs, if (odds) sprintf(
-      paste0("Very small participation propensities (min p = %.4f in the non-probability ",
-             "sample) produce extreme pseudo-weights (the participation odds (1 - p)/p ",
-             "reach %sx). Check the propensity model, or trim with step_trim_weights()."),
-      pm, format(round((1 - pm) / pm), big.mark = ",", scientific = FALSE))
-    else sprintf(
+  # NP-08. For the participation odds the LEVEL of p is the participation fraction, not a
+  # response rate: a sample that is 6% of the pool gives p ~ 0.06 for everyone and an
+  # inflation of 15x for everyone, which is what the method is for. So the odds path is
+  # judged on the DISPERSION of the applied factor -- the design effect it contributes on
+  # its own -- and the absolute 0.01 threshold is kept for the nonresponse path, where p
+  # really is a response rate and lives between 0.5 and 0.9. Threshold measured: over a
+  # correctly specified logit with the participation fraction from 8% to 82% and genuine
+  # heterogeneity from none to strong, deff stays at or below 1.09 while the inflation is
+  # near-uniform and reaches 1.5-3.8 once a few units carry the sample. 1.5 is where the
+  # step starts costing a third of the effective sample size.
+  dfx <- attr(diag, "psw_deff")
+  if (odds && !is.null(dfx) && is.finite(dfx) && dfx >= 1.5)
+    msgs <- c(msgs, sprintf(
+      paste0("The pseudo-weights are dispersed enough to cost sample size on their own: ",
+             "the participation odds (1 - p)/p contribute a design effect of %.2f, i.e. ",
+             "they reduce the effective sample size to %.0f%% of the %s non-probability ",
+             "units. The largest is %sx the typical one (min p = %.4f, participation ",
+             "fraction %.1f%%; at that fraction a uniform inflation would be %sx for every ",
+             "unit, which would cost nothing). A few units are carrying the sample. Review ",
+             "the propensity model, bin with `num_classes`, or trim with ",
+             "step_trim_weights()."),
+      dfx, 100 / dfx,
+      format(attr(diag, "n_np") %||% NA_integer_, big.mark = ","),
+      format(round(attr(diag, "psw_ratio")), big.mark = ","), pm,
+      100 * attr(diag, "psw_f"),
+      format(round((1 - attr(diag, "psw_f")) / attr(diag, "psw_f")), big.mark = ",")))
+  if (!odds && !is.null(pm) && is.finite(pm) && pm < 0.01)
+    msgs <- c(msgs, sprintf(
       paste0("Very small response propensities (min p = %.4f among respondents) ",
              "produce extreme 1/p weights (up to %sx). Check the propensity model, ",
              "or trim with step_trim_weights()."),

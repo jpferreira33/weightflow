@@ -12,7 +12,8 @@
   and not from the responding sample, and `rescale_previous` for a previous wave whose
   population differs from the current one.
 
-* `jackknife_weights()` takes `groups` and `seed`, for a delete-a-group jackknife.
+* `jackknife_weights()` takes `groups` and `seed`, for a delete-a-group jackknife, and
+  `max_replicates`, which stops a run before it builds more replicates than intended.
 
 * `ci_type` and `df` on the estimation entry points, for Student t intervals when the
   design degrees of freedom are few.
@@ -23,6 +24,14 @@
 
 * A `reference_sample()` whose rows were reordered or subset afterwards kept its weights
   in the old order, silently. They now travel with the rows.
+
+* `wave_step()` matched a `step_cre()`'s previous wave by row count, so a recipe pointing
+  further back than one period could receive the wrong period's replicate weights. The
+  carry now identifies its own period and the mismatch is refused.
+
+* `step_pseudoweight()`'s extreme-propensity alerts judged the pooled fit and the level of
+  the propensities, so they fired on sound models. They now look only at the units whose
+  propensity becomes a weight, and at the dispersion of the pseudo-weights.
 
 * Diagnostics and warnings across the pseudo-weighting, trimming, calibration and panel
   steps now fire in cases where they were silent, and several no longer claim more than

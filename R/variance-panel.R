@@ -129,6 +129,32 @@
 # (`injected`) vs be silently left at their fixed point `previous` (`skipped`). A skip means
 # the reported variance treats Zhat as fixed -> anticonservative, the exact error this
 # module exists to avoid, so wave_bootstrap()/wave_jackknife() warn and expose the counts.
+# Which carry of the chain holds the wave this recipe's step_cre actually declares as
+# `previous`? wave_step() used to take the lag-1 carry unconditionally (VAR-20): a recipe
+# whose step_cre points two periods back then got the immediately preceding wave's
+# replicate weights whenever the row counts happened to agree, which is VAR-12 reached by
+# a different route. Match the carry by CONTENT, the way wave_bootstrap() does, and return
+# both the replicates and the fingerprint so the injection can check alignment itself.
+# No match -> lag 1 and its own fingerprint, which .wf_cre_prev_ok then rejects, so the
+# step is left at its fixed `previous` and the caller gets the FIXED warning.
+.wf_cre_prev_carry <- function(spec, prev) {
+  if (!length(prev)) return(list(reps = NULL, fp = NULL))
+  fp_of <- function(p) p$data_fp %||%
+    (if (!is.null(p$data)) .wf_data_fp(p$data) else NULL)   # carries written before 1.3.1
+  want <- NULL
+  for (s in spec$steps) {
+    if (!inherits(s, "step_cre") || is.null(s$previous$data)) next
+    want <- .wf_data_fp(s$previous$data); break
+  }
+  if (!is.null(want)) {
+    for (p in prev) {
+      f <- fp_of(p)
+      if (!is.null(f) && identical(f, want)) return(list(reps = p$reps, fp = f))
+    }
+  }
+  list(reps = prev[[1L]]$reps, fp = fp_of(prev[[1L]]))
+}
+
 .wf_cre_inject_status <- function(spec, w_prev_len, prev_fp = NULL) {
   injected <- 0L; skipped <- 0L
   for (s in spec$steps) {

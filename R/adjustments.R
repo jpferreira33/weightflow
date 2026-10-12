@@ -149,26 +149,46 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
   # (1 - p)/p (the pseudo-weight path) BOTH ends bite -- the floor in the same way,
   # and the ceiling in mirror. So name the end that actually fired and what it does to
   # the weight in THIS step, instead of describing an inverse the step never applies.
-  kind     <- if (odds) "participation" else "response"
-  who      <- if (odds) "the non-probability sample" else "respondents"
+  # NP-08. And only among the units whose p BECOMES a weight. The pooled participation
+  # fit spans the non-prob sample and the reference, but the pseudo-weight is formed from
+  # the sample's p alone -- the reference's fitted p is computed and discarded. A reference
+  # unit at p ~ 0 is therefore not a defect but the shape the fit must have when the
+  # sample is a small slice of the pool: those units are, correctly, almost certainly
+  # reference. Counting them made the alert fire on correctly specified fits (measured: 7
+  # flagged units, 0 of them in the sample) and then prescribe four remedies for nothing.
+  # The nonresponse path is unaffected: there every row's p is applied as 1/p.
   wt_long  <- if (odds) "the participation odds (1 - p)/p" else "a raw 1/p"
   wt_short <- if (odds) "the odds" else "1/p"
   cf_txt   <- if (!is.null(crossfit)) sprintf(" (crossfit = %d)", crossfit) else ""
-  on_floor <- which(p < 1e-4)
+  applied  <- if (odds) which(dd$.y == 1) else seq_len(n)
+  on_floor <- applied[p[applied] < 1e-4]
   if (length(on_floor) && !quiet) {
-    resp_hit <- sum(dd$.y[on_floor] == 1, na.rm = TRUE)
-    warning(sprintf(paste0(
-      "%d fitted %s propensit%s below 1e-4, i.e. at the 0/1 boundary%s. This is ",
-      "either an honestly extreme propensity or a (quasi-)separated fit -- typically a ",
-      "rare category a cross-fitting fold's training set does not identify. %d of them ",
-      "belong to %s, and %s. Collapse the rare category, reduce the number of ",
-      "folds, use crossfit = NULL, or set `num_classes` (which bins by propensity ",
-      "quantiles, using only their ranking, and is robust to this)."),
-      length(on_floor), kind, if (length(on_floor) == 1L) "y is" else "ies are",
-      cf_txt, resp_hit, who,
-      if (raw_inverse) sprintf("this step applies %s, so their weights are multiplied by up to 1e6", wt_long)
-      else sprintf("`num_classes` binning keeps %s from being applied to them directly", wt_short)),
-      call. = FALSE)
+    pl <- if (length(on_floor) == 1L) "y is" else "ies are"
+    if (odds)
+      warning(sprintf(paste0(
+        "%d fitted participation propensit%s below 1e-4 IN THE NON-PROBABILITY SAMPLE, ",
+        "i.e. at the 0/1 boundary%s. This is either an honestly extreme propensity or a ",
+        "(quasi-)separated fit -- typically a rare category a cross-fitting fold's ",
+        "training set does not identify. %s. Collapse the rare category, reduce the ",
+        "number of folds, use crossfit = NULL, or set `num_classes` (which bins by ",
+        "propensity quantiles, using only their ranking, and is robust to this)."),
+        length(on_floor), pl, cf_txt,
+        if (raw_inverse)
+          sprintf("This step applies %s, so their weights are multiplied by up to 1e6", wt_long)
+        else sprintf("`num_classes` binning keeps %s from being applied to them directly", wt_short)),
+        call. = FALSE)
+    else
+      warning(sprintf(paste0(
+        "%d fitted response propensit%s below 1e-4, i.e. at the 0/1 boundary%s. This is ",
+        "either an honestly extreme propensity or a (quasi-)separated fit -- typically a ",
+        "rare category a cross-fitting fold's training set does not identify. %d of them ",
+        "belong to respondents, and %s. Collapse the rare category, reduce the number of ",
+        "folds, use crossfit = NULL, or set `num_classes` (which bins by propensity ",
+        "quantiles, using only their ranking, and is robust to this)."),
+        length(on_floor), pl, cf_txt, sum(dd$.y[on_floor] == 1, na.rm = TRUE),
+        if (raw_inverse) sprintf("this step applies %s, so their weights are multiplied by up to 1e6", wt_long)
+        else sprintf("`num_classes` binning keeps %s from being applied to them directly", wt_short)),
+        call. = FALSE)
   }
   # The mirror end, and only where it means something. With the odds there is no floor
   # to rescue the unit: (1 - p)/p at p = 1 - 1e-6 is 1e-6, so the unit keeps
@@ -177,19 +197,17 @@ apply_step <- function(step, data, w) UseMethod("apply_step")
   # tree or a forest gives p == 1 exactly, which is why this fires there and hardly
   # ever with a logit.
   if (odds && !quiet) {
-    on_ceil <- which(p > 1 - 1e-4)
+    on_ceil <- applied[p[applied] > 1 - 1e-4]       # NP-08: the sample's units only
     if (length(on_ceil)) {
-      np_hit <- sum(dd$.y[on_ceil] == 1, na.rm = TRUE)
       warning(sprintf(paste0(
-        "%d fitted participation propensit%s above 1 - 1e-4, i.e. at the 0/1 boundary%s; ",
-        "%d of them belong to the non-probability sample. The pseudo-weight is the ",
+        "%d fitted participation propensit%s above 1 - 1e-4, i.e. at the 0/1 boundary%s, ",
+        "in the non-probability sample. The pseudo-weight is the ",
         "participation odds (1 - p)/p, so those units keep essentially none of their ",
         "weight (a factor below 1e-4) and drop out of every total without being reported ",
         "as dropped. A pure leaf in engine = \"tree\" or \"forest\" gives p == 1 exactly. ",
         "Check the covariate overlap between the sample and the reference, reduce the ",
         "number of folds, or use engine = \"logit\"."),
-        length(on_ceil), if (length(on_ceil) == 1L) "y is" else "ies are",
-        cf_txt, np_hit),
+        length(on_ceil), if (length(on_ceil) == 1L) "y is" else "ies are", cf_txt),
         call. = FALSE)
     }
   }

@@ -68,8 +68,38 @@ test_that("JK9-04: a large direct sample is pointed at groups, not scolded", {
     jackknife_weights(fx$p, strata = "str", groups = 40, seed = 1, progress = FALSE))
   expect_length(w, 0L)                             # using groups: nothing to say
   # the unit-level path on a big sample explains the cost and names the alternative
-  msg <- testthat::capture_warnings(
-    jackknife_weights(fx$p, strata = "str", progress = FALSE))
-  expect_true(any(grepl("delete-a-group jackknife: pass groups = 50", msg)))
-  expect_true(any(grepl("right estimator for a direct sample", msg)))
+  # before building anything (VAR-19: it is refused, not attempted)
+  err <- tryCatch(jackknife_weights(fx$p, strata = "str", progress = FALSE),
+                  error = function(e) conditionMessage(e))
+  expect_true(is.character(err))
+  expect_true(grepl("6,000 replicates", err))
+  expect_true(grepl("one per unit, because `psu` is NULL", err))
+  expect_true(grepl("groups = 50 for the delete-a-group jackknife", err))
+  expect_true(grepl("max_replicates", err))
+})
+
+# VAR-19. jackknife_weights() is the one replicate design the caller does not size:
+# the replicate count falls out of the data -- one per PSU, and with `psu = NULL` one
+# per UNIT. A direct sample of 100,000 means 100,000 re-preps and an 80 GB matrix. It
+# is the correct delete-one estimator, so it is refused up front rather than attempted.
+
+test_that("jackknife_weights() refuses a run with more replicates than max_replicates", {
+  set.seed(4); n <- 200
+  d  <- data.frame(y = rnorm(n), pw = runif(n, 5, 20))
+  sp <- weighting_spec(d, base_weights = pw)
+
+  expect_error(jackknife_weights(sp, max_replicates = 50, progress = FALSE),
+               "200 replicates \\(one per unit, because `psu` is NULL\\)")
+  expect_error(jackknife_weights(sp, max_replicates = 50, progress = FALSE),
+               "groups = 50")
+
+  # under the limit it runs, and the limit does not change the answer
+  a <- jackknife_weights(sp, progress = FALSE)
+  b <- jackknife_weights(sp, max_replicates = Inf, progress = FALSE)
+  expect_equal(jack_mean(a, "y")$se, jack_mean(b, "y")$se, tolerance = 1e-12)
+
+  # the delete-a-group route it points at stays well inside the limit
+  set.seed(4)
+  g <- jackknife_weights(sp, groups = 20, max_replicates = 50, progress = FALSE)
+  expect_true(is.finite(jack_mean(g, "y")$se))
 })

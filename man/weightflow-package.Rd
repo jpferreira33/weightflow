@@ -29,11 +29,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Juan Pablo Ferreira \email{juanpablo.ferreira@fcea.edu.uy} (\href{https://orcid.org/0000-0002-1884-8187}{ORCID}) [copyright holder]
+\strong{Maintainer}: Juan Pablo Ferreira \email{juanpablo.ferreira@fcea.edu.uy} (\href{https://orcid.org/0000-0002-1884-8187}{ORCID})
 
 Authors:
 \itemize{
-  \item Juan Pablo Ferreira \email{juanpablo.ferreira@fcea.edu.uy} (\href{https://orcid.org/0000-0002-1884-8187}{ORCID}) [copyright holder]
+  \item Juan Pablo Ferreira \email{juanpablo.ferreira@fcea.edu.uy} (\href{https://orcid.org/0000-0002-1884-8187}{ORCID})
   \item Andrés Gutiérrez (\href{https://orcid.org/0009-0007-2918-1932}{ORCID})
 }
 

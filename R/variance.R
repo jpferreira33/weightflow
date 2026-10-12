@@ -581,6 +581,15 @@ boot_mean <- function(boot, variable, level = 0.95,
 #' @param lonely_psu how to treat strata with a single PSU: "certainty"
 #'   (default) skips them (no variance) and warns; "collapse" merges them into a
 #'   pseudo-stratum so they yield delete-a-PSU replicates.
+#' @param max_replicates the largest number of replicates this call will build
+#'   (default 5000); above it the call stops rather than starting the run. Unlike
+#'   [bootstrap_weights()], where you set `replicates`, here the count falls out of
+#'   the design: one replicate per PSU, and with `psu = NULL` one per **unit**. Each
+#'   replicate re-runs the whole recipe and holds a column of weights, so a direct
+#'   sample of 100,000 units means 100,000 re-preps and an 80 GB matrix. That is the
+#'   correct delete-one jackknife, which is why the limit refuses it up front instead
+#'   of letting the session die: for a sample that size the usual device is the
+#'   delete-a-group jackknife, `groups = 50`. Set `Inf` to build them all.
 #' @param cores number of parallel workers for the replicates (default 1 =
 #'   serial). With `cores > 1` the replicate re-preps run in parallel via
 #'   `parallel::mclapply` (forking; serial on Windows). For a deterministic
@@ -599,7 +608,7 @@ boot_mean <- function(boot, variable, level = 0.95,
 #' @family variance estimation
 jackknife_weights <- function(object, strata = NULL, psu = NULL, groups = NULL,
                               seed = NULL, lonely_psu = c("certainty", "collapse"),
-                              cores = 1L, progress = TRUE) {
+                              max_replicates = 5000L, cores = 1L, progress = TRUE) {
   if (!inherits(object, "weighting_spec"))
     stop("`object` must be a weighting_spec or a prepped weighting_spec.")
   # Two-phase designs are not supported by the jackknife: a delete-a-PSU jackknife
@@ -661,17 +670,6 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL, groups = NULL,
       if (!psu %in% names(data)) stop(sprintf("PSU column '%s' not found.", psu))
       as.character(data[[psu]])
     }
-    # One replicate per unit means n full re-preps and an n x n matrix (80 GB at
-    # n = 100,000). That is the correct estimator for a direct sample, so this is a
-    # signpost, not a reproach: `groups` gives the same variance family at G replicates.
-    if (is.null(psu) && n > 5000L)
-      warning(sprintf(paste0("jackknife_weights(): with `psu = NULL` there is one replicate per ",
-        "unit, so this run will re-prep the recipe %s times and build a %s x %s replicate ",
-        "matrix (about %.1f GB). That is the right estimator for a direct sample, but for one ",
-        "this size the usual device is the delete-a-group jackknife: pass groups = 50 (Kott ",
-        "2001; Rust and Rao 1996). If the design is clustered, pass `psu` instead."),
-        format(n, big.mark = ","), format(n, big.mark = ","), format(n, big.mark = ","),
-        8 * n * n / 1e9), call. = FALSE)
   }
   .assert_design_complete(data, strata, psu)
   if (any(vapply(object$steps, inherits, logical(1), "step_cre")))
@@ -697,6 +695,24 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL, groups = NULL,
   R <- length(rep_psu)
   if (R == 0L)
     stop("No stratum has >= 2 PSUs; the jackknife has no replicates.")
+  # VAR-19. This is the one replicate design the caller does not size: bootstrap_weights()
+  # takes `replicates`, while here the count falls out of the data -- one replicate per PSU,
+  # and with `psu = NULL` one per UNIT. Each replicate re-preps the whole recipe and keeps a
+  # column of n weights, so a direct sample of 100,000 means 100,000 re-preps and an 80 GB
+  # matrix. That is the correct delete-one estimator, not a defect, which is exactly why it
+  # has to be refused out loud instead of discovered when the session dies: the delete-a-group
+  # jackknife (Kott 2001; Rust and Rao 1996) is the same variance family at G replicates.
+  if (is.finite(max_replicates) && R > max_replicates)
+    stop(sprintf(paste0("jackknife_weights(): this design gives %s replicates%s, which means %s ",
+      "re-preps of the recipe and a %s x %s matrix of weights (about %s). Pass ",
+      "groups = 50 for the delete-a-group jackknife, which estimates the same variance with ",
+      "50 replicates;%s or raise max_replicates if you mean to build them all."),
+      format(R, big.mark = ","),
+      if (is.null(psu) && is.null(groups)) " (one per unit, because `psu` is NULL)" else "",
+      format(R, big.mark = ","), format(n, big.mark = ","), format(R, big.mark = ","),
+      local({ b <- 8 * as.numeric(n) * R
+              if (b >= 1e9) sprintf("%.1f GB", b / 1e9) else sprintf("%.0f MB", b / 1e6) }),
+      if (is.null(psu)) " pass `psu` if the design is clustered;" else ""), call. = FALSE)
 
   one_rep <- function(r) {
     h <- rep_stratum[r]; nh <- rep_nh[r]
