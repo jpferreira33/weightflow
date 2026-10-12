@@ -65,9 +65,9 @@
     return(list(.wf = "expr", value = paste(deparse(x), collapse = " ")))
   if (inherits(x, "wf_reference_sample"))
     return(list(.wf = "reference_sample",
-                n = length(attr(x, "wf_ref_weights")),
+                n = length(.wf_ref_weights(x)),
                 vars = as.list(names(x)),
-                has_replicates = !is.null(attr(x, "wf_ref_replicates"))))
+                has_replicates = !is.null(.wf_ref_reps(x))))
   if (inherits(x, "wf_y_model"))
     return(list(.wf = "y_model",
                 formula = paste(deparse(x$formula), collapse = " "),

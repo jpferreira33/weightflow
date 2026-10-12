@@ -163,10 +163,10 @@
 # replicate weights -> the point reference weights (targets treated as fixed).
 .wf_calib_ref_targets <- function(step, data) {
   pop     <- step$population
-  w_ref   <- attr(pop, "wf_ref_weights")
+  w_ref   <- .wf_ref_weights(pop)
   if (is.null(w_ref))
     stop("`population` must be a reference_sample() (its weights are missing).", call. = FALSE)
-  rep_mat <- attr(pop, "wf_ref_replicates")
+  rep_mat <- .wf_ref_reps(pop)
   ridx    <- attr(data, "wf_replicate_idx")
   if (!is.null(rep_mat) && !is.null(ridx))
     w_ref <- rep_mat[, ((ridx - 1L) %% ncol(rep_mat)) + 1L]

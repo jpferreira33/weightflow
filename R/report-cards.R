@@ -365,7 +365,7 @@
       # treats the estimated totals as fixed (see reference_sample() docs). So the
       # propagation claim holds only for a bootstrap object.
       has_rep <- !is_jack &&
-        any(vapply(hit, function(s) !is.null(attr(s$population, "wf_ref_replicates")),
+        any(vapply(hit, function(s) !is.null(.wf_ref_reps(s$population)),
                    logical(1)))
       ref_note <- if (has_rep)
         sprintf("<p class='note'>%s</p>", .t(

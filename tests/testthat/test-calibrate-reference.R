@@ -79,3 +79,63 @@ test_that("step_calibrate + population validates its inputs", {
                      population = reference_sample(ref, "w")),
     "do not also pass")
 })
+
+# REF-01. The reference's weights used to live only in an attribute, and `[.data.frame`
+# carries a classed frame's attributes through unchanged. Reordering the rows therefore
+# left the weights in the old order, silently paired with the new rows -- and reordering
+# a reference to add the domain column `by =` wants is an ordinary thing to do.
+
+test_that("the reference's weights follow its rows when they are reordered or subset", {
+  ref <- data.frame(id = 1:6, age = c(50, 20, 40, 10, 30, 60),
+                    d = c(100, 2, 50, 1, 20, 200))
+  rs  <- reference_sample(ref, "d")
+
+  r2 <- rs[order(rs$age), ]                      # reordered
+  expect_equal(weightflow:::.wf_ref_weights(r2), r2$d)
+  expect_equal(weightflow:::.wf_ref_weights(r2), c(1, 2, 20, 50, 100, 200))
+
+  r3 <- rs[rs$age > 15, ]                        # subset
+  expect_equal(length(weightflow:::.wf_ref_weights(r3)), nrow(r3))
+  expect_equal(weightflow:::.wf_ref_weights(r3), r3$d)
+
+  # replicates travel too
+  rep <- matrix(runif(6 * 4, 0.5, 1.5) * ref$d, nrow = 6)
+  rsr <- reference_sample(ref, "d", replicates = rep)
+  k   <- c(5L, 1L, 3L)
+  expect_equal(weightflow:::.wf_ref_reps(rsr[k, ]), rep[k, , drop = FALSE])
+})
+
+test_that("a reference built before REF-01 is refused rather than used misaligned", {
+  ref <- data.frame(id = 1:6, age = c(50, 20, 40, 10, 30, 60),
+                    d = c(100, 2, 50, 1, 20, 200))
+  old <- ref                                     # attribute only, as older versions wrote it
+  attr(old, "wf_ref_weights") <- ref$d
+  class(old) <- c("wf_reference_sample", class(old))
+  expect_equal(weightflow:::.wf_ref_weights(old), ref$d)          # untouched: still fine
+  expect_error(weightflow:::.wf_ref_weights(old[old$age > 15, ]),
+               "carries 6 weights for 5 rows")
+})
+
+test_that("reference_sample() refuses data that already uses its reserved column names", {
+  ref <- data.frame(id = 1:3, d = c(1, 2, 3), .wf_ref_w = c(9, 9, 9))
+  expect_error(reference_sample(ref, "d"), "reserved for the reference weights")
+})
+
+test_that("reordering the reference does not move the pseudo-weighted estimate", {
+  set.seed(11)
+  N   <- 4000
+  pop <- data.frame(x = rnorm(N), g = factor(sample(c("a", "b"), N, TRUE)))
+  pop$y <- 10 + 2 * pop$x + rnorm(N)
+  vol <- pop[runif(N) < stats::plogis(-2 + 1.1 * pop$x), ]
+  idx <- sample.int(N, 400)
+  ref <- pop[idx, c("x", "g")]; ref$d <- N / 400
+
+  fit <- function(r) suppressWarnings(prep(
+    weighting_spec(vol, base_weights = NULL, nonprob = TRUE) |>
+      step_pseudoweight(reference = r, formula = ~ x + g, engine = "logit")))
+
+  rs <- reference_sample(ref, "d")
+  a  <- fit(rs)
+  b  <- fit(rs[order(rs$x), ])                   # the same reference, rows reordered
+  expect_equal(a$final_weight, b$final_weight, tolerance = 1e-10)
+})

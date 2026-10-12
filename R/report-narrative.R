@@ -585,8 +585,8 @@
 .ref_totals_phrase <- function(step, lang) {
   pop <- step$population
   if (is.null(pop) || !inherits(pop, "wf_reference_sample")) return("")
-  n_ref   <- length(attr(pop, "wf_ref_weights"))
-  has_rep <- !is.null(attr(pop, "wf_ref_replicates"))
+  n_ref   <- length(.wf_ref_weights(pop))
+  has_rep <- !is.null(.wf_ref_reps(pop))
   vclause <- if (has_rep)
     .t("Because the totals are estimates, their sampling variability can be propagated through the recipe-aware bootstrap, where each replicate re-estimates the totals from the paired reference replicate (Opsomer and Erciulescu 2021); the delete-a-PSU jackknife has no such pairing and treats the totals as fixed.",
        "Como los totales son estimaciones, su variabilidad muestral puede propagarse por el bootstrap que recalcula toda la receta, donde cada r&eacute;plica reestima los totales desde la r&eacute;plica pareada de la referencia (Opsomer y Erciulescu 2021); el jackknife borra-una-UPM no tiene ese pareo y trata los totales como fijos.", lang)

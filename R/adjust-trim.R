@@ -283,7 +283,11 @@ apply_step.step_trim <- function(step, data, w) {
 # singular system whose symptom is wild weights rather than an error, so it is
 # checked up front, by name, with the arithmetic shown.
 .wf_ref_subset <- function(pop, i) {
+  # The reference's own columns follow `i` by themselves (REF-01); the attributes are
+  # kept in step only for an object built before they existed.
   wr <- attr(pop, "wf_ref_weights"); rr <- attr(pop, "wf_ref_replicates")
+  if (!is.null(wr) && length(wr) != nrow(pop)) wr <- NULL
+  if (!is.null(rr) && nrow(rr)   != nrow(pop)) rr <- NULL
   cl <- class(pop)
   out <- as.data.frame(pop)[i, , drop = FALSE]
   rownames(out) <- NULL
@@ -452,13 +456,13 @@ apply_step.step_model_calibration <- function(step, data, w) {
   d      <- w[active]
   sdata  <- data[active, , drop = FALSE]
   pop    <- step$population
-  w_ref  <- attr(pop, "wf_ref_weights")   # non-NULL only for reference_sample()
+  w_ref  <- .wf_ref_weights(pop)   # non-NULL only for reference_sample()
   # In a bootstrap replicate, re-estimate the reference totals from the paired
   # replicate column of the reference survey (Opsomer & Erciulescu 2021), so the
   # reference's sampling variance propagates. Point prep, or no replicate weights
   # supplied, falls back to the point reference weights (totals treated as fixed).
   if (!is.null(w_ref)) {
-    rep_mat <- attr(pop, "wf_ref_replicates")
+    rep_mat <- .wf_ref_reps(pop)
     ridx    <- attr(data, "wf_replicate_idx")
     if (!is.null(rep_mat) && !is.null(ridx))
       w_ref <- rep_mat[, ((ridx - 1L) %% ncol(rep_mat)) + 1L]

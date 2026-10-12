@@ -227,13 +227,13 @@ apply_step.step_pseudoweight <- function(step, data, w) {
   if (!is.null(step$by)) return(.pseudoweight_by_domain(step, data, w))
   active <- .wf_active(w)
   ref    <- step$reference
-  wref   <- attr(ref, "wf_ref_weights")
+  wref   <- .wf_ref_weights(ref)
   if (is.null(wref)) stop("`reference` has no weights (not a reference_sample()).", call. = FALSE)
   # Propagate the reference's sampling variance: in a bootstrap replicate, refit the
   # propensity using the PAIRED reference replicate weights (same mechanism as
   # reference_sample() in model calibration). Point prep, or a reference with no
   # replicate weights, uses the point weights, so the reference is treated as fixed.
-  rep_mat <- attr(ref, "wf_ref_replicates")
+  rep_mat <- .wf_ref_reps(ref)
   ridx    <- attr(data, "wf_replicate_idx")
   if (!is.null(rep_mat) && !is.null(ridx))
     wref <- rep_mat[, ((ridx - 1L) %% ncol(rep_mat)) + 1L]
