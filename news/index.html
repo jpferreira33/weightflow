@@ -75,13 +75,15 @@
 <ul><li><p><code>step_round(method = "balanced")</code> takes <code>formula</code>, balancing on the calibration design rather than on the crossed cells of <code>by</code>.</p></li>
 <li><p><code><a href="../reference/step_model_calibration.html">step_model_calibration()</a></code> and <code><a href="../reference/step_pseudoweight.html">step_pseudoweight()</a></code> take <code>by</code>, fitting and calibrating one domain at a time.</p></li>
 <li><p><code><a href="../reference/step_cre.html">step_cre()</a></code> takes <code>n_groups</code>, so the equal-representation target comes from the design and not from the responding sample, and <code>rescale_previous</code> for a previous wave whose population differs from the current one.</p></li>
-<li><p><code><a href="../reference/jackknife_weights.html">jackknife_weights()</a></code> takes <code>groups</code> and <code>seed</code>, for a delete-a-group jackknife.</p></li>
+<li><p><code><a href="../reference/jackknife_weights.html">jackknife_weights()</a></code> takes <code>groups</code> and <code>seed</code>, for a delete-a-group jackknife, and <code>max_replicates</code>, which stops a run before it builds more replicates than intended.</p></li>
 <li><p><code>ci_type</code> and <code>df</code> on the estimation entry points, for Student t intervals when the design degrees of freedom are few.</p></li>
 <li><p><code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> on a bootstrap object reports the Monte Carlo error of its standard errors.</p></li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-1-3-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-1-3-1"></a></h3>
 <ul><li><p>A <code><a href="../reference/reference_sample.html">reference_sample()</a></code> whose rows were reordered or subset afterwards kept its weights in the old order, silently. They now travel with the rows.</p></li>
+<li><p><code><a href="../reference/wave_step.html">wave_step()</a></code> matched a <code><a href="../reference/step_cre.html">step_cre()</a></code>’s previous wave by row count, so a recipe pointing further back than one period could receive the wrong period’s replicate weights. The carry now identifies its own period and the mismatch is refused.</p></li>
+<li><p><code><a href="../reference/step_pseudoweight.html">step_pseudoweight()</a></code>’s extreme-propensity alerts judged the pooled fit and the level of the propensities, so they fired on sound models. They now look only at the units whose propensity becomes a weight, and at the dispersion of the pseudo-weights.</p></li>
 <li><p>Diagnostics and warnings across the pseudo-weighting, trimming, calibration and panel steps now fire in cases where they were silent, and several no longer claim more than the method delivers. Data values are escaped in the HTML report. Assorted documentation corrections.</p></li>
 </ul></div>
 </div>

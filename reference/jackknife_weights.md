@@ -17,6 +17,7 @@ jackknife_weights(
   groups = NULL,
   seed = NULL,
   lonely_psu = c("certainty", "collapse"),
+  max_replicates = 5000L,
   cores = 1L,
   progress = TRUE
 )
@@ -58,6 +59,20 @@ jackknife_weights(
   how to treat strata with a single PSU: "certainty" (default) skips
   them (no variance) and warns; "collapse" merges them into a
   pseudo-stratum so they yield delete-a-PSU replicates.
+
+- max_replicates:
+
+  the largest number of replicates this call will build (default 5000);
+  above it the call stops rather than starting the run. Unlike
+  [`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md),
+  where you set `replicates`, here the count falls out of the design:
+  one replicate per PSU, and with `psu = NULL` one per **unit**. Each
+  replicate re-runs the whole recipe and holds a column of weights, so a
+  direct sample of 100,000 units means 100,000 re-preps and an 80 GB
+  matrix. That is the correct delete-one jackknife, which is why the
+  limit refuses it up front instead of letting the session die: for a
+  sample that size the usual device is the delete-a-group jackknife,
+  `groups = 50`. Set `Inf` to build them all.
 
 - cores:
 

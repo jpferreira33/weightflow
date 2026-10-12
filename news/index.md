@@ -18,7 +18,9 @@
   a previous wave whose population differs from the current one.
 
 - [`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
-  takes `groups` and `seed`, for a delete-a-group jackknife.
+  takes `groups` and `seed`, for a delete-a-group jackknife, and
+  `max_replicates`, which stops a run before it builds more replicates
+  than intended.
 
 - `ci_type` and `df` on the estimation entry points, for Student t
   intervals when the design degrees of freedom are few.
@@ -32,6 +34,19 @@
   [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
   whose rows were reordered or subset afterwards kept its weights in the
   old order, silently. They now travel with the rows.
+
+- [`wave_step()`](https://jpferreira33.github.io/weightflow/reference/wave_step.md)
+  matched a
+  [`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md)’s
+  previous wave by row count, so a recipe pointing further back than one
+  period could receive the wrong period’s replicate weights. The carry
+  now identifies its own period and the mismatch is refused.
+
+- [`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md)’s
+  extreme-propensity alerts judged the pooled fit and the level of the
+  propensities, so they fired on sound models. They now look only at the
+  units whose propensity becomes a weight, and at the dispersion of the
+  pseudo-weights.
 
 - Diagnostics and warnings across the pseudo-weighting, trimming,
   calibration and panel steps now fire in cases where they were silent,

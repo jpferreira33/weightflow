@@ -94,6 +94,7 @@ fixed by the design rather than chosen by the analyst.</p>
 <span>  groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  lonely_psu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"certainty"</span>, <span class="st">"collapse"</span><span class="op">)</span>,</span>
+<span>  max_replicates <span class="op">=</span> <span class="fl">5000L</span>,</span>
 <span>  cores <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  progress <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -133,6 +134,18 @@ replicates are reproducible. The caller's RNG state is restored on exit.</p></dd
 <dd><p>how to treat strata with a single PSU: "certainty"
 (default) skips them (no variance) and warns; "collapse" merges them into a
 pseudo-stratum so they yield delete-a-PSU replicates.</p></dd>
+
+
+<dt id="arg-max-replicates">max_replicates<a class="anchor" aria-label="anchor" href="#arg-max-replicates"></a></dt>
+<dd><p>the largest number of replicates this call will build
+(default 5000); above it the call stops rather than starting the run. Unlike
+<code><a href="bootstrap_weights.html">bootstrap_weights()</a></code>, where you set <code>replicates</code>, here the count falls out of
+the design: one replicate per PSU, and with <code>psu = NULL</code> one per <strong>unit</strong>. Each
+replicate re-runs the whole recipe and holds a column of weights, so a direct
+sample of 100,000 units means 100,000 re-preps and an 80 GB matrix. That is the
+correct delete-one jackknife, which is why the limit refuses it up front instead
+of letting the session die: for a sample that size the usual device is the
+delete-a-group jackknife, <code>groups = 50</code>. Set <code>Inf</code> to build them all.</p></dd>
 
 
 <dt id="arg-cores">cores<a class="anchor" aria-label="anchor" href="#arg-cores"></a></dt>

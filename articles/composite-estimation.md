@@ -271,7 +271,7 @@ it stores the $`R \times n`$ matrix of replicate weights as well.
 c(thin_KB = as.numeric(object.size(plain[[1]]$carry)) / 1024,
   fat_KB  = as.numeric(object.size(cre[[1]]$carry))   / 1024)
 #>    thin_KB     fat_KB 
-#>   85.88281 2614.19531
+#>   86.51562 2614.82812
 ```
 
 Thirty times larger, and the difference is entirely that matrix. For a
