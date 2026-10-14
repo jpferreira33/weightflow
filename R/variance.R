@@ -1041,6 +1041,22 @@ as_svydesign <- function(object, ids, strata = NULL, weight_name = ".weight", ..
          "step_subsample()): a single-phase survey design would omit the phase-2 ",
          "variance component. Use bootstrap_weights() for the two-phase variance, ",
          "or survey::twophase() to build a two-phase design directly.", call. = FALSE)
+  # N-07. A survey.design carries a sampling design, and every variance survey computes
+  # from it -- svymean, svytotal, svyby, svyglm -- comes from that design's randomization.
+  # A volunteer sample has none: handing one over turns it into "simple random sampling
+  # with replacement" by default, which is an assumption about how the units arrived, not
+  # a property of the weights. The point estimates are the pseudo-weighted ones and are
+  # fine; only the standard errors are invented. Say so once, here, because downstream
+  # survey has no way to know.
+  if (inherits(object, "weighting_spec") && isTRUE(object$nonprob))
+    warning(paste0(
+      "as_svydesign(): this recipe is a non-probability sample, and a survey design ",
+      "describes a sampling design it does not have. survey's variance formulas will ",
+      "treat the units as drawn at random (simple random sampling with replacement, ",
+      "unless you pass `ids`/`strata` describing something else), so the point ",
+      "estimates carry the pseudo-weights but the standard errors do not come from ",
+      "any real design. For a variance that re-runs the participation model, use ",
+      "bootstrap_weights() and as_svrepdesign()."), call. = FALSE)
   if (inherits(object, "prepped_weighting_spec")) {
     df <- object$data; df[[weight_name]] <- object$final_weight
   } else if (is.data.frame(object)) {

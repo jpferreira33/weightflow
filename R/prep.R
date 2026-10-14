@@ -68,6 +68,7 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
                         "as.numeric() (e.g. after read.csv(stringsAsFactors = TRUE) or an ",
                         "SPSS/Stata import)."), spec$base_weights, class(w)[1]), call. = FALSE)
   attr(data, "weightflow_base_w") <- w     # available to step_trim(reference = "base")
+  data_base_w <- w                         # N-08: the weights the recipe started from
 
   history <- list(base = w)             # weight at each stage
   steps   <- spec$steps
@@ -145,6 +146,21 @@ prep <- function(spec, min_cell_n = 30, max_factor = 2.5, warn = FALSE) {
   if (length(inv_alerts)) {
     all_alerts <- c(all_alerts, inv_alerts)
     if (isTRUE(warn)) for (a in inv_alerts) warning(a, call. = FALSE)
+  }
+  # N-08. A non-probability sample that comes out of prep() with the weights it went in
+  # with has not been adjusted for anything: every unit still counts once, which is the
+  # unweighted volunteer mean under another name. The recipe ran and every step passed,
+  # so nothing else in the package has reason to speak -- the absence IS the finding.
+  if (isTRUE(spec$nonprob) && length(w) &&
+      isTRUE(all.equal(as.numeric(w), as.numeric(data_base_w), tolerance = 1e-12))) {
+    a <- paste0(
+      "This recipe declares a non-probability sample but leaves its weights as they ",
+      "came in, so every unit still counts once and any estimate from it is the ",
+      "unweighted sample mean. A volunteer sample is not self-weighting: add ",
+      "step_pseudoweight() against a probability reference, or a calibration to known ",
+      "population totals, before publishing anything from these weights.")
+    all_alerts <- c(all_alerts, a)
+    if (isTRUE(warn)) warning(a, call. = FALSE)
   }
   structure(
     list(

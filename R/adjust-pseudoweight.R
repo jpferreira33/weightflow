@@ -128,6 +128,19 @@ step_pseudoweight <- function(spec, reference, formula,
   if (!isTRUE(spec$nonprob))
     stop(paste0("step_pseudoweight() is for a NON-probability sample: build the recipe with ",
                 "weighting_spec(..., nonprob = TRUE)."), call. = FALSE)
+  # N-11. The pseudo-weight answers "how many population units does this volunteer stand
+  # for", estimated from the participation odds against the reference. A second one runs
+  # that question again on units that already carry the answer: the pooled fit sees the
+  # first step's weights as if they were design weights, and the two factors multiply.
+  # There is no reading of the method under which that is the estimator, so it is refused
+  # here rather than producing a number. One model per domain is what `by` is for.
+  if (any(vapply(spec$steps, inherits, logical(1), "step_pseudoweight")))
+    stop(paste0("The recipe already has a step_pseudoweight(). Pseudo-weighting a second ",
+                "time multiplies the two participation odds together, which estimates ",
+                "nothing: the second fit reads the first step's pseudo-weights as design ",
+                "weights. Use one step -- with `by` for one participation model per domain, ",
+                "or a richer `formula` -- and follow it with a calibration step if you want ",
+                "the doubly robust estimator."), call. = FALSE)
   engine <- match.arg(engine)
   id <- .wf_id(id)
   if (!is.null(by) && (!is.character(by) || length(by) != 1L || is.na(by)))

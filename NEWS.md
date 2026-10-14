@@ -27,7 +27,10 @@
 
 * Warnings and diagnostics across the pseudo-weighting, panel, trimming and calibration
   steps now fire where they were silent, stop firing on sound models, and state what a
-  variance assumes about a reference survey. Report values are escaped in the HTML.
+  variance assumes about a reference survey. In particular a non-probability recipe is
+  no longer accepted in silence when it adjusts nothing, pseudo-weights twice, or is
+  exported to `survey` as if it had a sampling design. Report values are escaped in the
+  HTML.
 
 # weightflow 1.3.0
 
