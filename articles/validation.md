@@ -354,9 +354,9 @@ data.frame(method = names(agree), `max abs weight difference` = unname(agree),
 #>                                   method max abs weight difference
 #> 1     Post-stratification (region x sex)              1.776357e-15
 #> 2      Raking (region + sex + age group)              7.927345e-08
-#> 3                Distance: linear (GREG)              1.065814e-14
-#> 4         Distance: raking (exponential)              1.421085e-14
-#> 5              Distance: logit (bounded)              6.217249e-14
+#> 3                Distance: linear (GREG)              7.105427e-15
+#> 4         Distance: raking (exponential)              2.131628e-14
+#> 5              Distance: logit (bounded)              7.105427e-14
 #> 6 Integrative (one weight per household)              1.421085e-13
 #> 7         Domain calibration (by region)              1.332268e-14
 ```

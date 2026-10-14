@@ -136,9 +136,21 @@ into the recipe-aware bootstrap, pass its replicate weights through
 <code>replicates</code>: each bootstrap replicate then re-estimates the totals from the
 paired reference replicate (Opsomer and Erciulescu 2021), so the extra
 variance from estimating the totals is captured. Without <code>replicates</code> the
-totals are treated as fixed (a reasonable approximation when the reference is
-much larger than the sample, and the same assumption made when calibrating to
-another survey's published totals).</p>
+totals are treated as fixed – the same assumption made when calibrating to
+another survey's published totals.</p>
+<p>How much that assumption costs depends on what the reference is used for, and
+the two uses are not equivalent. In <code><a href="step_model_calibration.html">step_model_calibration()</a></code> the reference
+supplies <em>totals</em>, a smooth functional of it. In <code><a href="step_pseudoweight.html">step_pseudoweight()</a></code> every
+reference unit is a row of the pooled participation fit, so the fitted
+propensities – and therefore every pseudo-weight – depend on the reference
+unit by unit. Treating it as fixed there understates the variance even when
+the reference is several times the size of the sample, and the recipe cannot
+repair this on its own: building the reference's replicates needs its strata,
+PSUs and finite-population correction (and its control totals, if it was
+calibrated), which only the reference's own producer has. So pass them, from
+the survey's published replicate file or built with <code><a href="bootstrap_weights.html">bootstrap_weights()</a></code> on
+the reference's design; without them <code><a href="bootstrap_weights.html">bootstrap_weights()</a></code> and
+<code><a href="jackknife_weights.html">jackknife_weights()</a></code> say which assumption they fell back on.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

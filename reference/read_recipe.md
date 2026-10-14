@@ -82,7 +82,7 @@ spec <- weighting_spec(sample_survey, base_weights = pw) |>
   step_nonresponse(respondent = responded, method = "weighting_class", by = "region")
 f <- tempfile(fileext = ".yml"); write_recipe(spec, f)
 read_recipe(f)                       # inspect the manifest
-#> weightflow recipe (written by version 1.3.1, 2026-10-12T22:49:35Z)
+#> weightflow recipe (written by version 1.3.1, 2026-10-14T03:34:40Z)
 #>   base weights: pw
 #>   1 step(s):
 #>     - nonresponse    nonresponse_1

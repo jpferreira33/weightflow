@@ -32,26 +32,13 @@
 
 - A
   [`reference_sample()`](https://jpferreira33.github.io/weightflow/reference/reference_sample.md)
-  whose rows were reordered or subset afterwards kept its weights in the
-  old order, silently. They now travel with the rows.
+  kept its weights in positional order: reordering or subsetting its
+  rows misaligned them silently. They now travel with the rows.
 
-- [`wave_step()`](https://jpferreira33.github.io/weightflow/reference/wave_step.md)
-  matched a
-  [`step_cre()`](https://jpferreira33.github.io/weightflow/reference/step_cre.md)’s
-  previous wave by row count, so a recipe pointing further back than one
-  period could receive the wrong period’s replicate weights. The carry
-  now identifies its own period and the mismatch is refused.
-
-- [`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md)’s
-  extreme-propensity alerts judged the pooled fit and the level of the
-  propensities, so they fired on sound models. They now look only at the
-  units whose propensity becomes a weight, and at the dispersion of the
-  pseudo-weights.
-
-- Diagnostics and warnings across the pseudo-weighting, trimming,
-  calibration and panel steps now fire in cases where they were silent,
-  and several no longer claim more than the method delivers. Data values
-  are escaped in the HTML report. Assorted documentation corrections.
+- Warnings and diagnostics across the pseudo-weighting, panel, trimming
+  and calibration steps now fire where they were silent, stop firing on
+  sound models, and state what a variance assumes about a reference
+  survey. Report values are escaped in the HTML.
 
 ## weightflow 1.3.0
 

@@ -37,9 +37,28 @@ unit begins with a base weight of 1, and the object records that the
 sample is non-probability (the report declares it and adds the
 methodological caveat).
 
+The reference is itself a survey, so it carries sampling error of its
+own, and in the pseudo-weighting that error is not a detail: every
+reference unit is a row of the participation model, so the fitted
+propensities – and with them every pseudo-weight – depend on which
+reference units were drawn. Pass the reference’s replicate weights and
+the bootstrap propagates that component; leave them out and the
+reference is treated as the population, which understates the standard
+errors
+([`bootstrap_weights()`](https://jpferreira33.github.io/weightflow/reference/bootstrap_weights.md)
+says so when it happens).
+
+In practice the replicates come from the reference survey’s own
+replicate file. Here the reference is a simple random sample of the
+population, so they can be built from its design with the same function:
+
 ``` r
 
-ref_sample <- reference_sample(ref, weights = "d")
+rep_ref <- bootstrap_weights(weighting_spec(ref, base_weights = d),
+                             replicates = 200, seed = 11,
+                             progress = FALSE)$replicates
+
+ref_sample <- reference_sample(ref, weights = "d", replicates = rep_ref)
 ```
 
 ## Pseudo-weighting
@@ -127,14 +146,24 @@ dd
 The recipe-aware bootstrap re-runs the whole non-probability recipe –
 the participation model included – on each replicate, so the standard
 error carries the variability of the pseudo-weighting, not just the
-spread of the final weights.
+spread of the final weights. Because `ref_sample` was given its
+replicate weights above, each replicate also refits the participation
+model against the paired reference replicate, so the reference’s own
+sampling error is in the interval rather than assumed away.
+
+[`jackknife_weights()`](https://jpferreira33.github.io/weightflow/reference/jackknife_weights.md)
+cannot do this: a delete-one replicate has no reference replicate to
+pair with, so it holds the reference fixed whatever you pass. For a
+recipe with
+[`step_pseudoweight()`](https://jpferreira33.github.io/weightflow/reference/step_pseudoweight.md),
+use the bootstrap.
 
 ``` r
 
 boot <- bootstrap_weights(spec, replicates = 200, seed = 1, progress = FALSE)
 boot_mean(boot, "income")
 #>   estimate       se ci_lower ci_upper
-#> 1 19752.51 327.3892 19110.84 20394.18
+#> 1 19752.51 344.5262 19077.25 20427.77
 ```
 
 ## Nonignorable selection

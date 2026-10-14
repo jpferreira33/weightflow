@@ -138,8 +138,24 @@ reference, carrying the design weights of a real reference survey.</p>
 <code>nonprob = TRUE</code>: every unit begins with a base weight of 1,
 and the object records that the sample is non-probability (the report
 declares it and adds the methodological caveat).</p>
+<p>The reference is itself a survey, so it carries sampling error of its
+own, and in the pseudo-weighting that error is not a detail: every
+reference unit is a row of the participation model, so the fitted
+propensities – and with them every pseudo-weight – depend on which
+reference units were drawn. Pass the reference’s replicate weights and
+the bootstrap propagates that component; leave them out and the
+reference is treated as the population, which understates the standard
+errors (<code><a href="../reference/bootstrap_weights.html">bootstrap_weights()</a></code> says so when it happens).</p>
+<p>In practice the replicates come from the reference survey’s own
+replicate file. Here the reference is a simple random sample of the
+population, so they can be built from its design with the same
+function:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ref_sample</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/reference_sample.html">reference_sample</a></span><span class="op">(</span><span class="va">ref</span>, weights <span class="op">=</span> <span class="st">"d"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">rep_ref</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">ref</span>, base_weights <span class="op">=</span> <span class="va">d</span><span class="op">)</span>,</span>
+<span>                             replicates <span class="op">=</span> <span class="fl">200</span>, seed <span class="op">=</span> <span class="fl">11</span>,</span>
+<span>                             progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">replicates</span></span>
+<span></span>
+<span><span class="va">ref_sample</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/reference_sample.html">reference_sample</a></span><span class="op">(</span><span class="va">ref</span>, weights <span class="op">=</span> <span class="st">"d"</span>, replicates <span class="op">=</span> <span class="va">rep_ref</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="pseudo-weighting">Pseudo-weighting<a class="anchor" aria-label="anchor" href="#pseudo-weighting"></a>
@@ -218,12 +234,20 @@ single number.</p>
 <p>The recipe-aware bootstrap re-runs the whole non-probability recipe –
 the participation model included – on each replicate, so the standard
 error carries the variability of the pseudo-weighting, not just the
-spread of the final weights.</p>
+spread of the final weights. Because <code>ref_sample</code> was given
+its replicate weights above, each replicate also refits the
+participation model against the paired reference replicate, so the
+reference’s own sampling error is in the interval rather than assumed
+away.</p>
+<p><code><a href="../reference/jackknife_weights.html">jackknife_weights()</a></code> cannot do this: a delete-one
+replicate has no reference replicate to pair with, so it holds the
+reference fixed whatever you pass. For a recipe with
+<code><a href="../reference/step_pseudoweight.html">step_pseudoweight()</a></code>, use the bootstrap.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">boot</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/bootstrap_weights.html">bootstrap_weights</a></span><span class="op">(</span><span class="va">spec</span>, replicates <span class="op">=</span> <span class="fl">200</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/bootstrap_estimate.html">boot_mean</a></span><span class="op">(</span><span class="va">boot</span>, <span class="st">"income"</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   estimate       se ci_lower ci_upper</span></span>
-<span><span class="co">#&gt; 1 19752.51 327.3892 19110.84 20394.18</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 19752.51 344.5262 19077.25 20427.77</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="nonignorable-selection">Nonignorable selection<a class="anchor" aria-label="anchor" href="#nonignorable-selection"></a>
