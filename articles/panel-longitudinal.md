@@ -13,6 +13,33 @@ for gross flows. The rotating case, where the sample is partly renewed
 each period and the quantity of interest is usually the net change, is
 [`vignette("rotating-panels")`](https://jpferreira33.github.io/weightflow/articles/rotating-panels.md).
 
+## The sequence, and which verb does each step
+
+ECLAC’s manual prescribes a sequential procedure for the longitudinal
+weight (Verma, Betti and Ghellini 2006). Each step has its verb in the
+recipe, and the whole of it is a cross-sectional weight applied to a
+different universe.
+
+![The ECLAC chapter XVI sequence and the recipe verb for each
+step](data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTAwJSIgdmlld0JveD0iMCAwIDk2MCAzMDAiIHJvbGU9ImltZyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZm9udC1mYW1pbHk6LWFwcGxlLXN5c3RlbSwnSW50ZXInLFNlZ29lIFVJLFJvYm90byxzYW5zLXNlcmlmOyI+Cjx0aXRsZT5UaGUgRUNMQUMgY2hhcHRlciBYVkkgc2VxdWVuY2UgYW5kIHRoZSByZWNpcGUgdmVyYiBmb3IgZWFjaCBzdGVwPC90aXRsZT4KPGRlc2M+VGhlIG1hbnVhbCBwcmVzY3JpYmVzIGEgc2VxdWVudGlhbCBwcm9jZWR1cmUuIFRoZSBpbml0aWFsIHdlaWdodHMgY29tZSBmcm9tIHRoZSBwYW5lbCBiYXNlIHdlaWdodCBhbmQgdGhlIGZpcnN0IHBlcmlvZCBub25yZXNwb25zZSBhZGp1c3RtZW50LCB3aXRoIGEgY2hlY2sgdGhhdCB0aGUgc3VtIG9mIHdlaWdodHMgc3RheXMgY2xvc2UgdG8gdGhlIHBvcHVsYXRpb24uIFRoZSBsb25naXR1ZGluYWwgd2VpZ2h0cyB0aGVuIGRlZmluZSB0aGUgbG9uZ2l0dWRpbmFsIHBvcHVsYXRpb24sIGFkanVzdCBmb3IgYXR0cml0aW9uIGJldHdlZW4gd2F2ZXMgYW5kIGNhbGlicmF0ZSB0byB0aGUgdG90YWxzIG9mIHRoZSBmaXJzdCBwZXJpb2QuIEVhY2ggc3RlcCBoYXMgaXRzIHZlcmIgaW4gdGhlIHJlY2lwZS48L2Rlc2M+CjxkZWZzPjxtYXJrZXIgaWQ9ImE4IiB2aWV3Qm94PSIwIDAgMTAgMTAiIHJlZlg9IjkiIHJlZlk9IjUiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj48cGF0aCBkPSJNMCwwIEwxMCw1IEwwLDEwIHoiIGZpbGw9IiMxZDllNzUiLz48L21hcmtlcj48L2RlZnM+CgogICAgICA8dGV4dCBmaWxsPSIjOGE4NGE4IiBmb250LXNpemU9IjEwLjUiIGxldHRlci1zcGFjaW5nPSIxLjIiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjI0IiB5PSIyNCI+Q0hBUFRFUiBYVkksIElOSVRJQUwgV0VJR0hUUzwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzhhODRhOCIgZm9udC1zaXplPSIxMC41IiBsZXR0ZXItc3BhY2luZz0iMS4yIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI1MDAiIHk9IjI0Ij5DSEFQVEVSIFhWSSwgTE9OR0lUVURJTkFMIFdFSUdIVFM8L3RleHQ+CgogICAgICA8cmVjdCBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS41IiB4PSIyNCIgeT0iNDAiIHdpZHRoPSI0MjAiIGhlaWdodD0iNTIiIHJ4PSI5Ii8+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjQyIiB5PSI2MiI+aS5hICYjMTYwOyBwYW5lbCBiYXNlIHdlaWdodDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzE1NTAzYyIgZm9udC1zaXplPSIxMi41IiBmb250LXdlaWdodD0iNTAwIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI0MiIgeT0iODAiPnN0ZXBfcGFuZWxfb3ZlcmxhcChwcm9iID0gcGFuZWxfcHIocGQpKTwvdGV4dD4KCiAgICAgIDxyZWN0IGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHg9IjI0IiB5PSIxMDIiIHdpZHRoPSI0MjAiIGhlaWdodD0iNTIiIHJ4PSI5Ii8+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjQyIiB5PSIxMjQiPmkuYiAmIzE2MDsgZmlyc3QtcGVyaW9kIG5vbnJlc3BvbnNlPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjMTU1MDNjIiBmb250LXNpemU9IjEyLjUiIGZvbnQtd2VpZ2h0PSI1MDAiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjQyIiB5PSIxNDIiPnN0ZXBfbm9ucmVzcG9uc2UobWV0aG9kID0gInByb3BlbnNpdHkiKTwvdGV4dD4KCiAgICAgIDxyZWN0IGZpbGw9IiNmM2YzZjUiIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHg9IjI0IiB5PSIxNjQiIHdpZHRoPSI0MjAiIGhlaWdodD0iNDQiIHJ4PSI5Ii8+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjQyIiB5PSIxODYiPmNoZWNrICYjMTYwOyBzdW0gb2Ygd2VpZ2h0cyBjbG9zZSB0byBOPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI0MiIgeT0iMjAyIj5hbiBhbGVydCBmaXJlcyBpZiB0aGUgYWRqdXN0bWVudCBtb3ZlcyB0aGUgdG90YWwgYnkgbW9yZSB0aGFuIDUlPC90ZXh0PgoKICAgICAgPHBhdGggc3Ryb2tlPSIjMWQ5ZTc1IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIGQ9Ik00NDQsMTIwIEw0NzIsMTIwIEw0NzIsNjYgTDQ5Niw2NiIgbWFya2VyLWVuZD0idXJsKCNhOCkiLz4KCiAgICAgIDxyZWN0IGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHg9IjUwMCIgeT0iNDAiIHdpZHRoPSI0MzYiIGhlaWdodD0iNTIiIHJ4PSI5Ii8+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjUxOCIgeT0iNjIiPmlpLmEgJiMxNjA7IGRlZmluZSB0aGUgbG9uZ2l0dWRpbmFsIHBvcHVsYXRpb248L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiMxNTUwM2MiIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNTE4IiB5PSI4MCI+c3RlcF9kcm9wX2luZWxpZ2libGUoZGlzcF9UMiA9PSAiT1MiKTwvdGV4dD4KCiAgICAgIDxyZWN0IGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHg9IjUwMCIgeT0iMTAyIiB3aWR0aD0iNDM2IiBoZWlnaHQ9IjUyIiByeD0iOSIvPgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI1MTgiIHk9IjEyNCI+aWkuYiAmIzE2MDsgYXR0cml0aW9uIGJldHdlZW4gd2F2ZXM8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiMxNTUwM2MiIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNTE4IiB5PSIxNDIiPnN0ZXBfYXR0cml0aW9uKHJlc3BvbmRlbnQgPSBkaXNwX1QyID09ICJSIik8L3RleHQ+CgogICAgICA8cmVjdCBmaWxsPSIjZWFmNWYwIiBzdHJva2U9IiMxZDllNzUiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iNTAwIiB5PSIxNjQiIHdpZHRoPSI0MzYiIGhlaWdodD0iNjAiIHJ4PSI5Ii8+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjUxOCIgeT0iMTg2Ij5paS5jICYjMTYwOyBsb25naXR1ZGluYWwgY2FsaWJyYXRpb248L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiMxNTUwM2MiIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNTE4IiB5PSIyMDQiPnN0ZXBfY2FsaWJyYXRlKHRvdGFscyA9ICZsdDtUMSB0b3RhbHMmZ3Q7KTwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNTE4IiB5PSIyMjAiPndoaWNoIHBlcmlvZCB0aGUgdG90YWxzIGJlbG9uZyB0byBpcyB0aGUgdXNlcidzIGNhbGw8L3RleHQ+CgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSIyNCIgeT0iMjU2Ij5UaGUgbWVjaGFuaWNzIGFyZSB0aG9zZSBvZiBhIGNyb3NzLXNlY3Rpb25hbCB3ZWlnaHQuIFdoYXQgY2hhbmdlcyBpcyB0aGUgdW5pdmVyc2UgYmVpbmcgY291bnRlZC48L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjI0IiB5PSIyNzgiPlZlcm1hLCBCZXR0aSBhbmQgR2hlbGxpbmkgKDIwMDYpOyBFQ0xBQywgaG91c2Vob2xkIHN1cnZleSBtYW51YWwsIGNoLiBYVkkuPC90ZXh0PgoKPC9zdmc+Cg==)
+
+Step **i.a** is the one that does not appear below. It applies when the
+longitudinal sample is a panel *selected* among rotation groups, so that
+a unit enters the panel with probability less than one:
+`step_panel_overlap(prob = panel_pr(pd))` divides the design weight by
+that probability. A pure panel has no such selection, every unit is in
+it by construction, and
+[`panel_pr()`](https://jpferreira33.github.io/weightflow/reference/panel_pr.md)
+says so rather than inventing a number: it requires a `rotation_group`
+and there is none here. The rotating case is in
+[`vignette("rotating-panels")`](https://jpferreira33.github.io/weightflow/articles/rotating-panels.md).
+
+Three points in that sequence the package **cannot** check for you, and
+they are the three this vignette keeps coming back to: who belongs to
+the longitudinal population, which period the control totals describe,
+and what a cross-sectional estimate from this file does and does not
+mean.
+
 ## The longitudinal file is an intersection
 
 ``` r
@@ -114,6 +141,35 @@ supposed to do, and
 [`weighting_alerts()`](https://jpferreira33.github.io/weightflow/reference/weighting_alerts.md)
 says so out loud if the total moves by more than 5%. The **effective
 sample size** is the price: 1,820 to 1,252.
+
+The reading that matters more than either number is whether the
+**composition** of the panel comes back. Attrition is a problem when it
+is selective, so compare the weighted composition of the adjusted panel
+against the first wave it is supposed to represent:
+
+``` r
+
+grp <- function(a) cut(a, c(-Inf, 29, 49, Inf), labels = c("18-29", "30-49", "50+"))
+t1  <- waves$T1
+sh  <- function(w, g) round(100 * tapply(w, g, sum) / sum(w), 1)
+act <- lw$final_weight > 0
+
+rbind(T1_target  = sh(t1$pw, grp(t1$age)),
+      unadjusted = sh(wide$pw_T1[wide$responded_always], grp(wide$age_T1[wide$responded_always])),
+      adjusted   = sh(lw$final_weight[act], grp(wide$age_T1[act])))
+#>            18-29 30-49  50+
+#> T1_target   19.5  33.0 47.5
+#> unadjusted  19.2  33.2 47.6
+#> adjusted    19.0  33.2 47.8
+```
+
+In this synthetic file the three rows agree to a few tenths of a point,
+because attrition here is close to uniform: the continuation rate runs
+between 62% and 65% across the three age groups. That is why the weight
+total barely moved. On real microdata it is exactly this table that
+moves, and the gap between the first two rows is the bias the adjustment
+has to remove; the gap between the first and third is what is left of
+it.
 
 Note also how the respondent condition is defined. “Responded in **all**
 waves” is the definition of the longitudinal respondent set: someone who

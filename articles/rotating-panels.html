@@ -107,13 +107,14 @@
 <p>A continuous household survey with a rotating design measures the
 same units more than once. That is what makes the
 <strong>change</strong> between two periods far more precise than the
-levels themselves – the shared sample cancels part of the sampling error
-– and it is also what makes the change <strong>harder</strong> to
-estimate. The two samples are not independent, so the variance of the
-change is not the sum of the two variances:</p>
+levels themselves, because the shared sample cancels part of the
+sampling error, and it is also what makes the change
+<strong>harder</strong> to estimate. The two samples are not
+independent, so the variance of the change is not the sum of the two
+variances:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo>−</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>V</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>V</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>−</mo><mn>2</mn><mspace width="0.167em"></mspace><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">v</mi></mrow><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo>,</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">V\!\left(\hat\theta_t - \hat\theta_{t-1}\right) = V\!\left(\hat\theta_t\right) + V\!\left(\hat\theta_{t-1}\right) - 2\,\mathrm{Cov}\!\left(\hat\theta_t, \hat\theta_{t-1}\right)</annotation></semantics></math></p>
-<p>and that covariance term is the whole problem: it is not a design
-constant you can look up, it has to be <em>produced</em> by the way the
+<p>and that covariance term is the whole problem. It is not a design
+constant you can look up: it has to be <em>produced</em> by the way the
 replicates are drawn.</p>
 <p>This vignette covers the three things a rotating panel makes
 possible, in the order an office needs them:</p>
@@ -124,17 +125,17 @@ variance;</li>
 <strong>chaining</strong> period after period the way production
 actually runs, one month at a time, with only a small object traveling
 between runs;</li>
-<li>the <strong>gross flows</strong> – who moved between states – which
-need a longitudinal weight.</li>
+<li>the <strong>gross flows</strong>, i.e. who moved between states,
+which need a longitudinal weight.</li>
 </ol>
 <p>The package’s panel layer follows the methodology of Statistics
 Canada’s Labour Force Survey (cat. 71-526-X, sec. 7.2.2) for the
 coordinated replication, and ECLAC’s household-survey manual (chapters
-XVI-XVII) for the longitudinal weight and the flows.</p>
+XVI and XVII) for the longitudinal weight and the flows.</p>
 <div class="section level2">
 <h2 id="the-structure-comes-first">The structure comes first<a class="anchor" aria-label="anchor" href="#the-structure-comes-first"></a>
 </h2>
-<p>Before any weighting, <code><a href="../reference/panel_design.html">panel_design()</a></code> reads the unit x
+<p>Before any weighting, <code><a href="../reference/panel_design.html">panel_design()</a></code> reads the unit by
 wave crossing and describes what is actually there. It computes nothing
 about weights.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -177,14 +178,27 @@ lag, because the informative lag is not always lag 1:</p>
 <span><span class="co">#&gt; 2-(2)-2  (Chile ENE, Italy)        0.500 0.000 0.25 0.500 0.250</span></span>
 <span><span class="co">#&gt; 4-8-4    (US CPS)                  0.750 0.500 0.25 0.000 0.000</span></span>
 <span><span class="co">#&gt; 1(2)5    (PNAD Continua)           0.000 0.000 0.80 0.000 0.000</span></span></code></pre></div>
-<p><code>2-(2)-2</code> shares <strong>no</strong> sample at lag 2 and
-half of it at lag 4 – as much as at lag 1 – so a year-on-year change
-there needs as much coordination as a quarter-on-quarter one. The PNAD
-Continua design <code>1(2)5</code> shares nothing with the adjacent
-quarter at all: a design built around “the previous period” would be
-exactly backwards for it. Both notations are accepted and describe the
-same calendar: <code>"2-(2)-2"</code> and <code>"2(2)2"</code> are the
-same design.</p>
+<p>Three readings that the full profile makes visible and a single
+number would hide. Under <code>2-(2)-2</code> the lag 4 overlap equals
+the lag 1 overlap, so a year on year change needs as much coordination
+as a quarter on quarter one. Under <code>1(2)5</code> the adjacent
+overlap is <strong>zero</strong> and the informative lag is 3, so a
+chain built around “the previous quarter” is exactly backwards for the
+PNAD. And the cycle is not the number of groups in sample:
+<code>2-(2)-2</code> has four groups in the field at any time but a
+cycle six periods long.</p>
+<p>The first two rows are the ones to read against each other:</p>
+<p><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTAwJSIgdmlld0JveD0iMCAwIDk2MCAzNTYiIHJvbGU9ImltZyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZm9udC1mYW1pbHk6LWFwcGxlLXN5c3RlbSwnSW50ZXInLFNlZ29lIFVJLFJvYm90byxzYW5zLXNlcmlmOyI+Cjx0aXRsZT5XaGljaCBlYXJsaWVyIHBlcmlvZHMgc2hhcmUgc2FtcGxlIHdpdGggcGVyaW9kIHQ8L3RpdGxlPgo8ZGVzYz5VbmRlciBhIHNjaGVtZSBvZiBzaXggY29uc2VjdXRpdmUgcGVyaW9kcyB0aGUgY3VycmVudCBwZXJpb2Qgc2hhcmVzIHNhbXBsZSB3aXRoIHRoZSBmaXZlIHByZWNlZGluZyBvbmVzLCBzbyBmaXZlIGNhcnJpZXMgYXJlIHJldGFpbmVkLiBVbmRlciBhIHR3byBpbiwgdHdvIG91dCwgdHdvIGluIHNjaGVtZSBpdCBzaGFyZXMgc2FtcGxlIHdpdGggbGFncyBvbmUsIHRocmVlLCBmb3VyIGFuZCBmaXZlIGJ1dCBub3Qgd2l0aCBsYWcgdHdvLCBhbmQgdGhlIGxhZyBmb3VyIG92ZXJsYXAgaXMgYXMgbGFyZ2UgYXMgdGhlIGxhZyBvbmUgb3ZlcmxhcC48L2Rlc2M+CjxkZWZzPjxtYXJrZXIgaWQ9ImEzIiB2aWV3Qm94PSIwIDAgMTAgMTAiIHJlZlg9IjkiIHJlZlk9IjUiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj48cGF0aCBkPSJNMCwwIEwxMCw1IEwwLDEwIHoiIGZpbGw9IiM3YTZhZDAiLz48L21hcmtlcj48L2RlZnM+Cjx0ZXh0IGZpbGw9IiM4YTg0YTgiIGZvbnQtc2l6ZT0iMTAuNSIgbGV0dGVyLXNwYWNpbmc9IjEuMiIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iMjQiIHk9IjI0Ij5TQ0hFTUUgNiwgU0lYIENPTlNFQ1VUSVZFIChDQU5BREEgTEZTLCBFQ0ggVVJVR1VBWSk8L3RleHQ+CjxnPgo8cmVjdCBmaWxsPSIjZWNlOWY2IiBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iMjQiIHk9IjQwIiB3aWR0aD0iMTE4IiBoZWlnaHQ9IjQ2IiByeD0iOCIvPgo8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjEzIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI4MyIgeT0iNjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQmIzg3MjI7NTwvdGV4dD4KPHJlY3QgZmlsbD0iI2VjZTlmNiIgc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjEuNzUiIHg9IjE1OCIgeT0iNDAiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjIxNyIgeT0iNjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQmIzg3MjI7NDwvdGV4dD4KPHJlY3QgZmlsbD0iI2VjZTlmNiIgc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjEuNzUiIHg9IjI5MiIgeT0iNDAiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjM1MSIgeT0iNjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQmIzg3MjI7MzwvdGV4dD4KPHJlY3QgZmlsbD0iI2VjZTlmNiIgc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjEuNzUiIHg9IjQyNiIgeT0iNDAiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjQ4NSIgeT0iNjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQmIzg3MjI7MjwvdGV4dD4KPHJlY3QgZmlsbD0iI2VjZTlmNiIgc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjEuNzUiIHg9IjU2MCIgeT0iNDAiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjYxOSIgeT0iNjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQmIzg3MjI7MTwvdGV4dD4KPHJlY3QgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjM2QzNTgwIiBzdHJva2Utd2lkdGg9IjIiIHg9IjY5NCIgeT0iNDAiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9Ijc1MyIgeT0iNjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQ8L3RleHQ+CjxwYXRoIHN0cm9rZT0iIzdhNmFkMCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBkPSJNODMsODYgQzgzLDEyNCA3NTMsMTI0IDc1Myw5MiIgbWFya2VyLWVuZD0idXJsKCNhMykiLz4KPHBhdGggc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIGQ9Ik0yMTcsODYgQzIxNywxMTYgNzUzLDExNiA3NTMsOTIiIG1hcmtlci1lbmQ9InVybCgjYTMpIi8+CjxwYXRoIHN0cm9rZT0iIzdhNmFkMCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBkPSJNMzUxLDg2IEMzNTEsMTEwIDc1MywxMTAgNzUzLDkyIiBtYXJrZXItZW5kPSJ1cmwoI2EzKSIvPgo8cGF0aCBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgZD0iTTQ4NSw4NiBDNDg1LDEwNiA3NTMsMTA2IDc1Myw5MiIgbWFya2VyLWVuZD0idXJsKCNhMykiLz4KPHBhdGggc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIGQ9Ik02MTksODYgQzYxOSwxMDIgNzUzLDEwMiA3NTMsOTIiIG1hcmtlci1lbmQ9InVybCgjYTMpIi8+Cjx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjgzNiIgeT0iNjMiPjUgY2FycmllczwvdGV4dD4KPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iODM2IiB5PSI3OSI+b3ZlcmxhcCAwLjgzIGF0IGxhZyAxPC90ZXh0Pgo8L2c+CjxsaW5lIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjYiIGZpbGw9Im5vbmUiIHgxPSIyNCIgeTE9IjE2NCIgeDI9IjkzNiIgeTI9IjE2NCIvPgo8dGV4dCBmaWxsPSIjOGE4NGE4IiBmb250LXNpemU9IjEwLjUiIGxldHRlci1zcGFjaW5nPSIxLjIiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjI0IiB5PSIxOTgiPlNDSEVNRSAyLSgyKS0yLCBUV08gSU4sIFRXTyBPVVQsIFRXTyBJTiAoSVRBTFksIFBPTEFORCk8L3RleHQ+CjxnPgo8cmVjdCBmaWxsPSIjZWNlOWY2IiBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iMjQiIHk9IjIxNCIgd2lkdGg9IjExOCIgaGVpZ2h0PSI0NiIgcng9IjgiLz4KPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxMyIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iODMiIHk9IjI0MyIgdGV4dC1hbmNob3I9Im1pZGRsZSI+dCYjODcyMjs1PC90ZXh0Pgo8cmVjdCBmaWxsPSIjZWNlOWY2IiBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iMTU4IiB5PSIyMTQiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjIxNyIgeT0iMjQzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj50JiM4NzIyOzQ8L3RleHQ+CjxyZWN0IGZpbGw9IiNlY2U5ZjYiIHN0cm9rZT0iIzdhNmFkMCIgc3Ryb2tlLXdpZHRoPSIxLjc1IiB4PSIyOTIiIHk9IjIxNCIgd2lkdGg9IjExOCIgaGVpZ2h0PSI0NiIgcng9IjgiLz4KPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxMyIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iMzUxIiB5PSIyNDMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQmIzg3MjI7MzwvdGV4dD4KPHJlY3QgZmlsbD0iI2YzZjNmNSIgc3Ryb2tlPSIjZDlkY2U2IiBzdHJva2Utd2lkdGg9IjEuNSIgeD0iNDI2IiB5PSIyMTQiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjQ4NSIgeT0iMjM4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj50JiM4NzIyOzI8L3RleHQ+Cjx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjQ4NSIgeT0iMjU0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ubyBvdmVybGFwPC90ZXh0Pgo8cmVjdCBmaWxsPSIjZWNlOWY2IiBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iNTYwIiB5PSIyMTQiIHdpZHRoPSIxMTgiIGhlaWdodD0iNDYiIHJ4PSI4Ii8+Cjx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjYxOSIgeT0iMjQzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj50JiM4NzIyOzE8L3RleHQ+CjxyZWN0IGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iIzNkMzU4MCIgc3Ryb2tlLXdpZHRoPSIyIiB4PSI2OTQiIHk9IjIxNCIgd2lkdGg9IjExOCIgaGVpZ2h0PSI0NiIgcng9IjgiLz4KPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxMyIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNzUzIiB5PSIyNDMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnQ8L3RleHQ+CjxwYXRoIHN0cm9rZT0iIzdhNmFkMCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBkPSJNODMsMjYwIEM4MywyOTggNzUzLDI5OCA3NTMsMjY2IiBtYXJrZXItZW5kPSJ1cmwoI2EzKSIvPgo8cGF0aCBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgZD0iTTIxNywyNjAgQzIxNywyOTAgNzUzLDI5MCA3NTMsMjY2IiBtYXJrZXItZW5kPSJ1cmwoI2EzKSIvPgo8cGF0aCBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgZD0iTTM1MSwyNjAgQzM1MSwyODQgNzUzLDI4NCA3NTMsMjY2IiBtYXJrZXItZW5kPSJ1cmwoI2EzKSIvPgo8cGF0aCBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMiIgZmlsbD0ibm9uZSIgZD0iTTYxOSwyNjAgQzYxOSwyNzYgNzUzLDI3NiA3NTMsMjY2IiBtYXJrZXItZW5kPSJ1cmwoI2EzKSIvPgo8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI4MzYiIHk9IjIzNyI+NCBjYXJyaWVzPC90ZXh0Pgo8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI4MzYiIHk9IjI1MyI+bGFnIDQgYXMgYmlnIGFzIGxhZyAxPC90ZXh0Pgo8L2c+Cjx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjI0IiB5PSIzNDAiPlRoZSBvdmVybGFwIHByb2ZpbGUgZm9sbG93cyBmcm9tIHRoZSBzY2hlbWU6IDx0c3BhbiBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjEzIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIj5wYW5lbF9kZXNpZ24ocGF0dGVybiA9ICIyLSgyKS0yIik8L3RzcGFuPiBnaXZlcyBsYWdzIDEsIDMsIDQgYW5kIDUuPC90ZXh0PgoKPC9zdmc+Cg==" alt="Which earlier periods share sample with period t" style="width:100%;max-width:960px;"></p>
+<p>Both notations are accepted and describe the same calendar:
+<code>"2-(2)-2"</code> and <code>"2(2)2"</code> are the same design, as
+are the EU-LFS block notation and ECLAC’s <code>n(m)k</code>.</p>
+<p>The declared scheme is checked against the data in both directions.
+<strong>PN-01</strong> fires when the observed overlap falls below what
+the scheme implies, which points at a linkage key that is not stable
+between waves. <strong>PN-07</strong> fires when two periods the scheme
+declares disjoint turn out to share sample. Attrition can only remove
+overlap, never add it, so a surplus means the declared scheme and the
+data disagree.</p>
 </div>
 <div class="section level2">
 <h2 id="net-change-between-two-periods">Net change between two periods<a class="anchor" aria-label="anchor" href="#net-change-between-two-periods"></a>
@@ -198,29 +212,24 @@ lets the overlap show up as covariance.</p>
 <span><span class="va">rec</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="fu"><a href="../reference/weighting_spec.html">weighting_spec</a></span><span class="op">(</span><span class="va">d</span>, base_weights <span class="op">=</span> <span class="va">pw</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/step_nonresponse.html">step_nonresponse</a></span><span class="op">(</span>respondent <span class="op">=</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span>, by <span class="op">=</span> <span class="st">"sex"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">wb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_bootstrap.html">wave_bootstrap</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu">rec</span><span class="op">(</span><span class="va">w1</span><span class="op">)</span>, T2 <span class="op">=</span> <span class="fu">rec</span><span class="op">(</span><span class="va">w2</span><span class="op">)</span><span class="op">)</span>, replicates <span class="op">=</span> <span class="fl">100</span>,</span>
+<span><span class="va">wb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_bootstrap.html">wave_bootstrap</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu">rec</span><span class="op">(</span><span class="va">w1</span><span class="op">)</span>, T2 <span class="op">=</span> <span class="fu">rec</span><span class="op">(</span><span class="va">w2</span><span class="op">)</span><span class="op">)</span>, replicates <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>                     strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/change_estimate.html">change_mean</a></span><span class="op">(</span><span class="va">wb</span>, <span class="st">"unemployed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;weightflow net change&gt;</span></span>
 <span><span class="co">#&gt;   T1 -&gt; T2</span></span>
-<span><span class="co">#&gt;   change     : -0.0149512   SE 0.010056</span></span>
-<span><span class="co">#&gt;   95% CI    : [-0.0346606, 0.00475807]</span></span>
-<span><span class="co">#&gt;   V1 0.0001126 | V2 0.0001035 | Cov 5.75e-05 | rho 0.533   (levels)</span></span>
-<span><span class="co">#&gt;   V = 0.0001011  vs  V1+V2 = 0.0002161  (deff_change 0.468: overlap saved 53%)</span></span></code></pre></div>
-<p><code>rho</code> is the correlation
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ρ</mi><annotation encoding="application/x-tex">\rho</annotation></semantics></math>
-the overlap induces, and <code>deff_change</code> is</p>
+<span><span class="co">#&gt;   change     : -0.0149512   SE 0.0106493</span></span>
+<span><span class="co">#&gt;   95% CI    : [-0.0358235, 0.00592097]</span></span>
+<span><span class="co">#&gt;   V1 0.0001094 | V2 0.0001119 | Cov 5.395e-05 | rho 0.488   (levels)</span></span>
+<span><span class="co">#&gt;   V = 0.0001134  vs  V1+V2 = 0.0002213  (deff_change 0.512: overlap saved 49%)</span></span></code></pre></div>
+<p><code>rho</code> is the correlation the overlap induces, and
+<code>deff_change</code> is</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">d</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">f</mi></mrow><mi mathvariant="normal">Δ</mi></msub><mo>=</mo><mfrac><mrow><mi>V</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo>−</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mi>V</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mi>t</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>V</mi><mspace width="-0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><msub><mover><mi>θ</mi><mo accent="true">̂</mo></mover><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac></mrow><annotation encoding="application/x-tex">\mathrm{deff}_\Delta = \frac{V\!\left(\hat\theta_t - \hat\theta_{t-1}\right)}{V\!\left(\hat\theta_t\right) + V\!\left(\hat\theta_{t-1}\right)}</annotation></semantics></math></p>
 <p>the ratio between the variance reported here and what an office would
-report if it treated the two periods as independent samples. Ignoring
-the overlap does not give a conservative answer – it gives a wrong one,
-in either direction depending on the sign of the covariance.</p>
-<p>For a combination over more than two waves – a rolling quarter, an
-annual average – <code><a href="../reference/panel_estimate.html">panel_estimate()</a></code> takes an arbitrary
-contrast:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/panel_estimate.html">panel_estimate</a></span><span class="op">(</span><span class="va">wb</span>, <span class="fu">mean_of</span><span class="op">(</span><span class="st">"unemployed"</span><span class="op">)</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>   <span class="co"># the net change</span></span>
-<span><span class="fu"><a href="../reference/panel_estimate.html">panel_estimate</a></span><span class="op">(</span><span class="va">wb</span>, <span class="fu">mean_of</span><span class="op">(</span><span class="st">"unemployed"</span><span class="op">)</span><span class="op">)</span>                        <span class="co"># the average</span></span></code></pre></div>
+report if it treated the two periods as independent samples. A
+<code>deff_change</code> near 0.5 means the overlap has paid for half
+the variance of the change. Ignoring it does not give a conservative
+answer, it gives a wrong one, in either direction depending on the sign
+of the covariance.</p>
 </div>
 <div class="section level2">
 <h2 id="chaining-how-production-actually-runs">Chaining: how production actually runs<a class="anchor" aria-label="anchor" href="#chaining-how-production-actually-runs"></a>
@@ -229,58 +238,199 @@ contrast:</p>
 does not have them: it publishes month <code>t</code> weeks after month
 <code>t-1</code>, and the twelfth month of the year cannot wait for the
 first eleven to be reprocessed. <code><a href="../reference/wave_step.html">wave_step()</a></code> runs
-<strong>one period at a time</strong> and hands the next period a small
-object – the <em>carry</em> – that is all it needs.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># period 1: nothing to coordinate with yet</span></span>
-<span><span class="va">s1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="va">w1</span><span class="op">)</span>, estimands <span class="op">=</span> <span class="va">EST</span>, replicates <span class="op">=</span> <span class="fl">500</span>,</span>
-<span>                strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="st">"2026-01"</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="../reference/wave_carry.html">wave_carry</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span>, <span class="st">"carry/2026-01.rds"</span><span class="op">)</span></span>
+<strong>one period at a time</strong>, and hands the next period a small
+object, the <em>carry</em>, that is all it needs.</p>
+<p><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTAwJSIgdmlld0JveD0iMCAwIDk2MCA0NTIiIHJvbGU9ImltZyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZm9udC1mYW1pbHk6LWFwcGxlLXN5c3RlbSwnSW50ZXInLFNlZ29lIFVJLFJvYm90byxzYW5zLXNlcmlmOyI+Cjx0aXRsZT5UaGUgY3ljbGUgb2Ygb25lIHBlcmlvZDwvdGl0bGU+CjxkZXNjPlRoZSBwZXJpb2QgbWljcm9kYXRhIGFuZCBpdHMgcmVjaXBlLCB0b2dldGhlciB3aXRoIHRoZSBjYXJyaWVzIHJldGFpbmVkIGZyb20gZWFybGllciBwZXJpb2RzIHRoYXQgc2hhcmUgc2FtcGxlIHdpdGggaXQsIGdvIGludG8gd2F2ZV9zdGVwLCB3aGljaCByZXR1cm5zIHRoZSBjcm9zcy1zZWN0aW9uYWwgd2VpZ2h0cywgdGhlIGxldmVsIHdpdGggaXRzIHN0YW5kYXJkIGVycm9yLCB0aGUgbmV0IGNoYW5nZSB3aXRoIGl0cyBzdGFuZGFyZCBlcnJvciwgYW5kIGEgbmV3IGNhcnJ5LiBUaGUgY2FycnkgaXMgc2F2ZWQgYW5kIHRoZSBuZXh0IHBlcmlvZCB0YWtlcyBpdCBhcyBhbiBpbnB1dC48L2Rlc2M+CjxkZWZzPjxtYXJrZXIgaWQ9ImExIiB2aWV3Qm94PSIwIDAgMTAgMTAiIHJlZlg9IjkiIHJlZlk9IjUiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj48cGF0aCBkPSJNMCwwIEwxMCw1IEwwLDEwIHoiIGZpbGw9IiM0YTQ2NjAiLz48L21hcmtlcj48bWFya2VyIGlkPSJhMiIgdmlld0JveD0iMCAwIDEwIDEwIiByZWZYPSI5IiByZWZZPSI1IiBtYXJrZXJXaWR0aD0iNyIgbWFya2VySGVpZ2h0PSI3IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+PHBhdGggZD0iTTAsMCBMMTAsNSBMMCwxMCB6IiBmaWxsPSIjN2E2YWQwIi8+PC9tYXJrZXI+PC9kZWZzPgoKICAgICAgPHRleHQgZmlsbD0iIzhhODRhOCIgZm9udC1zaXplPSIxMC41IiBsZXR0ZXItc3BhY2luZz0iMS4yIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSIyNCIgeT0iMjYiPklOUFVUUzwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzhhODRhOCIgZm9udC1zaXplPSIxMC41IiBsZXR0ZXItc3BhY2luZz0iMS4yIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSIzNjgiIHk9IjI2Ij5USEUgU1RFUDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzhhODRhOCIgZm9udC1zaXplPSIxMC41IiBsZXR0ZXItc3BhY2luZz0iMS4yIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI2NjAiIHk9IjI2Ij5PVVRQVVRTPC90ZXh0PgoKICAgICAgPHJlY3QgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjZDlkY2U2IiBzdHJva2Utd2lkdGg9IjEuNSIgeD0iMjQiIHk9IjQyIiB3aWR0aD0iMjMyIiBoZWlnaHQ9IjgyIiByeD0iMTAiLz4KICAgICAgPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxNC41IiBmb250LXdlaWdodD0iNjAwIiB4PSI0MiIgeT0iNzAiPlBlcmlvZCB0IG1pY3JvZGF0YTwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNDIiIHk9IjkyIj5wbHVzIHRoZSB3ZWlnaHRpbmcgcmVjaXBlPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjEzIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI0MiIgeT0iMTEyIj53ZWlnaHRpbmdfc3BlYyguLi4pPC90ZXh0PgoKICAgICAgPHJlY3QgZmlsbD0iI2VjZTlmNiIgc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjEuNzUiIHg9IjI0IiB5PSIxNTIiIHdpZHRoPSIyMzIiIGhlaWdodD0iMTA0IiByeD0iMTAiLz4KICAgICAgPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxNC41IiBmb250LXdlaWdodD0iNjAwIiB4PSI0MiIgeT0iMTgwIj5DYXJyaWVzIHJldGFpbmVkPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI0MiIgeT0iMjAyIj5vbmUgcGVyIGxhZyB3aXRoIGEgcG9zaXRpdmU8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjQyIiB5PSIyMjAiPnNhbXBsZSBvdmVybGFwPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNTM0YWI3IiBmb250LXNpemU9IjEyLjUiIGZvbnQtd2VpZ2h0PSI1MDAiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjQyIiB5PSIyNDIiPjIwMjYtMDEucmRzICYjMTgzOyAyMDI2LTAzLnJkczwvdGV4dD4KCiAgICAgIDxsaW5lIHN0cm9rZT0iIzRhNDY2MCIgc3Ryb2tlLXdpZHRoPSIxLjYiIGZpbGw9Im5vbmUiIHgxPSIyNTYiIHkxPSI4MyIgeDI9IjM1NiIgeTI9IjEyOCIgbWFya2VyLWVuZD0idXJsKCNhMSkiLz4KICAgICAgPGxpbmUgc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIHgxPSIyNTYiIHkxPSIyMDQiIHgyPSIzNTYiIHkyPSIxNzYiIG1hcmtlci1lbmQ9InVybCgjYTIpIi8+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjI3MiIgeT0iNzgiPnNwZWM8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iMjYyIiB5PSIyMjIiPnByZXZpb3VzID0gbGlzdCguLi4pPC90ZXh0PgoKICAgICAgPHJlY3QgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjM2QzNTgwIiBzdHJva2Utd2lkdGg9IjIiIHg9IjM2MCIgeT0iMTE4IiB3aWR0aD0iMjEyIiBoZWlnaHQ9Ijk2IiByeD0iMTEiLz4KICAgICAgPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxMyIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNDY2IiB5PSIxNTgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPndhdmVfc3RlcCgpPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI0NjYiIHk9IjE4MiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+cmUtcnVucyB0aGUgd2hvbGUgcmVjaXBlPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI0NjYiIHk9IjIwMCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+b24gZXZlcnkgcmVwbGljYXRlPC90ZXh0PgoKICAgICAgPGxpbmUgc3Ryb2tlPSIjNGE0NjYwIiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIgeDE9IjU3MiIgeTE9IjE1MCIgeDI9IjY1NiIgeTI9Ijc2IiAgbWFya2VyLWVuZD0idXJsKCNhMSkiLz4KICAgICAgPGxpbmUgc3Ryb2tlPSIjNGE0NjYwIiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIgeDE9IjU3MiIgeTE9IjE2MCIgeDI9IjY1NiIgeTI9IjE0NiIgbWFya2VyLWVuZD0idXJsKCNhMSkiLz4KICAgICAgPGxpbmUgc3Ryb2tlPSIjNGE0NjYwIiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIgeDE9IjU3MiIgeTE9IjE3NiIgeDI9IjY1NiIgeTI9IjIxNiIgbWFya2VyLWVuZD0idXJsKCNhMSkiLz4KICAgICAgPGxpbmUgc3Ryb2tlPSIjN2E2YWQwIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIHgxPSI1NzIiIHkxPSIxOTIiIHgyPSI2NTYiIHkyPSIyOTIiIG1hcmtlci1lbmQ9InVybCgjYTIpIi8+CgogICAgICA8cmVjdCBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS41IiB4PSI2NjAiIHk9IjQyIiB3aWR0aD0iMjc2IiBoZWlnaHQ9IjYyIiByeD0iMTAiLz4KICAgICAgPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxNC41IiBmb250LXdlaWdodD0iNjAwIiB4PSI2NzgiIHk9IjY4Ij5Dcm9zcy1zZWN0aW9uYWwgd2VpZ2h0czwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxMyIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNjc4IiB5PSI5MCI+JHdlaWdodHM8L3RleHQ+CgogICAgICA8cmVjdCBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS41IiB4PSI2NjAiIHk9IjExNiIgd2lkdGg9IjI3NiIgaGVpZ2h0PSI2MiIgcng9IjEwIi8+CiAgICAgIDx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTQuNSIgZm9udC13ZWlnaHQ9IjYwMCIgeD0iNjc4IiB5PSIxNDIiPkxldmVsIGFuZCBpdHMgc3RhbmRhcmQgZXJyb3I8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTMiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjY3OCIgeT0iMTY0Ij4kbGV2ZWw8L3RleHQ+CgogICAgICA8cmVjdCBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS41IiB4PSI2NjAiIHk9IjE5MCIgd2lkdGg9IjI3NiIgaGVpZ2h0PSI2MiIgcng9IjEwIi8+CiAgICAgIDx0ZXh0IGZpbGw9IiMyMDI0MmUiIGZvbnQtc2l6ZT0iMTQuNSIgZm9udC13ZWlnaHQ9IjYwMCIgeD0iNjc4IiB5PSIyMTYiPk5ldCBjaGFuZ2UgYW5kIGl0cyBTRTwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxMyIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNjc4IiB5PSIyMzgiPiRjaGFuZ2U8L3RleHQ+CgogICAgICA8cmVjdCBmaWxsPSIjZWNlOWY2IiBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iNjYwIiB5PSIyNjQiIHdpZHRoPSIyNzYiIGhlaWdodD0iNzAiIHJ4PSIxMCIvPgogICAgICA8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjE0LjUiIGZvbnQtd2VpZ2h0PSI2MDAiIHg9IjY3OCIgeT0iMjkwIj5DYXJyeSBmb3IgcGVyaW9kIHQ8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNjc4IiB5PSIzMTIiPndhdmVfY2Fycnkob3V0KTwvdGV4dD4KCiAgICAgIDxwYXRoIHN0cm9rZT0iIzdhNmFkMCIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiBkPSJNNzk4LDMzNCBMNzk4LDM5OCBMMTQwLDM5OCBMMTQwLDI2MCIgbWFya2VyLWVuZD0idXJsKCNhMikiLz4KICAgICAgPHRleHQgZmlsbD0iIzUzNGFiNyIgZm9udC1zaXplPSIxMi41IiBmb250LXdlaWdodD0iNTAwIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI0NzAiIHk9IjM5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+c2F2ZVJEUygpLCBhbmQgdGhlIG5leHQgcGVyaW9kIHRha2VzIGl0IGFzIGFuIGlucHV0PC90ZXh0PgoKICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iMjQiIHk9IjQzMiI+VGhlIHdlaWdodCB0aGUgb2ZmaWNlIHB1Ymxpc2hlcyBpcyA8dHNwYW4gZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxMyIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSI+JHdlaWdodHM8L3RzcGFuPiwgaWRlbnRpY2FsIHRvIDx0c3BhbiBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjEzIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIj5wcmVwKHNwZWMpJGZpbmFsX3dlaWdodDwvdHNwYW4+LjwvdGV4dD4KCjwvc3ZnPgo=" alt="The cycle of one period" style="width:100%;max-width:960px;"></p>
+<p>Here is a three period chain, run the way production runs it: each
+period separately, writing its carry to disk, with nothing else
+surviving between runs.</p>
+<div class="section level3">
+<h3 id="the-estimands-are-declared-not-programmed">The estimands are declared, not programmed<a class="anchor" aria-label="anchor" href="#the-estimands-are-declared-not-programmed"></a>
+</h3>
+<p>What to estimate, over which domains and on which subuniverse is
+declared with the same DSL as the rest of the package, and the plan is
+handed to <code><a href="../reference/wave_step.html">wave_step()</a></code> whole:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dk</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span>
+<span><span class="va">plan</span> <span class="op">&lt;-</span> <span class="fu">rec</span><span class="op">(</span><span class="va">dk</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/step_domain.html">step_domain</a></span><span class="op">(</span><span class="va">sex</span><span class="op">)</span> <span class="op">|&gt;</span>                                   <span class="co"># domains of study</span></span>
+<span>  <span class="fu"><a href="../reference/step_domain.html">step_estimate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">unemployed</span><span class="op">)</span>, label <span class="op">=</span> <span class="st">"unemp"</span><span class="op">)</span>      <span class="co"># the estimand</span></span>
 <span></span>
-<span><span class="co"># period 2, weeks later, in a fresh session</span></span>
-<span><span class="va">prev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"carry/2026-01.rds"</span><span class="op">)</span></span>
-<span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="va">w2</span><span class="op">)</span>, previous <span class="op">=</span> <span class="va">prev</span>, estimands <span class="op">=</span> <span class="va">EST</span>, replicates <span class="op">=</span> <span class="fl">500</span>,</span>
-<span>                strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="st">"2026-02"</span>, seed <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="va">s2</span><span class="op">$</span><span class="va">weights</span>   <span class="co"># the cross-sectional weights the office publishes</span></span>
-<span><span class="va">s2</span><span class="op">$</span><span class="va">change</span>    <span class="co"># the net change against 2026-01, with rho and deff_change</span></span>
-<span><span class="va">s2</span><span class="op">$</span><span class="va">strata</span>    <span class="co"># the coordination diagnostic, stratum by stratum</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="../reference/wave_carry.html">wave_carry</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span>, <span class="st">"carry/2026-02.rds"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">plan</span></span>
+<span><span class="co">#&gt; &lt;weightflow estimation pipeline&gt;</span></span>
+<span><span class="co">#&gt;   source     : coordinated bootstrap (0 waves)</span></span>
+<span><span class="co">#&gt;   domains    : sex</span></span>
+<span><span class="co">#&gt;   estimands  : 1</span></span>
+<span><span class="co">#&gt;     - unemp  (over = level)</span></span>
+<span><span class="co">#&gt;   -&gt; collect_estimates() to evaluate</span></span></code></pre></div>
+<p><code><a href="../reference/step_domain.html">step_filter()</a></code> would add a subuniverse (working age
+population, the employed, households with a female head). It masks rows
+rather than deleting them, so the coordinated replicate structure stays
+intact.</p>
+<p>This matters here more than it does in a single period. The carry
+stores the <code>R</code> replicate values of every estimand
+<strong>under its label</strong>, and the next period matches them by
+name. An estimand added halfway through the chain does not exist in the
+earlier carry, so there are no replicate pairs to estimate a covariance
+from. <code><a href="../reference/wave_step.html">wave_step()</a></code> says so rather than reporting a change as
+if the two periods were independent:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">d1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span>
+<span><span class="va">d2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">2</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span>
+<span><span class="va">one</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="fu">rec</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/step_domain.html">step_estimate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">unemployed</span><span class="op">)</span>, label <span class="op">=</span> <span class="st">"unemp"</span><span class="op">)</span></span>
+<span><span class="va">two</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="fu">one</span><span class="op">(</span><span class="va">d</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/step_domain.html">step_estimate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">age</span><span class="op">)</span>, label <span class="op">=</span> <span class="st">"mean_age"</span><span class="op">)</span>   <span class="co"># declared late</span></span>
+<span></span>
+<span><span class="va">s1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="va">d1</span><span class="op">)</span>, estimands <span class="op">=</span> <span class="fu">one</span><span class="op">(</span><span class="va">d1</span><span class="op">)</span>, replicates <span class="op">=</span> <span class="fl">20</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>,</span>
+<span>                psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="st">"t1"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="va">d2</span><span class="op">)</span>, previous <span class="op">=</span> <span class="fu"><a href="../reference/wave_carry.html">wave_carry</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span>, estimands <span class="op">=</span> <span class="fu">two</span><span class="op">(</span><span class="va">d2</span><span class="op">)</span>,</span>
+<span>                    replicates <span class="op">=</span> <span class="fl">20</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
+<span>                    period <span class="op">=</span> <span class="st">"t2"</span>, seed <span class="op">=</span> <span class="fl">2</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, silent <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: carry 't1' has no replicate values for 1 estimand(s) (mean_age), so no</span></span>
+<span><span class="co">#&gt; change is reported for them. Declare the same `estimands`/`by` in every period</span></span>
+<span><span class="co">#&gt; of the chain, or re-run that period.</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="the-chain">The chain<a class="anchor" aria-label="anchor" href="#the-chain"></a>
+</h3>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"carry"</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">store</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">month</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2026-01"</span>, <span class="st">"2026-02"</span>, <span class="st">"2026-03"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">k</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">dk</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="va">k</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span></span>
+<span>  <span class="va">plan</span> <span class="op">&lt;-</span> <span class="fu">rec</span><span class="op">(</span><span class="va">dk</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/step_domain.html">step_domain</a></span><span class="op">(</span><span class="va">sex</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/step_domain.html">step_estimate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">unemployed</span><span class="op">)</span>, label <span class="op">=</span> <span class="st">"unemp"</span><span class="op">)</span></span>
+<span>  <span class="va">prev</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">store</span>, full.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>, <span class="va">readRDS</span><span class="op">)</span>   <span class="co"># what is on disk</span></span>
+<span>  <span class="va">out</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="va">dk</span><span class="op">)</span>, previous <span class="op">=</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">prev</span><span class="op">)</span><span class="op">)</span> <span class="va">prev</span> <span class="kw">else</span> <span class="cn">NULL</span>,</span>
+<span>                    estimands <span class="op">=</span> <span class="va">plan</span>, replicates <span class="op">=</span> <span class="fl">60</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>, psu <span class="op">=</span> <span class="st">"psu"</span>,</span>
+<span>                    period <span class="op">=</span> <span class="va">month</span><span class="op">[</span><span class="va">k</span><span class="op">]</span>, seed <span class="op">=</span> <span class="va">k</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="../reference/wave_carry.html">wave_carry</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">store</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">month</span><span class="op">[</span><span class="va">k</span><span class="op">]</span>, <span class="st">".rds"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "2026-01.rds" "2026-02.rds" "2026-03.rds"</span></span></code></pre></div>
+<p>One declared estimand and one domain give three series, the total and
+the two levels of <code>sex</code>, and the third period reports a
+change against <strong>each</strong> earlier period it shares sample
+with, not only the adjacent one:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">out</span><span class="op">$</span><span class="va">change</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"estimand"</span>, <span class="st">"from"</span>, <span class="st">"to"</span>, <span class="st">"estimate"</span>, <span class="st">"se"</span>, <span class="st">"rho"</span>, <span class="st">"deff_change"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;      estimand    from      to     estimate         se       rho deff_change</span></span>
+<span><span class="co">#&gt; 1       unemp 2026-02 2026-03  0.015956715 0.01222748 0.5294995   0.4718879</span></span>
+<span><span class="co">#&gt; 2 unemp|sex=F 2026-02 2026-03  0.027289650 0.01806427 0.5582719   0.4454167</span></span>
+<span><span class="co">#&gt; 3 unemp|sex=M 2026-02 2026-03  0.005787666 0.01745125 0.5464332   0.4620931</span></span>
+<span><span class="co">#&gt; 4       unemp 2026-01 2026-03  0.001005467 0.01294508 0.4808183   0.5198849</span></span>
+<span><span class="co">#&gt; 5 unemp|sex=F 2026-01 2026-03 -0.001630680 0.02179629 0.4318623   0.5682533</span></span>
+<span><span class="co">#&gt; 6 unemp|sex=M 2026-01 2026-03  0.006013244 0.01525588 0.5522920   0.4482943</span></span></code></pre></div>
 <p>Three properties worth stating plainly.</p>
 <p><strong>The cross-sectional weights are untouched.</strong>
-<code>s2$weights</code> is identical to
-<code>prep(spec)$final_weight</code>. Coordination adds the change and
-the carry; it never moves the point estimate the office publishes.</p>
+Coordination adds the change and the carry; it never moves the point
+estimate the office publishes.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">out</span><span class="op">$</span><span class="va">weights</span>, <span class="fu"><a href="../reference/prep.html">prep</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">3</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">final_weight</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p><strong><code>previous</code> is a list, not a file.</strong> Which
 earlier periods share sample with this one is decided by the rotation
-calendar, not by proximity: with <code>2-(2)-2</code> the useful lags
-are 1, 3, 4 and 5, and lag 2 is empty. Each PSU inherits its
-multiplicity from the most recent carry that contains it, so gaps and
-returning cohorts resolve themselves.</p>
+calendar, as the figure above shows. Each PSU inherits its multiplicity
+from the most recent carry that contains it, so gaps and returning
+cohorts resolve themselves.</p>
 <p><strong>The coordination is exact when the stratum keeps its
 size.</strong> Coordination transfers the PSU <em>multiplicities</em>,
-and when <code>n_h</code> is unchanged the transfer is a permutation –
-case (ii) of the LFS methodology – so no replicate needs adjusting.
-<code>$strata</code> reports the case and the share of replicates that
-closed without adjustment, per stratum. That column is the quality
-indicator that decides whether a figure is publishable.</p>
-<div class="section level3">
-<h3 id="combinations-over-the-chain">Combinations over the chain<a class="anchor" aria-label="anchor" href="#combinations-over-the-chain"></a>
-</h3>
+and when <code>n_h</code> is unchanged the transfer is a permutation,
+case (ii) of the LFS methodology, so no replicate needs adjusting:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">out</span><span class="op">$</span><span class="va">strata</span></span>
+<span><span class="co">#&gt;   stratum n_psu inherited fresh case coordinated</span></span>
+<span><span class="co">#&gt; 1       1    10        10     0    i           1</span></span>
+<span><span class="co">#&gt; 2       2    10        10     0    i           1</span></span>
+<span><span class="co">#&gt; 3       3    10        10     0    i           1</span></span>
+<span><span class="co">#&gt; 4       4    10        10     0    i           1</span></span>
+<span><span class="co">#&gt; 5       5    10        10     0    i           1</span></span>
+<span><span class="co">#&gt; 6       6    10        10     0    i           1</span></span></code></pre></div>
+<p><code>case</code> is the coordination case per stratum and
+<code>coordinated</code> is the share of replicates that closed without
+adjustment. That column is the quality indicator that decides whether a
+figure is publishable, and the four cases are set out in
+<code><a href="../articles/coordinated-replication.html">vignette("coordinated-replication")</a></code>.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="what-has-to-be-saved">What has to be saved<a class="anchor" aria-label="anchor" href="#what-has-to-be-saved"></a>
+</h2>
+<p>This is the question an office asks first, because it decides the
+production architecture. The answer is: one object per period, and it is
+small.</p>
+<p><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTAwJSIgdmlld0JveD0iMCAwIDk2MCAzNDAiIHJvbGU9ImltZyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZm9udC1mYW1pbHk6LWFwcGxlLXN5c3RlbSwnSW50ZXInLFNlZ29lIFVJLFJvYm90byxzYW5zLXNlcmlmOyI+Cjx0aXRsZT5XaGF0IHRoZSB0aGluIGNhcnJ5IGFuZCB0aGUgZmF0IGNhcnJ5IGhvbGQ8L3RpdGxlPgo8ZGVzYz5UaGUgdGhpbiBjYXJyeSBob2xkcyB0aGUgUFNVIG11bHRpcGxpY2l0aWVzLCB0aGUgc3RyYXR1bSBvZiBlYWNoIFBTVSwgdGhlIG51bWJlciBvZiBQU1VzIHBlciBzdHJhdHVtLCB0aGUgcmVwbGljYXRlIHZhbHVlcyBhbmQgdGhlIHBvaW50IGVzdGltYXRlIG9mIGV2ZXJ5IGVzdGltYW5kLCBhbmQgYSBmaW5nZXJwcmludCBvZiB0aGUgcGVyaW9kIGRhdGEuIEl0IHdlaWdocyBmb3VyIGtpbG9ieXRlcyBhbmQgaG9sZHMgbm8gcGVyc29uIGxldmVsIGRhdGEuIFRoZSBmYXQgY2FycnksIHJlcXVpcmVkIGJ5IGEgY29tcG9zaXRlIHJlY2lwZSwgYWRkcyB0aGUgcmVwbGljYXRlIHdlaWdodCBtYXRyaXgsIHRoZSBwZXJpb2QgbWljcm9kYXRhIGFuZCB0aGUgcG9pbnQgd2VpZ2h0cywgYW5kIHdlaWdocyBhYm91dCBvbmUgaHVuZHJlZCBhbmQgc2l4dHkga2lsb2J5dGVzLjwvZGVzYz4KPGRlZnM+PC9kZWZzPgoKICAgICAgPHRleHQgZmlsbD0iIzhhODRhOCIgZm9udC1zaXplPSIxMC41IiBsZXR0ZXItc3BhY2luZz0iMS4yIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSIyNCIgeT0iMjQiPlRISU4gQ0FSUlksIE5PIENPTVBPU0lURSBTVEVQPC90ZXh0PgogICAgICA8cmVjdCBmaWxsPSIjZWNlOWY2IiBzdHJva2U9IiM3YTZhZDAiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iMjQiIHk9IjQwIiB3aWR0aD0iNDMwIiBoZWlnaHQ9IjI1MiIgcng9IjEyIi8+CiAgICAgIDx0ZXh0IGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNDQiIHk9IjY4Ij4kbXVsdDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iMTUwIiB5PSI2OCI+UFNVICYjMjE1OyBSIGludGVnZXJzPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSIxNTAiIHk9Ijg2Ij50aGUgbXVsdGlwbGljaXRpZXMgdGhhdCBjb29yZGluYXRlIHRoZSBuZXh0IHBlcmlvZDwvdGV4dD4KICAgICAgPGxpbmUgc3Ryb2tlPSIjZDlkY2U2IiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIgeDE9IjQ0IiB5MT0iMTAyIiB4Mj0iNDM0IiB5Mj0iMTAyIi8+CiAgICAgIDx0ZXh0IGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNDQiIHk9IjEyNiI+JHBzdV9zdHJhdHVtPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSIxNTAiIHk9IjEyNiI+dGhlIHN0cmF0dW0gZWFjaCBQU1UgYmVsb25ncyB0bzwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzUzNGFiNyIgZm9udC1zaXplPSIxMi41IiBmb250LXdlaWdodD0iNTAwIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI0NCIgeT0iMTQ4Ij4kbmg8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjE1MCIgeT0iMTQ4Ij5udW1iZXIgb2YgUFNVcyBwZXIgc3RyYXR1bTwvdGV4dD4KICAgICAgPGxpbmUgc3Ryb2tlPSIjZDlkY2U2IiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIgeDE9IjQ0IiB5MT0iMTY0IiB4Mj0iNDM0IiB5Mj0iMTY0Ii8+CiAgICAgIDx0ZXh0IGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNDQiIHk9IjE4OCI+JHRoZXRhPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSIxNTAiIHk9IjE4OCI+dGhlIFIgcmVwbGljYXRlIHZhbHVlcyBvZiBldmVyeSBlc3RpbWFuZDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iMTUwIiB5PSIyMDYiPnRoaXMgaXMgd2hlcmUgdGhlIGNvdmFyaWFuY2UgYmV0d2VlbiBwZXJpb2RzIGNvbWVzIGZyb208L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM1MzRhYjciIGZvbnQtc2l6ZT0iMTIuNSIgZm9udC13ZWlnaHQ9IjUwMCIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iNDQiIHk9IjIyOCI+JHBvaW50PC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSIxNTAiIHk9IjIyOCI+dGhlIHBvaW50IGVzdGltYXRlIG9mIGV2ZXJ5IGVzdGltYW5kPC90ZXh0PgogICAgICA8bGluZSBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS42IiBmaWxsPSJub25lIiB4MT0iNDQiIHkxPSIyNDQiIHgyPSI0MzQiIHkyPSIyNDQiLz4KICAgICAgPHRleHQgZmlsbD0iIzUzNGFiNyIgZm9udC1zaXplPSIxMi41IiBmb250LXdlaWdodD0iNTAwIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI0NCIgeT0iMjY4Ij4kZGF0YV9mcDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iMTUwIiB5PSIyNjgiPmEgZmluZ2VycHJpbnQgb2YgdGhlIG1pY3JvZGF0YSwgdG8gaWRlbnRpZnkgdGhlIHBlcmlvZDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iMjQiIHk9IjMxNiI+NCBLQi4gTm8gcGVyc29uLWxldmVsIGRhdGEuPC90ZXh0PgoKICAgICAgPHRleHQgZmlsbD0iIzhhODRhOCIgZm9udC1zaXplPSIxMC41IiBsZXR0ZXItc3BhY2luZz0iMS4yIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI1MDYiIHk9IjI0Ij5GQVQgQ0FSUlksIFdJVEggc3RlcF9jcmUoKTwvdGV4dD4KICAgICAgPHJlY3QgZmlsbD0iI2ZkZjZlOCIgc3Ryb2tlPSIjYzk5MDJhIiBzdHJva2Utd2lkdGg9IjEuNzUiIHg9IjUwNiIgeT0iNDAiIHdpZHRoPSI0MzAiIGhlaWdodD0iMjUyIiByeD0iMTIiLz4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNTI2IiB5PSI2OCI+ZXZlcnl0aGluZyBpbiB0aGUgdGhpbiBjYXJyeSwgYW5kPC90ZXh0PgogICAgICA8bGluZSBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS42IiBmaWxsPSJub25lIiB4MT0iNTI2IiB5MT0iODQiIHgyPSI5MTYiIHkyPSI4NCIvPgogICAgICA8dGV4dCBmaWxsPSIjOGE2NDE0IiBmb250LXNpemU9IjEyLjUiIGZvbnQtd2VpZ2h0PSI1MDAiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjUyNiIgeT0iMTEyIj4kcmVwczwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNjMyIiB5PSIxMTIiPnVuaXRzICYjMjE1OyBSPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI2MzIiIHk9IjEzMCI+dGhlIHJlcGxpY2F0ZSB3ZWlnaHRzIG9mIHRoZSBwZXJpb2Q7PC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI2MzIiIHk9IjE0OCI+dGhpcyBpcyB3aGF0IHJlYnVpbGRzIFpoYXQgcmVwbGljYXRlIGJ5IHJlcGxpY2F0ZTwvdGV4dD4KICAgICAgPGxpbmUgc3Ryb2tlPSIjZDlkY2U2IiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIgeDE9IjUyNiIgeTE9IjE2NCIgeDI9IjkxNiIgeTI9IjE2NCIvPgogICAgICA8dGV4dCBmaWxsPSIjOGE2NDE0IiBmb250LXNpemU9IjEyLjUiIGZvbnQtd2VpZ2h0PSI1MDAiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjUyNiIgeT0iMTg4Ij4kZGF0YTwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNjMyIiB5PSIxODgiPnRoZSBwZXJpb2QgbWljcm9kYXRhLCBuZWVkZWQgdG8gYnVpbGQ8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjYzMiIgeT0iMjA2Ij50aGUgY29tcG9zaXRlIFogYmxvY2tzPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjOGE2NDE0IiBmb250LXNpemU9IjEyLjUiIGZvbnQtd2VpZ2h0PSI1MDAiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjUyNiIgeT0iMjI4Ij4kd2VpZ2h0czwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNjMyIiB5PSIyMjgiPnRoZSBwb2ludCB3ZWlnaHRzIG9mIHRoZSBwZXJpb2Q8L3RleHQ+CiAgICAgIDxsaW5lIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjYiIGZpbGw9Im5vbmUiIHgxPSI1MjYiIHkxPSIyNDQiIHgyPSI5MTYiIHkyPSIyNDQiLz4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNTI2IiB5PSIyNjgiPml0IGlzIHBpY2tlZCBhdXRvbWF0aWNhbGx5OiBjYXJyeSA9ICJhdXRvIiBkZXRlY3RzIGl0PC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI1MDYiIHk9IjMxNiI+MTYwIEtCLiBJdCBob2xkcyBtaWNyb2RhdGE6IHRyZWF0IGl0IGFzIHN1Y2guPC90ZXh0PgoKPC9zdmc+Cg==" alt="What the carry holds, thin and fat" style="width:100%;max-width:960px;"></p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cy</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">store</span>, <span class="st">"2026-03.rds"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">cy</span><span class="op">)</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">cy</span>, <span class="va">is.null</span>, <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; [1] "period"      "seq"         "mult"        "nh"          "psu_stratum"</span></span>
+<span><span class="co">#&gt; [6] "theta"       "point"       "data_fp"     "meta"</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>carry_KB  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.info.html" class="external-link">file.size</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">store</span>, <span class="st">"2026-03.rds"</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1024</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  period_rows <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">3</span> <span class="op">&amp;</span> <span class="va">disposition</span> <span class="op">==</span> <span class="st">"R"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;    carry_KB period_rows </span></span>
+<span><span class="co">#&gt;         5.1      1718.0</span></span></code></pre></div>
+<p>Four kilobytes against a period file of some seventeen hundred rows,
+and no person level data in it at all: <code>$data</code>,
+<code>$reps</code> and <code>$weights</code> are <code>NULL</code> in a
+thin carry. It is a sufficient statistic for the coordination, not a
+copy of the survey. That matters for more than disk: a carry can be
+moved between systems and kept for years without carrying a disclosure
+problem with it.</p>
+<p>A recipe ending in <code><a href="../reference/step_cre.html">step_cre()</a></code> is the exception. Its
+control totals are <strong>estimated with the previous wave</strong>, so
+replicate <code>b</code> of period <code>t</code> has to rebuild them
+from replicate <code>b</code> of period <code>t-1</code>, which means
+the previous period’s replicate weights have to travel too.
+<code>carry = "auto"</code> detects it, and the object grows
+accordingly:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">thin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="va">w1</span><span class="op">)</span>, estimands <span class="op">=</span> <span class="fu">one</span><span class="op">(</span><span class="va">w1</span><span class="op">)</span>, replicates <span class="op">=</span> <span class="fl">60</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>,</span>
+<span>                  psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="st">"t1"</span>, seed <span class="op">=</span> <span class="fl">1</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">fat</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wave_step.html">wave_step</a></span><span class="op">(</span><span class="fu">rec</span><span class="op">(</span><span class="va">w1</span><span class="op">)</span>, estimands <span class="op">=</span> <span class="fu">one</span><span class="op">(</span><span class="va">w1</span><span class="op">)</span>, replicates <span class="op">=</span> <span class="fl">60</span>, strata <span class="op">=</span> <span class="st">"stratum"</span>,</span>
+<span>                  psu <span class="op">=</span> <span class="st">"psu"</span>, period <span class="op">=</span> <span class="st">"t1"</span>, seed <span class="op">=</span> <span class="fl">1</span>, carry <span class="op">=</span> <span class="st">"fat"</span>, progress <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span> <span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="../reference/wave_carry.html">wave_carry</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">p</span><span class="op">)</span>; <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.info.html" class="external-link">file.size</a></span><span class="op">(</span><span class="va">p</span><span class="op">)</span> <span class="op">/</span> <span class="fl">1024</span>, <span class="fl">1</span><span class="op">)</span> <span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>thin_KB <span class="op">=</span> <span class="fu">f</span><span class="op">(</span><span class="va">thin</span><span class="op">)</span>, fat_KB <span class="op">=</span> <span class="fu">f</span><span class="op">(</span><span class="va">fat</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; thin_KB  fat_KB </span></span>
+<span><span class="co">#&gt;     4.0   160.7</span></span></code></pre></div>
+<p>Forty times larger, and it holds the microdata. Keep it under the
+same rules as the microdata itself.</p>
+</div>
+<div class="section level2">
+<h2 id="combinations-over-the-chain">Combinations over the chain<a class="anchor" aria-label="anchor" href="#combinations-over-the-chain"></a>
+</h2>
 <p><code><a href="../reference/wave_step.html">wave_step()</a></code> reports pairwise changes. A rolling quarter
 is not pairwise, and <code><a href="../reference/wave_contrast.html">wave_contrast()</a></code> estimates any linear
-combination straight from the saved carries:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">tr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2026-01"</span>, <span class="st">"2026-02"</span>, <span class="st">"2026-03"</span><span class="op">)</span>,</span>
-<span>             \<span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"carry/%s.rds"</span>, <span class="va">m</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+combination straight from the saved carries, without the waves being in
+memory:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">tr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">store</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">month</span>, <span class="st">".rds"</span><span class="op">)</span><span class="op">)</span>, <span class="va">readRDS</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="../reference/wave_contrast.html">wave_contrast</a></span><span class="op">(</span><span class="va">tr</span>, <span class="st">"unemployment_rate"</span><span class="op">)</span>                          <span class="co"># rolling quarter</span></span>
-<span><span class="fu"><a href="../reference/wave_contrast.html">wave_contrast</a></span><span class="op">(</span><span class="va">tr</span>, <span class="st">"unemployment_rate"</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>  <span class="co"># T3 - T1</span></span></code></pre></div>
-<p>This works without the waves being in memory because each carry
-stores the <code>R</code> replicate values of every declared estimand,
-and those replicates are <strong>paired across periods</strong> – the
-coordination transferred the multiplicities. Stacking them recovers the
-full covariance matrix, and any contrast follows from it.</p>
-</div>
+<span><span class="fu"><a href="../reference/wave_contrast.html">wave_contrast</a></span><span class="op">(</span><span class="va">tr</span>, <span class="st">"unemp"</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"estimand"</span>, <span class="st">"estimate"</span>, <span class="st">"se"</span>, <span class="st">"lo"</span>, <span class="st">"hi"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;   estimand estimate         se       lo       hi</span></span>
+<span><span class="co">#&gt; 1    unemp 0.275714 0.01057827 0.254981 0.296447</span></span>
+<span><span class="fu"><a href="../reference/wave_contrast.html">wave_contrast</a></span><span class="op">(</span><span class="va">tr</span>, <span class="st">"unemp"</span>, contrast <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"estimand"</span>, <span class="st">"estimate"</span>, <span class="st">"se"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;   estimand    estimate         se</span></span>
+<span><span class="co">#&gt; 1    unemp 0.001005467 0.01294508</span></span></code></pre></div>
+<p>That second line is the change from January to March, computed from
+three files on disk, and it is the same number the chain already
+reported in <code>$change</code>. It works because each carry stores the
+<code>R</code> replicate values of every declared estimand, and those
+replicates are <strong>paired across periods</strong>: the coordination
+transferred the multiplicities. Stacking them into an <code>R</code> by
+<code>W</code> matrix recovers the whole covariance matrix, and any
+contrast follows from it as <code>V(a'theta) = a' Sigma a</code>:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">S</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">tr</span>, <span class="kw">function</span><span class="op">(</span><span class="va">p</span><span class="op">)</span> <span class="va">p</span><span class="op">$</span><span class="va">theta</span><span class="op">[[</span><span class="st">"unemp"</span><span class="op">]</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">60</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">S</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">month</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov</a></span><span class="op">(</span><span class="va">S</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;          2026-01  2026-02  2026-03</span></span>
+<span><span class="co">#&gt; 2026-01 1.55e-04 1.09e-04 7.81e-05</span></span>
+<span><span class="co">#&gt; 2026-02 1.09e-04 1.49e-04 8.43e-05</span></span>
+<span><span class="co">#&gt; 2026-03 7.81e-05 8.43e-05 1.72e-04</span></span></code></pre></div>
+<p>The covariances fall off with the lag, as the overlap profile says
+they should.</p>
 <div class="section level3">
 <h3 id="the-composite-estimator">The composite estimator<a class="anchor" aria-label="anchor" href="#the-composite-estimator"></a>
 </h3>
@@ -291,21 +441,11 @@ targets two blocks at once: the known demographic totals
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐗</mi><annotation encoding="application/x-tex">\mathbf{X}</annotation></semantics></math>,
 and composite totals
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math><strong>estimated with the previous wave</strong>. Treating the second
-block as if it were known makes the variance anticonservative, so
-replicate
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
-of period
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>
-rebuilds
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>𝐙</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\widehat{\mathbf{Z}}</annotation></semantics></math>
-from replicate
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
-of period
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t-1</annotation></semantics></math>.
-That is why a chain with <code><a href="../reference/step_cre.html">step_cre()</a></code> needs the “fat” carry:
-it must bring the previous period’s replicate weights, not just its
-replicate estimates. <code>$n_cre_injected</code> and
-<code>$n_cre_skipped</code> audit that the injection happened.</p>
+block as if it were known makes the variance anticonservative, which is
+why the fat carry exists. <code>$n_cre_injected</code> and
+<code>$n_cre_skipped</code> audit that the injection happened, and a
+recipe that points at a period missing from the chain is refused rather
+than quietly given the wrong one.</p>
 <p>The estimator, its two imputations for the birth rotation group and
 the tuning constant
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>α</mi><annotation encoding="application/x-tex">\alpha</annotation></semantics></math>
@@ -318,8 +458,11 @@ are in <code><a href="../articles/composite-estimation.html">vignette("composite
 <p>A net change is a difference of aggregates. It cannot distinguish an
 immobile population from one where equal numbers enter and leave
 employment. For that you need the <strong>longitudinal</strong> file and
-a longitudinal weight.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+a longitudinal weight. It is a second branch off the same microdata and
+the same cross-sectional recipe, and it does not take part in the chain:
+it produces no carry and consumes none.</p>
+<p><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTAwJSIgdmlld0JveD0iMCAwIDk2MCAzOTYiIHJvbGU9ImltZyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiBzdHlsZT0iZm9udC1mYW1pbHk6LWFwcGxlLXN5c3RlbSwnSW50ZXInLFNlZ29lIFVJLFJvYm90byxzYW5zLXNlcmlmOyI+Cjx0aXRsZT5UaGUgdHdvIGJyYW5jaGVzOiBob3cgbXVjaCBjaGFuZ2VkLCBhbmQgd2hvIG1vdmVkPC90aXRsZT4KPGRlc2M+VGhlIGNyb3NzLXNlY3Rpb25hbCBicmFuY2ggd2VpZ2h0cyBlYWNoIHdhdmUgc2VwYXJhdGVseSBhbmQgdGhlIGNvb3JkaW5hdGVkIGJvb3RzdHJhcCByZXR1cm5zIHRoZSBuZXQgY2hhbmdlIHdpdGggaXRzIHN0YW5kYXJkIGVycm9yLiBUaGUgbG9uZ2l0dWRpbmFsIGJyYW5jaCBsaW5rcyB0aGUgc2FtZSB1bml0cyBpbnRvIGEgd2lkZSBmaWxlLCBhZGp1c3RzIGZvciBhdHRyaXRpb24gYW5kIHJldHVybnMgdGhlIGdyb3NzIGZsb3cgbWF0cml4LCB3aXRoIGEgYm9vdHN0cmFwIHN0YW5kYXJkIGVycm9yIHBlciBjZWxsLjwvZGVzYz4KPGRlZnM+PG1hcmtlciBpZD0iYTYiIHZpZXdCb3g9IjAgMCAxMCAxMCIgcmVmWD0iOSIgcmVmWT0iNSIgbWFya2VyV2lkdGg9IjciIG1hcmtlckhlaWdodD0iNyIgb3JpZW50PSJhdXRvLXN0YXJ0LXJldmVyc2UiPjxwYXRoIGQ9Ik0wLDAgTDEwLDUgTDAsMTAgeiIgZmlsbD0iIzFkOWU3NSIvPjwvbWFya2VyPjxtYXJrZXIgaWQ9ImE3IiB2aWV3Qm94PSIwIDAgMTAgMTAiIHJlZlg9IjkiIHJlZlk9IjUiIG1hcmtlcldpZHRoPSI3IiBtYXJrZXJIZWlnaHQ9IjciIG9yaWVudD0iYXV0by1zdGFydC1yZXZlcnNlIj48cGF0aCBkPSJNMCwwIEwxMCw1IEwwLDEwIHoiIGZpbGw9IiM0YTQ2NjAiLz48L21hcmtlcj48L2RlZnM+CgogICAgICA8cmVjdCBmaWxsPSIjZmZmZmZmIiBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS41IiB4PSIyNCIgeT0iNDYiIHdpZHRoPSIxOTYiIGhlaWdodD0iNjYiIHJ4PSIxMCIvPgogICAgICA8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjE0LjUiIGZvbnQtd2VpZ2h0PSI2MDAiIHg9IjQyIiB5PSI3MiI+V2F2ZSB0PC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI0MiIgeT0iOTQiPmNyb3NzLXNlY3Rpb25hbCByZWNpcGUsIHByZXAoKTwvdGV4dD4KCiAgICAgIDxyZWN0IGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHg9IjI0IiB5PSIxNDYiIHdpZHRoPSIxOTYiIGhlaWdodD0iNjYiIHJ4PSIxMCIvPgogICAgICA8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjE0LjUiIGZvbnQtd2VpZ2h0PSI2MDAiIHg9IjQyIiB5PSIxNzIiPldhdmUgdCsxPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI0MiIgeT0iMTk0Ij5jcm9zcy1zZWN0aW9uYWwgcmVjaXBlLCBwcmVwKCk8L3RleHQ+CgogICAgICA8dGV4dCBmaWxsPSIjOGE4NGE4IiBmb250LXNpemU9IjEwLjUiIGxldHRlci1zcGFjaW5nPSIxLjIiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjI3MCIgeT0iMzQiPkNST1NTLVNFQ1RJT05BTCBCUkFOQ0g6IEhPVyBNVUNIIENIQU5HRUQ8L3RleHQ+CiAgICAgIDxsaW5lIHN0cm9rZT0iIzRhNDY2MCIgc3Ryb2tlLXdpZHRoPSIxLjYiIGZpbGw9Im5vbmUiIHgxPSIyMjAiIHkxPSI3OSIgeDI9IjMwNCIgeTI9IjEwMCIgbWFya2VyLWVuZD0idXJsKCNhNykiLz4KICAgICAgPGxpbmUgc3Ryb2tlPSIjNGE0NjYwIiBzdHJva2Utd2lkdGg9IjEuNiIgZmlsbD0ibm9uZSIgeDE9IjIyMCIgeTE9IjE3OSIgeDI9IjMwNCIgeTI9IjEzMCIgbWFya2VyLWVuZD0idXJsKCNhNykiLz4KICAgICAgPHJlY3QgZmlsbD0iI2ZmZmZmZiIgc3Ryb2tlPSIjM2QzNTgwIiBzdHJva2Utd2lkdGg9IjIiIHg9IjMwOCIgeT0iNzYiIHdpZHRoPSIxOTAiIGhlaWdodD0iNzYiIHJ4PSIxMSIvPgogICAgICA8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjEzIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI0MDMiIHk9IjEwNiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+d2F2ZV9zdGVwKCk8L3RleHQ+CiAgICAgIDx0ZXh0IGZpbGw9IiM0YTQ2NjAiIGZvbnQtc2l6ZT0iMTIiIHg9IjQwMyIgeT0iMTMwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5jb29yZGluYXRlZCBib290c3RyYXA8L3RleHQ+CiAgICAgIDxsaW5lIHN0cm9rZT0iIzRhNDY2MCIgc3Ryb2tlLXdpZHRoPSIxLjYiIGZpbGw9Im5vbmUiIHgxPSI0OTgiIHkxPSIxMTQiIHgyPSI1OTYiIHkyPSIxMTQiIG1hcmtlci1lbmQ9InVybCgjYTcpIi8+CiAgICAgIDxyZWN0IGZpbGw9IiNmZmZmZmYiIHN0cm9rZT0iI2Q5ZGNlNiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHg9IjYwMCIgeT0iODIiIHdpZHRoPSIzMzYiIGhlaWdodD0iNjYiIHJ4PSIxMCIvPgogICAgICA8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjE0LjUiIGZvbnQtd2VpZ2h0PSI2MDAiIHg9IjYxOCIgeT0iMTA4Ij5OZXQgY2hhbmdlIHdpdGggaXRzIFNFPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI2MTgiIHk9IjEzMCI+ViA9IFYxICsgVjIgLSAyIGNvdiwgb25lIG51bWJlciBwZXIgZXN0aW1hbmQ8L3RleHQ+CgogICAgICA8bGluZSBzdHJva2U9IiNkOWRjZTYiIHN0cm9rZS13aWR0aD0iMS42IiBmaWxsPSJub25lIiB4MT0iMjQiIHkxPSIyMzgiIHgyPSI5MzYiIHkyPSIyMzgiLz4KCiAgICAgIDx0ZXh0IGZpbGw9IiM4YTg0YTgiIGZvbnQtc2l6ZT0iMTAuNSIgbGV0dGVyLXNwYWNpbmc9IjEuMiIgZm9udC1mYW1pbHk9IidKZXRCcmFpbnMgTW9ubycsdWktbW9ub3NwYWNlLG1vbm9zcGFjZSIgeD0iMjcwIiB5PSIyNTAiPkxPTkdJVFVESU5BTCBCUkFOQ0g6IFdITyBNT1ZFRDwvdGV4dD4KICAgICAgPHBhdGggc3Ryb2tlPSIjMWQ5ZTc1IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiIGQ9Ik0xMjIsMjEyIEwxMjIsMjkwIEwzMDQsMjkwIiBtYXJrZXItZW5kPSJ1cmwoI2E2KSIvPgogICAgICA8dGV4dCBmaWxsPSIjMTU1MDNjIiBmb250LXNpemU9IjEyLjUiIGZvbnQtd2VpZ2h0PSI1MDAiIGZvbnQtZmFtaWx5PSInSmV0QnJhaW5zIE1vbm8nLHVpLW1vbm9zcGFjZSxtb25vc3BhY2UiIHg9IjEzMiIgeT0iMjU4Ij5wYW5lbF9tZXJnZSgpPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSIxMzIiIHk9IjI3NiI+bGlua3Mgb24gdGhlIHVuaXQga2V5PC90ZXh0PgoKICAgICAgPHJlY3QgZmlsbD0iI2VhZjVmMCIgc3Ryb2tlPSIjMWQ5ZTc1IiBzdHJva2Utd2lkdGg9IjEuNzUiIHg9IjMwOCIgeT0iMjU2IiB3aWR0aD0iMTkwIiBoZWlnaHQ9IjkwIiByeD0iMTEiLz4KICAgICAgPHRleHQgZmlsbD0iIzIwMjQyZSIgZm9udC1zaXplPSIxNC41IiBmb250LXdlaWdodD0iNjAwIiB4PSI0MDMiIHk9IjI4MiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+V2lkZSBmaWxlPC90ZXh0PgogICAgICA8dGV4dCBmaWxsPSIjNGE0NjYwIiBmb250LXNpemU9IjEyIiB4PSI0MDMiIHk9IjMwNCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+b25lIHJvdyBwZXIgdW5pdDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzE1NTAzYyIgZm9udC1zaXplPSIxMi41IiBmb250LXdlaWdodD0iNTAwIiBmb250LWZhbWlseT0iJ0pldEJyYWlucyBNb25vJyx1aS1tb25vc3BhY2UsbW9ub3NwYWNlIiB4PSI0MDMiIHk9IjMyNiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+c3RlcF9hdHRyaXRpb24oKTwvdGV4dD4KCiAgICAgIDxsaW5lIHN0cm9rZT0iIzFkOWU3NSIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIiB4MT0iNDk4IiB5MT0iMzAwIiB4Mj0iNTk2IiB5Mj0iMzAwIiBtYXJrZXItZW5kPSJ1cmwoI2E2KSIvPgogICAgICA8cmVjdCBmaWxsPSIjZWFmNWYwIiBzdHJva2U9IiMxZDllNzUiIHN0cm9rZS13aWR0aD0iMS43NSIgeD0iNjAwIiB5PSIyNTYiIHdpZHRoPSIzMzYiIGhlaWdodD0iOTAiIHJ4PSIxMCIvPgogICAgICA8dGV4dCBmaWxsPSIjMjAyNDJlIiBmb250LXNpemU9IjE0LjUiIGZvbnQtd2VpZ2h0PSI2MDAiIHg9IjYxOCIgeT0iMjgyIj5Hcm9zcyBmbG93IG1hdHJpeDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNjE4IiB5PSIzMDQiPlAoc3RhdGUgYXQgdCsxIHwgc3RhdGUgYXQgdCksIGNvdW50cywgbmV0IGZsb3dzLDwvdGV4dD4KICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iNjE4IiB5PSIzMjIiPnN0YXllcnMgYW5kIG1vdmVycywgZWFjaCB3aXRoIGEgYm9vdHN0cmFwIFNFPC90ZXh0PgoKICAgICAgPHRleHQgZmlsbD0iIzRhNDY2MCIgZm9udC1zaXplPSIxMiIgeD0iMjQiIHk9IjM4MCI+Qm90aCBicmFuY2hlcyBzdGFydCBmcm9tIHRoZSBzYW1lIG1pY3JvZGF0YSBhbmQgdGhlIHNhbWUgY3Jvc3Mtc2VjdGlvbmFsIHJlY2lwZS48L3RleHQ+Cgo8L3N2Zz4K" alt="The two branches: how much changed, and who moved" style="width:100%;max-width:960px;"></p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/panel_merge.html">panel_merge</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>T1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span>,</span>
 <span>                         T2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">panel_ine</span>, <span class="va">wave</span> <span class="op">==</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>                    by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"household_id"</span>, <span class="st">"person_no"</span><span class="op">)</span>, require <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span>
@@ -344,23 +487,24 @@ a longitudinal weight.</p>
 <p><code><a href="../reference/boot_transition.html">boot_transition()</a></code> adds a standard error per cell, and
 <code><a href="../reference/boot_flows.html">boot_flows()</a></code> gives the same information as population
 totals plus the net flows <code>i-&gt;j</code> minus
-<code>j-&gt;i</code> and the margins – how many started in each state,
-ended in each, stayed, and moved.</p>
+<code>j-&gt;i</code> and the margins, i.e. how many started in each
+state, ended in each, stayed, and moved.</p>
 <p>A caveat about the illustration, not the method: the four shipped
 panel datasets are synthetic, and in all of them <strong>inactivity is
-an absorbing state</strong> – nobody enters or leaves it. So the matrix
-above shows movement only between employment and unemployment, and the
-<code>inact</code> row and column are degenerate. The mechanics are the
-point here; on real microdata the transitions in and out of inactivity
-are usually the interesting ones.</p>
+an absorbing state</strong>, so nobody enters or leaves it. The matrix
+above therefore shows movement only between employment and unemployment,
+and the <code>inact</code> row and column are degenerate. The mechanics
+are the point here; on real microdata the transitions in and out of
+inactivity are usually the interesting ones.</p>
 <p>Note the order of the two steps, which is not cosmetic.
 <strong>Leaving the target population is not nonresponse.</strong>
 Someone who died or emigrated is removed from the universe with
-<code><a href="../reference/step_drop_ineligible.html">step_drop_ineligible()</a></code>; their weight is not redistributed
-to anyone. Someone who is still in the universe but did not answer is
-attrition, and their weight <em>is</em> redistributed, among the units
-that remain. Collapsing the two inflates the population.</p>
-<p>Three further conventions govern a longitudinal weight – who belongs
+<code><a href="../reference/step_drop_ineligible.html">step_drop_ineligible()</a></code>, and their weight is not
+redistributed to anyone. Someone who is still in the universe but did
+not answer is attrition, and their weight <em>is</em> redistributed,
+among the units that remain. Collapsing the two inflates the
+population.</p>
+<p>Three further conventions govern a longitudinal weight: who belongs
 to the longitudinal population, which period’s totals to calibrate to,
 and why cross-sectional estimates from a longitudinal file are reference
 only. They are decisions the analyst makes and the package cannot check,
@@ -374,16 +518,16 @@ in <code><a href="../reference/step_cross_sectional.html">?step_cross_sectional<
 pieces it uses.</p>
 <ul>
 <li>
-<code><a href="../articles/coordinated-replication.html">vignette("coordinated-replication")</a></code> – what actually
+<code><a href="../articles/coordinated-replication.html">vignette("coordinated-replication")</a></code> for what actually
 travels between waves, the four coordination cases, and how to read the
 <code>$strata</code> diagnostic that decides whether a change is
 publishable.</li>
 <li>
-<code><a href="../articles/composite-estimation.html">vignette("composite-estimation")</a></code> –
+<code><a href="../articles/composite-estimation.html">vignette("composite-estimation")</a></code> for
 <code><a href="../reference/step_cre.html">step_cre()</a></code> in full: what the composite estimator buys, and
 why its control totals make its variance a special case.</li>
 <li>
-<code><a href="../articles/panel-longitudinal.html">vignette("panel-longitudinal")</a></code> – the
+<code><a href="../articles/panel-longitudinal.html">vignette("panel-longitudinal")</a></code> for the
 <strong>pure</strong> panel: attrition over many waves, the longitudinal
 weight, and gross flows.</li>
 </ul>
