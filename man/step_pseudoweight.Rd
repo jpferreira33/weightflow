@@ -45,10 +45,18 @@ domain}, on that domain's units of both samples and on nothing else. The
 pseudo-weights of a domain sum to that domain's reference total rather than to the
 national one -- which is what lets a following domain-partitioned calibration start
 from a coherent input weight. Use it when the participation mechanism differs
-across domains (a covariate whose effect changes sign by region is the clear case);
-a single national model cannot represent that, and the resulting pseudo-weights
-miss the domain totals in both directions. Each domain needs enough units on \strong{each}
-side to fit its own model; those that do not are reported by name.}
+across domains (a covariate whose effect changes sign by region is the clear case),
+where a single \emph{additive} national model misses the domain totals in both directions
+-- measured on three domains with the slope changing sign: \code{~ dom + x} landed at
+4,258 / 3,530 / 4,803 against a truth of 4,022 / 4,033 / 3,945.
+
+For \code{engine = "logit"} this is the fully interacted national model, \code{~ dom * (...)},
+and gives the same weights to numerical precision -- not a different estimator, but
+the practicable way to fit it: the interactions are never written out, a domain
+without enough units on either side is named instead of quietly degrading the whole
+fit, and the tree, forest and boost engines have no interaction syntax at all, so
+there segmenting is the only route. Each domain needs enough units on \strong{each} side
+to fit its own model; those that do not are reported by name.}
 
 \item{crossfit, crossfit_seed}{optional K-fold cross-fitting of the propensity
 (recommended for the flexible learners), and its seed.}

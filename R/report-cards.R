@@ -93,9 +93,14 @@
                c(.t("Residual data-defect correlation |&rho;|", "Correlaci&oacute;n de defecto residual |&rho;|", lang),
                  .t("Effective sample size", "Tama&ntilde;o muestral efectivo", lang)),
                "</th>", collapse = "")
+  # N-09: a row below the SRS benchmark |rho| = 1/sqrt(N) is a correlation smaller than
+  # the one a random sample of this population shows by itself, so its n_eff can exceed
+  # both n and N. Mark it instead of printing an unattainable figure with a clean face.
+  bs <- if (!is.null(dd$grid$below_srs)) dd$grid$below_srs else rep(FALSE, nrow(dd$grid))
   rows <- vapply(seq_len(nrow(dd$grid)), function(i)
-    sprintf("<tr><td>%.3f</td><td class='neff'>%s</td></tr>",
-            dd$grid$ddc[i], nf(dd$grid$n_eff[i])), character(1))
+    sprintf("<tr><td>%.3f</td><td class='neff'>%s%s</td></tr>",
+            dd$grid$ddc[i], nf(dd$grid$n_eff[i]),
+            if (isTRUE(bs[i])) " *" else ""), character(1))
   grid_html <- sprintf("<table class='stagetbl'><thead><tr>%s</tr></thead><tbody>%s</tbody></table>",
                        hd, paste(rows, collapse = ""))
   lead <- .t(
@@ -104,6 +109,12 @@
   note <- .t(
     "Effective size n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). The residual &rho; on the target variable is not observable from the sample, so read the table as an ignorance range, not a single number: it holds for any estimand with that residual correlation. See Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.",
     "Tama&ntilde;o efectivo n_eff = (f / (1 - f)) / &rho;&sup2; (Meng 2018). El &rho; residual sobre la variable de inter&eacute;s no es observable desde la muestra, as&iacute; que la tabla se lee como un rango de ignorancia, no un &uacute;nico n&uacute;mero: vale para cualquier estimando con esa correlaci&oacute;n residual. Ver Meng (2018), Annals of Applied Statistics 12(2); Yang et al. (2024), Science Advances.", lang)
+  if (any(bs)) {
+    srs <- if (!is.null(dd$rho_srs)) dd$rho_srs else NA_real_
+    note <- paste(note, .t(
+      sprintf("* Below |&rho;| = %.4f = 1/&radic;N, the data-defect correlation a simple random sample of this population shows by itself. Those rows credit the sample with being more representative than a random one, so their n_eff can exceed both n and N: read them as a ceiling the formula allows and the design cannot reach.", srs),
+      sprintf("* Por debajo de |&rho;| = %.4f = 1/&radic;N, la correlaci&oacute;n de defecto que una muestra aleatoria simple de esta poblaci&oacute;n muestra por s&iacute; sola. Esas filas le atribuyen a la muestra ser m&aacute;s representativa que una aleatoria, as&iacute; que su n_eff puede superar a n y a N: se leen como un techo que la f&oacute;rmula admite y el dise&ntilde;o no alcanza.", srs), lang))
+  }
   sprintf("<div class='ddc feature'><h3 class='card-t'>%s</h3><p class='ddc-lead'>%s</p>%s%s%s<p class='note'>%s</p></div>",
           .t("Data-defect diagnostics (non-probability sample)",
              "Diagn&oacute;stico de defecto de datos (muestra no probabil&iacute;stica)", lang),

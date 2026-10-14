@@ -115,10 +115,18 @@
 #'   pseudo-weights of a domain sum to that domain's reference total rather than to the
 #'   national one -- which is what lets a following domain-partitioned calibration start
 #'   from a coherent input weight. Use it when the participation mechanism differs
-#'   across domains (a covariate whose effect changes sign by region is the clear case);
-#'   a single national model cannot represent that, and the resulting pseudo-weights
-#'   miss the domain totals in both directions. Each domain needs enough units on **each**
-#'   side to fit its own model; those that do not are reported by name.
+#'   across domains (a covariate whose effect changes sign by region is the clear case),
+#'   where a single *additive* national model misses the domain totals in both directions
+#'   -- measured on three domains with the slope changing sign: `~ dom + x` landed at
+#'   4,258 / 3,530 / 4,803 against a truth of 4,022 / 4,033 / 3,945.
+#'
+#'   For `engine = "logit"` this is the fully interacted national model, `~ dom * (...)`,
+#'   and gives the same weights to numerical precision -- not a different estimator, but
+#'   the practicable way to fit it: the interactions are never written out, a domain
+#'   without enough units on either side is named instead of quietly degrading the whole
+#'   fit, and the tree, forest and boost engines have no interaction syntax at all, so
+#'   there segmenting is the only route. Each domain needs enough units on **each** side
+#'   to fit its own model; those that do not are reported by name.
 step_pseudoweight <- function(spec, reference, formula,
                               engine = c("logit", "tree", "forest", "boost"),
                               num_classes = NULL, by = NULL, crossfit = NULL,
@@ -302,8 +310,20 @@ apply_step.step_pseudoweight <- function(step, data, w) {
                                               if (length(miss_np)) "; " else "",
                                               paste(miss_rf, collapse = ", ")) else ""),
          call. = FALSE)
+  # N-10. Two numbers are two numbers. An age read as 25 from one file and 25.0 from the
+  # other differs in storage type and in nothing the model can see, so refusing the pair
+  # sent the user to fix data that was never wrong. Widen the numeric pair to double and
+  # carry on; a mismatch that changes what the column MEANS -- text against number, a
+  # factor against a free string -- is still refused, because there the harmonisation is
+  # a decision (which levels, in which order) and not a conversion.
+  numeric_pair <- function(a, b)
+    is.numeric(a) && is.numeric(b) && !is.factor(a) && !is.factor(b)
   for (v in vars) {
     tn <- class(data[[v]])[1]; tr <- class(ref[[v]])[1]
+    if (!identical(tn, tr) && numeric_pair(data[[v]], ref[[v]])) {
+      data[[v]] <- as.numeric(data[[v]]); ref[[v]] <- as.numeric(ref[[v]])
+      tn <- tr <- "numeric"
+    }
     if (!identical(tn, tr))
       stop(sprintf(paste0("Covariate '%s' has type %s in the sample but %s in the reference; ",
                           "harmonise the two samples (same type and factor levels) before ",

@@ -59,6 +59,15 @@ data_defect <- function(object, ddc_grid = c(0.001, 0.005, 0.01, 0.05, 0.10)) {
   # Meng (2018): n_eff = (f / (1 - f)) / rho^2, the SRS size matching the MSE.
   grid <- data.frame(ddc = sort(ddc_grid),
                      n_eff = (f / (1 - f)) / sort(ddc_grid)^2)
+  # N-09. The formula is a ratio and will return anything, including an effective size
+  # larger than the sample and larger than the population (measured: 92,392 against a
+  # sample of 1,000 and an estimated population of 8,040). That is not a bug in the
+  # formula, it is a rho the grid should not be read at: a simple random sample of size n
+  # itself shows |rho| ~ 1/sqrt(N), so anything below that describes a sample MORE
+  # representative than a random one, which is not a position a volunteer sample can
+  # claim. Report the benchmark and mark the rows under it; the print method and the
+  # report card show the mark rather than a number that cannot be attained.
+  grid$below_srs <- grid$ddc < 1 / sqrt(N)
 
   # Measurable selection strength on the auxiliaries: the correlation between each
   # model covariate and the participation indicator, read from the pooled
@@ -82,7 +91,7 @@ data_defect <- function(object, ddc_grid = c(0.001, 0.005, 0.01, 0.05, 0.10)) {
     rownames(aux) <- NULL
     break
   }
-  structure(list(n = n, N = N, f = f, grid = grid, aux = aux),
+  structure(list(n = n, N = N, f = f, rho_srs = 1 / sqrt(N), grid = grid, aux = aux),
             class = "weightflow_data_defect")
 }
 
@@ -96,9 +105,17 @@ print.weightflow_data_defect <- function(x, ...) {
                 abs(x$aux$corr[1]), x$aux$covariate[1]))
   cat("  effective size by residual data-defect correlation (Meng 2018):\n")
   g <- x$grid
+  srs <- !is.null(x$rho_srs) && is.finite(x$rho_srs)
   for (i in seq_len(nrow(g)))
-    cat(sprintf("    |rho| = %.3f  ->  n_eff = %s\n",
-                g$ddc[i], format(round(g$n_eff[i]), big.mark = ",")))
+    cat(sprintf("    |rho| = %.3f  ->  n_eff = %s%s\n",
+                g$ddc[i], format(round(g$n_eff[i]), big.mark = ","),
+                if (srs && isTRUE(g$below_srs[i])) "  (*)" else ""))
   cat("  (rho on the target variable is not observable; read as an ignorance range)\n")
+  if (srs && any(g$below_srs))
+    cat(sprintf(paste0("  (*) below |rho| = %.4f = 1/sqrt(N), the defect a simple random\n",
+                       "      sample of this population shows by itself: those rows describe a\n",
+                       "      sample more representative than a random one, so read them as a\n",
+                       "      ceiling the formula allows and the design cannot reach.\n"),
+                x$rho_srs))
   invisible(x)
 }
