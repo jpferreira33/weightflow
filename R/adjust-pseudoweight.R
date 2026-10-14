@@ -17,6 +17,30 @@
 # this does not, and describing it as an identity (as this file did until 2026-09-27)
 # is wrong.
 
+# N-02. Which steps pseudo-weight against a reference whose own sampling variance is
+# NOT being carried? In the pseudo-weight path the reference is not just a source of
+# totals: every reference unit is a row of the pooled participation fit, so treating it
+# as fixed is a stronger assumption than it is when calibrating to estimated totals.
+# Measured against a Monte Carlo oracle, a nominal 95% interval covered 76% with a
+# reference of 500 and 88% with one of 3,000, against 94% when the reference's own
+# replicate weights are paired in. The recipe cannot build those replicates itself --
+# that needs the reference's strata, PSUs and finite-population correction, and its
+# totals if it was calibrated; an iid resample of reference rows would get the clustering
+# and the stratification wrong in opposite directions and report the result as if it were
+# right. So they are an input, and in their absence the variance functions say what they
+# assumed instead of inventing it.
+.wf_pseudo_steps <- function(spec) {
+  if (is.null(spec$steps)) return(logical(0))
+  vapply(spec$steps, function(s)
+    inherits(s, "step_pseudoweight") && !is.null(s$reference), logical(1))
+}
+
+.wf_pseudo_ref_unreplicated <- function(spec) {
+  hit <- .wf_pseudo_steps(spec)
+  if (!any(hit)) return(FALSE)
+  any(vapply(spec$steps[hit], function(s) is.null(.wf_ref_reps(s$reference)), logical(1)))
+}
+
 #' Pseudo-weights for a non-probability sample against a reference
 #'
 #' For a non-probability sample (opt-in panel, volunteer or river sample) with no
@@ -216,6 +240,7 @@ step_pseudoweight <- function(spec, reference, formula,
     attr(diag, "p_min") <- pmin_all
     attr(diag, "p_max") <- pmax_all
     attr(diag, "odds")  <- TRUE   # weight is (1 - p)/p, not 1/p
+    attr(diag, "ref_no_reps") <- is.null(.wf_ref_reps(ref))   # N-02
     # NP-08. One figure for the recipe, not one per domain: the dispersion that matters is
     # the one carried by the weights that leave this step, across all of them. Read off
     # the applied factor itself (new_w / w on the active units), which is what the
@@ -378,6 +403,7 @@ apply_step.step_pseudoweight <- function(step, data, w) {
               round(N_ref), round(sum_ratio, 3), round(mean(psw), 2)),
     stringsAsFactors = FALSE)
   attr(diag, "sum_ratio") <- sum_ratio   # NP-06
+  attr(diag, "ref_no_reps") <- is.null(rep_mat)   # N-02, read by prep()
   attr(diag, "p_min") <- min(pi_np)      # reported; NOT the alert trigger (NP-08)
   attr(diag, "p_max") <- max(pi_np)      # NP-01 mirror: participation ~ 1 -> pseudo-weight ~ 0
   # NP-08. What the pseudo-weighting step costs, on a scale that does not move with the

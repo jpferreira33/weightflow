@@ -86,6 +86,19 @@ bootstrap_weights <- function(object, replicates = 200L, strata = NULL,
   lonely_psu <- match.arg(lonely_psu)
   replicates <- .wf_count(replicates, "replicates", min = 2L)
   if (!is.null(m)) m <- .wf_count(m, "m", min = 1L)
+  # N-02. See .wf_pseudo_ref_unreplicated(): without the reference's replicate weights
+  # these columns hold the reference fixed, which is an assumption about the reference,
+  # not a property of the bootstrap. Name it before the numbers are produced.
+  if (.wf_pseudo_ref_unreplicated(object))
+    warning(paste0(
+      "bootstrap_weights(): step_pseudoweight() uses a reference_sample() with no ",
+      "replicate weights, so these replicates treat the reference as the population: ",
+      "its totals as known, and its units as fixed data in the participation model. ",
+      "That is correct for a frame or a census; for a reference survey the standard ",
+      "errors are underestimated. Pass the reference's replicate weights -- ",
+      "reference_sample(ref, weights = w, replicates = R) -- from its own replicate ",
+      "file, or build them with bootstrap_weights() on the reference's design."),
+      call. = FALSE)
   # Snapshot the caller's RNG so the per-replicate seeding below does not leak
   # into their stream (restored on exit, once the replicate seeds are drawn).
   .rng_entry <- if (exists(".Random.seed", envir = .GlobalEnv))
@@ -619,6 +632,18 @@ jackknife_weights <- function(object, strata = NULL, psu = NULL, groups = NULL,
          "a step_subsample()); it would capture only the first-phase variance and ",
          "undercover. Use bootstrap_weights() for the two-phase variance.",
          call. = FALSE)
+  # N-02, the jackknife's own version of it: there is no reference replicate to pair a
+  # delete-one replicate with, so this component is absent whether or not the reference
+  # carries `replicates`. Hence the different wording from bootstrap_weights(): nothing
+  # the caller passes here will supply it.
+  if (any(.wf_pseudo_steps(object)))
+    warning(paste0(
+      "jackknife_weights(): this recipe has a step_pseudoweight(), and the delete-one ",
+      "jackknife treats the reference as the population even when `replicates` is ",
+      "supplied -- it never re-estimates it, so that component of the variance is ",
+      "missing rather than approximated. If the reference is a survey, the standard ",
+      "errors are underestimated; use bootstrap_weights(), which pairs each replicate ",
+      "with a reference replicate."), call. = FALSE)
   lonely_psu <- match.arg(lonely_psu)
   t0 <- Sys.time()
   data <- object$data

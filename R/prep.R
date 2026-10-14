@@ -366,6 +366,18 @@ has_alerts <- function(object) length(weighting_alerts(object)) > 0L
              "or trim with step_trim_weights()."),
       pm, format(round(1 / pm), big.mark = ",", scientific = FALSE)))
 
+  # N-02. The point weights are unaffected by this, so it is a note on the recipe rather
+  # than a defect in the weights: it says which assumption the variance will rest on,
+  # where the person reading the report will see it, before they compute one.
+  if (isTRUE(attr(diag, "ref_no_reps")))
+    msgs <- c(msgs, paste0(
+      "The reference sample carries no replicate weights. The pseudo-weights ",
+      "themselves are unaffected, but any variance computed from this recipe will ",
+      "treat the reference as the POPULATION -- its weighted totals as known values, ",
+      "not estimates. If the reference really is a frame or a census, that is correct. ",
+      "If it is a survey, the standard errors will be underestimated. Pass its ",
+      "replicate weights through reference_sample(replicates =)."))
+
   # NP-01 mirror: for a pseudo-weight (participation odds (1 - p)/p) a participation
   # propensity near 1 sends the pseudo-weight toward 0, so the unit all but drops out
   # of the sample without any tiny-propensity warning. Flag the near-1 extreme.

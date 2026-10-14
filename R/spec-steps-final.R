@@ -17,9 +17,22 @@
 #' `replicates`: each bootstrap replicate then re-estimates the totals from the
 #' paired reference replicate (Opsomer and Erciulescu 2021), so the extra
 #' variance from estimating the totals is captured. Without `replicates` the
-#' totals are treated as fixed (a reasonable approximation when the reference is
-#' much larger than the sample, and the same assumption made when calibrating to
-#' another survey's published totals).
+#' totals are treated as fixed -- the same assumption made when calibrating to
+#' another survey's published totals.
+#'
+#' How much that assumption costs depends on what the reference is used for, and
+#' the two uses are not equivalent. In [step_model_calibration()] the reference
+#' supplies *totals*, a smooth functional of it. In [step_pseudoweight()] every
+#' reference unit is a row of the pooled participation fit, so the fitted
+#' propensities -- and therefore every pseudo-weight -- depend on the reference
+#' unit by unit. Treating it as fixed there understates the variance even when
+#' the reference is several times the size of the sample, and the recipe cannot
+#' repair this on its own: building the reference's replicates needs its strata,
+#' PSUs and finite-population correction (and its control totals, if it was
+#' calibrated), which only the reference's own producer has. So pass them, from
+#' the survey's published replicate file or built with [bootstrap_weights()] on
+#' the reference's design; without them [bootstrap_weights()] and
+#' [jackknife_weights()] say which assumption they fell back on.
 #'
 #' @param data a `data.frame` of reference-survey microdata, with the columns
 #'   used in `x_formula` and the model predictors.
