@@ -10,6 +10,13 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(weightflow)
+# Figures are kept as standalone .svg files and embedded as data URIs. An inline
+# <svg> element does not survive an HTML re-parse (libxml2 lowercases attribute
+# names, so `viewBox` becomes `viewbox` and the figure collapses to zero height);
+# a data URI is one attribute value and is copied verbatim.
+wf_fig <- function(file, alt = "")
+  sprintf('<img src="%s" alt="%s" style="width:100%%;max-width:960px;" />',
+          knitr::image_uri(file.path("figures", file)), alt)
 ```
 
 In a rotating panel most of this month's sample was also in last month's. The
@@ -224,6 +231,14 @@ reason a chain containing `step_cre()` needs the previous period's **replicate
 weights**, not just its replicate estimates.
 
 ## The fat carry
+
+Seen from the production chain, a composite recipe changes exactly two things: it
+adds one input, and it fattens one output. Everything else in the period is the
+same object it was before.
+
+```{r ce-adds, echo = FALSE, results = "asis"}
+cat(wf_fig("ce-adds.svg", "What the composite estimator adds to the chain"))
+```
 
 Hence the two shapes of the carry. `carry = "auto"`, the default, inspects the
 recipe: with no `step_cre()` it stores only the replicate values of the declared

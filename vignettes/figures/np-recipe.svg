@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 680 358" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>The multipurpose doubly robust weight as a single recipe</title>
+<desc>The volunteer and reference files feed a participation model that produces the pseudo-weight. K working models, one per study variable, produce prediction columns that are stacked with the known population control totals into one linear calibration. The calibration returns a single weight column used for every indicator. A band underneath shows that the replication bootstrap re-executes every step on each replicate, including the reference replicates.</desc>
+<defs><marker id="np2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#7a6ad0" stroke-width="1.8"/></marker></defs>
+
+<rect x="24" y="40" width="120" height="34" rx="8" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.3"/>
+<text x="84" y="62" text-anchor="middle" font-size="12" fill="#20242e">volunteers</text>
+<rect x="24" y="86" width="120" height="34" rx="8" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.3"/>
+<text x="84" y="108" text-anchor="middle" font-size="12" fill="#20242e">reference + d</text>
+
+<line x1="148" y1="57" x2="196" y2="70" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+<line x1="148" y1="103" x2="196" y2="88" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+<rect x="200" y="56" width="150" height="44" rx="8" fill="#f4f2fb" stroke="#534ab7" stroke-width="1.4"/>
+<text x="275" y="74" text-anchor="middle" font-size="12" fill="#20242e">participation model</text>
+<text x="275" y="91" text-anchor="middle" font-size="11" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#534ab7">(1 - p) / p</text>
+
+<rect x="200" y="132" width="150" height="26" rx="6" fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.2"/>
+<text x="275" y="150" text-anchor="middle" font-size="11" fill="#15503c">y1 &#8594; learner 1</text>
+<rect x="200" y="164" width="150" height="26" rx="6" fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.2"/>
+<text x="275" y="182" text-anchor="middle" font-size="11" fill="#15503c">y2 &#8594; learner 2</text>
+<rect x="200" y="196" width="150" height="26" rx="6" fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.2"/>
+<text x="275" y="214" text-anchor="middle" font-size="11" fill="#15503c">yK &#8594; learner K</text>
+<rect x="200" y="232" width="150" height="26" rx="6" fill="#fdf6e8" stroke="#c9902a" stroke-width="1.2"/>
+<text x="275" y="250" text-anchor="middle" font-size="11" fill="#5c4410">known control totals</text>
+
+<line x1="354" y1="78" x2="402" y2="140" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+<line x1="354" y1="145" x2="402" y2="166" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+<line x1="354" y1="177" x2="402" y2="180" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+<line x1="354" y1="209" x2="402" y2="194" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+<line x1="354" y1="245" x2="402" y2="208" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+
+<rect x="406" y="140" width="136" height="68" rx="8" fill="#f4f2fb" stroke="#534ab7" stroke-width="1.4"/>
+<text x="474" y="166" text-anchor="middle" font-size="12" fill="#20242e">one stacked</text>
+<text x="474" y="184" text-anchor="middle" font-size="12" fill="#20242e">calibration</text>
+<text x="474" y="200" text-anchor="middle" font-size="10" fill="#6b6a86">solved once</text>
+
+<line x1="546" y1="174" x2="586" y2="174" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#np2)"/>
+<rect x="590" y="134" width="66" height="80" rx="8" fill="#3d3580"/>
+<text x="623" y="170" text-anchor="middle" font-size="13" fill="#ffffff">one</text>
+<text x="623" y="188" text-anchor="middle" font-size="13" fill="#ffffff">weight</text>
+
+<rect x="24" y="278" width="632" height="52" rx="8" fill="#f7f6fb" stroke="#b0a6ee" stroke-width="1.2" stroke-dasharray="5 3"/>
+<text x="340" y="299" text-anchor="middle" font-size="12" fill="#4a4660">replication bootstrap: re-executes every step above on each replicate</text>
+<text x="340" y="318" text-anchor="middle" font-size="12" fill="#4a4660">that is, the participation model, the K working models, and the reference</text>
+<text x="340" y="344" text-anchor="middle" font-size="11" font-style="italic" fill="#8a84a8">Each study variable keeps its own model; the file keeps one weight.</text>
+</svg>

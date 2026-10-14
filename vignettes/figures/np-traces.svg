@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 680 232" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>Three ways to turn one fitted score into a weight, and the trace each leaves</title>
+<desc>The correct construction uses the odds with a design-weighted reference and its pseudo-weights sum to the estimated population size. Using the plain inverse adds one unit of weight per volunteer, so the sum overshoots by the volunteer share of the population. Entering the reference at weight one rescales the weights by the reference's own sampling fraction, so the sum collapses towards that fraction.</desc>
+<rect x="16" y="22" width="206" height="150" rx="10" fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.5"/>
+<text x="119" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#15503c">CORRECT</text>
+<text x="119" y="66" text-anchor="middle" font-size="13" fill="#20242e">the odds</text>
+<text x="119" y="92" text-anchor="middle" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#15503c">(1 - p) / p</text>
+<text x="119" y="113" text-anchor="middle" font-size="11" fill="#3f7a64">design-weighted reference</text>
+<rect x="36" y="128" width="166" height="30" rx="6" fill="#ffffff" stroke="#1d9e75" stroke-width="1.2"/>
+<text x="119" y="148" text-anchor="middle" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#15503c">&#931;w / N&#770; = 1</text>
+
+<rect x="237" y="22" width="206" height="150" rx="10" fill="#fdf6e8" stroke="#c9902a" stroke-width="1.5"/>
+<text x="340" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#8a6414">QUIET ERROR</text>
+<text x="340" y="66" text-anchor="middle" font-size="13" fill="#20242e">the plain inverse</text>
+<text x="340" y="92" text-anchor="middle" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a6414">1 / p</text>
+<text x="340" y="113" text-anchor="middle" font-size="11" fill="#8a7a50">one extra unit of weight each</text>
+<rect x="257" y="128" width="166" height="30" rx="6" fill="#ffffff" stroke="#c9902a" stroke-width="1.2"/>
+<text x="340" y="148" text-anchor="middle" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a6414">&#931;w / N&#770; = 1 + n&#7525;/N</text>
+
+<rect x="458" y="22" width="206" height="150" rx="10" fill="#fbeceb" stroke="#c0492f" stroke-width="1.5"/>
+<text x="561" y="44" text-anchor="middle" font-size="11" font-weight="600" fill="#8c2f1c">LOUD ERROR</text>
+<text x="561" y="66" text-anchor="middle" font-size="13" fill="#20242e">reference at weight one</text>
+<text x="561" y="92" text-anchor="middle" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8c2f1c">(1 - p) / p</text>
+<text x="561" y="113" text-anchor="middle" font-size="11" fill="#9a5a48">scaled by the reference's own fraction</text>
+<rect x="478" y="128" width="166" height="30" rx="6" fill="#ffffff" stroke="#c0492f" stroke-width="1.2"/>
+<text x="561" y="148" text-anchor="middle" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8c2f1c">&#931;w / N&#770; = n&#7523;/N</text>
+
+<text x="340" y="196" text-anchor="middle" font-size="12" fill="#4a4660">Each trace is a property of the stacking, not a simulation result.</text>
+<text x="340" y="218" text-anchor="middle" font-size="11" font-style="italic" fill="#8a84a8">And each is gone after a calibration: the control-total block imposes the population total whichever construction produced the weights.</text>
+</svg>

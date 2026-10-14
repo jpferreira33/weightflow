@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 680 448" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>The whole strategy as one recipe object</title>
+<desc>A single container holds weighting_spec() and a stack of step functions: unknown eligibility, drop ineligible, select within, nonresponse, calibrate and trim. An arrow leaves the container to prep(), which produces the final weights.</desc>
+<defs><marker id="qspur" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#7a6ad0" stroke-width="1.7"/></marker></defs>
+<text x="60" y="44" font-size="12" font-style="italic" fill="#6a6f7a">One object: the whole strategy, defined lazily, read top to bottom.</text>
+<rect x="55" y="55" width="570" height="300" rx="12" fill="#f6f5fb" stroke="#3d3580" stroke-width="1.6"/>
+<line x1="72" y1="98" x2="72" y2="318" stroke="#cbb8e0" stroke-width="1.6"/>
+<text x="84" y="90" font-size="13" font-weight="600" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">weighting_spec(data, base_weights)</text>
+<text x="372" y="90" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a8f9a"># design weights 1/&#960;</text>
+<rect x="84" y="110" width="212" height="26" rx="13" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.2"/>
+<text x="95" y="128" font-size="12.5" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">step_unknown_eligibility()</text>
+<text x="372" y="128" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a8f9a"># resolve unknown eligibility</text>
+<rect x="84" y="148" width="182" height="26" rx="13" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.2"/>
+<text x="95" y="166" font-size="12.5" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">step_drop_ineligible()</text>
+<text x="372" y="166" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a8f9a"># remove out-of-scope units</text>
+<rect x="84" y="186" width="168" height="26" rx="13" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.2"/>
+<text x="95" y="204" font-size="12.5" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">step_select_within()</text>
+<text x="372" y="204" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a8f9a"># within-household selection</text>
+<rect x="84" y="224" width="156" height="26" rx="13" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.2"/>
+<text x="95" y="242" font-size="12.5" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">step_nonresponse()</text>
+<text x="372" y="242" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a8f9a"># correct for nonresponse</text>
+<rect x="84" y="262" width="140" height="26" rx="13" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.2"/>
+<text x="95" y="280" font-size="12.5" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">step_calibrate()</text>
+<text x="372" y="280" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a8f9a"># align to population totals</text>
+<rect x="84" y="300" width="104" height="26" rx="13" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.2"/>
+<text x="95" y="318" font-size="12.5" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">step_trim()</text>
+<text x="372" y="318" font-size="12" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#8a8f9a"># tame extreme weights</text>
+<line x1="150" y1="355" x2="150" y2="382" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#qspur)"/>
+<rect x="103" y="382" width="95" height="32" rx="16" fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.4"/>
+<text x="150" y="403" text-anchor="middle" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" fill="#3d3580">prep()</text>
+<line x1="198" y1="398" x2="243" y2="398" stroke="#7a6ad0" stroke-width="1.5" marker-end="url(#qspur)"/>
+<rect x="245" y="382" width="170" height="32" rx="16" fill="#cdeadd" stroke="#1d9e75" stroke-width="1.4"/>
+<text x="330" y="403" text-anchor="middle" font-size="13" fill="#14603f">final weights</text>
+<text x="440" y="403" font-size="12" font-style="italic" fill="#6a6f7a">one output of the object</text>
+</svg>

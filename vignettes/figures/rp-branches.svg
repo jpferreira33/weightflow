@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 960 396" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>The two branches: how much changed, and who moved</title>
+<desc>The cross-sectional branch weights each wave separately and the coordinated bootstrap returns the net change with its standard error. The longitudinal branch links the same units into a wide file, adjusts for attrition and returns the gross flow matrix, with a bootstrap standard error per cell.</desc>
+<defs><marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d9e75"/></marker><marker id="a7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4a4660"/></marker></defs>
+
+      <rect fill="#ffffff" stroke="#d9dce6" stroke-width="1.5" x="24" y="46" width="196" height="66" rx="10"/>
+      <text fill="#20242e" font-size="14.5" font-weight="600" x="42" y="72">Wave t</text>
+      <text fill="#4a4660" font-size="12" x="42" y="94">cross-sectional recipe, prep()</text>
+
+      <rect fill="#ffffff" stroke="#d9dce6" stroke-width="1.5" x="24" y="146" width="196" height="66" rx="10"/>
+      <text fill="#20242e" font-size="14.5" font-weight="600" x="42" y="172">Wave t+1</text>
+      <text fill="#4a4660" font-size="12" x="42" y="194">cross-sectional recipe, prep()</text>
+
+      <text fill="#8a84a8" font-size="10.5" letter-spacing="1.2" font-family="'JetBrains Mono',ui-monospace,monospace" x="270" y="34">CROSS-SECTIONAL BRANCH: HOW MUCH CHANGED</text>
+      <line stroke="#4a4660" stroke-width="1.6" fill="none" x1="220" y1="79" x2="304" y2="100" marker-end="url(#a7)"/>
+      <line stroke="#4a4660" stroke-width="1.6" fill="none" x1="220" y1="179" x2="304" y2="130" marker-end="url(#a7)"/>
+      <rect fill="#ffffff" stroke="#3d3580" stroke-width="2" x="308" y="76" width="190" height="76" rx="11"/>
+      <text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="403" y="106" text-anchor="middle">wave_step()</text>
+      <text fill="#4a4660" font-size="12" x="403" y="130" text-anchor="middle">coordinated bootstrap</text>
+      <line stroke="#4a4660" stroke-width="1.6" fill="none" x1="498" y1="114" x2="596" y2="114" marker-end="url(#a7)"/>
+      <rect fill="#ffffff" stroke="#d9dce6" stroke-width="1.5" x="600" y="82" width="336" height="66" rx="10"/>
+      <text fill="#20242e" font-size="14.5" font-weight="600" x="618" y="108">Net change with its SE</text>
+      <text fill="#4a4660" font-size="12" x="618" y="130">V = V1 + V2 - 2 cov, one number per estimand</text>
+
+      <line stroke="#d9dce6" stroke-width="1.6" fill="none" x1="24" y1="238" x2="936" y2="238"/>
+
+      <text fill="#8a84a8" font-size="10.5" letter-spacing="1.2" font-family="'JetBrains Mono',ui-monospace,monospace" x="270" y="250">LONGITUDINAL BRANCH: WHO MOVED</text>
+      <path stroke="#1d9e75" stroke-width="2" fill="none" d="M122,212 L122,290 L304,290" marker-end="url(#a6)"/>
+      <text fill="#15503c" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="132" y="258">panel_merge()</text>
+      <text fill="#4a4660" font-size="12" x="132" y="276">links on the unit key</text>
+
+      <rect fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.75" x="308" y="256" width="190" height="90" rx="11"/>
+      <text fill="#20242e" font-size="14.5" font-weight="600" x="403" y="282" text-anchor="middle">Wide file</text>
+      <text fill="#4a4660" font-size="12" x="403" y="304" text-anchor="middle">one row per unit</text>
+      <text fill="#15503c" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="403" y="326" text-anchor="middle">step_attrition()</text>
+
+      <line stroke="#1d9e75" stroke-width="2" fill="none" x1="498" y1="300" x2="596" y2="300" marker-end="url(#a6)"/>
+      <rect fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.75" x="600" y="256" width="336" height="90" rx="10"/>
+      <text fill="#20242e" font-size="14.5" font-weight="600" x="618" y="282">Gross flow matrix</text>
+      <text fill="#4a4660" font-size="12" x="618" y="304">P(state at t+1 | state at t), counts, net flows,</text>
+      <text fill="#4a4660" font-size="12" x="618" y="322">stayers and movers, each with a bootstrap SE</text>
+
+      <text fill="#4a4660" font-size="12" x="24" y="380">Both branches start from the same microdata and the same cross-sectional recipe.</text>
+
+</svg>

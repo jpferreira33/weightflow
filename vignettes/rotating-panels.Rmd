@@ -11,18 +11,26 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(weightflow)
 set.seed(20260910)
+# Figures are kept as standalone .svg files and embedded as data URIs. An inline
+# <svg> element does not survive an HTML re-parse (libxml2 lowercases attribute
+# names, so `viewBox` becomes `viewbox` and the figure collapses to zero height);
+# a data URI is one attribute value and is copied verbatim.
+wf_fig <- function(file, alt = "")
+  sprintf('<img src="%s" alt="%s" style="width:100%%;max-width:960px;" />',
+          knitr::image_uri(file.path("figures", file)), alt)
 ```
 
 A continuous household survey with a rotating design measures the same units more
 than once. That is what makes the **change** between two periods far more precise
-than the levels themselves -- the shared sample cancels part of the sampling error --
-and it is also what makes the change **harder** to estimate. The two samples are not
-independent, so the variance of the change is not the sum of the two variances:
+than the levels themselves, because the shared sample cancels part of the sampling
+error, and it is also what makes the change **harder** to estimate. The two samples
+are not independent, so the variance of the change is not the sum of the two
+variances:
 
 $$V\!\left(\hat\theta_t - \hat\theta_{t-1}\right) = V\!\left(\hat\theta_t\right) + V\!\left(\hat\theta_{t-1}\right) - 2\,\mathrm{Cov}\!\left(\hat\theta_t, \hat\theta_{t-1}\right)$$
 
-and that covariance term is the whole problem: it is not a design constant you can
-look up, it has to be *produced* by the way the replicates are drawn.
+and that covariance term is the whole problem. It is not a design constant you can
+look up: it has to be *produced* by the way the replicates are drawn.
 
 This vignette covers the three things a rotating panel makes possible, in the order
 an office needs them:
@@ -30,15 +38,16 @@ an office needs them:
 1. the **net change** between two periods, with its honest variance;
 2. **chaining** period after period the way production actually runs, one month at a
    time, with only a small object traveling between runs;
-3. the **gross flows** -- who moved between states -- which need a longitudinal weight.
+3. the **gross flows**, i.e. who moved between states, which need a longitudinal weight.
 
 The package's panel layer follows the methodology of Statistics Canada's Labour Force
 Survey (cat. 71-526-X, sec. 7.2.2) for the coordinated replication, and ECLAC's
-household-survey manual (chapters XVI-XVII) for the longitudinal weight and the flows.
+household-survey manual (chapters XVI and XVII) for the longitudinal weight and the
+flows.
 
 ## The structure comes first
 
-Before any weighting, `panel_design()` reads the unit x wave crossing and describes
+Before any weighting, `panel_design()` reads the unit by wave crossing and describes
 what is actually there. It computes nothing about weights.
 
 ```{r design}
@@ -67,11 +76,27 @@ rbind(`6        (Canada LFS, ECH Uruguay)` = prof("6"),
       `1(2)5    (PNAD Continua)`           = prof("1(2)5"))
 ```
 
-`2-(2)-2` shares **no** sample at lag 2 and half of it at lag 4 -- as much as at lag 1 --
-so a year-on-year change there needs as much coordination as a quarter-on-quarter one.
-The PNAD Continua design `1(2)5` shares nothing with the adjacent quarter at all: a design built around
-"the previous period" would be exactly backwards for it. Both notations are accepted
-and describe the same calendar: `"2-(2)-2"` and `"2(2)2"` are the same design.
+Three readings that the full profile makes visible and a single number would hide.
+Under `2-(2)-2` the lag 4 overlap equals the lag 1 overlap, so a year on year change
+needs as much coordination as a quarter on quarter one. Under `1(2)5` the adjacent
+overlap is **zero** and the informative lag is 3, so a chain built around "the previous
+quarter" is exactly backwards for the PNAD. And the cycle is not the number of groups in
+sample: `2-(2)-2` has four groups in the field at any time but a cycle six periods long.
+
+The first two rows are the ones to read against each other:
+
+```{r rp-calendar, echo = FALSE, results = "asis"}
+cat(wf_fig("rp-calendar.svg", "Which earlier periods share sample with period t"))
+```
+
+Both notations are accepted and describe the same calendar: `"2-(2)-2"` and `"2(2)2"`
+are the same design, as are the EU-LFS block notation and ECLAC's `n(m)k`.
+
+The declared scheme is checked against the data in both directions. **PN-01** fires when
+the observed overlap falls below what the scheme implies, which points at a linkage key
+that is not stable between waves. **PN-07** fires when two periods the scheme declares
+disjoint turn out to share sample. Attrition can only remove overlap, never add it, so a
+surplus means the declared scheme and the data disagree.
 
 ## Net change between two periods
 
@@ -84,96 +109,204 @@ w2 <- subset(panel_ine, wave == 2 & disposition == "R")
 rec <- function(d) weighting_spec(d, base_weights = pw) |>
   step_nonresponse(respondent = disposition == "R", by = "sex")
 
-wb <- wave_bootstrap(list(T1 = rec(w1), T2 = rec(w2)), replicates = 100,
+wb <- wave_bootstrap(list(T1 = rec(w1), T2 = rec(w2)), replicates = 60,
                      strata = "stratum", psu = "psu", seed = 1, progress = FALSE)
 change_mean(wb, "unemployed")
 ```
 
-`rho` is the correlation $\rho$ the overlap induces, and `deff_change` is
+`rho` is the correlation the overlap induces, and `deff_change` is
 
 $$\mathrm{deff}_\Delta = \frac{V\!\left(\hat\theta_t - \hat\theta_{t-1}\right)}{V\!\left(\hat\theta_t\right) + V\!\left(\hat\theta_{t-1}\right)}$$
 
 the ratio between the variance reported here and what an office would report if it
-treated the two periods as independent samples. Ignoring the overlap does not give a
-conservative answer -- it gives a wrong one, in either direction depending on the sign
+treated the two periods as independent samples. A `deff_change` near 0.5 means the
+overlap has paid for half the variance of the change. Ignoring it does not give a
+conservative answer, it gives a wrong one, in either direction depending on the sign
 of the covariance.
-
-For a combination over more than two waves -- a rolling quarter, an annual average --
-`panel_estimate()` takes an arbitrary contrast:
-
-```{r contrast, eval = FALSE}
-panel_estimate(wb, mean_of("unemployed"), contrast = c(-1, 1))   # the net change
-panel_estimate(wb, mean_of("unemployed"))                        # the average
-```
 
 ## Chaining: how production actually runs
 
 `wave_bootstrap()` wants every wave at once. An office does not have them: it
 publishes month `t` weeks after month `t-1`, and the twelfth month of the year cannot
 wait for the first eleven to be reprocessed. `wave_step()` runs **one period at a
-time** and hands the next period a small object -- the *carry* -- that is all it needs.
+time**, and hands the next period a small object, the *carry*, that is all it needs.
 
-```{r chain, eval = FALSE}
-# period 1: nothing to coordinate with yet
-s1 <- wave_step(rec(w1), estimands = EST, replicates = 500,
-                strata = "stratum", psu = "psu", period = "2026-01", seed = 1)
-saveRDS(wave_carry(s1), "carry/2026-01.rds")
+```{r rp-cycle, echo = FALSE, results = "asis"}
+cat(wf_fig("rp-cycle.svg", "The cycle of one period"))
+```
 
-# period 2, weeks later, in a fresh session
-prev <- readRDS("carry/2026-01.rds")
-s2 <- wave_step(rec(w2), previous = prev, estimands = EST, replicates = 500,
-                strata = "stratum", psu = "psu", period = "2026-02", seed = 2)
-s2$weights   # the cross-sectional weights the office publishes
-s2$change    # the net change against 2026-01, with rho and deff_change
-s2$strata    # the coordination diagnostic, stratum by stratum
-saveRDS(wave_carry(s2), "carry/2026-02.rds")
+Here is a three period chain, run the way production runs it: each period separately,
+writing its carry to disk, with nothing else surviving between runs.
+
+### The estimands are declared, not programmed
+
+What to estimate, over which domains and on which subuniverse is declared with the same
+DSL as the rest of the package, and the plan is handed to `wave_step()` whole:
+
+```{r plan}
+dk   <- subset(panel_ine, wave == 1 & disposition == "R")
+plan <- rec(dk) |>
+  step_domain(sex) |>                                   # domains of study
+  step_estimate(mean(unemployed), label = "unemp")      # the estimand
+
+plan
+```
+
+`step_filter()` would add a subuniverse (working age population, the employed, households
+with a female head). It masks rows rather than deleting them, so the coordinated replicate
+structure stays intact.
+
+This matters here more than it does in a single period. The carry stores the `R` replicate
+values of every estimand **under its label**, and the next period matches them by name. An
+estimand added halfway through the chain does not exist in the earlier carry, so there are
+no replicate pairs to estimate a covariance from. `wave_step()` says so rather than
+reporting a change as if the two periods were independent:
+
+```{r midchain}
+d1 <- subset(panel_ine, wave == 1 & disposition == "R")
+d2 <- subset(panel_ine, wave == 2 & disposition == "R")
+one <- function(d) rec(d) |> step_estimate(mean(unemployed), label = "unemp")
+two <- function(d) one(d) |> step_estimate(mean(age), label = "mean_age")   # declared late
+
+s1 <- wave_step(rec(d1), estimands = one(d1), replicates = 20, strata = "stratum",
+                psu = "psu", period = "t1", seed = 1, progress = FALSE)
+s2 <- try(wave_step(rec(d2), previous = wave_carry(s1), estimands = two(d2),
+                    replicates = 20, strata = "stratum", psu = "psu",
+                    period = "t2", seed = 2, progress = FALSE), silent = TRUE)
+```
+
+### The chain
+
+```{r chain}
+store <- file.path(tempdir(), "carry"); dir.create(store, showWarnings = FALSE)
+month <- c("2026-01", "2026-02", "2026-03")
+
+for (k in 1:3) {
+  dk   <- subset(panel_ine, wave == k & disposition == "R")
+  plan <- rec(dk) |> step_domain(sex) |> step_estimate(mean(unemployed), label = "unemp")
+  prev <- lapply(rev(list.files(store, full.names = TRUE)), readRDS)   # what is on disk
+  out  <- wave_step(rec(dk), previous = if (length(prev)) prev else NULL,
+                    estimands = plan, replicates = 60, strata = "stratum", psu = "psu",
+                    period = month[k], seed = k, progress = FALSE)
+  saveRDS(wave_carry(out), file.path(store, paste0(month[k], ".rds")))
+}
+
+list.files(store)
+```
+
+One declared estimand and one domain give three series, the total and the two levels of
+`sex`, and the third period reports a change against **each** earlier period it shares
+sample with, not only the adjacent one:
+
+```{r chainout}
+out$change[, c("estimand", "from", "to", "estimate", "se", "rho", "deff_change")]
 ```
 
 Three properties worth stating plainly.
 
-**The cross-sectional weights are untouched.** `s2$weights` is identical to
-`prep(spec)$final_weight`. Coordination adds the change and the carry; it never moves
-the point estimate the office publishes.
+**The cross-sectional weights are untouched.** Coordination adds the change and the
+carry; it never moves the point estimate the office publishes.
 
-**`previous` is a list, not a file.** Which earlier periods share sample with this one
-is decided by the rotation calendar, not by proximity: with `2-(2)-2` the useful lags
-are 1, 3, 4 and 5, and lag 2 is empty. Each PSU inherits its multiplicity from the
-most recent carry that contains it, so gaps and returning cohorts resolve themselves.
-
-**The coordination is exact when the stratum keeps its size.** Coordination transfers
-the PSU *multiplicities*, and when `n_h` is unchanged the transfer is a permutation --
-case (ii) of the LFS methodology -- so no replicate needs adjusting. `$strata` reports
-the case and the share of replicates that closed without adjustment, per stratum. That
-column is the quality indicator that decides whether a figure is publishable.
-
-### Combinations over the chain
-
-`wave_step()` reports pairwise changes. A rolling quarter is not pairwise, and
-`wave_contrast()` estimates any linear combination straight from the saved carries:
-
-```{r wavecontrast, eval = FALSE}
-tr <- lapply(c("2026-01", "2026-02", "2026-03"),
-             \(m) readRDS(sprintf("carry/%s.rds", m)))
-
-wave_contrast(tr, "unemployment_rate")                          # rolling quarter
-wave_contrast(tr, "unemployment_rate", contrast = c(-1, 0, 1))  # T3 - T1
+```{r untouched}
+all.equal(out$weights, prep(rec(subset(panel_ine, wave == 3 & disposition == "R")))$final_weight)
 ```
 
-This works without the waves being in memory because each carry stores the `R`
-replicate values of every declared estimand, and those replicates are **paired across
-periods** -- the coordination transferred the multiplicities. Stacking them recovers
-the full covariance matrix, and any contrast follows from it.
+**`previous` is a list, not a file.** Which earlier periods share sample with this one
+is decided by the rotation calendar, as the figure above shows. Each PSU inherits its
+multiplicity from the most recent carry that contains it, so gaps and returning
+cohorts resolve themselves.
+
+**The coordination is exact when the stratum keeps its size.** Coordination transfers
+the PSU *multiplicities*, and when `n_h` is unchanged the transfer is a permutation,
+case (ii) of the LFS methodology, so no replicate needs adjusting:
+
+```{r strata}
+out$strata
+```
+
+`case` is the coordination case per stratum and `coordinated` is the share of
+replicates that closed without adjustment. That column is the quality indicator that
+decides whether a figure is publishable, and the four cases are set out in
+`vignette("coordinated-replication")`.
+
+## What has to be saved
+
+This is the question an office asks first, because it decides the production
+architecture. The answer is: one object per period, and it is small.
+
+```{r rp-carry, echo = FALSE, results = "asis"}
+cat(wf_fig("rp-carry.svg", "What the carry holds, thin and fat"))
+```
+
+```{r carrysize}
+cy <- readRDS(file.path(store, "2026-03.rds"))
+names(cy)[!vapply(cy, is.null, logical(1))]
+
+c(carry_KB  = round(file.size(file.path(store, "2026-03.rds")) / 1024, 1),
+  period_rows = nrow(subset(panel_ine, wave == 3 & disposition == "R")))
+```
+
+Four kilobytes against a period file of some seventeen hundred rows, and no person
+level data in it at all: `$data`, `$reps` and `$weights` are `NULL` in a thin carry.
+It is a sufficient statistic for the coordination, not a copy of the survey. That
+matters for more than disk: a carry can be moved between systems and kept for years
+without carrying a disclosure problem with it.
+
+A recipe ending in `step_cre()` is the exception. Its control totals are **estimated
+with the previous wave**, so replicate `b` of period `t` has to rebuild them from
+replicate `b` of period `t-1`, which means the previous period's replicate weights
+have to travel too. `carry = "auto"` detects it, and the object grows accordingly:
+
+```{r fatcarry}
+thin <- wave_step(rec(w1), estimands = one(w1), replicates = 60, strata = "stratum",
+                  psu = "psu", period = "t1", seed = 1, progress = FALSE)
+fat  <- wave_step(rec(w1), estimands = one(w1), replicates = 60, strata = "stratum",
+                  psu = "psu", period = "t1", seed = 1, carry = "fat", progress = FALSE)
+
+f <- function(x) { p <- tempfile(); saveRDS(wave_carry(x), p); round(file.size(p) / 1024, 1) }
+c(thin_KB = f(thin), fat_KB = f(fat))
+```
+
+Forty times larger, and it holds the microdata. Keep it under the same rules as the
+microdata itself.
+
+## Combinations over the chain
+
+`wave_step()` reports pairwise changes. A rolling quarter is not pairwise, and
+`wave_contrast()` estimates any linear combination straight from the saved carries,
+without the waves being in memory:
+
+```{r contrast}
+tr <- lapply(file.path(store, paste0(month, ".rds")), readRDS)
+
+wave_contrast(tr, "unemp")[, c("estimand", "estimate", "se", "lo", "hi")]
+wave_contrast(tr, "unemp", contrast = c(-1, 0, 1))[, c("estimand", "estimate", "se")]
+```
+
+That second line is the change from January to March, computed from three files on
+disk, and it is the same number the chain already reported in `$change`. It works
+because each carry stores the `R` replicate values of every declared estimand, and
+those replicates are **paired across periods**: the coordination transferred the
+multiplicities. Stacking them into an `R` by `W` matrix recovers the whole covariance
+matrix, and any contrast follows from it as `V(a'theta) = a' Sigma a`:
+
+```{r sigma}
+S <- vapply(tr, function(p) p$theta[["unemp"]], numeric(60))
+colnames(S) <- month
+signif(stats::cov(S), 3)
+```
+
+The covariances fall off with the lag, as the overlap profile says they should.
 
 ### The composite estimator
 
 When the recipe ends in `step_cre()`, the calibration of period $t$ targets two
 blocks at once: the known demographic totals $\mathbf{X}$, and composite totals
 $\widehat{\mathbf{Z}}$ **estimated with the previous wave**. Treating the second
-block as if it were known makes the variance anticonservative, so replicate $b$ of
-period $t$ rebuilds $\widehat{\mathbf{Z}}$ from replicate $b$ of period $t-1$.
-That is why a chain with `step_cre()` needs the "fat" carry: it must bring the
-previous period's replicate weights, not just its replicate estimates.
-`$n_cre_injected` and `$n_cre_skipped` audit that the injection happened.
+block as if it were known makes the variance anticonservative, which is why the fat
+carry exists. `$n_cre_injected` and `$n_cre_skipped` audit that the injection
+happened, and a recipe that points at a period missing from the chain is refused
+rather than quietly given the wrong one.
 
 The estimator, its two imputations for the birth rotation group and the tuning
 constant $\alpha$ are in `vignette("composite-estimation")`.
@@ -182,7 +315,13 @@ constant $\alpha$ are in `vignette("composite-estimation")`.
 
 A net change is a difference of aggregates. It cannot distinguish an immobile
 population from one where equal numbers enter and leave employment. For that you need
-the **longitudinal** file and a longitudinal weight.
+the **longitudinal** file and a longitudinal weight. It is a second branch off the same
+microdata and the same cross-sectional recipe, and it does not take part in the chain:
+it produces no carry and consumes none.
+
+```{r rp-branches, echo = FALSE, results = "asis"}
+cat(wf_fig("rp-branches.svg", "The two branches: how much changed, and who moved"))
+```
 
 ```{r flows}
 wide <- panel_merge(list(T1 = subset(panel_ine, wave == 1),
@@ -200,22 +339,23 @@ transition_matrix(lw, from = "lf_status_T1", to = "lf_status_T2", format = "row"
 
 `boot_transition()` adds a standard error per cell, and `boot_flows()` gives the same
 information as population totals plus the net flows `i->j` minus `j->i` and the
-margins -- how many started in each state, ended in each, stayed, and moved.
+margins, i.e. how many started in each state, ended in each, stayed, and moved.
 
 A caveat about the illustration, not the method: the four shipped panel datasets are
-synthetic, and in all of them **inactivity is an absorbing state** -- nobody enters or
-leaves it. So the matrix above shows movement only between employment and unemployment,
-and the `inact` row and column are degenerate. The mechanics are the point here; on real
-microdata the transitions in and out of inactivity are usually the interesting ones.
+synthetic, and in all of them **inactivity is an absorbing state**, so nobody enters
+or leaves it. The matrix above therefore shows movement only between employment and
+unemployment, and the `inact` row and column are degenerate. The mechanics are the
+point here; on real microdata the transitions in and out of inactivity are usually
+the interesting ones.
 
 Note the order of the two steps, which is not cosmetic. **Leaving the target
 population is not nonresponse.** Someone who died or emigrated is removed from the
-universe with `step_drop_ineligible()`; their weight is not redistributed to anyone.
-Someone who is still in the universe but did not answer is attrition, and their weight
-*is* redistributed, among the units that remain. Collapsing the two inflates the
-population.
+universe with `step_drop_ineligible()`, and their weight is not redistributed to
+anyone. Someone who is still in the universe but did not answer is attrition, and
+their weight *is* redistributed, among the units that remain. Collapsing the two
+inflates the population.
 
-Three further conventions govern a longitudinal weight -- who belongs to the
+Three further conventions govern a longitudinal weight: who belongs to the
 longitudinal population, which period's totals to calibrate to, and why
 cross-sectional estimates from a longitudinal file are reference only. They are
 decisions the analyst makes and the package cannot check, and they are set out in
@@ -226,12 +366,12 @@ decisions the analyst makes and the package cannot check, and they are set out i
 This vignette is the entry point; three companions go deeper into the pieces it
 uses.
 
-* `vignette("coordinated-replication")` -- what actually travels between waves,
+* `vignette("coordinated-replication")` for what actually travels between waves,
   the four coordination cases, and how to read the `$strata` diagnostic that
   decides whether a change is publishable.
-* `vignette("composite-estimation")` -- `step_cre()` in full: what the composite
+* `vignette("composite-estimation")` for `step_cre()` in full: what the composite
   estimator buys, and why its control totals make its variance a special case.
-* `vignette("panel-longitudinal")` -- the **pure** panel: attrition over many
+* `vignette("panel-longitudinal")` for the **pure** panel: attrition over many
   waves, the longitudinal weight, and gross flows.
 
 For the reference pages: `?wave_step` and `?wave_carry` for the chaining engine,

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 680 230" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>The rank ceiling and the two ways out of it</title>
+<desc>With linear working models every prediction lies in the span of the model block, which already contains the control-total block, so only q minus the dimension of the control-total block directions are left for study variables. Two escapes: a richer predictor basis enlarges the span and raises the ceiling by one variable at a time, while adaptive learners and cross-fitting produce predictions outside any single fixed span, so the ceiling no longer applies.</desc>
+<rect x="30" y="34" width="250" height="140" rx="10" fill="#f4f2fb" stroke="#534ab7" stroke-width="1.4"/>
+<text x="155" y="54" text-anchor="middle" font-size="12" fill="#3d3580">span of the model block, dim q</text>
+<rect x="66" y="66" width="178" height="52" rx="8" fill="#fdf6e8" stroke="#c9902a" stroke-width="1.3"/>
+<text x="155" y="88" text-anchor="middle" font-size="12" fill="#5c4410">known control totals</text>
+<text x="155" y="106" text-anchor="middle" font-size="11" fill="#8a7a50">dim col(A)</text>
+<text x="155" y="140" text-anchor="middle" font-size="12" fill="#4a4660">what is left for study variables:</text>
+<text x="155" y="160" text-anchor="middle" font-size="13" font-weight="600" fill="#3d3580">q &#8722; dim col(A)</text>
+
+<text x="480" y="48" text-anchor="middle" font-size="12" font-weight="600" fill="#3d3580">two ways out</text>
+<rect x="320" y="62" width="320" height="46" rx="8" fill="#ffffff" stroke="#9a96a8" stroke-width="1.2"/>
+<text x="336" y="82" font-size="11.5" fill="#20242e">a richer predictor basis enlarges q</text>
+<text x="336" y="99" font-size="11" fill="#6b6a86">the ceiling moves up, and binds again one variable later</text>
+<rect x="320" y="118" width="320" height="56" rx="8" fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.3"/>
+<text x="336" y="138" font-size="11.5" fill="#15503c">adaptive learners, or cross-fitting any model</text>
+<text x="336" y="155" font-size="11" fill="#3f7a64">predictions stop lying in one fixed span,</text>
+<text x="336" y="170" font-size="11" fill="#3f7a64">so the ceiling does not apply at all</text>
+<text x="340" y="206" text-anchor="middle" font-size="11" font-style="italic" fill="#8a84a8">Full rank is still not the same as well conditioned.</text>
+</svg>

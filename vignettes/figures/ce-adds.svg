@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 960 268" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>What the composite estimator adds to the chain</title>
+<desc>A composite recipe adds one input, the previous wave already weighted, which step_cre reads its control totals from, and fattens one output, the carry, which must now keep the replicate weight matrix so that the composite control totals are rebuilt replicate by replicate. Everything else in the period is unchanged.</desc>
+<defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c9902a"/></marker><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c3c8d8"/></marker></defs>
+
+      <rect fill="#f3f3f5" stroke="#d9dce6" stroke-width="1.5" x="24" y="40" width="216" height="62" rx="10"/>
+      <text fill="#4a4660" font-size="12" x="42" y="66">Period t microdata and recipe</text>
+      <text fill="#4a4660" font-size="12" x="42" y="86">the same as without step_cre()</text>
+      <line stroke="#d9dce6" stroke-width="1.6" fill="none" x1="240" y1="71" x2="352" y2="104" marker-end="url(#a5)"/>
+
+      <rect fill="#fdf6e8" stroke="#c9902a" stroke-width="1.75" x="24" y="126" width="216" height="86" rx="10"/>
+      <text fill="#20242e" font-size="14.5" font-weight="600" x="42" y="152">Previous wave, weighted</text>
+      <text fill="#4a4660" font-size="12" x="42" y="172">the object prep() returned</text>
+      <text fill="#8a6414" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="42" y="196">step_cre(previous = fit)</text>
+      <line stroke="#c9902a" stroke-width="2" fill="none" x1="240" y1="164" x2="352" y2="140" marker-end="url(#a4)"/>
+
+      <rect fill="#ffffff" stroke="#3d3580" stroke-width="2" x="356" y="86" width="196" height="86" rx="11"/>
+      <text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="454" y="122" text-anchor="middle">wave_step()</text>
+      <text fill="#8a6414" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="454" y="146" text-anchor="middle">Zhat re-estimated per replicate</text>
+
+      <line stroke="#d9dce6" stroke-width="1.6" fill="none" x1="552" y1="112" x2="656" y2="76" marker-end="url(#a5)"/>
+      <line stroke="#c9902a" stroke-width="2" fill="none"   x1="552" y1="146" x2="656" y2="176" marker-end="url(#a4)"/>
+
+      <rect fill="#f3f3f5" stroke="#d9dce6" stroke-width="1.5" x="660" y="44" width="276" height="62" rx="10"/>
+      <text fill="#4a4660" font-size="12" x="678" y="70">Weights, level and change</text>
+      <text fill="#4a4660" font-size="12" x="678" y="90">the same as without step_cre()</text>
+
+      <rect fill="#fdf6e8" stroke="#c9902a" stroke-width="1.75" x="660" y="140" width="276" height="86" rx="10"/>
+      <text fill="#20242e" font-size="14.5" font-weight="600" x="678" y="166">Fat carry</text>
+      <text fill="#4a4660" font-size="12" x="678" y="186">keeps the replicate weight matrix,</text>
+      <text fill="#4a4660" font-size="12" x="678" y="204">not only the estimands</text>
+      <text fill="#8a6414" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="678" y="222">40 times larger</text>
+
+      <text fill="#4a4660" font-size="12" x="24" y="252">Everything in grey is identical to a chain without step_cre(). What is marked is all that changes.</text>
+
+</svg>

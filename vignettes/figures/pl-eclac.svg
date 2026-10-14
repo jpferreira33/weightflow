@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 960 300" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>The ECLAC chapter XVI sequence and the recipe verb for each step</title>
+<desc>The manual prescribes a sequential procedure. The initial weights come from the panel base weight and the first period nonresponse adjustment, with a check that the sum of weights stays close to the population. The longitudinal weights then define the longitudinal population, adjust for attrition between waves and calibrate to the totals of the first period. Each step has its verb in the recipe.</desc>
+<defs><marker id="a8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d9e75"/></marker></defs>
+
+      <text fill="#8a84a8" font-size="10.5" letter-spacing="1.2" font-family="'JetBrains Mono',ui-monospace,monospace" x="24" y="24">CHAPTER XVI, INITIAL WEIGHTS</text>
+      <text fill="#8a84a8" font-size="10.5" letter-spacing="1.2" font-family="'JetBrains Mono',ui-monospace,monospace" x="500" y="24">CHAPTER XVI, LONGITUDINAL WEIGHTS</text>
+
+      <rect fill="#ffffff" stroke="#d9dce6" stroke-width="1.5" x="24" y="40" width="420" height="52" rx="9"/>
+      <text fill="#4a4660" font-size="12" x="42" y="62">i.a &#160; panel base weight</text>
+      <text fill="#15503c" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="42" y="80">step_panel_overlap(prob = panel_pr(pd))</text>
+
+      <rect fill="#ffffff" stroke="#d9dce6" stroke-width="1.5" x="24" y="102" width="420" height="52" rx="9"/>
+      <text fill="#4a4660" font-size="12" x="42" y="124">i.b &#160; first-period nonresponse</text>
+      <text fill="#15503c" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="42" y="142">step_nonresponse(method = "propensity")</text>
+
+      <rect fill="#f3f3f5" stroke="#d9dce6" stroke-width="1.5" x="24" y="164" width="420" height="44" rx="9"/>
+      <text fill="#4a4660" font-size="12" x="42" y="186">check &#160; sum of weights close to N</text>
+      <text fill="#4a4660" font-size="12" x="42" y="202">an alert fires if the adjustment moves the total by more than 5%</text>
+
+      <path stroke="#1d9e75" stroke-width="2" fill="none" d="M444,120 L472,120 L472,66 L496,66" marker-end="url(#a8)"/>
+
+      <rect fill="#ffffff" stroke="#d9dce6" stroke-width="1.5" x="500" y="40" width="436" height="52" rx="9"/>
+      <text fill="#4a4660" font-size="12" x="518" y="62">ii.a &#160; define the longitudinal population</text>
+      <text fill="#15503c" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="518" y="80">step_drop_ineligible(disp_T2 == "OS")</text>
+
+      <rect fill="#ffffff" stroke="#d9dce6" stroke-width="1.5" x="500" y="102" width="436" height="52" rx="9"/>
+      <text fill="#4a4660" font-size="12" x="518" y="124">ii.b &#160; attrition between waves</text>
+      <text fill="#15503c" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="518" y="142">step_attrition(respondent = disp_T2 == "R")</text>
+
+      <rect fill="#eaf5f0" stroke="#1d9e75" stroke-width="1.75" x="500" y="164" width="436" height="60" rx="9"/>
+      <text fill="#4a4660" font-size="12" x="518" y="186">ii.c &#160; longitudinal calibration</text>
+      <text fill="#15503c" font-size="12.5" font-weight="500" font-family="'JetBrains Mono',ui-monospace,monospace" x="518" y="204">step_calibrate(totals = &lt;T1 totals&gt;)</text>
+      <text fill="#4a4660" font-size="12" x="518" y="220">which period the totals belong to is the user's call</text>
+
+      <text fill="#4a4660" font-size="12" x="24" y="256">The mechanics are those of a cross-sectional weight. What changes is the universe being counted.</text>
+      <text fill="#4a4660" font-size="12" x="24" y="278">Verma, Betti and Ghellini (2006); ECLAC, household survey manual, ch. XVI.</text>
+
+</svg>

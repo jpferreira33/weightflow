@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100%" viewBox="0 0 960 356" role="img" xmlns="http://www.w3.org/2000/svg" style="font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;">
+<title>Which earlier periods share sample with period t</title>
+<desc>Under a scheme of six consecutive periods the current period shares sample with the five preceding ones, so five carries are retained. Under a two in, two out, two in scheme it shares sample with lags one, three, four and five but not with lag two, and the lag four overlap is as large as the lag one overlap.</desc>
+<defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7a6ad0"/></marker></defs>
+<text fill="#8a84a8" font-size="10.5" letter-spacing="1.2" font-family="'JetBrains Mono',ui-monospace,monospace" x="24" y="24">SCHEME 6, SIX CONSECUTIVE (CANADA LFS, ECH URUGUAY)</text>
+<g>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="24" y="40" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="83" y="69" text-anchor="middle">t&#8722;5</text>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="158" y="40" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="217" y="69" text-anchor="middle">t&#8722;4</text>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="292" y="40" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="351" y="69" text-anchor="middle">t&#8722;3</text>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="426" y="40" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="485" y="69" text-anchor="middle">t&#8722;2</text>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="560" y="40" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="619" y="69" text-anchor="middle">t&#8722;1</text>
+<rect fill="#ffffff" stroke="#3d3580" stroke-width="2" x="694" y="40" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="753" y="69" text-anchor="middle">t</text>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M83,86 C83,124 753,124 753,92" marker-end="url(#a3)"/>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M217,86 C217,116 753,116 753,92" marker-end="url(#a3)"/>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M351,86 C351,110 753,110 753,92" marker-end="url(#a3)"/>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M485,86 C485,106 753,106 753,92" marker-end="url(#a3)"/>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M619,86 C619,102 753,102 753,92" marker-end="url(#a3)"/>
+<text fill="#4a4660" font-size="12" x="836" y="63">5 carries</text>
+<text fill="#4a4660" font-size="12" x="836" y="79">overlap 0.83 at lag 1</text>
+</g>
+<line stroke="#d9dce6" stroke-width="1.6" fill="none" x1="24" y1="164" x2="936" y2="164"/>
+<text fill="#8a84a8" font-size="10.5" letter-spacing="1.2" font-family="'JetBrains Mono',ui-monospace,monospace" x="24" y="198">SCHEME 2-(2)-2, TWO IN, TWO OUT, TWO IN (ITALY, POLAND)</text>
+<g>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="24" y="214" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="83" y="243" text-anchor="middle">t&#8722;5</text>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="158" y="214" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="217" y="243" text-anchor="middle">t&#8722;4</text>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="292" y="214" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="351" y="243" text-anchor="middle">t&#8722;3</text>
+<rect fill="#f3f3f5" stroke="#d9dce6" stroke-width="1.5" x="426" y="214" width="118" height="46" rx="8"/>
+<text fill="#4a4660" font-size="12" x="485" y="238" text-anchor="middle">t&#8722;2</text>
+<text fill="#4a4660" font-size="12" x="485" y="254" text-anchor="middle">no overlap</text>
+<rect fill="#ece9f6" stroke="#7a6ad0" stroke-width="1.75" x="560" y="214" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="619" y="243" text-anchor="middle">t&#8722;1</text>
+<rect fill="#ffffff" stroke="#3d3580" stroke-width="2" x="694" y="214" width="118" height="46" rx="8"/>
+<text fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace" x="753" y="243" text-anchor="middle">t</text>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M83,260 C83,298 753,298 753,266" marker-end="url(#a3)"/>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M217,260 C217,290 753,290 753,266" marker-end="url(#a3)"/>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M351,260 C351,284 753,284 753,266" marker-end="url(#a3)"/>
+<path stroke="#7a6ad0" stroke-width="2" fill="none" d="M619,260 C619,276 753,276 753,266" marker-end="url(#a3)"/>
+<text fill="#4a4660" font-size="12" x="836" y="237">4 carries</text>
+<text fill="#4a4660" font-size="12" x="836" y="253">lag 4 as big as lag 1</text>
+</g>
+<text fill="#4a4660" font-size="12" x="24" y="340">The overlap profile follows from the scheme: <tspan fill="#20242e" font-size="13" font-family="'JetBrains Mono',ui-monospace,monospace">panel_design(pattern = "2-(2)-2")</tspan> gives lags 1, 3, 4 and 5.</text>
+
+</svg>

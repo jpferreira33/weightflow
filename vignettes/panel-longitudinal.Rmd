@@ -11,6 +11,13 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(weightflow)
 set.seed(20260910)
+# Figures are kept as standalone .svg files and embedded as data URIs. An inline
+# <svg> element does not survive an HTML re-parse (libxml2 lowercases attribute
+# names, so `viewBox` becomes `viewbox` and the figure collapses to zero height);
+# a data URI is one attribute value and is copied verbatim.
+wf_fig <- function(file, alt = "")
+  sprintf('<img src="%s" alt="%s" style="width:100%%;max-width:960px;" />',
+          knitr::image_uri(file.path("figures", file)), alt)
 ```
 
 A **pure panel** follows one sample over several waves without rotating it. Nobody
@@ -24,6 +31,29 @@ This vignette builds a longitudinal weight over four waves and uses it for gross
 flows. The rotating case, where the sample is partly renewed each period and the
 quantity of interest is usually the net change, is
 `vignette("rotating-panels")`.
+
+## The sequence, and which verb does each step
+
+ECLAC's manual prescribes a sequential procedure for the longitudinal weight
+(Verma, Betti and Ghellini 2006). Each step has its verb in the recipe, and the
+whole of it is a cross-sectional weight applied to a different universe.
+
+```{r pl-eclac, echo = FALSE, results = "asis"}
+cat(wf_fig("pl-eclac.svg", "The ECLAC chapter XVI sequence and the recipe verb for each step"))
+```
+
+Step **i.a** is the one that does not appear below. It applies when the
+longitudinal sample is a panel *selected* among rotation groups, so that a unit
+enters the panel with probability less than one: `step_panel_overlap(prob =
+panel_pr(pd))` divides the design weight by that probability. A pure panel has no
+such selection, every unit is in it by construction, and `panel_pr()` says so
+rather than inventing a number: it requires a `rotation_group` and there is none
+here. The rotating case is in `vignette("rotating-panels")`.
+
+Three points in that sequence the package **cannot** check for you, and they are
+the three this vignette keeps coming back to: who belongs to the longitudinal
+population, which period the control totals describe, and what a cross-sectional
+estimate from this file does and does not mean.
 
 ## The longitudinal file is an intersection
 
@@ -91,6 +121,29 @@ falls from 1,980 to 1,363: that is what an adjustment by the inverse of an
 estimated response propensity is supposed to do, and `weighting_alerts()` says so
 out loud if the total moves by more than 5%. The **effective sample size** is the
 price: 1,820 to 1,252.
+
+The reading that matters more than either number is whether the **composition** of
+the panel comes back. Attrition is a problem when it is selective, so compare the
+weighted composition of the adjusted panel against the first wave it is supposed to
+represent:
+
+```{r composition}
+grp <- function(a) cut(a, c(-Inf, 29, 49, Inf), labels = c("18-29", "30-49", "50+"))
+t1  <- waves$T1
+sh  <- function(w, g) round(100 * tapply(w, g, sum) / sum(w), 1)
+act <- lw$final_weight > 0
+
+rbind(T1_target  = sh(t1$pw, grp(t1$age)),
+      unadjusted = sh(wide$pw_T1[wide$responded_always], grp(wide$age_T1[wide$responded_always])),
+      adjusted   = sh(lw$final_weight[act], grp(wide$age_T1[act])))
+```
+
+In this synthetic file the three rows agree to a few tenths of a point, because
+attrition here is close to uniform: the continuation rate runs between 62% and 65%
+across the three age groups. That is why the weight total barely moved. On real
+microdata it is exactly this table that moves, and the gap between the first two
+rows is the bias the adjustment has to remove; the gap between the first and third
+is what is left of it.
 
 Note also how the respondent condition is defined. "Responded in **all** waves" is
 the definition of the longitudinal respondent set: someone who answered three of
