@@ -221,12 +221,16 @@ single number.</p>
 <span><span class="co">#&gt;   n = 916   N = 4,481   f = 0.2044</span></span>
 <span><span class="co">#&gt;   strongest covariate-participation correlation: |r| = 0.177 (sexM)</span></span>
 <span><span class="co">#&gt;   effective size by residual data-defect correlation (Meng 2018):</span></span>
-<span><span class="co">#&gt;     |rho| = 0.001  -&gt;  n_eff = 256,943</span></span>
-<span><span class="co">#&gt;     |rho| = 0.005  -&gt;  n_eff = 10,278</span></span>
-<span><span class="co">#&gt;     |rho| = 0.010  -&gt;  n_eff = 2,569</span></span>
+<span><span class="co">#&gt;     |rho| = 0.001  -&gt;  n_eff = 256,943  (*)</span></span>
+<span><span class="co">#&gt;     |rho| = 0.005  -&gt;  n_eff = 10,278  (*)</span></span>
+<span><span class="co">#&gt;     |rho| = 0.010  -&gt;  n_eff = 2,569  (*)</span></span>
 <span><span class="co">#&gt;     |rho| = 0.050  -&gt;  n_eff = 103</span></span>
 <span><span class="co">#&gt;     |rho| = 0.100  -&gt;  n_eff = 26</span></span>
-<span><span class="co">#&gt;   (rho on the target variable is not observable; read as an ignorance range)</span></span></code></pre></div>
+<span><span class="co">#&gt;   (rho on the target variable is not observable; read as an ignorance range)</span></span>
+<span><span class="co">#&gt;   (*) below |rho| = 0.0149 = 1/sqrt(N), the defect a simple random</span></span>
+<span><span class="co">#&gt;       sample of this population shows by itself: those rows describe a</span></span>
+<span><span class="co">#&gt;       sample more representative than a random one, so read them as a</span></span>
+<span><span class="co">#&gt;       ceiling the formula allows and the design cannot reach.</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="variance">Variance<a class="anchor" aria-label="anchor" href="#variance"></a>

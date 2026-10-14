@@ -133,12 +133,16 @@ dd
 #>   n = 916   N = 4,481   f = 0.2044
 #>   strongest covariate-participation correlation: |r| = 0.177 (sexM)
 #>   effective size by residual data-defect correlation (Meng 2018):
-#>     |rho| = 0.001  ->  n_eff = 256,943
-#>     |rho| = 0.005  ->  n_eff = 10,278
-#>     |rho| = 0.010  ->  n_eff = 2,569
+#>     |rho| = 0.001  ->  n_eff = 256,943  (*)
+#>     |rho| = 0.005  ->  n_eff = 10,278  (*)
+#>     |rho| = 0.010  ->  n_eff = 2,569  (*)
 #>     |rho| = 0.050  ->  n_eff = 103
 #>     |rho| = 0.100  ->  n_eff = 26
 #>   (rho on the target variable is not observable; read as an ignorance range)
+#>   (*) below |rho| = 0.0149 = 1/sqrt(N), the defect a simple random
+#>       sample of this population shows by itself: those rows describe a
+#>       sample more representative than a random one, so read them as a
+#>       ceiling the formula allows and the design cannot reach.
 ```
 
 ## Variance
