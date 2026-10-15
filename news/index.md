@@ -43,6 +43,23 @@
   exported to `survey` as if it had a sampling design. Report values are
   escaped in the HTML.
 
+### Documentation
+
+- The non-probability article was rewritten around the
+  multipurpose-calibration argument: what one weight for many variables
+  costs, why a flexible working model is needed, and the rank ceiling on
+  the number of control totals a linear in-sample model can carry. The
+  rotating-panel, longitudinal-panel, composite-estimation and
+  quick-start articles were rebuilt around the same figures.
+
+- Vignette figures now ship as standalone `.svg` files embedded as data
+  URIs. Inline SVG did not survive the HTML post-processing: re-parsing
+  the rendered page converts attribute names to lower case, which is
+  correct for HTML but fatal for SVG (`viewBox` becomes `viewbox`), and
+  a figure with a relative width and no explicit height collapsed to
+  zero height. A data URI is a single attribute value and is copied
+  verbatim.
+
 ## weightflow 1.3.0
 
 CRAN release: 2026-09-11

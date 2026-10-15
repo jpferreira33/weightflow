@@ -84,6 +84,11 @@
 <ul><li><p>A <code><a href="../reference/reference_sample.html">reference_sample()</a></code> kept its weights in positional order: reordering or subsetting its rows misaligned them silently. They now travel with the rows.</p></li>
 <li><p>Warnings and diagnostics across the pseudo-weighting, panel, trimming and calibration steps now fire where they were silent, stop firing on sound models, and state what a variance assumes about a reference survey. In particular a non-probability recipe is no longer accepted in silence when it adjusts nothing, pseudo-weights twice, or is exported to <code>survey</code> as if it had a sampling design. Report values are escaped in the HTML.</p></li>
 </ul></div>
+<div class="section level3">
+<h3 id="documentation-1-3-1">Documentation<a class="anchor" aria-label="anchor" href="#documentation-1-3-1"></a></h3>
+<ul><li><p>The non-probability article was rewritten around the multipurpose-calibration argument: what one weight for many variables costs, why a flexible working model is needed, and the rank ceiling on the number of control totals a linear in-sample model can carry. The rotating-panel, longitudinal-panel, composite-estimation and quick-start articles were rebuilt around the same figures.</p></li>
+<li><p>Vignette figures now ship as standalone <code>.svg</code> files embedded as data URIs. Inline SVG did not survive the HTML post-processing: re-parsing the rendered page converts attribute names to lower case, which is correct for HTML but fatal for SVG (<code>viewBox</code> becomes <code>viewbox</code>), and a figure with a relative width and no explicit height collapsed to zero height. A data URI is a single attribute value and is copied verbatim.</p></li>
+</ul></div>
 </div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.3.0" id="weightflow-130">weightflow 1.3.0<a class="anchor" aria-label="anchor" href="#weightflow-130"></a></h2><p class="text-muted">CRAN release: 2026-09-11</p>
