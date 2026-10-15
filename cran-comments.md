@@ -62,7 +62,8 @@ and are false positives otherwise.
 ## Test environments
 
 * local: macOS (R release)
-* win-builder: R release and R-devel
+* GitHub Actions: Windows (R release and R-devel), macOS (R release),
+  Ubuntu (R devel, release and oldrel-1)
 
 ## Downstream dependencies
 
