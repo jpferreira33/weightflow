@@ -1,43 +1,63 @@
 ## Submission
 
-This is a feature update to weightflow (version 1.3.0).
+This is a maintenance and documentation update to weightflow (version 1.3.0 is
+currently on CRAN).
 
-The main addition is support for rotating and pure panels: the panel structure
-layer (`panel_design()`, `panel_merge()`, `panel_pr()`,
-`step_panel_overlap()`), attrition and longitudinal weights, gross flows
-(`transition_matrix()`, `boot_flows()`), composite regression estimation
-(`step_cre()`), and a variance layer that coordinates the replicate draws
-across waves (`wave_bootstrap()`, `wave_jackknife()`, `wave_step()`,
-`change_estimate()`) so that the sample overlap enters the variance of a net
-change as covariance. It also adds a declarative estimation grammar
-(`step_domain()`, `step_estimate()`, `collect_estimates()`) and a panel quality
-report (`report_panel()`).
+It adds domain-level fitting to two steps (`step_model_calibration()` and
+`step_pseudoweight()` take `by`, fitting and calibrating one domain at a time),
+a delete-a-group jackknife with a replicate budget
+(`jackknife_weights(groups =, seed =, max_replicates =)`), balanced rounding on
+a calibration design (`step_round(method = "balanced", formula =)`), two new
+arguments to `step_cre()` (`n_groups`, `rescale_previous`), Student t confidence
+intervals on the estimation entry points (`ci_type`, `df`) for designs with few
+degrees of freedom, and the Monte Carlo error of the bootstrap standard errors
+in `print()`.
 
-The release also fixes a correctness bug in the response-propensity models
-(binomial GLM prior weights are the number of trials, so large design weights
-could drive the fitted propensities to the boundary; model weights are now
-normalized to mean 1, which leaves the estimates invariant). NEWS.md has the
-full list.
+It fixes one correctness bug: a `reference_sample()` kept its design weights in
+positional order, so reordering or subsetting its rows misaligned the weights
+silently. They now travel with the rows.
 
-All examples now run: there is no `\dontrun{}` or `\donttest{}` in the package.
-The 50 examples take about 3 seconds in total.
+The rest of the release is an audit of the warnings and diagnostics across the
+pseudo-weighting, panel, trimming and calibration steps: they now fire where
+they were silent, stop firing on sound models, and state what a variance assumes
+about the reference survey. In particular, a non-probability recipe is no longer
+accepted in silence when it adjusts nothing, pseudo-weights twice, or is
+exported to `survey` as if it had a sampling design. Values interpolated into
+the HTML report are escaped. NEWS.md has the full list.
+
+Five vignettes were rewritten, and vignette figures now ship as standalone
+`.svg` files embedded as data URIs rather than as inline SVG, which did not
+survive the HTML post-processing of the rendered articles.
 
 ## R CMD check results
 
 0 errors | 0 warnings | 0 notes
 
+A local run without network access reports one additional NOTE, "unable to
+verify current time". It comes from the check being unable to reach a time
+service to validate file timestamps, not from the package, and does not appear
+when the check runs with network access.
+
+## Examples
+
+All examples run: there is no `\dontrun{}` or `\donttest{}` in the package. The
+50 examples take about 5 seconds in total, the slowest one under a second.
+
 ## Note on the DOI
 
-DESCRIPTION and README cite the article describing the package,
+DESCRIPTION, README and inst/CITATION cite the article describing the package,
 <doi:10.1177/18747655261484262> (Statistical Journal of the IAOS, advance
 online publication, 2026-09-09). The DOI resolves correctly in a browser, but
 the publisher (SAGE) returns HTTP 403 to automated requests, so a URL or DOI
 checker may report it as unreachable. This is a false positive from the
-publisher's bot protection, not a broken reference.
+publisher's bot protection, not a broken reference. The same note accompanied
+the 1.3.0 submission.
 
-A spell check may also flag author surnames ('Sarndal', 'Feinberg', 'Stasny')
-and standard survey-methodology terms; these are in inst/WORDLIST where
-appropriate and are false positives otherwise.
+## Note on spelling
+
+A spell check may flag author surnames ('Sarndal', 'Feinberg', 'Stasny') and
+standard survey-methodology terms; these are in inst/WORDLIST where appropriate
+and are false positives otherwise.
 
 ## Test environments
 

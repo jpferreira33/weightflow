@@ -10,15 +10,19 @@
 <!-- badges: end -->
 
 > Declarative, pipeable survey weighting in base R: from design weights to
-> calibrated, model-assisted, variance-ready weights.
+> calibrated, model-assisted weights for probability and non-probability
+> samples, with variances that re-run the whole recipe.
 
 **weightflow** builds survey weights by chaining hierarchical adjustments with a
 `tidymodels`-style API, and estimates their variances with a bootstrap that
-re-applies the whole recipe on each replicate. For continuous surveys it carries
-the same idea across time: rotating panels, longitudinal weights, and the
-variance of a **net change** with the sample overlap entering as covariance. It
-has **no hard dependencies** (base R, R >= 4.1) and bridges to `survey`/`srvyr`
-for design-based inference.
+re-applies the whole recipe on each replicate. **Non-probability samples** are
+weighted against a probability reference by pseudo-weighting, mass imputation
+and doubly robust estimators that produce **one multipurpose weight** for every
+variable you publish. For continuous surveys it carries the same idea across
+time: rotating panels, longitudinal weights, and the variance of a **net
+change** with the sample overlap entering as covariance. It has **no hard
+dependencies** (base R, R >= 4.1) and bridges to `survey`/`srvyr` for
+design-based inference.
 
 > **Get it from CRAN** — `install.packages("weightflow")` — or read the full
 > documentation at the [project website](https://jpferreira33.github.io/weightflow/).
@@ -35,6 +39,14 @@ and then hands the result to `survey`/`srvyr` for inference.
 - **A weighting recipe, not a black box.** The whole process (eligibility,
   selection, nonresponse, calibration, trimming) is one explicit, auditable,
   pipeable object that you read top to bottom.
+- **Non-probability samples, and one weight for many variables.** Pseudo-weights
+  against a probability reference sample, mass imputation, and the doubly robust
+  combination of the two, which calibrates **a single weight** on the fitted
+  values of several working models and on the population totals of the
+  auxiliaries at once, so one multipurpose weight serves every variable you
+  publish. Plus Meng's data-defect index and a pattern-mixture sensitivity
+  analysis that says how far nonignorable nonresponse could move the answer,
+  instead of assuming it cannot.
 - **Flexible engines for nonresponse and outcome models.** Response propensities
   and model-calibration outcomes can be fitted with logistic regression, CART,
   random forest or **gradient boosting (xgboost)**: same API, swap one argument.
@@ -69,10 +81,6 @@ and then hands the result to `survey`/`srvyr` for inference.
 - **Chained production, one period at a time.** An office publishes month `t`
   before month `t+1` exists. `wave_step()` runs a single period and hands the
   next one a small *carry*; the chain never needs the earlier waves in memory.
-- **Non-probability samples, and how far to trust them.** Pseudo-weights against
-  a probability reference, Meng's data-defect index, and a pattern-mixture
-  sensitivity analysis that says how far nonignorable nonresponse could move the
-  answer -- instead of assuming it cannot.
 - **Programmatic quality control.** Every step carries a stable `id`, every
   quality incident lands in `weighting_alerts()`, and `collect_step_detail()`,
   `collect_propensities()` and `domain_summary()` audit the cascade unit by unit
