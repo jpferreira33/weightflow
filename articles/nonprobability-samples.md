@@ -296,7 +296,7 @@ signif(c(K1              = dev(mk("income")),
          K2_richer_basis = dev(mk(c("income", "employed"),
                                   "~ age + I(age^2) + sex * region"))), 2)
 #>              K1              K2     K2_crossfit K2_richer_basis 
-#>          0.0000          0.0011          0.0000          0.0000
+#>          0.0000          0.0012          0.0000          0.0000
 ```
 
 Three of the four close to numerical zero, which is what exact means
