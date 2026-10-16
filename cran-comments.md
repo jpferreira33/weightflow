@@ -13,17 +13,9 @@ intervals on the estimation entry points (`ci_type`, `df`) for designs with few
 degrees of freedom, and the Monte Carlo error of the bootstrap standard errors
 in `print()`.
 
-It fixes one correctness bug: a `reference_sample()` kept its design weights in
-positional order, so reordering or subsetting its rows misaligned the weights
-silently. They now travel with the rows.
-
-The rest of the release is an audit of the warnings and diagnostics across the
-pseudo-weighting, panel, trimming and calibration steps: they now fire where
-they were silent, stop firing on sound models, and state what a variance assumes
-about the reference survey. In particular, a non-probability recipe is no longer
-accepted in silence when it adjusts nothing, pseudo-weights twice, or is
-exported to `survey` as if it had a sampling design. Values interpolated into
-the HTML report are escaped. NEWS.md has the full list.
+It also fixes a weight-alignment bug in `reference_sample()`, and tidies the
+warnings and diagnostics across the pseudo-weighting, panel, trimming and
+calibration steps. NEWS.md has the full list.
 
 Five vignettes were rewritten, and vignette figures now ship as standalone
 `.svg` files embedded as data URIs rather than as inline SVG, which did not
